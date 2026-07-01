@@ -1,5 +1,5 @@
 const STORAGE_KEY = "kombuAdminStateV3";
-const ADMIN_PASSWORD = "Rssb2009";
+const ADMIN_PASSWORD = "Rssb2010";
 const ADMIN_NOTIFICATION_EMAIL = "armaandaswani@icloud.com";
 const FLAVOR_CATEGORIES = ["Frutados", "Cítricos", "Florais", "Herbais", "Especiados"];
 const FLAVOR_IMAGE_RECOMMENDED = "mín. 760 x 1368 px; ideal 1040 x 1872 px";
