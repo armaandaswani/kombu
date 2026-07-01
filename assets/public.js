@@ -13,9 +13,9 @@ const flavors = [
     profile: "Frutados",
     color: "#F5CDC3",
     image: `${menuBottleBase}goiaba.png`,
-    ingredients: ["Goiaba", "chá fermentado", "vitamina C"],
-    angle: "Naturalmente rica em vitamina C, nutritiva e refrescante.",
-    description: "É naturalmente rica em vitamina C e traz uma proposta nutritiva e refrescante.",
+    ingredients: ["Goiaba", "chá fermentado"],
+    angle: "Frutada, suave e refrescante.",
+    description: "Uma kombucha frutada, suave e refrescante, com sabor de goiaba em destaque.",
   },
   {
     name: "Uva",
@@ -24,9 +24,9 @@ const flavors = [
     profile: "Frutados",
     color: "#E5D7FF",
     image: `${menuBottleBase}uva.png`,
-    ingredients: ["Uva", "chá fermentado", "antioxidantes"],
-    angle: "Encorpada, levemente adocicada e associada à vitalidade.",
-    description: "Encorpado e levemente adocicado, traz antioxidantes naturais associados à vitalidade e proteção celular.",
+    ingredients: ["Uva", "chá fermentado"],
+    angle: "Encorpada e levemente adocicada.",
+    description: "Uma kombucha frutada, encorpada e levemente adocicada.",
   },
   {
     name: "Maracujá",
@@ -35,9 +35,9 @@ const flavors = [
     profile: "Frutados",
     color: "#F7D8AD",
     image: `${menuBottleBase}maracuja.png`,
-    ingredients: ["Maracujá", "chá fermentado", "bem-estar"],
-    angle: "Tropical, refrescante e associado à sensação de calma.",
-    description: "Tropical e refrescante, com uma proposta mais leve e associada à sensação de calma e bem-estar.",
+    ingredients: ["Maracujá", "chá fermentado"],
+    angle: "Tropical, ácida na medida e refrescante.",
+    description: "Uma kombucha tropical, refrescante e com acidez equilibrada.",
   },
   {
     name: "Rosas & Cardamomo",
@@ -47,8 +47,8 @@ const flavors = [
     color: "#F5CDC3",
     image: `${menuBottleBase}rosas-cardamomo.png`,
     ingredients: ["Rosas", "cardamomo", "chá verde"],
-    angle: "Floral, elegante e associado à digestão e conforto.",
-    description: "Floral e elegante, traz o cardamomo como destaque, associado à digestão e sensação de conforto.",
+    angle: "Floral, aromática e especiada.",
+    description: "Uma combinação floral e aromática, com o toque especiado do cardamomo.",
   },
   {
     name: "Pêra & Alecrim",
@@ -58,8 +58,8 @@ const flavors = [
     color: "#D9F99D",
     image: `${menuBottleBase}pera-alecrim.png`,
     ingredients: ["Pêra", "alecrim", "chá verde"],
-    angle: "Leve, herbal e associada à digestão e clareza mental.",
-    description: "Leve e herbal, une o frescor da pêra ao alecrim, associado à digestão e clareza mental.",
+    angle: "Leve, frutada e herbal.",
+    description: "Une o frescor da pêra ao aroma herbal do alecrim.",
   },
   {
     name: "Hibisco & Anis Estrelado",
@@ -69,8 +69,8 @@ const flavors = [
     color: "#F5CDC3",
     image: `${menuBottleBase}hibisco-anis.png`,
     ingredients: ["Hibisco", "anis estrelado", "chá fermentado"],
-    angle: "Perfil detox, diurético e com sensação de leveza.",
-    description: "Tem sabor com proposta mais detox, associado à ação diurética e sensação de leveza.",
+    angle: "Floral, ácido e especiado.",
+    description: "Combina a intensidade do hibisco com o aroma do anis estrelado.",
   },
   {
     name: "Lavanda & Limão",
@@ -81,7 +81,7 @@ const flavors = [
     image: `${menuBottleBase}lavanda-limao.png`,
     ingredients: ["Lavanda", "limão", "chá fermentado"],
     angle: "Cítrico, floral e refrescante.",
-    description: "Cítrico, floral e refrescante, une a lavanda associada ao relaxamento com o frescor natural do limão.",
+    description: "Cítrico, floral e refrescante, com lavanda e limão.",
   },
   {
     name: "Frutas Vermelhas",
@@ -91,8 +91,8 @@ const flavors = [
     color: "#F5CDC3",
     image: `${menuBottleBase}frutas-vermelhas.png`,
     ingredients: ["Morango", "mirtilo", "oxicoco"],
-    angle: "Frutado, levemente ácido e rico em antioxidantes naturais.",
-    description: "Frutado e levemente ácido, é rico em antioxidantes naturais associados à vitalidade e proteção celular.",
+    angle: "Frutada, levemente ácida e vibrante.",
+    description: "Mistura morango, mirtilo e oxicoco em um perfil frutado e levemente ácido.",
   },
   {
     name: "Imunidade",
@@ -102,8 +102,8 @@ const flavors = [
     color: "#F7D8AD",
     image: `${menuBottleBase}imunidade.png`,
     ingredients: ["Limão", "gengibre", "cúrcuma"],
-    angle: "Cítrica e intensa, com ingredientes associados à vitamina C.",
-    description: "Feito com limão, gengibre e cúrcuma, combina ingredientes associados à vitamina C, vitalidade e proteção natural.",
+    angle: "Cítrica, intensa e especiada.",
+    description: "Feita com limão, gengibre e cúrcuma, com perfil cítrico e marcante.",
   },
   {
     name: "Flor Fada Azul & Blueberry",
@@ -113,8 +113,8 @@ const flavors = [
     color: "#D8DDFF",
     image: `${menuBottleBase}flor-fada-blueberry.png`,
     ingredients: ["Flor fada azul", "blueberry", "chá fermentado"],
-    angle: "Delicado, visualmente único e associado à ação antioxidante.",
-    description: "Delicado e visualmente único, combina ingredientes associados à ação antioxidante e bem-estar.",
+    angle: "Delicada, floral e frutada.",
+    description: "Uma combinação delicada de flor fada azul e blueberry.",
   },
   {
     name: "Jasmim & Manga",
@@ -124,8 +124,8 @@ const flavors = [
     color: "#F7D8AD",
     image: `${menuBottleBase}jasmim-manga.png`,
     ingredients: ["Jasmim", "manga", "chá fermentado"],
-    angle: "Doce, tropical, vibrante e naturalmente energético.",
-    description: "Doce, tropical e vibrante, traz uma proposta naturalmente energética e rica em frescor.",
+    angle: "Tropical, floral e vibrante.",
+    description: "Combina manga e jasmim em um sabor tropical com toque floral.",
   },
   {
     name: "Maçã & Canela",
@@ -135,21 +135,16 @@ const flavors = [
     color: "#F5CDC3",
     image: `${menuBottleBase}maca-canela.png`,
     ingredients: ["Maçã", "canela", "chá fermentado"],
-    angle: "Aromática, acolhedora e associada ao equilíbrio metabólico.",
-    description: "Aromático e acolhedor, traz a canela como destaque, associada ao equilíbrio metabólico.",
+    angle: "Aromática, frutada e especiada.",
+    description: "Combina maçã e canela em um sabor aromático e acolhedor.",
   },
 ];
 
 const benefits = [
-  ["biotech", "Probiótica", "Pode contribuir para uma rotina alimentar mais equilibrada."],
-  ["restaurant", "Digestiva", "Ajuda a compor um ritual leve depois das refeições."],
-  ["water_drop", "Detox", "Associada a escolhas mais naturais e conscientes no dia a dia."],
-  ["local_fire_department", "Baixa em calorias", "Uma alternativa mais leve aos refrigerantes tradicionais."],
-  ["gluten_free", "Sem glúten", "Boa opção para diferentes estilos de alimentação."],
-  ["spa", "Vegana", "Feita sem ingredientes de origem animal."],
-  ["nutrition", "Ingredientes reais", "Frutas, ervas, especiarias e pétalas na saborização."],
-  ["verified", "Sem aditivos artificiais", "Sem corantes, conservantes ou atalhos industriais."],
-  ["forest", "Produto da Amazônia", "Marca criada em Manaus com identidade local."],
+  ["nutrition", "Ingredientes reais", "Frutas, especiarias e flores comestíveis na saborização."],
+  ["bubble_chart", "Gaseificação natural", "Efervescência criada pelo próprio processo de fermentação."],
+  ["verified", "Sem conservantes", "Sem corantes, conservantes ou aditivos artificiais."],
+  ["forest", "Feita em Manaus", "Uma marca local, com produção artesanal e identidade amazônica."],
 ];
 
 const partners = [];
@@ -293,8 +288,8 @@ function openFlavor(slug) {
         <p class="lead">${flavor.description}</p>
         <h3>Ingredientes</h3>
         <div class="tag-list">${formatList(flavor.ingredients)}</div>
-        <h3 style="margin-top: 24px">Ângulo funcional</h3>
-        <p>${flavor.angle} A Kombú evita promessas médicas e posiciona o produto como parte de uma rotina equilibrada.</p>
+        <h3 style="margin-top: 24px">Perfil do sabor</h3>
+        <p>${flavor.angle}</p>
         <div class="hero-actions">
           <a class="btn btn-primary" href="${getOfficialMapUrl()}" target="_blank" rel="noreferrer">
             <span class="material-symbols-outlined" aria-hidden="true">near_me</span>
@@ -401,7 +396,7 @@ function renderPartners() {
       <article class="partner-card">
         <span class="eyebrow">Mapa oficial</span>
         <h3>Veja onde comprar Kombú</h3>
-        <p>Os pontos de venda serão controlados pelo admin. Por enquanto, use o mapa oficial para comprar ou encontrar a Kombú.</p>
+        <p>Use o mapa oficial para encontrar pontos de venda e rotas da Kombú.</p>
         <div class="partner-actions">
           <a class="btn btn-primary" href="${getOfficialMapUrl()}" target="_blank" rel="noreferrer">
             <span class="material-symbols-outlined" aria-hidden="true">map</span>
@@ -432,11 +427,12 @@ function persistForm(formId, successId, storageKey) {
     existing.push(lead);
     localStorage.setItem(storageKey, JSON.stringify(existing));
     syncLeadToAdminCrm(lead);
-    const notification = await notifyLeadByEmail(lead);
+    await notifyLeadByEmail(lead);
     success.classList.remove("hidden");
-    success.textContent = notification.emailSent
-      ? "Lead enviado para o CRM do admin. Notificação enviada para armaandaswani@icloud.com."
-      : "Lead enviado para o CRM do admin. A notificação por email será ativada no Vercel com RESEND_API_KEY.";
+    success.textContent =
+      type === "revenda"
+        ? "Recebemos seus dados. A Kombú vai retornar pelo contato informado."
+        : "Recebemos sua mensagem. A Kombú vai retornar pelo contato informado.";
     form.reset();
   });
 }
