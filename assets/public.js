@@ -1,5 +1,6 @@
 const imageBase = "https://static.wixstatic.com/media/";
-const ADMIN_STORAGE_KEY = "kombuAdminStateV2";
+const ADMIN_STORAGE_KEY = "kombuAdminStateV3";
+const LEGACY_ADMIN_STORAGE_KEYS = ["kombuAdminStateV2"];
 const OFFICIAL_MAP_URL = "https://www.google.com/maps/d/u/0/edit?mid=1Zn4OECfeuJkhDkCj6noQKZDeLgOUbn8";
 
 const flavors = [
@@ -119,12 +120,17 @@ const partners = [];
 
 const formatList = (items) => items.map((item) => `<span class="tag">${item}</span>`).join("");
 
-function readAdminCms() {
+function readAdminState() {
   try {
-    return JSON.parse(localStorage.getItem(ADMIN_STORAGE_KEY))?.cms || {};
+    const stored = localStorage.getItem(ADMIN_STORAGE_KEY) || LEGACY_ADMIN_STORAGE_KEYS.map((key) => localStorage.getItem(key)).find(Boolean);
+    return stored ? JSON.parse(stored) : {};
   } catch {
     return {};
   }
+}
+
+function readAdminCms() {
+  return readAdminState().cms || {};
 }
 
 function getCmsImage(key, fallback) {
@@ -138,7 +144,7 @@ function getOfficialMapUrl() {
 
 function getPublicPartners() {
   try {
-    const adminState = JSON.parse(localStorage.getItem(ADMIN_STORAGE_KEY));
+    const adminState = readAdminState();
     return (adminState?.partners || [])
       .filter((partner) => partner.visible)
       .map((partner, index) => ({

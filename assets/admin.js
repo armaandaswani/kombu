@@ -1,12 +1,99 @@
-const STORAGE_KEY = "kombuAdminStateV2";
+const STORAGE_KEY = "kombuAdminStateV3";
 const ADMIN_PASSWORD = "Rssb2009";
 
+const PRODUCT_CATALOG_SEED = [
+  { id: "prod-kmb001", ean: "7890528600010", item: "KMB001", flavor: "Maracujá", sizeMl: 500, description: "Kombucha Premium de 500ml - Sabor Maracujá", wholesalePrice: 13, retailPrice: 18.5, baselineCost: 3.29, status: "ativo", visible: true },
+  { id: "prod-kmb002", ean: "7890528600027", item: "KMB002", flavor: "Frutas Vermelhas", sizeMl: 500, description: "Kombucha Premium de 500ml - Sabor Frutas Vermelhas (Morango, Mirtilo, Oxicoco)", wholesalePrice: 13, retailPrice: 18.5, baselineCost: 4.74, status: "ativo", visible: true },
+  { id: "prod-kmb003", ean: "7890528600034", item: "KMB003", flavor: "Hibisco com Anis Estrelado", sizeMl: 500, description: "Kombucha Premium de 500ml - Sabor Hibisco c/Anis Estrelado", wholesalePrice: 13, retailPrice: 18.5, baselineCost: 2.29, status: "ativo", visible: true },
+  { id: "prod-kmb004", ean: "7890528600041", item: "KMB004", flavor: "Mirtilo c/Flor Borboleta Azul", sizeMl: 500, description: "Kombucha Premium de 500ml - Sabor Mirtilo c/Flor Borboleta Azul", wholesalePrice: 13, retailPrice: 18.5, baselineCost: 4.47, status: "ativo", visible: true },
+  { id: "prod-kmb005", ean: "7890528600058", item: "KMB005", flavor: "Maçã c/Canela", sizeMl: 500, description: "Kombucha Premium de 500ml - Sabor Maçã c/Canela", wholesalePrice: 13, retailPrice: 18.5, baselineCost: 2.9, status: "ativo", visible: true },
+  { id: "prod-kmb006", ean: "7890528600065", item: "KMB006", flavor: "Pêra c/Alecrim", sizeMl: 500, description: "Kombucha Premium de 500ml - Sabor Pêra c/Alecrim", wholesalePrice: 13, retailPrice: 18.5, baselineCost: 2.77, status: "ativo", visible: true },
+  { id: "prod-kmb007", ean: "7890528600072", item: "KMB007", flavor: "Imunidade", sizeMl: 500, description: "Kombucha Premium de 500ml - Sabor Imunidade (Limão, Gengibre, Cúrcuma)", wholesalePrice: 13, retailPrice: 18.5, baselineCost: 2.63, status: "ativo", visible: true },
+  { id: "prod-kmb008", ean: "7890528600447", item: "KMB008", flavor: "Rosas & Cardamomo", sizeMl: 500, description: "Kombucha Premium de 500ml - Sabor Rosas & Cardamomo", wholesalePrice: 13, retailPrice: 18.5, baselineCost: 2.44, status: "ativo", visible: true },
+  { id: "prod-kmb009", ean: "7890528600812", item: "KMB009", flavor: "Lavanda & Limão", sizeMl: 500, description: "Kombucha Premium de 500ml - Sabor Lavanda & Limão", wholesalePrice: 13, retailPrice: 18.5, baselineCost: 0, status: "planejado", visible: false },
+  { id: "prod-kmb010", ean: "7890528601222", item: "KMB010", flavor: "Manga & Jasmim", sizeMl: 500, description: "Kombucha Premium de 500ml - Sabor Manga & Jasmim", wholesalePrice: 13, retailPrice: 18.5, baselineCost: 0, status: "planejado", visible: false },
+  { id: "prod-kmb011", ean: "7890528601420", item: "KMB011", flavor: "Goiaba", sizeMl: 500, description: "Kombucha Premium de 500ml - Sabor Goiaba", wholesalePrice: 13, retailPrice: 18.5, baselineCost: 0, status: "planejado", visible: false },
+  { id: "prod-kmb012", ean: "7890528601314", item: "KMB012", flavor: "Uva", sizeMl: 500, description: "Kombucha Premium de 500ml - Sabor Uva", wholesalePrice: 13, retailPrice: 18.5, baselineCost: 0, status: "planejado", visible: false },
+];
+
+const COST_INGREDIENT_SEED = [
+  { id: "ing-strawberry", name: "Morango", category: "fruta", packageGram: 250, packageCost: 19, grams500: 20, grams300: 13.2 },
+  { id: "ing-cranberry", name: "Oxicoco", category: "fruta", packageGram: 1010, packageCost: 81.67, grams500: 5, grams300: 3.3 },
+  { id: "ing-blueberry", name: "Mirtilo", category: "fruta", packageGram: 1000, packageCost: 177, grams500: 3, grams300: 1.98 },
+  { id: "ing-passion", name: "Maracujá", category: "fruta", packageGram: 1000, packageCost: 25, grams500: 40, grams300: 26.4 },
+  { id: "ing-apple", name: "Maçã", category: "fruta", packageGram: 1000, packageCost: 20.25, grams500: 30, grams300: 19.8 },
+  { id: "ing-pear", name: "Pêra", category: "fruta", packageGram: 1000, packageCost: 15.99, grams500: 30, grams300: 19.8 },
+  { id: "ing-ginger", name: "Gengibre", category: "especiaria", packageGram: 1000, packageCost: 25.45, grams500: 10, grams300: 6.6 },
+  { id: "ing-butterfly-pea", name: "Flor Borboleta Azul", category: "flor", packageGram: 100, packageCost: 110, grams500: 1.5, grams300: 0.99 },
+  { id: "ing-lime", name: "Limão", category: "fruta", packageGram: 1000, packageCost: 8.99, grams500: 10, grams300: 6.6 },
+  { id: "ing-cinnamon", name: "Canela", category: "especiaria", packageGram: 1, packageCost: 0, grams500: 8, grams300: 5.28 },
+  { id: "ing-turmeric", name: "Cúrcuma", category: "especiaria", packageGram: 1, packageCost: 0, grams500: 4.5, grams300: 2.97 },
+  { id: "ing-sugar", name: "Açúcar", category: "açúcar", packageGram: 1000, packageCost: 4.9, grams500: 45, grams300: 29.7 },
+  { id: "ing-tea", name: "Chá", category: "chá", packageGram: 5000, packageCost: 478.69, grams500: 4, grams300: 2.64 },
+  { id: "ing-rose", name: "Rosa", category: "flor", packageGram: 100, packageCost: 5, grams500: 3, grams300: 1.98 },
+  { id: "ing-rosemary", name: "Alecrim", category: "erva", packageGram: 1000, packageCost: 149.9, grams500: 1, grams300: 0.66 },
+  { id: "ing-cardamom", name: "Cardamomo", category: "especiaria", packageGram: 1, packageCost: 0, grams500: 0.5, grams300: 0.33 },
+  { id: "ing-hibiscus", name: "Hibisco", category: "flor", packageGram: 100, packageCost: 5.99, grams500: 3, grams300: 1.98 },
+  { id: "ing-star-anis", name: "Anis Estrelado", category: "especiaria", packageGram: 1, packageCost: 0, grams500: 0.2, grams300: 0.132 },
+].map((item) => ({
+  ...item,
+  supplier: "Base de custos Kombú",
+  purchaseUnit: "g",
+  costPerUnit: item.packageGram ? Number((item.packageCost / item.packageGram).toFixed(6)) : 0,
+  stock: 0,
+  min: 0,
+  expires: "",
+  location: "",
+  status: "ativo",
+}));
+
+const PACKAGING_SEED = [
+  { id: "pkg-bottle-500", name: "Garrafa 500ml", supplier: "Base de custos Kombú", unit: "un", costEach: 0.84, stock: 0, min: 0, location: "" },
+  { id: "pkg-label-500", name: "Rótulo 500ml", supplier: "Base de custos Kombú", unit: "un", costEach: 0.85, stock: 0, min: 0, location: "" },
+];
+
+const RECIPE_BLUEPRINTS = [
+  { productId: "prod-kmb001", flavor: "Maracujá", ingredients: [["ing-tea", 4], ["ing-sugar", 45], ["ing-passion", 40]] },
+  { productId: "prod-kmb002", flavor: "Frutas Vermelhas", ingredients: [["ing-tea", 4], ["ing-sugar", 45], ["ing-strawberry", 20], ["ing-cranberry", 5], ["ing-blueberry", 3]] },
+  { productId: "prod-kmb003", flavor: "Hibisco com Anis Estrelado", ingredients: [["ing-tea", 4], ["ing-sugar", 45], ["ing-hibiscus", 3], ["ing-star-anis", 0.2]] },
+  { productId: "prod-kmb004", flavor: "Mirtilo c/Flor Borboleta Azul", ingredients: [["ing-tea", 4], ["ing-sugar", 45], ["ing-blueberry", 3], ["ing-butterfly-pea", 1.5]] },
+  { productId: "prod-kmb005", flavor: "Maçã c/Canela", ingredients: [["ing-tea", 4], ["ing-sugar", 45], ["ing-apple", 30], ["ing-cinnamon", 8]] },
+  { productId: "prod-kmb006", flavor: "Pêra c/Alecrim", ingredients: [["ing-tea", 4], ["ing-sugar", 45], ["ing-pear", 30], ["ing-rosemary", 1]] },
+  { productId: "prod-kmb007", flavor: "Imunidade", ingredients: [["ing-tea", 4], ["ing-sugar", 45], ["ing-lime", 10], ["ing-ginger", 10], ["ing-turmeric", 4.5]] },
+  { productId: "prod-kmb008", flavor: "Rosas & Cardamomo", ingredients: [["ing-tea", 4], ["ing-sugar", 45], ["ing-rose", 3], ["ing-cardamom", 0.5]] },
+];
+
+const RECIPE_SEED = RECIPE_BLUEPRINTS.map((recipe) => {
+  const product = PRODUCT_CATALOG_SEED.find((item) => item.id === recipe.productId);
+  return {
+    id: `rec-${product.item.toLowerCase()}-500`,
+    productId: product.id,
+    flavor: recipe.flavor,
+    version: "base 500ml",
+    status: "ativa",
+    bottleMl: 500,
+    yieldBottles: 1,
+    wastePct: 0,
+    labor: 0,
+    utilities: 0,
+    other: 0,
+    wholesalePrice: product.wholesalePrice,
+    retailPrice: product.retailPrice,
+    ingredients: recipe.ingredients.map(([ingredientId, qty]) => ({ ingredientId, qty, unit: "g" })),
+    packaging: [
+      { itemId: "pkg-bottle-500", qty: 1 },
+      { itemId: "pkg-label-500", qty: 1 },
+    ],
+  };
+});
+
 const defaultState = {
-  ingredients: [],
-  packaging: [],
+  products: PRODUCT_CATALOG_SEED,
+  ingredients: COST_INGREDIENT_SEED,
+  packaging: PACKAGING_SEED,
   suppliers: [],
   partners: [],
-  recipes: [],
+  recipes: RECIPE_SEED,
   batches: [],
   sales: [],
   purchases: [],
@@ -81,6 +168,16 @@ const defaultState = {
     ],
     flavors: [],
   },
+  costSources: [
+    {
+      id: "cost-sheet-2026-06-30",
+      name: "Base de custos dos prints",
+      labelCost500: 0.85,
+      bottleCost500: 0.84,
+      retailPrice500: 18.5,
+      wholesalePrice500: 13,
+    },
+  ],
   audit: [],
 };
 
@@ -161,7 +258,7 @@ function normalizeState(savedState) {
     images: saved.cms?.images?.length ? saved.cms.images : base.cms.images,
     flavors: saved.cms?.flavors || base.cms.flavors,
   };
-  ["ingredients", "packaging", "suppliers", "partners", "recipes", "batches", "sales", "purchases", "expenses", "audit"].forEach((key) => {
+  ["products", "ingredients", "packaging", "suppliers", "partners", "recipes", "batches", "sales", "purchases", "expenses", "costSources", "audit"].forEach((key) => {
     merged[key] = Array.isArray(saved[key]) ? saved[key] : base[key];
   });
   return merged;
@@ -187,14 +284,49 @@ function addAudit(action, detail = "") {
 
 function canWrite(module = currentModule) {
   if (currentRole === "Viewer") return false;
-  if (currentRole === "Produção") return ["dashboard", "ingredients", "recipes", "costs", "batches", "stock", "packaging"].includes(module);
-  if (currentRole === "Financeiro") return ["dashboard", "purchases", "suppliers", "costs", "expenses", "reports"].includes(module);
-  if (currentRole === "Vendas") return ["dashboard", "sales", "partners", "cms", "reports"].includes(module);
+  if (currentRole === "Produção") return ["dashboard", "products", "ingredients", "recipes", "costs", "batches", "stock", "packaging"].includes(module);
+  if (currentRole === "Financeiro") return ["dashboard", "products", "purchases", "suppliers", "costs", "expenses", "reports"].includes(module);
+  if (currentRole === "Vendas") return ["dashboard", "products", "sales", "partners", "cms", "reports"].includes(module);
   return true;
 }
 
 function byId(collection, itemId) {
   return state[collection].find((item) => item.id === itemId);
+}
+
+function productForRecipe(recipe) {
+  return byId("products", recipe?.productId);
+}
+
+function recipeForProduct(product) {
+  if (!product) return null;
+  return (
+    state.recipes.find((recipe) => recipe.productId === product.id) ||
+    state.recipes.find((recipe) => recipe.flavor === product.flavor && Number(recipe.bottleMl) === Number(product.sizeMl))
+  );
+}
+
+function productForBatch(batch) {
+  return byId("products", batch?.productId) || productForRecipe(byId("recipes", batch?.recipeId));
+}
+
+function productLabel(product) {
+  if (!product) return "Produto não vinculado";
+  return `${product.item} - ${product.flavor} ${product.sizeMl}ml`;
+}
+
+function recipeLabel(recipe) {
+  const product = productForRecipe(recipe);
+  return product ? `${product.item} - ${recipe.flavor} ${recipe.version}` : `${recipe.flavor} ${recipe.version}`;
+}
+
+function productDisplayCost(product) {
+  const recipe = recipeForProduct(product);
+  return recipe ? recipeCost(recipe).costPerBottle : Number(product?.baselineCost || 0);
+}
+
+function productWholesalePrice(product) {
+  return Number(product?.wholesalePrice || 0);
 }
 
 const unitFactor = { g: 1, kg: 1000, ml: 1, l: 1000, L: 1000, un: 1 };
@@ -233,8 +365,8 @@ function recipeCost(recipe) {
       retailMargin: 0,
     };
   }
-  const ingredientCost = recipe.ingredients.reduce((sum, line) => sum + ingredientLineCost(line), 0);
-  const packagingCost = recipe.packaging.reduce((sum, line) => sum + packagingLineCost(line, recipe.yieldBottles), 0);
+  const ingredientCost = (recipe.ingredients || []).reduce((sum, line) => sum + ingredientLineCost(line), 0);
+  const packagingCost = (recipe.packaging || []).reduce((sum, line) => sum + packagingLineCost(line, recipe.yieldBottles), 0);
   const direct = ingredientCost + packagingCost + Number(recipe.labor || 0) + Number(recipe.utilities || 0) + Number(recipe.other || 0);
   const total = direct * (1 + Number(recipe.wastePct || 0) / 100);
   const costPerBottle = total / Number(recipe.yieldBottles || 1);
@@ -273,6 +405,7 @@ function finishedStockRows() {
     .filter((batch) => batch.status !== "planejado" && batch.status !== "descartado")
     .map((batch) => ({
       ...batch,
+      product: productForBatch(batch),
       sold: soldFromBatch(batch.code),
       stock: Math.max(0, Number(batch.actual || 0) - soldFromBatch(batch.code)),
       cost: batchCost(batch),
@@ -325,11 +458,11 @@ function monthlySalesRows(limit = 6) {
 }
 
 function lowStockIngredients() {
-  return state.ingredients.filter((item) => Number(item.stock) <= Number(item.min));
+  return state.ingredients.filter((item) => Number(item.min) > 0 && Number(item.stock) <= Number(item.min));
 }
 
 function lowStockPackaging() {
-  return state.packaging.filter((item) => Number(item.stock) <= Number(item.min));
+  return state.packaging.filter((item) => Number(item.min) > 0 && Number(item.stock) <= Number(item.min));
 }
 
 function nearExpiryBatches() {
@@ -468,19 +601,20 @@ function table(headers, rows, minWidth = 780) {
 function renderIngredients() {
   const rows = state.ingredients
     .filter((item) => matchesSearch(item))
-    .map(
-      (item) => `
+    .map((item) => {
+      const hasMinimum = Number(item.min) > 0;
+      return `
         <tr>
           <td><strong>${item.name}</strong><br><span>${item.location}</span></td>
           <td>${item.category}</td>
           <td>${item.supplier}</td>
           <td class="num">${number(item.stock, 2)} ${item.purchaseUnit}</td>
           <td class="num">${brl(item.costPerUnit)} / ${item.purchaseUnit}</td>
-          <td><span class="status ${statusClass(item.stock / item.min)}">${item.stock <= item.min ? "baixo" : "bom"}</span></td>
+          <td><span class="status ${hasMinimum ? statusClass(item.stock / item.min) : "warn"}">${hasMinimum ? (item.stock <= item.min ? "baixo" : "bom") : "sem mínimo"}</span></td>
           <td>${item.expires}</td>
         </tr>
-      `,
-    );
+      `;
+    });
   return `
     ${pageHead(
       "Ingredientes",
@@ -573,14 +707,68 @@ function renderSuppliers() {
   `;
 }
 
+function renderProducts() {
+  const rows = state.products
+    .filter((item) => matchesSearch(item))
+    .map((product) => {
+      const recipe = recipeForProduct(product);
+      const calculatedCost = productDisplayCost(product);
+      const wholesale = productWholesalePrice(product);
+      const margin = wholesale ? ((wholesale - calculatedCost) / wholesale) * 100 : 0;
+      return `
+        <tr>
+          <td><strong>#${product.ean || "sem EAN"}</strong><br><span>${product.item}</span></td>
+          <td><strong>${product.flavor}</strong><br><span>${product.description}</span></td>
+          <td class="num">${number(product.sizeMl)}ml</td>
+          <td class="num">${brl(product.retailPrice)}</td>
+          <td class="num">${brl(product.wholesalePrice)}</td>
+          <td class="num">${product.baselineCost ? brl(product.baselineCost) : "Pendente"}</td>
+          <td class="num"><strong>${recipe ? brl(calculatedCost) : "Sem receita"}</strong></td>
+          <td class="num">${recipe ? pct(margin) : "-"}</td>
+          <td><span class="status ${statusClass(product.status, "general")}">${product.status}</span></td>
+        </tr>
+      `;
+    });
+  return `
+    ${pageHead(
+      "Produtos / EAN",
+      "Catálogo operacional com código de barras, item, descrição, preço e vínculo com receitas/custos.",
+      `${actionButton("new-product", "Novo produto", "add")} ${actionButton("import-cost-base", "Restaurar base dos prints", "upload_file", "btn-outline")} ${actionButton("export-products", "CSV", "download", "btn-outline")}`,
+    )}
+    <section class="metric-grid">
+      ${metric("Produtos cadastrados", number(state.products.length), "Itens KMB e variações", "barcode_scanner")}
+      ${metric("Com receita vinculada", number(state.products.filter((product) => recipeForProduct(product)).length), "Calculam custo automaticamente", "calculate")}
+      ${metric("Ativos públicos", number(state.products.filter((product) => product.visible).length), "Controle de visibilidade", "visibility")}
+      ${metric("Custo médio calculado", brl(state.products.reduce((sum, product) => sum + productDisplayCost(product), 0) / Math.max(1, state.products.length)), "Média do catálogo", "price_check")}
+    </section>
+    ${table(
+      [
+        { label: "EAN / item" },
+        { label: "Produto" },
+        { label: "Tamanho", num: true },
+        { label: "Varejo", num: true },
+        { label: "Atacado", num: true },
+        { label: "Custo print", num: true },
+        { label: "Custo receita", num: true },
+        { label: "Margem atacado", num: true },
+        { label: "Status" },
+      ],
+      rows,
+      1180,
+    )}
+  `;
+}
+
 function renderRecipes() {
   const rows = state.recipes
     .filter((recipe) => matchesSearch(recipe))
     .map((recipe) => {
       const cost = recipeCost(recipe);
+      const product = productForRecipe(recipe);
       return `
         <tr>
           <td><strong>${recipe.flavor}</strong><br><span>${recipe.version} | ${recipe.bottleMl}ml</span></td>
+          <td>${product ? `<strong>${product.item}</strong><br><span>#${product.ean}</span>` : "Sem produto"}</td>
           <td class="num">${number(recipe.yieldBottles)} garrafas</td>
           <td class="num">${brl(cost.ingredientCost)}</td>
           <td class="num">${brl(cost.packagingCost)}</td>
@@ -600,6 +788,7 @@ function renderRecipes() {
     ${table(
       [
         { label: "Sabor / versão" },
+        { label: "Produto / EAN" },
         { label: "Rendimento", num: true },
         { label: "Ingredientes", num: true },
         { label: "Embalagem", num: true },
@@ -609,7 +798,7 @@ function renderRecipes() {
         { label: "Status" },
       ],
       rows,
-      1000,
+      1120,
     )}
   `;
 }
@@ -631,7 +820,7 @@ function renderCosts() {
   }
   activeRecipeId = recipe.id;
   const cost = recipeCost(recipe);
-  const ingredientRows = recipe.ingredients
+  const ingredientRows = (recipe.ingredients || [])
     .map((line, index) => {
       const ingredient = byId("ingredients", line.ingredientId);
       return `
@@ -650,7 +839,7 @@ function renderCosts() {
       `;
     })
     .join("");
-  const packagingRows = recipe.packaging
+  const packagingRows = (recipe.packaging || [])
     .map((line, index) => {
       const item = byId("packaging", line.itemId);
       return `
@@ -677,7 +866,7 @@ function renderCosts() {
           <label class="field" style="min-width:260px">
             <span>Receita ativa</span>
             <select id="recipeSelector" class="admin-select">
-              ${state.recipes.map((item) => `<option value="${item.id}" ${item.id === recipe.id ? "selected" : ""}>${item.flavor} ${item.version}</option>`).join("")}
+              ${state.recipes.map((item) => `<option value="${item.id}" ${item.id === recipe.id ? "selected" : ""}>${recipeLabel(item)}</option>`).join("")}
             </select>
           </label>
           <div class="admin-actions">
@@ -733,9 +922,11 @@ function renderBatches() {
     .map((batch) => {
       const cost = batchCost(batch);
       const loss = Number(batch.expected || 0) - Number(batch.actual || 0);
+      const product = productForBatch(batch);
       return `
         <tr>
           <td><strong>${batch.code}</strong><br><span>${batch.flavor}</span></td>
+          <td>${product ? `<strong>${product.item}</strong><br><span>#${product.ean}</span>` : "Sem produto"}</td>
           <td>${batch.date}</td>
           <td>${batch.responsible}</td>
           <td class="num">${number(batch.expected)} / ${number(batch.actual)}</td>
@@ -755,6 +946,7 @@ function renderBatches() {
     ${table(
       [
         { label: "Lote / sabor" },
+        { label: "Produto / EAN" },
         { label: "Produção" },
         { label: "Responsável" },
         { label: "Esperado / real", num: true },
@@ -764,7 +956,7 @@ function renderBatches() {
         { label: "Status" },
       ],
       rows,
-      1060,
+      1180,
     )}
   `;
 }
@@ -773,7 +965,7 @@ function renderStock() {
   const finishedRows = finishedStockRows().map(
     (row) => `
       <tr>
-        <td><strong>${row.flavor}</strong><br><span>${row.code}</span></td>
+        <td><strong>${row.flavor}</strong><br><span>${row.product ? productLabel(row.product) : row.code}</span></td>
         <td class="num">${number(row.actual)}</td>
         <td class="num">${number(row.sold)}</td>
         <td class="num"><strong>${number(row.stock)}</strong></td>
@@ -812,18 +1004,19 @@ function renderStock() {
 function renderPackaging() {
   const rows = state.packaging
     .filter((item) => matchesSearch(item))
-    .map(
-      (item) => `
+    .map((item) => {
+      const hasMinimum = Number(item.min) > 0;
+      return `
         <tr>
           <td><strong>${item.name}</strong><br><span>${item.location}</span></td>
           <td>${item.supplier}</td>
           <td class="num">${number(item.stock)} ${item.unit}</td>
           <td class="num">${number(item.min)} ${item.unit}</td>
           <td class="num">${brl(item.costEach)}</td>
-          <td><span class="status ${statusClass(item.stock / item.min)}">${item.stock <= item.min ? "baixo" : "bom"}</span></td>
+          <td><span class="status ${hasMinimum ? statusClass(item.stock / item.min) : "warn"}">${hasMinimum ? (item.stock <= item.min ? "baixo" : "bom") : "sem mínimo"}</span></td>
         </tr>
-      `,
-    );
+      `;
+    });
   return `
     ${pageHead("Embalagens", "Garrafas, tampas, rótulos, caixas e materiais que entram no custo por garrafa.", actionButton("new-packaging", "Novo material", "add"))}
     ${table(
@@ -847,12 +1040,13 @@ function renderSales() {
     .map((sale) => {
       const revenue = Number(sale.qty) * Number(sale.unitPrice) - Number(sale.discount || 0);
       const batch = state.batches.find((item) => item.code === sale.batchCode);
+      const product = byId("products", sale.productId) || productForBatch(batch);
       const cogs = Number(sale.qty) * (batch ? batchCost(batch).batchCostPerBottle : 0);
       return `
         <tr>
           <td>${sale.date}</td>
           <td><strong>${sale.partner}</strong><br><span>${sale.channel}</span></td>
-          <td>${sale.flavor}<br><span>${sale.batchCode}</span></td>
+          <td>${product ? productLabel(product) : sale.flavor}<br><span>${sale.batchCode}</span></td>
           <td class="num">${number(sale.qty)}</td>
           <td class="num">${brl(revenue)}</td>
           <td class="num">${brl(cogs)}</td>
@@ -867,7 +1061,7 @@ function renderSales() {
       [
         { label: "Data" },
         { label: "Cliente / canal" },
-        { label: "Sabor / lote" },
+        { label: "Produto / lote" },
         { label: "Qtd.", num: true },
         { label: "Receita", num: true },
         { label: "COGS", num: true },
@@ -1047,7 +1241,7 @@ function renderCMS() {
 
 function renderSchema() {
   const entities = [
-    "Users", "Roles", "Ingredients", "Ingredient Categories", "Suppliers", "Purchases", "Purchase Items", "Packaging Materials",
+    "Users", "Roles", "Products / EAN", "Product Variants", "Ingredients", "Ingredient Categories", "Suppliers", "Purchases", "Purchase Items", "Packaging Materials",
     "Recipes", "Recipe Ingredients", "Recipe Versions", "Production Batches", "Batch Ingredients Used", "Finished Product Stock",
     "Stock Movements", "Flavors", "Partners", "Sales", "Sale Items", "Expenses", "Expense Categories", "Cost Assumptions",
     "Reports", "CMS Pages", "Media Library", "Audit Logs",
@@ -1083,6 +1277,7 @@ function matchesSearch(item) {
 function render() {
   const view = {
     dashboard: renderDashboard,
+    products: renderProducts,
     ingredients: renderIngredients,
     purchases: renderPurchases,
     suppliers: renderSuppliers,
@@ -1117,6 +1312,70 @@ function openModal(title, eyebrow, body) {
 
 function closeModal() {
   document.querySelector("#adminModal").classList.remove("is-open");
+}
+
+function upsertById(collection, records) {
+  records.forEach((record) => {
+    const nextRecord = clone(record);
+    const index = state[collection].findIndex((item) => item.id === nextRecord.id);
+    if (index >= 0) state[collection][index] = { ...state[collection][index], ...nextRecord };
+    else state[collection].push(nextRecord);
+  });
+}
+
+function restoreCostBase() {
+  upsertById("products", PRODUCT_CATALOG_SEED);
+  upsertById("ingredients", COST_INGREDIENT_SEED);
+  upsertById("packaging", PACKAGING_SEED);
+  upsertById("recipes", RECIPE_SEED);
+  activeRecipeId = state.recipes[0]?.id || "";
+  addAudit("Base dos prints restaurada", "Produtos EAN, ingredientes, embalagens e receitas 500ml atualizados.");
+  render();
+}
+
+function newProductForm() {
+  openModal(
+    "Novo produto",
+    "Produtos / EAN",
+    `
+      <form id="productForm">
+        <div class="input-grid">
+          <label class="field"><span>Item</span><input name="item" placeholder="KMB013" required></label>
+          <label class="field"><span>EAN-13</span><input name="ean" inputmode="numeric" placeholder="789..." maxlength="13"></label>
+          <label class="field"><span>Sabor</span><input name="flavor" required></label>
+          <label class="field"><span>Tamanho ml</span><input name="sizeMl" type="number" min="1" value="500" required></label>
+          <label class="field"><span>Preço varejo</span><input name="retailPrice" type="number" min="0" step="0.01" value="18.50"></label>
+          <label class="field"><span>Preço atacado</span><input name="wholesalePrice" type="number" min="0" step="0.01" value="13.00"></label>
+          <label class="field"><span>Custo base</span><input name="baselineCost" type="number" min="0" step="0.01" value="0"></label>
+          <label class="field"><span>Status</span><select name="status"><option>ativo</option><option>planejado</option><option>pausado</option></select></label>
+          <label class="field field-full"><span>Descrição</span><input name="description" placeholder="Kombucha Premium de 500ml - Sabor ..."></label>
+          <label class="check-row field-full"><input name="visible" type="checkbox" checked> <span>Visível/ativo para operação</span></label>
+        </div>
+        <button class="btn btn-primary" type="submit">Salvar produto</button>
+      </form>
+    `,
+  );
+  document.querySelector("#productForm").addEventListener("submit", (event) => {
+    event.preventDefault();
+    const data = Object.fromEntries(new FormData(event.target).entries());
+    const product = {
+      id: id("prod"),
+      ean: data.ean,
+      item: data.item,
+      flavor: data.flavor,
+      sizeMl: Number(data.sizeMl),
+      description: data.description || `Kombucha Premium de ${data.sizeMl}ml - Sabor ${data.flavor}`,
+      wholesalePrice: Number(data.wholesalePrice || 0),
+      retailPrice: Number(data.retailPrice || 0),
+      baselineCost: Number(data.baselineCost || 0),
+      status: data.status || "ativo",
+      visible: data.visible === "on",
+    };
+    state.products.unshift(product);
+    addAudit("Produto criado", productLabel(product));
+    closeModal();
+    render();
+  });
 }
 
 function newIngredientForm() {
@@ -1212,9 +1471,9 @@ function newSaleForm() {
         <div class="input-grid">
           <label class="field"><span>Data</span><input name="date" type="date" value="${todayIso()}" required></label>
           <label class="field"><span>Parceiro / cliente</span><select name="partner">${state.partners.map((item) => `<option>${item.name}</option>`).join("")}<option>Cliente direto</option><option>Venda avulsa</option></select></label>
-          <label class="field"><span>Lote</span><select name="batchCode">${stockRows.map((row) => `<option value="${row.code}">${row.code} - ${row.flavor} (${row.stock} un)</option>`).join("")}</select></label>
+          <label class="field"><span>Lote</span><select name="batchCode">${stockRows.map((row) => `<option value="${row.code}" data-price="${productWholesalePrice(row.product)}">${row.code} - ${row.product ? productLabel(row.product) : row.flavor} (${row.stock} un)</option>`).join("")}</select></label>
           <label class="field"><span>Quantidade</span><input name="qty" type="number" min="1" required></label>
-          <label class="field"><span>Preço unitário</span><input name="unitPrice" type="number" step="0.01" value="10.50" required></label>
+          <label class="field"><span>Preço unitário</span><input name="unitPrice" type="number" step="0.01" value="${productWholesalePrice(stockRows[0]?.product) || 10.5}" required></label>
           <label class="field"><span>Desconto</span><input name="discount" type="number" step="0.01" value="0"></label>
           <label class="field"><span>Entrega</span><input name="delivery" type="number" step="0.01" value="0"></label>
           <label class="field"><span>Canal</span><select name="channel"><option>revenda</option><option>parceiro</option><option>evento</option><option>direto</option><option>externo</option></select></label>
@@ -1223,16 +1482,23 @@ function newSaleForm() {
       </form>
     `,
   );
-  document.querySelector("#saleForm").addEventListener("submit", (event) => {
+  const saleForm = document.querySelector("#saleForm");
+  saleForm.querySelector("[name='batchCode']").addEventListener("change", (event) => {
+    const price = event.target.selectedOptions[0]?.dataset.price;
+    if (price && Number(price) > 0) saleForm.querySelector("[name='unitPrice']").value = price;
+  });
+  saleForm.addEventListener("submit", (event) => {
     event.preventDefault();
     const data = Object.fromEntries(new FormData(event.target).entries());
     const batch = state.batches.find((item) => item.code === data.batchCode);
+    const product = productForBatch(batch);
     state.sales.unshift({
       id: id("sale"),
       date: data.date,
       partner: data.partner,
       channel: data.channel,
       flavor: batch?.flavor || "",
+      productId: product?.id || "",
       batchCode: data.batchCode,
       qty: Number(data.qty),
       unitPrice: Number(data.unitPrice),
@@ -1262,7 +1528,7 @@ function newBatchForm() {
       <form id="batchForm">
         <div class="input-grid">
           <label class="field"><span>Código do lote</span><input name="code" value="KMB-${new Date().toISOString().slice(2, 10).replaceAll("-", "")}" required></label>
-          <label class="field"><span>Receita</span><select name="recipeId">${state.recipes.map((recipe) => `<option value="${recipe.id}">${recipe.flavor} ${recipe.version}</option>`).join("")}</select></label>
+          <label class="field"><span>Receita</span><select name="recipeId">${state.recipes.map((recipe) => `<option value="${recipe.id}">${recipeLabel(recipe)}</option>`).join("")}</select></label>
           <label class="field"><span>Data de produção</span><input name="date" type="date" value="${todayIso()}" required></label>
           <label class="field"><span>Responsável</span><input name="responsible" value="Equipe" required></label>
           <label class="field"><span>Rendimento esperado</span><input name="expected" type="number" value="200" required></label>
@@ -1282,6 +1548,7 @@ function newBatchForm() {
       id: id("bat"),
       code: data.code,
       flavor: recipe?.flavor || "",
+      productId: recipe?.productId || "",
       recipeId: data.recipeId,
       date: data.date,
       responsible: data.responsible,
@@ -1402,6 +1669,11 @@ function newRecipeForm() {
     `
       <form id="recipeForm">
         <div class="input-grid">
+          ${
+            state.products.length
+              ? `<label class="field field-full"><span>Produto / EAN</span><select name="productId"><option value="">Sem produto vinculado</option>${state.products.map((product) => `<option value="${product.id}">${productLabel(product)}${product.ean ? ` - #${product.ean}` : ""}</option>`).join("")}</select></label>`
+              : ""
+          }
           <label class="field"><span>Sabor</span><input name="flavor" required placeholder="Ex: Maracujá"></label>
           <label class="field"><span>Versão</span><input name="version" value="v1" required></label>
           <label class="field"><span>Tamanho da garrafa (ml)</span><input name="bottleMl" type="number" min="1" value="500" required></label>
@@ -1454,6 +1726,14 @@ function newRecipeForm() {
 
 function bindRecipeBuilder() {
   const form = document.querySelector("#recipeForm");
+  form.querySelector("[name='productId']")?.addEventListener("change", (event) => {
+    const product = byId("products", event.target.value);
+    if (!product) return;
+    form.querySelector("[name='flavor']").value = product.flavor;
+    form.querySelector("[name='bottleMl']").value = product.sizeMl;
+    form.querySelector("[name='wholesalePrice']").value = product.wholesalePrice || 0;
+    form.querySelector("[name='retailPrice']").value = product.retailPrice || 0;
+  });
   form.querySelector("[data-add-ingredient-row]").addEventListener("click", () => {
     document.querySelector("#recipeIngredientRows").insertAdjacentHTML("beforeend", recipeIngredientRowTemplate());
   });
@@ -1493,6 +1773,7 @@ function bindRecipeBuilder() {
       });
     const recipe = {
       id: id("rec"),
+      productId: data.productId || "",
       flavor: data.flavor,
       version: data.version,
       status: "ativa",
@@ -1622,8 +1903,10 @@ function bindModuleEvents() {
 }
 
 function handleAction(action) {
-  if (!canWrite() && !["export-ingredients", "export-purchases", "export-sales", "export-reports", "export-costs"].includes(action)) return;
+  if (!canWrite() && !["export-products", "export-ingredients", "export-purchases", "export-sales", "export-reports", "export-costs"].includes(action)) return;
   const actionMap = {
+    "new-product": newProductForm,
+    "import-cost-base": restoreCostBase,
     "new-ingredient": newIngredientForm,
     "new-purchase": newPurchaseForm,
     "new-sale": newSaleForm,
@@ -1693,9 +1976,10 @@ function handleAction(action) {
     "reset-demo": () => {
       state = clone(defaultState);
       saveState();
-      addAudit("Dados limpos", "Admin reiniciado sem registros operacionais.");
+      addAudit("Dados operacionais limpos", "Base de produtos e custos dos prints preservada.");
       render();
     },
+    "export-products": () => exportCSV("kombu-produtos-ean", [["EAN-13", "Item", "Sabor", "Tamanho ml", "Descricao", "Varejo", "Atacado", "Custo base"], ...state.products.map((p) => [p.ean, p.item, p.flavor, p.sizeMl, p.description, p.retailPrice, p.wholesalePrice, p.baselineCost])]),
     "export-ingredients": () => exportCSV("kombu-ingredientes", [["Nome", "Categoria", "Fornecedor", "Estoque", "Unidade", "Custo"], ...state.ingredients.map((i) => [i.name, i.category, i.supplier, i.stock, i.purchaseUnit, i.costPerUnit])]),
     "export-purchases": () => exportCSV("kombu-compras", [["Data", "Fornecedor", "Item", "Qtd", "Unidade", "Total"], ...state.purchases.map((p) => [p.date, p.supplier, p.item, p.qty, p.unit, p.total])]),
     "export-sales": () => exportCSV("kombu-vendas", [["Data", "Parceiro", "Canal", "Sabor", "Lote", "Qtd", "Preço"], ...state.sales.map((s) => [s.date, s.partner, s.channel, s.flavor, s.batchCode, s.qty, s.unitPrice])]),

@@ -1419,6 +1419,21 @@ textarea:focus-visible {
   margin-bottom: 16px;
 }
 
+.check-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  color: var(--muted);
+  font-weight: 800;
+}
+
+.check-row input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--green);
+}
+
 .builder-section {
   display: grid;
   gap: 12px;

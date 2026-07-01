@@ -8,6 +8,8 @@ Modern public website and operational admin prototype for Kombú Kombucha da Ama
 - `admin.html`: internal operational dashboard prototype.
 - `ARCHITECTURE.md`: backend, database, SEO and deployment direction.
 
+The admin includes a real product/EAN base from the provided Kombú spreadsheets, plus importable costing records for ingredients, packaging and 500ml recipes.
+
 ## Local Preview
 
 ```bash
@@ -35,7 +37,7 @@ The admin is protected by a temporary front-end password gate for prototype revi
 For production on Vercel, use Supabase or an equivalent backend for:
 
 - Supabase Auth for real admin login.
-- Postgres tables for ingredients, recipes, batches, stock, sales, expenses, partners and CMS.
+- Postgres tables for products/EANs, ingredients, recipes, batches, stock, sales, expenses, partners and CMS.
 - Supabase Storage for public product images and invoice/receipt uploads.
 - Row-level security and role permissions.
 - Server-side cost snapshots for historical batch accuracy.

@@ -20,6 +20,7 @@ The public side is intentionally not direct ecommerce. CTAs route users to:
 The admin side is structured as the business operating system for Kombú:
 
 - Dashboard geral.
+- Produtos / EAN.
 - Ingredientes.
 - Compras.
 - Fornecedores.
@@ -39,6 +40,7 @@ The admin side is structured as the business operating system for Kombú:
 
 The cost engine in `assets/admin.js` already models:
 
+- Product/EAN links to recipes, batches and sales.
 - Unit conversion between `kg/g`, `l/ml` and `un`.
 - Ingredient cost per used quantity.
 - Packaging cost per bottle.
@@ -58,6 +60,9 @@ Each production batch must store a snapshot of recipe version, ingredient costs,
 
 - Users
 - Roles
+- Products
+- Product Barcodes / EAN-13
+- Product Variants
 - Ingredients
 - Ingredient Categories
 - Suppliers
