@@ -4,6 +4,41 @@ const LEGACY_ADMIN_STORAGE_KEYS = ["kombuAdminStateV2"];
 const ADMIN_EMAIL = "armaandaswani@icloud.com";
 const OFFICIAL_MAP_ID = "1Zn4OECfeuJkhDkCj6noQKZDeLgOUbn8";
 const OFFICIAL_MAP_URL = `https://www.google.com/maps/d/viewer?mid=${OFFICIAL_MAP_ID}`;
+const FLAVOR_CATEGORIES = ["Frutados", "Cítricos", "Florais", "Herbais", "Especiados"];
+
+const DEFAULT_PUBLIC_IMAGES = {
+  heroBottle:
+    "https://static.wixstatic.com/media/716adf_5b0b2489ee914e53b15b4a590915d974~mv2.png/v1/crop/x_6,y_0,w_1068,h_1920/fill/w_760,h_1367,al_c,q_90,usm_0.66_1.00_0.01,enc_auto/4_edited.png",
+  maracuja:
+    "https://static.wixstatic.com/media/716adf_5b0b2489ee914e53b15b4a590915d974~mv2.png/v1/crop/x_6,y_0,w_1068,h_1920/fill/w_760,h_1367,al_c,q_92,usm_0.66_1.00_0.01,enc_auto/4_edited.png",
+  imunidade:
+    "https://static.wixstatic.com/media/716adf_c9ac20cf991c4796b8be299c33e22abc~mv2.png/v1/crop/x_62,y_0,w_931,h_1920/fill/w_760,h_1565,al_c,q_92,usm_0.66_1.00_0.01,enc_auto/2.png",
+  macaCanela:
+    "https://static.wixstatic.com/media/716adf_673e38f87b0e41bd9972f7b8a5fda104~mv2.png/v1/fill/w_760,h_1013,al_c,q_92,usm_0.66_1.00_0.01,enc_auto/IMG_6619_edited.png",
+  peraAlecrim:
+    "https://static.wixstatic.com/media/716adf_2b695c9743c344a2a91acf67ed69ff5f~mv2.png/v1/fill/w_760,h_1368,al_c,q_92,usm_0.66_1.00_0.01,enc_auto/6_edited_edited.png",
+  frutasVermelhas:
+    "https://static.wixstatic.com/media/716adf_5c8cd66d9eb842a0940b212d250fd255~mv2.png/v1/fill/w_760,h_1368,al_c,q_92,usm_0.66_1.00_0.01,enc_auto/IMG_2897_PNG.png",
+  mirtilo:
+    "https://static.wixstatic.com/media/716adf_8da298261b9a4acd8e9e2264491cee1d~mv2.png/v1/fill/w_760,h_1368,al_c,q_92,usm_0.66_1.00_0.01,enc_auto/7.png",
+  rosasCardamomo:
+    "https://static.wixstatic.com/media/716adf_4d2ae2c8e77d48ea8aa11ceffef05be4~mv2.png/v1/fill/w_760,h_1368,al_c,q_92,usm_0.66_1.00_0.01,enc_auto/3_edited.png",
+};
+
+const DEFAULT_FLAVOR_SETTINGS = [
+  { slug: "maracuja", profile: "Frutados", order: 1, visible: true, imageUrl: DEFAULT_PUBLIC_IMAGES.maracuja },
+  { slug: "frutas-vermelhas", profile: "Frutados", order: 2, visible: true, imageUrl: DEFAULT_PUBLIC_IMAGES.frutasVermelhas },
+  { slug: "hibisco-anis-estrelado", profile: "Florais", order: 3, visible: true, imageUrl: "" },
+  { slug: "flor-fada-azul-blueberry", profile: "Florais", order: 4, visible: true, imageUrl: DEFAULT_PUBLIC_IMAGES.mirtilo },
+  { slug: "maca-canela", profile: "Especiados", order: 5, visible: true, imageUrl: DEFAULT_PUBLIC_IMAGES.macaCanela },
+  { slug: "pera-alecrim", profile: "Herbais", order: 6, visible: true, imageUrl: DEFAULT_PUBLIC_IMAGES.peraAlecrim },
+  { slug: "imunidade", profile: "Cítricos", order: 7, visible: true, imageUrl: DEFAULT_PUBLIC_IMAGES.imunidade },
+  { slug: "rosas-cardamomo", profile: "Florais", order: 8, visible: true, imageUrl: DEFAULT_PUBLIC_IMAGES.rosasCardamomo },
+  { slug: "lavanda-limao", profile: "Cítricos", order: 9, visible: true, imageUrl: "" },
+  { slug: "jasmim-manga", profile: "Frutados", order: 10, visible: true, imageUrl: "" },
+  { slug: "goiaba", profile: "Frutados", order: 11, visible: true, imageUrl: "" },
+  { slug: "uva", profile: "Frutados", order: 12, visible: true, imageUrl: "" },
+];
 
 const flavors = [
   {
@@ -149,7 +184,15 @@ const benefits = [
 
 const partners = [];
 
-const formatList = (items) => items.map((item) => `<span class="tag">${item}</span>`).join("");
+const escapeHtml = (value) =>
+  String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+
+const formatList = (items) => items.map((item) => `<span class="tag">${escapeHtml(item)}</span>`).join("");
 
 function readAdminState() {
   try {
@@ -166,7 +209,55 @@ function readAdminCms() {
 
 function getCmsImage(key, fallback) {
   const image = readAdminCms().images?.find((item) => item.key === key);
-  return image?.url?.trim() || fallback;
+  return image?.url?.trim() || DEFAULT_PUBLIC_IMAGES[key] || fallback;
+}
+
+function getFlavorOverrides() {
+  const overrides = readAdminCms().flavors;
+  const saved = Array.isArray(overrides) ? overrides : [];
+  const savedBySlug = new Map(saved.map((flavor) => [flavor.slug, flavor]));
+  const merged = DEFAULT_FLAVOR_SETTINGS.map((flavor) => {
+    const override = savedBySlug.get(flavor.slug) || {};
+    savedBySlug.delete(flavor.slug);
+    return { ...flavor, ...override };
+  });
+  return [...merged, ...savedBySlug.values()];
+}
+
+function mergeFlavor(flavor, index) {
+  const override = getFlavorOverrides().find((item) => item.slug === flavor.slug || item.imageKey === flavor.imageKey) || {};
+  const ingredientText = override.ingredients || "";
+  const ingredients = ingredientText
+    ? ingredientText.split(",").map((item) => item.trim()).filter(Boolean)
+    : flavor.ingredients;
+  return {
+    ...flavor,
+    profile: override.profile || flavor.profile,
+    order: Number.isFinite(Number(override.order)) ? Number(override.order) : index + 1,
+    visible: override.visible === false ? false : true,
+    image: override.imageUrl?.trim() || getCmsImage(flavor.imageKey, flavor.image),
+    angle: override.angle?.trim() || flavor.angle,
+    description: override.description?.trim() || flavor.description,
+    ingredients,
+  };
+}
+
+function getMergedFlavors({ includeHidden = false } = {}) {
+  return flavors
+    .map(mergeFlavor)
+    .filter((flavor) => includeHidden || flavor.visible)
+    .sort((a, b) => a.order - b.order || a.name.localeCompare(b.name));
+}
+
+function renderFlavorFilters() {
+  const activeFilters = Array.from(new Set(getMergedFlavors().map((flavor) => flavor.profile))).filter(Boolean);
+  const filters = ["todos", ...FLAVOR_CATEGORIES.filter((category) => activeFilters.includes(category)), ...activeFilters.filter((category) => !FLAVOR_CATEGORIES.includes(category))];
+  document.querySelector(".flavor-toolbar .segmented").innerHTML = filters
+    .map((filter, index) => {
+      const label = filter === "todos" ? "Todos" : filter;
+      return `<button class="${index === 0 ? "is-active" : ""}" type="button" data-flavor-filter="${escapeHtml(filter)}">${escapeHtml(label)}</button>`;
+    })
+    .join("");
 }
 
 function getOfficialMapUrl() {
@@ -237,20 +328,20 @@ function renderBenefits() {
 
 function renderFlavors(filter = "todos") {
   const grid = document.querySelector("#flavorGrid");
-  const visible = filter === "todos" ? flavors : flavors.filter((flavor) => flavor.profile === filter);
+  const visible = filter === "todos" ? getMergedFlavors() : getMergedFlavors().filter((flavor) => flavor.profile === filter);
   grid.innerHTML = visible
     .map((flavor) => {
-      const imageUrl = getCmsImage(flavor.imageKey, flavor.image);
       return `
-        <article class="flavor-card">
+        <article class="flavor-card" style="--flavor-color: ${escapeHtml(flavor.color)}">
           <div class="flavor-card-media">
-            <img src="${imageUrl}" alt="Garrafa Kombú sabor ${flavor.name}" loading="lazy" />
+            <img src="${escapeHtml(flavor.image)}" alt="Garrafa Kombú sabor ${escapeHtml(flavor.name)}" loading="lazy" />
           </div>
           <div class="flavor-card-body">
-            <h3>${flavor.name}</h3>
-            <p>${flavor.angle}</p>
+            <span class="flavor-kicker">${escapeHtml(flavor.profile)}</span>
+            <h3>${escapeHtml(flavor.name)}</h3>
+            <p>${escapeHtml(flavor.angle)}</p>
             <div class="flavor-card-actions">
-              <button class="btn btn-primary" type="button" data-open-flavor="${flavor.slug}">
+              <button class="btn btn-primary" type="button" data-open-flavor="${escapeHtml(flavor.slug)}">
                 <span class="material-symbols-outlined" aria-hidden="true">visibility</span>
                 Detalhes
               </button>
@@ -275,21 +366,21 @@ function setFlavorFilter(event) {
 }
 
 function openFlavor(slug) {
-  const flavor = flavors.find((item) => item.slug === slug);
+  const flavor = getMergedFlavors({ includeHidden: true }).find((item) => item.slug === slug);
   if (!flavor) return;
   document.querySelector("#flavorModalProfile").textContent = flavor.profile;
   document.querySelector("#flavorModalTitle").textContent = flavor.name;
   document.querySelector("#flavorModalBody").innerHTML = `
-    <div class="flavor-detail">
-      <div class="flavor-detail-media" style="background: ${flavor.color}66">
-        <img src="${getCmsImage(flavor.imageKey, flavor.image)}" alt="Garrafa Kombú sabor ${flavor.name}" />
+    <div class="flavor-detail" style="--flavor-color: ${escapeHtml(flavor.color)}">
+      <div class="flavor-detail-media">
+        <img src="${escapeHtml(flavor.image)}" alt="Garrafa Kombú sabor ${escapeHtml(flavor.name)}" />
       </div>
       <div>
-        <p class="lead">${flavor.description}</p>
+        <p class="lead">${escapeHtml(flavor.description)}</p>
         <h3>Ingredientes</h3>
         <div class="tag-list">${formatList(flavor.ingredients)}</div>
-        <h3 style="margin-top: 24px">Perfil do sabor</h3>
-        <p>${flavor.angle}</p>
+        <h3 style="margin-top: 18px">Perfil do sabor</h3>
+        <p>${escapeHtml(flavor.angle)}</p>
         <div class="hero-actions">
           <a class="btn btn-primary" href="${getOfficialMapUrl()}" target="_blank" rel="noreferrer">
             <span class="material-symbols-outlined" aria-hidden="true">near_me</span>
@@ -491,6 +582,7 @@ function handleHash() {
 function bootPublicSite() {
   applyPublicCms();
   renderBenefits();
+  renderFlavorFilters();
   renderFlavors();
   renderPartnerFilters();
   renderPartners();

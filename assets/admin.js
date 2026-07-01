@@ -1,6 +1,8 @@
 const STORAGE_KEY = "kombuAdminStateV3";
 const ADMIN_PASSWORD = "Rssb2009";
 const ADMIN_NOTIFICATION_EMAIL = "armaandaswani@icloud.com";
+const FLAVOR_CATEGORIES = ["Frutados", "Cítricos", "Florais", "Herbais", "Especiados"];
+const FLAVOR_IMAGE_RECOMMENDED = "mín. 760 x 1368 px; ideal 1040 x 1872 px";
 
 const PRODUCT_CATALOG_SEED = [
   { id: "prod-kmb001", ean: "7890528600010", item: "KMB001", flavor: "Maracujá", sizeMl: 500, description: "Kombucha Premium de 500ml - Sabor Maracujá", wholesalePrice: 13, retailPrice: 18.5, baselineCost: 3.29, status: "ativo", visible: true },
@@ -88,6 +90,172 @@ const RECIPE_SEED = RECIPE_BLUEPRINTS.map((recipe) => {
   };
 });
 
+const CMS_FLAVOR_SEED = [
+  {
+    slug: "maracuja",
+    imageKey: "maracuja",
+    name: "Maracujá",
+    profile: "Frutados",
+    order: 1,
+    visible: true,
+    recommended: FLAVOR_IMAGE_RECOMMENDED,
+    imageUrl:
+      "https://static.wixstatic.com/media/716adf_5b0b2489ee914e53b15b4a590915d974~mv2.png/v1/crop/x_6,y_0,w_1068,h_1920/fill/w_760,h_1367,al_c,q_92,usm_0.66_1.00_0.01,enc_auto/4_edited.png",
+    ingredients: "Maracujá, chá fermentado",
+    angle: "Tropical, ácida na medida e refrescante.",
+    description: "Uma kombucha tropical, refrescante e com acidez equilibrada.",
+  },
+  {
+    slug: "frutas-vermelhas",
+    imageKey: "frutasVermelhas",
+    name: "Frutas Vermelhas",
+    profile: "Frutados",
+    order: 2,
+    visible: true,
+    recommended: FLAVOR_IMAGE_RECOMMENDED,
+    imageUrl:
+      "https://static.wixstatic.com/media/716adf_5c8cd66d9eb842a0940b212d250fd255~mv2.png/v1/fill/w_760,h_1368,al_c,q_92,usm_0.66_1.00_0.01,enc_auto/IMG_2897_PNG.png",
+    ingredients: "Morango, mirtilo, oxicoco",
+    angle: "Frutada, levemente ácida e vibrante.",
+    description: "Mistura morango, mirtilo e oxicoco em um perfil frutado e levemente ácido.",
+  },
+  {
+    slug: "hibisco-anis-estrelado",
+    imageKey: "hibisco",
+    name: "Hibisco & Anis Estrelado",
+    profile: "Florais",
+    order: 3,
+    visible: true,
+    recommended: FLAVOR_IMAGE_RECOMMENDED,
+    imageUrl: "assets/menu-bottles/hibisco-anis.png",
+    ingredients: "Hibisco, anis estrelado, chá fermentado",
+    angle: "Floral, ácido e especiado.",
+    description: "Combina a intensidade do hibisco com o aroma do anis estrelado.",
+  },
+  {
+    slug: "flor-fada-azul-blueberry",
+    imageKey: "mirtilo",
+    name: "Flor Fada Azul & Blueberry",
+    profile: "Florais",
+    order: 4,
+    visible: true,
+    recommended: FLAVOR_IMAGE_RECOMMENDED,
+    imageUrl:
+      "https://static.wixstatic.com/media/716adf_8da298261b9a4acd8e9e2264491cee1d~mv2.png/v1/fill/w_760,h_1368,al_c,q_92,usm_0.66_1.00_0.01,enc_auto/7.png",
+    ingredients: "Flor fada azul, blueberry, chá fermentado",
+    angle: "Delicada, floral e frutada.",
+    description: "Uma combinação delicada de flor fada azul e blueberry.",
+  },
+  {
+    slug: "maca-canela",
+    imageKey: "macaCanela",
+    name: "Maçã & Canela",
+    profile: "Especiados",
+    order: 5,
+    visible: true,
+    recommended: FLAVOR_IMAGE_RECOMMENDED,
+    imageUrl:
+      "https://static.wixstatic.com/media/716adf_673e38f87b0e41bd9972f7b8a5fda104~mv2.png/v1/fill/w_760,h_1013,al_c,q_92,usm_0.66_1.00_0.01,enc_auto/IMG_6619_edited.png",
+    ingredients: "Maçã, canela, chá fermentado",
+    angle: "Aromática, frutada e especiada.",
+    description: "Combina maçã e canela em um sabor aromático e acolhedor.",
+  },
+  {
+    slug: "pera-alecrim",
+    imageKey: "peraAlecrim",
+    name: "Pêra & Alecrim",
+    profile: "Herbais",
+    order: 6,
+    visible: true,
+    recommended: FLAVOR_IMAGE_RECOMMENDED,
+    imageUrl:
+      "https://static.wixstatic.com/media/716adf_2b695c9743c344a2a91acf67ed69ff5f~mv2.png/v1/fill/w_760,h_1368,al_c,q_92,usm_0.66_1.00_0.01,enc_auto/6_edited_edited.png",
+    ingredients: "Pêra, alecrim, chá verde",
+    angle: "Leve, frutada e herbal.",
+    description: "Une o frescor da pêra ao aroma herbal do alecrim.",
+  },
+  {
+    slug: "imunidade",
+    imageKey: "imunidade",
+    name: "Imunidade",
+    profile: "Cítricos",
+    order: 7,
+    visible: true,
+    recommended: FLAVOR_IMAGE_RECOMMENDED,
+    imageUrl:
+      "https://static.wixstatic.com/media/716adf_c9ac20cf991c4796b8be299c33e22abc~mv2.png/v1/crop/x_62,y_0,w_931,h_1920/fill/w_760,h_1565,al_c,q_92,usm_0.66_1.00_0.01,enc_auto/2.png",
+    ingredients: "Limão, gengibre, cúrcuma",
+    angle: "Cítrica, intensa e especiada.",
+    description: "Feita com limão, gengibre e cúrcuma, com perfil cítrico e marcante.",
+  },
+  {
+    slug: "rosas-cardamomo",
+    imageKey: "rosasCardamomo",
+    name: "Rosas & Cardamomo",
+    profile: "Florais",
+    order: 8,
+    visible: true,
+    recommended: FLAVOR_IMAGE_RECOMMENDED,
+    imageUrl:
+      "https://static.wixstatic.com/media/716adf_4d2ae2c8e77d48ea8aa11ceffef05be4~mv2.png/v1/fill/w_760,h_1368,al_c,q_92,usm_0.66_1.00_0.01,enc_auto/3_edited.png",
+    ingredients: "Rosas, cardamomo, chá verde",
+    angle: "Floral, aromática e especiada.",
+    description: "Uma combinação floral e aromática, com o toque especiado do cardamomo.",
+  },
+  {
+    slug: "lavanda-limao",
+    imageKey: "lavandaLimao",
+    name: "Lavanda & Limão",
+    profile: "Cítricos",
+    order: 9,
+    visible: true,
+    recommended: FLAVOR_IMAGE_RECOMMENDED,
+    imageUrl: "assets/menu-bottles/lavanda-limao.png",
+    ingredients: "Lavanda, limão, chá fermentado",
+    angle: "Cítrico, floral e refrescante.",
+    description: "Cítrico, floral e refrescante, com lavanda e limão.",
+  },
+  {
+    slug: "jasmim-manga",
+    imageKey: "jasmimManga",
+    name: "Jasmim & Manga",
+    profile: "Frutados",
+    order: 10,
+    visible: true,
+    recommended: FLAVOR_IMAGE_RECOMMENDED,
+    imageUrl: "assets/menu-bottles/jasmim-manga.png",
+    ingredients: "Jasmim, manga, chá fermentado",
+    angle: "Tropical, floral e vibrante.",
+    description: "Combina manga e jasmim em um sabor tropical com toque floral.",
+  },
+  {
+    slug: "goiaba",
+    imageKey: "goiaba",
+    name: "Goiaba",
+    profile: "Frutados",
+    order: 11,
+    visible: true,
+    recommended: FLAVOR_IMAGE_RECOMMENDED,
+    imageUrl: "assets/menu-bottles/goiaba.png",
+    ingredients: "Goiaba, chá fermentado",
+    angle: "Frutada, suave e refrescante.",
+    description: "Uma kombucha frutada, suave e refrescante, com sabor de goiaba em destaque.",
+  },
+  {
+    slug: "uva",
+    imageKey: "uva",
+    name: "Uva",
+    profile: "Frutados",
+    order: 12,
+    visible: true,
+    recommended: FLAVOR_IMAGE_RECOMMENDED,
+    imageUrl: "assets/menu-bottles/uva.png",
+    ingredients: "Uva, chá fermentado",
+    angle: "Encorpada e levemente adocicada.",
+    description: "Uma kombucha frutada, encorpada e levemente adocicada.",
+  },
+];
+
 const defaultState = {
   products: PRODUCT_CATALOG_SEED,
   ingredients: COST_INGREDIENT_SEED,
@@ -101,8 +269,8 @@ const defaultState = {
   purchases: [],
   expenses: [],
   cms: {
-    headline: "Refrigerante saudável, natural e cheio de sabor.",
-    subheadline: "Feita com ingredientes reais, fermentação natural e uma proposta simples: cuidar da saúde sem abrir mão do sabor.",
+    headline: "Kombucha artesanal da Amazônia.",
+    subheadline: "Feita em Manaus, com fermentação natural, gaseificação natural e sabores criados com frutas, especiarias e flores comestíveis.",
     whatsapp: "(92) 99209-7165",
     announcement: "",
     officialMapUrl: "https://www.google.com/maps/d/viewer?mid=1Zn4OECfeuJkhDkCj6noQKZDeLgOUbn8",
@@ -168,7 +336,7 @@ const defaultState = {
         url: "https://static.wixstatic.com/media/716adf_5b0b2489ee914e53b15b4a590915d974~mv2.png/v1/crop/x_6,y_0,w_1068,h_1920/fill/w_1200,h_630,al_c,q_90,enc_auto/4_edited.png",
       },
     ],
-    flavors: [],
+    flavors: CMS_FLAVOR_SEED,
   },
   costSources: [
     {
@@ -254,6 +422,31 @@ function clone(value) {
   return JSON.parse(JSON.stringify(value));
 }
 
+function escapeHtml(value) {
+  return String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
+function normalizeCmsFlavors(savedFlavors = []) {
+  const savedBySlug = new Map((Array.isArray(savedFlavors) ? savedFlavors : []).map((flavor) => [flavor.slug, flavor]));
+  const normalized = CMS_FLAVOR_SEED.map((seed) => {
+    const saved = savedBySlug.get(seed.slug) || {};
+    savedBySlug.delete(seed.slug);
+    return {
+      ...seed,
+      ...saved,
+      order: Number.isFinite(Number(saved.order)) ? Number(saved.order) : seed.order,
+      visible: saved.visible === false ? false : true,
+      recommended: saved.recommended || seed.recommended,
+    };
+  });
+  return [...normalized, ...savedBySlug.values()];
+}
+
 function normalizeState(savedState) {
   const base = clone(defaultState);
   const saved = savedState || {};
@@ -262,7 +455,7 @@ function normalizeState(savedState) {
     ...base.cms,
     ...(saved.cms || {}),
     images: saved.cms?.images?.length ? saved.cms.images : base.cms.images,
-    flavors: saved.cms?.flavors || base.cms.flavors,
+    flavors: normalizeCmsFlavors(saved.cms?.flavors || base.cms.flavors),
   };
   merged.notifications = { ...base.notifications, ...(saved.notifications || {}) };
   ["products", "ingredients", "packaging", "suppliers", "partners", "recipes", "batches", "sales", "leads", "purchases", "expenses", "costSources", "audit"].forEach((key) => {
@@ -1248,38 +1441,68 @@ function renderCMS() {
     (image, index) => `
       <article class="image-control">
         <div class="image-preview">
-          <img src="${image.url}" alt="${image.label}" loading="lazy">
+          <img src="${escapeHtml(image.url)}" alt="${escapeHtml(image.label)}" loading="lazy">
         </div>
         <div class="image-fields">
-          <input type="hidden" data-cms-image="${index}" data-field="key" value="${image.key}">
-          <label class="field"><span>Imagem</span><input data-cms-image="${index}" data-field="label" value="${image.label}"></label>
-          <label class="field"><span>Tamanho perfeito</span><input data-cms-image="${index}" data-field="recommended" value="${image.recommended}" readonly></label>
-          <label class="field field-full"><span>URL da imagem</span><input data-cms-image="${index}" data-field="url" value="${image.url}"></label>
+          <input type="hidden" data-cms-image="${index}" data-field="key" value="${escapeHtml(image.key)}">
+          <label class="field"><span>Imagem</span><input data-cms-image="${index}" data-field="label" value="${escapeHtml(image.label)}"></label>
+          <label class="field"><span>Tamanho perfeito</span><input data-cms-image="${index}" data-field="recommended" value="${escapeHtml(image.recommended)}" readonly></label>
+          <label class="field field-full"><span>URL da imagem</span><input data-cms-image="${index}" data-field="url" value="${escapeHtml(image.url)}"></label>
         </div>
       </article>
     `,
   ).join("");
+  const flavorRows = normalizeCmsFlavors(state.cms.flavors).map((flavor, index) => {
+    const categoryOptions = Array.from(new Set([...FLAVOR_CATEGORIES, flavor.profile].filter(Boolean)))
+      .map((category) => `<option value="${escapeHtml(category)}" ${category === flavor.profile ? "selected" : ""}>${escapeHtml(category)}</option>`)
+      .join("");
+    return `
+      <article class="flavor-cms-control">
+        <div class="image-preview flavor-admin-preview">
+          <img src="${escapeHtml(flavor.imageUrl || `assets/menu-bottles/${flavor.slug}.png`)}" alt="${escapeHtml(flavor.name)}" loading="lazy">
+        </div>
+        <div class="flavor-cms-fields">
+          <input type="hidden" data-cms-flavor="${index}" data-field="slug" value="${escapeHtml(flavor.slug)}">
+          <input type="hidden" data-cms-flavor="${index}" data-field="imageKey" value="${escapeHtml(flavor.imageKey)}">
+          <label class="field"><span>Sabor</span><input data-cms-flavor="${index}" data-field="name" value="${escapeHtml(flavor.name)}"></label>
+          <label class="field"><span>Categoria</span><select class="admin-select" data-cms-flavor="${index}" data-field="profile">${categoryOptions}</select></label>
+          <label class="field"><span>Ordem</span><input type="number" min="1" step="1" data-cms-flavor="${index}" data-field="order" value="${escapeHtml(flavor.order)}"></label>
+          <label class="field checkbox-field"><span>Visível no site</span><input type="checkbox" data-cms-flavor="${index}" data-field="visible" ${flavor.visible ? "checked" : ""}></label>
+          <label class="field"><span>Tamanho perfeito</span><input data-cms-flavor="${index}" data-field="recommended" value="${escapeHtml(flavor.recommended || FLAVOR_IMAGE_RECOMMENDED)}" readonly></label>
+          <label class="field field-full"><span>URL da foto</span><input data-cms-flavor="${index}" data-field="imageUrl" value="${escapeHtml(flavor.imageUrl || "")}"></label>
+          <label class="field field-full"><span>Ingredientes separados por vírgula</span><input data-cms-flavor="${index}" data-field="ingredients" value="${escapeHtml(flavor.ingredients || "")}"></label>
+          <label class="field field-full"><span>Texto do card</span><input data-cms-flavor="${index}" data-field="angle" value="${escapeHtml(flavor.angle || "")}"></label>
+          <label class="field field-full"><span>Texto do detalhe</span><textarea data-cms-flavor="${index}" data-field="description">${escapeHtml(flavor.description || "")}</textarea></label>
+        </div>
+      </article>
+    `;
+  }).join("");
   return `
     ${pageHead("CMS Público", "Controle headlines, sabores, parceiros, SEO, WhatsApp e anúncios do site público.", actionButton("save-cms", "Salvar CMS", "save"))}
     <section class="admin-grid">
       <form class="admin-card" id="cmsForm">
         <div class="input-grid">
-          <label class="field field-full"><span>Headline da home</span><input name="headline" value="${state.cms.headline}"></label>
-          <label class="field field-full"><span>Subheadline</span><textarea name="subheadline">${state.cms.subheadline}</textarea></label>
-          <label class="field"><span>WhatsApp</span><input name="whatsapp" value="${state.cms.whatsapp}"></label>
-          <label class="field field-full"><span>Link oficial comprar / onde encontrar</span><input name="officialMapUrl" value="${state.cms.officialMapUrl || ""}"></label>
-          <label class="field"><span>Anúncio</span><input name="announcement" value="${state.cms.announcement}"></label>
+          <label class="field field-full"><span>Headline da home</span><input name="headline" value="${escapeHtml(state.cms.headline)}"></label>
+          <label class="field field-full"><span>Subheadline</span><textarea name="subheadline">${escapeHtml(state.cms.subheadline)}</textarea></label>
+          <label class="field"><span>WhatsApp</span><input name="whatsapp" value="${escapeHtml(state.cms.whatsapp)}"></label>
+          <label class="field field-full"><span>Link oficial comprar / onde encontrar</span><input name="officialMapUrl" value="${escapeHtml(state.cms.officialMapUrl || "")}"></label>
+          <label class="field"><span>Anúncio</span><input name="announcement" value="${escapeHtml(state.cms.announcement)}"></label>
         </div>
       </form>
       <article class="admin-card">
         <h3>Como publicar alterações</h3>
-        <p class="lead" style="font-size:1rem">Neste protótipo estático, as alterações ficam no navegador via localStorage. Para que imagens e textos mudem para todos os visitantes, precisamos ligar o site a um backend, como Supabase.</p>
+        <p class="lead" style="font-size:1rem">As alterações ficam salvas neste navegador. Para que imagens e textos mudem para todos os visitantes, precisamos ligar o site a um backend, como Supabase.</p>
       </article>
     </section>
     <section class="admin-card" style="margin-top:16px">
-      <h3>Imagens do site público</h3>
-      <p class="lead" style="font-size:1rem">Cole uma URL nova para trocar rapidamente a imagem. O campo "tamanho perfeito" mostra a dimensão recomendada em pixels para evitar corte estranho no layout.</p>
+      <h3>Imagens gerais do site público</h3>
+      <p class="lead" style="font-size:1rem">Cole uma URL nova para trocar rapidamente hero e imagens gerais. O campo "tamanho perfeito" mostra a dimensão recomendada em pixels.</p>
       <div class="image-control-grid">${imageRows}</div>
+    </section>
+    <section class="admin-card" style="margin-top:16px">
+      <h3>Cardápio público: fotos, ordem e categorias</h3>
+      <p class="lead" style="font-size:1rem">Reordene sabores, mude categorias, esconda itens e cole fotos melhores sem editar código. Use imagens verticais em alta para o modal abrir nítido.</p>
+      <div class="flavor-cms-grid">${flavorRows}</div>
     </section>
     <section class="admin-card" style="margin-top:16px">
       <h3>SEO planejado</h3>
@@ -1298,7 +1521,7 @@ function renderSchema() {
     "Expenses", "Expense Categories", "Cost Assumptions", "Reports", "CMS Pages", "Media Library", "Audit Logs",
   ];
   return `
-    ${pageHead("Arquitetura e Banco de Dados", "Estrutura sugerida para evoluir este protótipo estático para um sistema seguro com autenticação, roles e histórico.", actionButton("reset-demo", "Limpar dados", "restart_alt", "btn-danger", "schema"))}
+    ${pageHead("Arquitetura e Banco de Dados", "Estrutura sugerida para evoluir o site atual para um sistema seguro com autenticação, roles e histórico.", actionButton("reset-demo", "Limpar dados", "restart_alt", "btn-danger", "schema"))}
     <section class="admin-card">
       <h3>Entidades mínimas</h3>
       <div class="schema-grid">
@@ -1915,6 +2138,12 @@ function exportCSV(name, rows) {
   addAudit("CSV exportado", name);
 }
 
+function fieldValue(input) {
+  if (input.type === "checkbox") return input.checked;
+  if (input.dataset.field === "order") return Number(input.value || 0);
+  return input.value;
+}
+
 function bindModuleEvents() {
   document.querySelector("#recipeSelector")?.addEventListener("change", (event) => {
     activeRecipeId = event.target.value;
@@ -1939,9 +2168,10 @@ function bindModuleEvents() {
     });
   });
   document.querySelectorAll("[data-cms-flavor]").forEach((input) => {
-    input.addEventListener("change", (event) => {
+    const eventType = input.type === "checkbox" || input.tagName === "SELECT" ? "change" : "input";
+    input.addEventListener(eventType, (event) => {
       const flavor = state.cms.flavors[Number(event.target.dataset.cmsFlavor)];
-      flavor[event.target.dataset.field] = event.target.checked;
+      flavor[event.target.dataset.field] = fieldValue(event.target);
       saveState();
     });
   });
@@ -2028,8 +2258,13 @@ function handleAction(action) {
           const image = state.cms.images[Number(input.dataset.cmsImage)];
           image[input.dataset.field] = input.value;
         });
+        document.querySelectorAll("[data-cms-flavor]").forEach((input) => {
+          const flavor = state.cms.flavors[Number(input.dataset.cmsFlavor)];
+          flavor[input.dataset.field] = fieldValue(input);
+        });
+        state.cms.flavors = normalizeCmsFlavors(state.cms.flavors);
         state.cms = { ...state.cms, ...data };
-        addAudit("CMS atualizado", "Conteúdo público salvo no protótipo.");
+        addAudit("CMS atualizado", "Conteúdo público salvo.");
         saveState();
         render();
       }
