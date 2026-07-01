@@ -694,6 +694,19 @@ function actionButton(action, label, icon, variant = "btn-primary", module = cur
   </button>`;
 }
 
+function tableAction(action, label, icon = "edit", variant = "") {
+  const disabled = canWrite() ? "" : "disabled aria-disabled=\"true\"";
+  return `
+    <button class="icon-btn table-action ${variant}" type="button" data-action="${escapeHtml(action)}" title="${escapeHtml(label)}" aria-label="${escapeHtml(label)}" ${disabled}>
+      <span class="material-symbols-outlined" aria-hidden="true">${icon}</span>
+    </button>
+  `;
+}
+
+function rowActions(actions) {
+  return `<div class="row-actions">${actions.join("")}</div>`;
+}
+
 function metric(label, value, note, icon = "monitoring") {
   return `
     <article class="admin-card metric-card">
@@ -812,6 +825,7 @@ function renderIngredients() {
           <td class="num">${brl(item.costPerUnit)} / ${item.purchaseUnit}</td>
           <td><span class="status ${hasMinimum ? statusClass(item.stock / item.min) : "warn"}">${hasMinimum ? (item.stock <= item.min ? "baixo" : "bom") : "sem mínimo"}</span></td>
           <td>${item.expires}</td>
+          <td>${rowActions([tableAction(`edit-ingredient:${item.id}`, "Editar ingrediente"), tableAction(`delete-ingredient:${item.id}`, "Excluir ingrediente", "delete", "danger")])}</td>
         </tr>
       `;
     });
@@ -830,9 +844,10 @@ function renderIngredients() {
         { label: "Custo", num: true },
         { label: "Status" },
         { label: "Vencimento" },
+        { label: "Ações" },
       ],
       rows,
-      920,
+      1040,
     )}
   `;
 }
@@ -849,6 +864,7 @@ function renderPurchases() {
           <td class="num">${brl(item.total)}</td>
           <td>${item.method}</td>
           <td>${item.buyer}</td>
+          <td>${rowActions([tableAction(`edit-purchase:${item.id}`, "Editar compra"), tableAction(`delete-purchase:${item.id}`, "Excluir compra", "delete", "danger")])}</td>
         </tr>
       `,
     );
@@ -866,9 +882,10 @@ function renderPurchases() {
         { label: "Total", num: true },
         { label: "Pagamento" },
         { label: "Comprador" },
+        { label: "Ações" },
       ],
       rows,
-      840,
+      960,
     )}
   `;
 }
@@ -886,6 +903,7 @@ function renderSuppliers() {
           <td>${item.city}</td>
           <td>${item.leadTime}</td>
           <td><span class="status ${statusClass(item.status, "general")}">${item.status}</span></td>
+          <td>${rowActions([tableAction(`edit-supplier:${item.id}`, "Editar fornecedor"), tableAction(`delete-supplier:${item.id}`, "Excluir fornecedor", "delete", "danger")])}</td>
         </tr>
       `,
     );
@@ -900,9 +918,10 @@ function renderSuppliers() {
         { label: "Cidade" },
         { label: "Prazo" },
         { label: "Status" },
+        { label: "Ações" },
       ],
       rows,
-      980,
+      1080,
     )}
   `;
 }
@@ -926,6 +945,7 @@ function renderProducts() {
           <td class="num"><strong>${recipe ? brl(calculatedCost) : "Sem receita"}</strong></td>
           <td class="num">${recipe ? pct(margin) : "-"}</td>
           <td><span class="status ${statusClass(product.status, "general")}">${product.status}</span></td>
+          <td>${rowActions([tableAction(`edit-product:${product.id}`, "Editar produto"), tableAction(`delete-product:${product.id}`, "Excluir produto", "delete", "danger")])}</td>
         </tr>
       `;
     });
@@ -952,9 +972,10 @@ function renderProducts() {
         { label: "Custo receita", num: true },
         { label: "Margem atacado", num: true },
         { label: "Status" },
+        { label: "Ações" },
       ],
       rows,
-      1180,
+      1260,
     )}
   `;
 }
@@ -976,6 +997,7 @@ function renderRecipes() {
           <td class="num"><strong>${brl(cost.costPerBottle)}</strong></td>
           <td class="num">${pct(cost.wholesaleMargin)}</td>
           <td><span class="status ${statusClass(recipe.status, "general")}">${recipe.status}</span></td>
+          <td>${rowActions([tableAction(`edit-recipe:${recipe.id}`, "Editar receita"), tableAction(`delete-recipe:${recipe.id}`, "Excluir receita", "delete", "danger")])}</td>
         </tr>
       `;
     });
@@ -996,9 +1018,10 @@ function renderRecipes() {
         { label: "Custo/garrafa", num: true },
         { label: "Margem atacado", num: true },
         { label: "Status" },
+        { label: "Ações" },
       ],
       rows,
-      1120,
+      1200,
     )}
   `;
 }
@@ -1035,6 +1058,7 @@ function renderCosts() {
           </td>
           <td class="num">${brl(ingredient?.costPerUnit || 0)} / ${ingredient?.purchaseUnit || ""}</td>
           <td class="num">${brl(ingredientLineCost(line))}</td>
+          <td>${rowActions([tableAction(`remove-recipe-ingredient:${recipe.id}:${index}`, "Remover ingrediente", "delete", "danger")])}</td>
         </tr>
       `;
     })
@@ -1050,6 +1074,7 @@ function renderCosts() {
           <td>un/garrafa</td>
           <td class="num">${brl(item?.costEach || 0)}</td>
           <td class="num">${brl(packagingLineCost(line, recipe.yieldBottles))}</td>
+          <td>${rowActions([tableAction(`remove-recipe-packaging:${recipe.id}:${index}`, "Remover material", "delete", "danger")])}</td>
         </tr>
       `;
     })
@@ -1058,7 +1083,7 @@ function renderCosts() {
     ${pageHead(
       "Custo por Garrafa",
       "Tabela editável inspirada em Excel, com conversão de unidades, custo por lote e simulação de margem.",
-      `${actionButton("save-costs", "Salvar simulação", "save")} ${actionButton("export-costs", "CSV", "download", "btn-outline")}`,
+      `${actionButton(`add-recipe-ingredient:${recipe.id}`, "Ingrediente", "add", "btn-outline")} ${actionButton(`add-recipe-packaging:${recipe.id}`, "Material", "inventory_2", "btn-outline")} ${actionButton("save-costs", "Salvar simulação", "save")} ${actionButton("export-costs", "CSV", "download", "btn-outline")}`,
     )}
     <div class="calculator-grid">
       <article class="admin-card table-card">
@@ -1078,6 +1103,14 @@ function renderCosts() {
               <span>Perda %</span>
               <input class="admin-input" type="number" value="${recipe.wastePct}" data-recipe-field="wastePct" />
             </label>
+            <label class="field">
+              <span>Atacado</span>
+              <input class="admin-input" type="number" step="0.01" value="${recipe.wholesalePrice}" data-recipe-field="wholesalePrice" />
+            </label>
+            <label class="field">
+              <span>Varejo</span>
+              <input class="admin-input" type="number" step="0.01" value="${recipe.retailPrice}" data-recipe-field="retailPrice" />
+            </label>
           </div>
         </div>
         <div class="table-scroll">
@@ -1090,17 +1123,18 @@ function renderCosts() {
                 <th>Unidade</th>
                 <th>Custo compra</th>
                 <th>Custo no lote</th>
+                <th>Ações</th>
               </tr>
             </thead>
             <tbody>
               ${ingredientRows}
-              <tr class="subtotal-row"><td colspan="5">Subtotal ingredientes</td><td class="num">${brl(cost.ingredientCost)}</td></tr>
+              <tr class="subtotal-row"><td colspan="6">Subtotal ingredientes</td><td class="num">${brl(cost.ingredientCost)}</td></tr>
               ${packagingRows}
-              <tr class="subtotal-row"><td colspan="5">Subtotal embalagens</td><td class="num">${brl(cost.packagingCost)}</td></tr>
-              <tr><td>Operação</td><td>Mão de obra por lote</td><td><input type="number" value="${recipe.labor}" data-recipe-field="labor"></td><td>R$</td><td></td><td class="num">${brl(recipe.labor)}</td></tr>
-              <tr><td>Operação</td><td>Água, energia e gás</td><td><input type="number" value="${recipe.utilities}" data-recipe-field="utilities"></td><td>R$</td><td></td><td class="num">${brl(recipe.utilities)}</td></tr>
-              <tr><td>Operação</td><td>Transporte, sanitização e outros</td><td><input type="number" value="${recipe.other}" data-recipe-field="other"></td><td>R$</td><td></td><td class="num">${brl(recipe.other)}</td></tr>
-              <tr class="subtotal-row"><td colspan="5">Custo direto com perda</td><td class="num">${brl(cost.total)}</td></tr>
+              <tr class="subtotal-row"><td colspan="6">Subtotal embalagens</td><td class="num">${brl(cost.packagingCost)}</td></tr>
+              <tr><td>Operação</td><td>Mão de obra por lote</td><td><input type="number" value="${recipe.labor}" data-recipe-field="labor"></td><td>R$</td><td></td><td class="num">${brl(recipe.labor)}</td><td></td></tr>
+              <tr><td>Operação</td><td>Água, energia e gás</td><td><input type="number" value="${recipe.utilities}" data-recipe-field="utilities"></td><td>R$</td><td></td><td class="num">${brl(recipe.utilities)}</td><td></td></tr>
+              <tr><td>Operação</td><td>Transporte, sanitização e outros</td><td><input type="number" value="${recipe.other}" data-recipe-field="other"></td><td>R$</td><td></td><td class="num">${brl(recipe.other)}</td><td></td></tr>
+              <tr class="subtotal-row"><td colspan="6">Custo direto com perda</td><td class="num">${brl(cost.total)}</td></tr>
             </tbody>
           </table>
         </div>
@@ -1134,6 +1168,7 @@ function renderBatches() {
           <td class="num">${brl(cost.batchCostPerBottle)}</td>
           <td>${batch.expiry}</td>
           <td><span class="status ${statusClass(batch.status, "general")}">${batch.status}</span></td>
+          <td>${rowActions([tableAction(`edit-batch:${batch.id}`, "Editar lote"), tableAction(`delete-batch:${batch.id}`, "Excluir lote", "delete", "danger")])}</td>
         </tr>
       `;
     });
@@ -1154,9 +1189,10 @@ function renderBatches() {
         { label: "Custo/garrafa", num: true },
         { label: "Validade" },
         { label: "Status" },
+        { label: "Ações" },
       ],
       rows,
-      1180,
+      1260,
     )}
   `;
 }
@@ -1214,6 +1250,7 @@ function renderPackaging() {
           <td class="num">${number(item.min)} ${item.unit}</td>
           <td class="num">${brl(item.costEach)}</td>
           <td><span class="status ${hasMinimum ? statusClass(item.stock / item.min) : "warn"}">${hasMinimum ? (item.stock <= item.min ? "baixo" : "bom") : "sem mínimo"}</span></td>
+          <td>${rowActions([tableAction(`edit-packaging:${item.id}`, "Editar material"), tableAction(`delete-packaging:${item.id}`, "Excluir material", "delete", "danger")])}</td>
         </tr>
       `;
     });
@@ -1227,9 +1264,10 @@ function renderPackaging() {
         { label: "Mínimo", num: true },
         { label: "Custo unitário", num: true },
         { label: "Status" },
+        { label: "Ações" },
       ],
       rows,
-      820,
+      940,
     )}
   `;
 }
@@ -1252,6 +1290,7 @@ function renderSales() {
           <td class="num">${brl(cogs)}</td>
           <td class="num"><strong>${brl(revenue - cogs)}</strong></td>
           <td class="num">${pct(revenue ? ((revenue - cogs) / revenue) * 100 : 0)}</td>
+          <td>${rowActions([tableAction(`edit-sale:${sale.id}`, "Editar venda"), tableAction(`delete-sale:${sale.id}`, "Excluir venda", "delete", "danger")])}</td>
         </tr>
       `;
     });
@@ -1267,9 +1306,10 @@ function renderSales() {
         { label: "COGS", num: true },
         { label: "Lucro", num: true },
         { label: "Margem", num: true },
+        { label: "Ações" },
       ],
       rows,
-      1060,
+      1160,
     )}
   `;
 }
@@ -1289,6 +1329,7 @@ function renderLeads() {
             ${["novo", "contatado", "qualificado", "ganho", "perdido"].map((status) => `<option value="${status}" ${lead.status === status ? "selected" : ""}>${status}</option>`).join("")}
           </select>
         </td>
+        <td>${rowActions([tableAction(`delete-lead:${lead.id}`, "Excluir lead", "delete", "danger")])}</td>
       </tr>
     `);
   return `
@@ -1311,9 +1352,10 @@ function renderLeads() {
         { label: "Instagram" },
         { label: "Mensagem" },
         { label: "Status" },
+        { label: "Ações" },
       ],
       rows,
-      1160,
+      1240,
     )}
   `;
 }
@@ -1331,6 +1373,7 @@ function renderPartners() {
           <td>${partner.terms}</td>
           <td>${partner.lastDelivery}</td>
           <td><span class="status ${partner.visible ? "good" : "warn"}">${partner.visible ? "público" : "oculto"}</span></td>
+          <td>${rowActions([tableAction(`edit-partner:${partner.id}`, "Editar parceiro"), tableAction(`delete-partner:${partner.id}`, "Excluir parceiro", "delete", "danger")])}</td>
         </tr>
       `,
     );
@@ -1345,9 +1388,10 @@ function renderPartners() {
         { label: "Prazo" },
         { label: "Última entrega" },
         { label: "Visibilidade" },
+        { label: "Ações" },
       ],
       rows,
-      1040,
+      1140,
     )}
   `;
 }
@@ -1364,6 +1408,7 @@ function renderExpenses() {
           <td class="num">${brl(expense.amount)}</td>
           <td>${expense.method}</td>
           <td><span class="status ${expense.recurring ? "warn" : "good"}">${expense.recurring ? "recorrente" : "avulsa"}</span></td>
+          <td>${rowActions([tableAction(`edit-expense:${expense.id}`, "Editar despesa"), tableAction(`delete-expense:${expense.id}`, "Excluir despesa", "delete", "danger")])}</td>
         </tr>
       `,
     );
@@ -1377,9 +1422,10 @@ function renderExpenses() {
         { label: "Valor", num: true },
         { label: "Método" },
         { label: "Tipo" },
+        { label: "Ações" },
       ],
       rows,
-      840,
+      940,
     )}
   `;
 }
@@ -1478,7 +1524,7 @@ function renderCMS() {
     `;
   }).join("");
   return `
-    ${pageHead("CMS Público", "Controle headlines, sabores, parceiros, SEO, WhatsApp e anúncios do site público.", actionButton("save-cms", "Salvar CMS", "save"))}
+    ${pageHead("CMS Público", "Controle headlines, sabores, parceiros, SEO, WhatsApp e anúncios do site público.", `${actionButton("new-cms-flavor", "Novo sabor", "add", "btn-outline")} ${actionButton("save-cms", "Salvar CMS", "save")}`)}
     <section class="admin-grid">
       <form class="admin-card" id="cmsForm">
         <div class="input-grid">
@@ -2071,6 +2117,370 @@ function bindRecipeBuilder() {
   });
 }
 
+function fieldInput(field, value) {
+  const name = escapeHtml(field.name);
+  const label = escapeHtml(field.label);
+  const full = field.full ? "field-full" : "";
+  const required = field.required ? "required" : "";
+  const current = value ?? field.value ?? "";
+  if (field.type === "checkbox") {
+    return `<label class="check-row ${full}"><input name="${name}" type="checkbox" ${current ? "checked" : ""}> <span>${label}</span></label>`;
+  }
+  if (field.type === "select") {
+    const options = (field.options || []).map((option) =>
+      typeof option === "object" ? option : { value: option, label: option },
+    );
+    return `
+      <label class="field ${full}">
+        <span>${label}</span>
+        <select name="${name}" class="admin-select" ${required}>
+          ${options.map((option) => `<option value="${escapeHtml(option.value)}" ${String(option.value) === String(current) ? "selected" : ""}>${escapeHtml(option.label)}</option>`).join("")}
+        </select>
+      </label>
+    `;
+  }
+  if (field.type === "textarea") {
+    return `<label class="field ${full}"><span>${label}</span><textarea name="${name}" ${required}>${escapeHtml(current)}</textarea></label>`;
+  }
+  return `<label class="field ${full}"><span>${label}</span><input name="${name}" type="${field.type || "text"}" value="${escapeHtml(current)}" ${field.min != null ? `min="${field.min}"` : ""} ${field.step ? `step="${field.step}"` : ""} ${required}></label>`;
+}
+
+function readRecordForm(form, fields) {
+  return fields.reduce((data, field) => {
+    const control = form.elements[field.name];
+    if (!control) return data;
+    if (field.type === "checkbox") data[field.name] = control.checked;
+    else if (field.type === "number") data[field.name] = Number(control.value || 0);
+    else data[field.name] = control.value;
+    return data;
+  }, {});
+}
+
+function editRecordForm(collection, recordId, title, fields, afterSave) {
+  const record = byId(collection, recordId);
+  if (!record) return;
+  openModal(
+    title,
+    collection,
+    `
+      <form id="editRecordForm">
+        <div class="input-grid">
+          ${fields.map((field) => fieldInput(field, record[field.name])).join("")}
+        </div>
+        <button class="btn btn-primary" type="submit">
+          <span class="material-symbols-outlined" aria-hidden="true">save</span>
+          Salvar alterações
+        </button>
+      </form>
+    `,
+  );
+  document.querySelector("#editRecordForm").addEventListener("submit", (event) => {
+    event.preventDefault();
+    const data = readRecordForm(event.target, fields);
+    Object.assign(record, data);
+    afterSave?.(record, data);
+    addAudit(`${title} atualizado`, record.name || record.flavor || record.code || record.description || record.item || record.id);
+    closeModal();
+    render();
+  });
+}
+
+function deleteRecord(collection, recordId, label) {
+  const record = byId(collection, recordId);
+  if (!record) return;
+  const name = label || record.name || record.flavor || record.code || record.description || record.item || record.id;
+  if (!window.confirm(`Excluir "${name}"? Esta ação remove o registro deste painel.`)) return;
+  state[collection] = state[collection].filter((item) => item.id !== recordId);
+  addAudit("Registro excluído", `${collection}: ${name}`);
+  render();
+}
+
+function deletePurchase(recordId) {
+  const purchase = byId("purchases", recordId);
+  if (!purchase) return;
+  if (!window.confirm(`Excluir compra de "${purchase.item}"? O estoque correspondente será ajustado quando possível.`)) return;
+  const ingredient = state.ingredients.find((item) => item.name === purchase.item);
+  if (ingredient) ingredient.stock = Math.max(0, Number(ingredient.stock || 0) - Number(purchase.qty || 0));
+  state.purchases = state.purchases.filter((item) => item.id !== recordId);
+  addAudit("Compra excluída", purchase.item);
+  render();
+}
+
+const productFields = [
+  { name: "item", label: "Item", required: true },
+  { name: "ean", label: "EAN-13" },
+  { name: "flavor", label: "Sabor", required: true },
+  { name: "sizeMl", label: "Tamanho ml", type: "number", min: 1, required: true },
+  { name: "retailPrice", label: "Preço varejo", type: "number", min: 0, step: "0.01" },
+  { name: "wholesalePrice", label: "Preço atacado", type: "number", min: 0, step: "0.01" },
+  { name: "baselineCost", label: "Custo base", type: "number", min: 0, step: "0.01" },
+  { name: "status", label: "Status", type: "select", options: ["ativo", "planejado", "pausado", "inativo"] },
+  { name: "description", label: "Descrição", full: true },
+  { name: "visible", label: "Visível/ativo para operação", type: "checkbox", full: true },
+];
+
+const ingredientFields = [
+  { name: "name", label: "Nome", required: true },
+  { name: "category", label: "Categoria" },
+  { name: "supplier", label: "Fornecedor" },
+  { name: "purchaseUnit", label: "Unidade de compra", type: "select", options: ["kg", "g", "l", "ml", "un"] },
+  { name: "costPerUnit", label: "Custo por unidade", type: "number", min: 0, step: "0.000001" },
+  { name: "stock", label: "Estoque atual", type: "number", min: 0, step: "0.01" },
+  { name: "min", label: "Estoque mínimo", type: "number", min: 0, step: "0.01" },
+  { name: "expires", label: "Vencimento", type: "date" },
+  { name: "location", label: "Local" },
+  { name: "status", label: "Status", type: "select", options: ["ativo", "pausado", "inativo"] },
+];
+
+const packagingFields = [
+  { name: "name", label: "Nome", required: true },
+  { name: "supplier", label: "Fornecedor" },
+  { name: "unit", label: "Unidade", type: "select", options: ["un", "kg", "g", "l", "ml"] },
+  { name: "costEach", label: "Custo unitário", type: "number", min: 0, step: "0.01" },
+  { name: "stock", label: "Estoque", type: "number", min: 0, step: "1" },
+  { name: "min", label: "Mínimo", type: "number", min: 0, step: "1" },
+  { name: "location", label: "Local" },
+];
+
+const supplierFields = [
+  { name: "name", label: "Nome", required: true },
+  { name: "contact", label: "Contato" },
+  { name: "whatsapp", label: "WhatsApp" },
+  { name: "email", label: "Email" },
+  { name: "city", label: "Cidade" },
+  { name: "categories", label: "Categorias", full: true },
+  { name: "leadTime", label: "Prazo médio" },
+  { name: "status", label: "Status", type: "select", options: ["ativo", "pausado", "inativo"] },
+];
+
+const partnerFields = [
+  { name: "name", label: "Nome", required: true },
+  { name: "type", label: "Tipo" },
+  { name: "neighborhood", label: "Bairro" },
+  { name: "city", label: "Cidade" },
+  { name: "whatsapp", label: "WhatsApp" },
+  { name: "instagram", label: "Instagram" },
+  { name: "flavors", label: "Sabores", full: true },
+  { name: "terms", label: "Prazo de pagamento" },
+  { name: "lastDelivery", label: "Última entrega", type: "date" },
+  { name: "visible", label: "Aparecer no site público", type: "checkbox", full: true },
+];
+
+const expenseFields = [
+  { name: "date", label: "Data", type: "date", required: true },
+  { name: "category", label: "Categoria", required: true },
+  { name: "description", label: "Descrição", full: true, required: true },
+  { name: "amount", label: "Valor", type: "number", min: 0, step: "0.01", required: true },
+  { name: "method", label: "Método" },
+  { name: "recurring", label: "Despesa recorrente", type: "checkbox", full: true },
+];
+
+function editRecipeForm(recipeId) {
+  const recipeFields = [
+    { name: "productId", label: "Produto / EAN", type: "select", options: [{ value: "", label: "Sem produto vinculado" }, ...state.products.map((product) => ({ value: product.id, label: productLabel(product) }))] },
+    { name: "flavor", label: "Sabor", required: true },
+    { name: "version", label: "Versão", required: true },
+    { name: "status", label: "Status", type: "select", options: ["ativa", "rascunho", "pausada", "arquivada"] },
+    { name: "bottleMl", label: "Tamanho ml", type: "number", min: 1, required: true },
+    { name: "yieldBottles", label: "Rendimento", type: "number", min: 1, required: true },
+    { name: "wastePct", label: "Perda %", type: "number", min: 0, step: "0.01" },
+    { name: "wholesalePrice", label: "Preço atacado", type: "number", min: 0, step: "0.01" },
+    { name: "retailPrice", label: "Preço varejo", type: "number", min: 0, step: "0.01" },
+    { name: "labor", label: "Mão de obra", type: "number", min: 0, step: "0.01" },
+    { name: "utilities", label: "Água/luz/gás", type: "number", min: 0, step: "0.01" },
+    { name: "other", label: "Outros custos", type: "number", min: 0, step: "0.01" },
+  ];
+  editRecordForm("recipes", recipeId, "Editar receita", recipeFields, (recipe) => {
+    const product = byId("products", recipe.productId);
+    if (product) {
+      recipe.flavor = recipe.flavor || product.flavor;
+      recipe.bottleMl = Number(recipe.bottleMl || product.sizeMl);
+    }
+    activeRecipeId = recipe.id;
+  });
+}
+
+function editBatchForm(batchId) {
+  const batchFields = [
+    { name: "code", label: "Código do lote", required: true },
+    { name: "recipeId", label: "Receita", type: "select", options: state.recipes.map((recipe) => ({ value: recipe.id, label: recipeLabel(recipe) })) },
+    { name: "date", label: "Data de produção", type: "date", required: true },
+    { name: "responsible", label: "Responsável" },
+    { name: "expected", label: "Rendimento esperado", type: "number", min: 0 },
+    { name: "actual", label: "Rendimento real", type: "number", min: 0 },
+    { name: "expiry", label: "Validade", type: "date" },
+    { name: "status", label: "Status", type: "select", options: ["planejado", "em produção", "bottled", "aprovado", "bloqueado"] },
+  ];
+  editRecordForm("batches", batchId, "Editar lote", batchFields, (batch) => {
+    const recipe = byId("recipes", batch.recipeId);
+    batch.flavor = recipe?.flavor || batch.flavor;
+    batch.productId = recipe?.productId || batch.productId || "";
+  });
+}
+
+function editSaleForm(saleId) {
+  const saleFields = [
+    { name: "date", label: "Data", type: "date", required: true },
+    { name: "partner", label: "Parceiro / cliente" },
+    { name: "batchCode", label: "Lote" },
+    { name: "qty", label: "Quantidade", type: "number", min: 0, step: "1" },
+    { name: "unitPrice", label: "Preço unitário", type: "number", min: 0, step: "0.01" },
+    { name: "discount", label: "Desconto", type: "number", min: 0, step: "0.01" },
+    { name: "delivery", label: "Entrega", type: "number", min: 0, step: "0.01" },
+    { name: "channel", label: "Canal", type: "select", options: ["revenda", "parceiro", "evento", "direto", "externo"] },
+  ];
+  editRecordForm("sales", saleId, "Editar venda", saleFields, (sale) => {
+    const batch = state.batches.find((item) => item.code === sale.batchCode);
+    const product = productForBatch(batch);
+    sale.flavor = batch?.flavor || sale.flavor || "";
+    sale.productId = product?.id || sale.productId || "";
+  });
+}
+
+function editPurchaseForm(purchaseId) {
+  const purchase = byId("purchases", purchaseId);
+  const previousItem = purchase?.item;
+  const previousQty = Number(purchase?.qty || 0);
+  const purchaseFields = [
+    { name: "date", label: "Data", type: "date", required: true },
+    { name: "supplier", label: "Fornecedor" },
+    { name: "item", label: "Item", required: true },
+    { name: "qty", label: "Quantidade", type: "number", min: 0, step: "0.01" },
+    { name: "unit", label: "Unidade", type: "select", options: ["kg", "g", "l", "ml", "un"] },
+    { name: "total", label: "Total pago", type: "number", min: 0, step: "0.01" },
+    { name: "method", label: "Método" },
+    { name: "buyer", label: "Comprador" },
+  ];
+  editRecordForm("purchases", purchaseId, "Editar compra", purchaseFields, (record) => {
+    const previousIngredient = state.ingredients.find((item) => item.name === previousItem);
+    const nextIngredient = state.ingredients.find((item) => item.name === record.item);
+    if (previousIngredient && previousIngredient === nextIngredient) {
+      previousIngredient.stock = Number(previousIngredient.stock || 0) - previousQty + Number(record.qty || 0);
+      previousIngredient.costPerUnit = Number(record.total || 0) / Math.max(Number(record.qty || 0), 0.0001);
+    }
+  });
+}
+
+function addRecipeIngredientForm(recipeId) {
+  const recipe = byId("recipes", recipeId);
+  if (!recipe) return;
+  openModal(
+    "Adicionar ingrediente à receita",
+    recipeLabel(recipe),
+    `
+      <form id="recipeLineForm">
+        <div class="input-grid">
+          <label class="field field-full"><span>Usar ingrediente existente</span><select name="ingredientId" class="admin-select"><option value="">Criar novo ingrediente</option>${state.ingredients.map((item) => `<option value="${item.id}">${escapeHtml(item.name)} (${escapeHtml(item.purchaseUnit)})</option>`).join("")}</select></label>
+          <label class="field"><span>Novo ingrediente</span><input name="name" placeholder="Use se não escolheu existente"></label>
+          <label class="field"><span>Categoria</span><input name="category"></label>
+          <label class="field"><span>Fornecedor</span><input name="supplier"></label>
+          <label class="field"><span>Un. compra</span><select name="purchaseUnit" class="admin-select">${unitOptions("kg")}</select></label>
+          <label class="field"><span>Custo/un.</span><input name="costPerUnit" type="number" min="0" step="0.000001" value="0"></label>
+          <label class="field"><span>Qtd. usada</span><input name="qty" type="number" min="0" step="0.001" required></label>
+          <label class="field"><span>Un. uso</span><select name="unit" class="admin-select">${unitOptions("g")}</select></label>
+        </div>
+        <button class="btn btn-primary" type="submit">Adicionar ingrediente</button>
+      </form>
+    `,
+  );
+  document.querySelector("#recipeLineForm").addEventListener("submit", (event) => {
+    event.preventDefault();
+    const data = Object.fromEntries(new FormData(event.target).entries());
+    const ingredient = data.ingredientId
+      ? byId("ingredients", data.ingredientId)
+      : findOrCreateIngredient({ ...data, usageQty: data.qty, usageUnit: data.unit, stock: 0, min: 0 });
+    if (!ingredient) return;
+    recipe.ingredients.push({ ingredientId: ingredient.id, qty: Number(data.qty || 0), unit: data.unit || ingredient.purchaseUnit });
+    addAudit("Ingrediente adicionado à receita", `${recipe.flavor}: ${ingredient.name}`);
+    closeModal();
+    render();
+  });
+}
+
+function addRecipePackagingForm(recipeId) {
+  const recipe = byId("recipes", recipeId);
+  if (!recipe) return;
+  openModal(
+    "Adicionar material à receita",
+    recipeLabel(recipe),
+    `
+      <form id="recipePackagingForm">
+        <div class="input-grid">
+          <label class="field field-full"><span>Usar material existente</span><select name="itemId" class="admin-select"><option value="">Criar novo material</option>${state.packaging.map((item) => `<option value="${item.id}">${escapeHtml(item.name)}</option>`).join("")}</select></label>
+          <label class="field"><span>Novo material</span><input name="name" placeholder="Use se não escolheu existente"></label>
+          <label class="field"><span>Fornecedor</span><input name="supplier"></label>
+          <label class="field"><span>Custo por unidade</span><input name="costEach" type="number" min="0" step="0.01" value="0"></label>
+          <label class="field"><span>Qtd. por garrafa</span><input name="qty" type="number" min="0" step="0.001" value="1" required></label>
+        </div>
+        <button class="btn btn-primary" type="submit">Adicionar material</button>
+      </form>
+    `,
+  );
+  document.querySelector("#recipePackagingForm").addEventListener("submit", (event) => {
+    event.preventDefault();
+    const data = Object.fromEntries(new FormData(event.target).entries());
+    const material = data.itemId ? byId("packaging", data.itemId) : findOrCreatePackaging({ ...data, qtyPerBottle: data.qty, stock: 0, min: 0 });
+    if (!material) return;
+    recipe.packaging.push({ itemId: material.id, qty: Number(data.qty || 0) });
+    addAudit("Material adicionado à receita", `${recipe.flavor}: ${material.name}`);
+    closeModal();
+    render();
+  });
+}
+
+function removeRecipeLine(payload, collection) {
+  const [recipeId, indexText] = payload.split(":");
+  const recipe = byId("recipes", recipeId);
+  const index = Number(indexText);
+  if (!recipe || !Array.isArray(recipe[collection]) || !recipe[collection][index]) return;
+  recipe[collection].splice(index, 1);
+  addAudit("Linha removida da receita", recipeLabel(recipe));
+  render();
+}
+
+function newCmsFlavorForm() {
+  openModal(
+    "Novo sabor público",
+    "CMS / Cardápio",
+    `
+      <form id="cmsFlavorForm">
+        <div class="input-grid">
+          <label class="field"><span>Nome</span><input name="name" required></label>
+          <label class="field"><span>Slug</span><input name="slug" placeholder="ex: cupuacu-baunilha" required></label>
+          <label class="field"><span>Categoria</span><select name="profile" class="admin-select">${FLAVOR_CATEGORIES.map((category) => `<option>${category}</option>`).join("")}</select></label>
+          <label class="field"><span>Ordem</span><input name="order" type="number" min="1" value="${state.cms.flavors.length + 1}"></label>
+          <label class="field field-full"><span>URL da foto</span><input name="imageUrl" required></label>
+          <label class="field field-full"><span>Ingredientes separados por vírgula</span><input name="ingredients"></label>
+          <label class="field field-full"><span>Texto do card</span><input name="angle"></label>
+          <label class="field field-full"><span>Texto do detalhe</span><textarea name="description"></textarea></label>
+          <label class="check-row field-full"><input name="visible" type="checkbox" checked> <span>Visível no site</span></label>
+        </div>
+        <button class="btn btn-primary" type="submit">Adicionar sabor</button>
+      </form>
+    `,
+  );
+  document.querySelector("#cmsFlavorForm").addEventListener("submit", (event) => {
+    event.preventDefault();
+    const data = Object.fromEntries(new FormData(event.target).entries());
+    state.cms.flavors.push({
+      slug: data.slug,
+      imageKey: data.slug,
+      name: data.name,
+      profile: data.profile,
+      order: Number(data.order || state.cms.flavors.length + 1),
+      visible: data.visible === "on",
+      recommended: FLAVOR_IMAGE_RECOMMENDED,
+      imageUrl: data.imageUrl,
+      ingredients: data.ingredients || "",
+      angle: data.angle || "",
+      description: data.description || data.angle || "",
+    });
+    addAudit("Sabor público criado", data.name);
+    closeModal();
+    render();
+  });
+}
+
 function simpleRecordForm(collection, title, fields) {
   openModal(
     title,
@@ -2078,9 +2488,7 @@ function simpleRecordForm(collection, title, fields) {
     `
       <form id="simpleForm">
         <div class="input-grid">
-          ${fields
-            .map((field) => `<label class="field ${field.full ? "field-full" : ""}"><span>${field.label}</span><input name="${field.name}" type="${field.type || "text"}" value="${field.value || ""}" ${field.required ? "required" : ""}></label>`)
-            .join("")}
+          ${fields.map((field) => fieldInput(field, field.value)).join("")}
         </div>
         <button class="btn btn-primary" type="submit">Salvar</button>
       </form>
@@ -2088,10 +2496,7 @@ function simpleRecordForm(collection, title, fields) {
   );
   document.querySelector("#simpleForm").addEventListener("submit", (event) => {
     event.preventDefault();
-    const data = Object.fromEntries(new FormData(event.target).entries());
-    Object.entries(data).forEach(([key, value]) => {
-      if (value !== "" && !Number.isNaN(Number(value)) && ["amount", "costEach", "stock", "min"].includes(key)) data[key] = Number(value);
-    });
+    const data = readRecordForm(event.target, fields);
     state[collection].unshift({ id: id(collection.slice(0, 3)), ...data });
     addAudit(`${title} criado`, data.name || data.description || "");
     closeModal();
@@ -2133,8 +2538,11 @@ function exportCSV(name, rows) {
   const a = document.createElement("a");
   a.href = url;
   a.download = `${name}.csv`;
+  a.style.display = "none";
+  document.body.appendChild(a);
   a.click();
-  URL.revokeObjectURL(url);
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 0);
   addAudit("CSV exportado", name);
 }
 
@@ -2195,6 +2603,39 @@ function bindModuleEvents() {
 
 function handleAction(action) {
   if (!canWrite() && !["export-products", "export-ingredients", "export-purchases", "export-sales", "export-leads", "export-reports", "export-costs"].includes(action)) return;
+  const [dynamicAction, ...dynamicParts] = action.split(":");
+  const dynamicPayload = dynamicParts.join(":");
+  const dynamicMap = {
+    "edit-product": (itemId) => editRecordForm("products", itemId, "Editar produto", productFields),
+    "delete-product": (itemId) => deleteRecord("products", itemId),
+    "edit-ingredient": (itemId) => editRecordForm("ingredients", itemId, "Editar ingrediente", ingredientFields),
+    "delete-ingredient": (itemId) => deleteRecord("ingredients", itemId),
+    "edit-packaging": (itemId) => editRecordForm("packaging", itemId, "Editar material", packagingFields),
+    "delete-packaging": (itemId) => deleteRecord("packaging", itemId),
+    "edit-supplier": (itemId) => editRecordForm("suppliers", itemId, "Editar fornecedor", supplierFields),
+    "delete-supplier": (itemId) => deleteRecord("suppliers", itemId),
+    "edit-partner": (itemId) => editRecordForm("partners", itemId, "Editar parceiro", partnerFields),
+    "delete-partner": (itemId) => deleteRecord("partners", itemId),
+    "edit-expense": (itemId) => editRecordForm("expenses", itemId, "Editar despesa", expenseFields),
+    "delete-expense": (itemId) => deleteRecord("expenses", itemId),
+    "edit-recipe": editRecipeForm,
+    "delete-recipe": (itemId) => deleteRecord("recipes", itemId),
+    "edit-batch": editBatchForm,
+    "delete-batch": (itemId) => deleteRecord("batches", itemId),
+    "edit-sale": editSaleForm,
+    "delete-sale": (itemId) => deleteRecord("sales", itemId),
+    "edit-purchase": editPurchaseForm,
+    "delete-purchase": deletePurchase,
+    "delete-lead": (itemId) => deleteRecord("leads", itemId),
+    "add-recipe-ingredient": addRecipeIngredientForm,
+    "add-recipe-packaging": addRecipePackagingForm,
+    "remove-recipe-ingredient": (payload) => removeRecipeLine(payload, "ingredients"),
+    "remove-recipe-packaging": (payload) => removeRecipeLine(payload, "packaging"),
+  };
+  if (dynamicMap[dynamicAction]) {
+    dynamicMap[dynamicAction](dynamicPayload);
+    return;
+  }
   const actionMap = {
     "new-product": newProductForm,
     "import-cost-base": restoreCostBase,
@@ -2212,7 +2653,7 @@ function handleAction(action) {
         { name: "city", label: "Cidade" },
         { name: "categories", label: "Categorias", full: true },
         { name: "leadTime", label: "Prazo médio" },
-        { name: "status", label: "Status", value: "ativo" },
+        { name: "status", label: "Status", type: "select", options: ["ativo", "pausado", "inativo"], value: "ativo" },
       ]),
     "new-packaging": () =>
       simpleRecordForm("packaging", "Novo material", [
@@ -2235,6 +2676,7 @@ function handleAction(action) {
         { name: "flavors", label: "Sabores", full: true },
         { name: "terms", label: "Prazo de pagamento" },
         { name: "lastDelivery", label: "Última entrega", type: "date" },
+        { name: "visible", label: "Aparecer no site público", type: "checkbox", full: true, value: true },
       ]),
     "new-expense": () =>
       simpleRecordForm("expenses", "Nova despesa", [
@@ -2243,8 +2685,10 @@ function handleAction(action) {
         { name: "description", label: "Descrição", full: true, required: true },
         { name: "amount", label: "Valor", type: "number", required: true },
         { name: "method", label: "Método", value: "Pix" },
+        { name: "recurring", label: "Despesa recorrente", type: "checkbox", full: true },
       ]),
     "new-recipe": newRecipeForm,
+    "new-cms-flavor": newCmsFlavorForm,
     "go-costs": () => setModule("costs"),
     "save-costs": () => {
       addAudit("Simulação de custos salva", byId("recipes", activeRecipeId)?.flavor);

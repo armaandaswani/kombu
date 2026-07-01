@@ -243,8 +243,26 @@ function mergeFlavor(flavor, index) {
 }
 
 function getMergedFlavors({ includeHidden = false } = {}) {
-  return flavors
-    .map(mergeFlavor)
+  const baseSlugs = new Set(flavors.map((flavor) => flavor.slug));
+  const customFlavors = getFlavorOverrides()
+    .filter((override) => override.slug && !baseSlugs.has(override.slug))
+    .map((override, index) => {
+      const ingredientText = override.ingredients || "";
+      return {
+        name: override.name || override.slug,
+        slug: override.slug,
+        imageKey: override.imageKey || override.slug,
+        profile: override.profile || "Frutados",
+        color: override.color || "#D9F99D",
+        order: Number.isFinite(Number(override.order)) ? Number(override.order) : flavors.length + index + 1,
+        visible: override.visible === false ? false : true,
+        image: override.imageUrl?.trim() || DEFAULT_PUBLIC_IMAGES.heroBottle,
+        ingredients: ingredientText.split(",").map((item) => item.trim()).filter(Boolean),
+        angle: override.angle || "",
+        description: override.description || override.angle || "",
+      };
+    });
+  return [...flavors.map(mergeFlavor), ...customFlavors]
     .filter((flavor) => includeHidden || flavor.visible)
     .sort((a, b) => a.order - b.order || a.name.localeCompare(b.name));
 }
@@ -580,6 +598,8 @@ function handleHash() {
 }
 
 function bootPublicSite() {
+  const currentYear = document.querySelector("#currentYear");
+  if (currentYear) currentYear.textContent = new Date().getFullYear();
   applyPublicCms();
   renderBenefits();
   renderFlavorFilters();
