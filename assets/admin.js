@@ -807,14 +807,25 @@ function statusClass(value, type = "stock") {
   return "bad";
 }
 
-function table(headers, rows, minWidth = 780) {
+function tableRowsWithLabels(headers, rows) {
+  return rows.map((row) => {
+    let index = 0;
+    return row.replace(/<td(\s[^>]*)?>/g, (match, attrs = "") => {
+      const header = headers[index]?.label || "";
+      index += 1;
+      return `<td data-label="${escapeHtml(header)}"${attrs}>`;
+    });
+  });
+}
+
+function table(headers, rows) {
   const bodyRows = rows.length
-    ? rows.join("")
+    ? tableRowsWithLabels(headers, rows).join("")
     : `<tr><td colspan="${headers.length}"><p class="empty-note">Nenhum registro ainda. Use os botões acima para começar.</p></td></tr>`;
   return `
     <article class="admin-card table-card">
-      <div class="table-scroll">
-        <table class="data-table" style="min-width:${minWidth}px">
+      <div class="table-scroll" role="region" aria-label="Tabela responsiva">
+        <table class="data-table">
           <thead><tr>${headers.map((header) => `<th class="${header.num ? "num" : ""}">${header.label}</th>`).join("")}</tr></thead>
           <tbody>${bodyRows}</tbody>
         </table>
@@ -1060,17 +1071,17 @@ function renderCosts() {
       const ingredient = byId("ingredients", line.ingredientId);
       return `
         <tr>
-          <td>Ingrediente</td>
-          <td>${ingredient?.name || "Não encontrado"}</td>
-          <td><input type="number" min="0" step="0.01" value="${line.qty}" data-cost-line="ingredients" data-index="${index}" data-field="qty"></td>
-          <td>
+          <td data-label="Grupo">Ingrediente</td>
+          <td data-label="Insumo">${ingredient?.name || "Não encontrado"}</td>
+          <td data-label="Qtd."><input type="number" min="0" step="0.01" value="${line.qty}" data-cost-line="ingredients" data-index="${index}" data-field="qty"></td>
+          <td data-label="Unidade">
             <select data-cost-line="ingredients" data-index="${index}" data-field="unit">
               ${["g", "kg", "ml", "l", "un"].map((unit) => `<option ${line.unit === unit ? "selected" : ""}>${unit}</option>`).join("")}
             </select>
           </td>
-          <td class="num">${brl(ingredient?.costPerUnit || 0)} / ${ingredient?.purchaseUnit || ""}</td>
-          <td class="num">${brl(ingredientLineCost(line))}</td>
-          <td>${rowActions([tableAction(`remove-recipe-ingredient:${recipe.id}:${index}`, "Remover ingrediente", "delete", "danger")])}</td>
+          <td data-label="Custo compra" class="num">${brl(ingredient?.costPerUnit || 0)} / ${ingredient?.purchaseUnit || ""}</td>
+          <td data-label="Custo no lote" class="num">${brl(ingredientLineCost(line))}</td>
+          <td data-label="Ações">${rowActions([tableAction(`remove-recipe-ingredient:${recipe.id}:${index}`, "Remover ingrediente", "delete", "danger")])}</td>
         </tr>
       `;
     })
@@ -1080,13 +1091,13 @@ function renderCosts() {
       const item = byId("packaging", line.itemId);
       return `
         <tr>
-          <td>Embalagem</td>
-          <td>${item?.name || "Não encontrado"}</td>
-          <td><input type="number" min="0" step="0.001" value="${line.qty}" data-cost-line="packaging" data-index="${index}" data-field="qty"></td>
-          <td>un/garrafa</td>
-          <td class="num">${brl(item?.costEach || 0)}</td>
-          <td class="num">${brl(packagingLineCost(line, recipe.yieldBottles))}</td>
-          <td>${rowActions([tableAction(`remove-recipe-packaging:${recipe.id}:${index}`, "Remover material", "delete", "danger")])}</td>
+          <td data-label="Grupo">Embalagem</td>
+          <td data-label="Insumo">${item?.name || "Não encontrado"}</td>
+          <td data-label="Qtd."><input type="number" min="0" step="0.001" value="${line.qty}" data-cost-line="packaging" data-index="${index}" data-field="qty"></td>
+          <td data-label="Unidade">un/garrafa</td>
+          <td data-label="Custo compra" class="num">${brl(item?.costEach || 0)}</td>
+          <td data-label="Custo no lote" class="num">${brl(packagingLineCost(line, recipe.yieldBottles))}</td>
+          <td data-label="Ações">${rowActions([tableAction(`remove-recipe-packaging:${recipe.id}:${index}`, "Remover material", "delete", "danger")])}</td>
         </tr>
       `;
     })
@@ -1140,13 +1151,13 @@ function renderCosts() {
             </thead>
             <tbody>
               ${ingredientRows}
-              <tr class="subtotal-row"><td colspan="6">Subtotal ingredientes</td><td class="num">${brl(cost.ingredientCost)}</td></tr>
+              <tr class="subtotal-row"><td colspan="6">Subtotal ingredientes</td><td data-label="Total" class="num">${brl(cost.ingredientCost)}</td></tr>
               ${packagingRows}
-              <tr class="subtotal-row"><td colspan="6">Subtotal embalagens</td><td class="num">${brl(cost.packagingCost)}</td></tr>
-              <tr><td>Operação</td><td>Mão de obra por lote</td><td><input type="number" value="${recipe.labor}" data-recipe-field="labor"></td><td>R$</td><td></td><td class="num">${brl(recipe.labor)}</td><td></td></tr>
-              <tr><td>Operação</td><td>Água, energia e gás</td><td><input type="number" value="${recipe.utilities}" data-recipe-field="utilities"></td><td>R$</td><td></td><td class="num">${brl(recipe.utilities)}</td><td></td></tr>
-              <tr><td>Operação</td><td>Transporte, sanitização e outros</td><td><input type="number" value="${recipe.other}" data-recipe-field="other"></td><td>R$</td><td></td><td class="num">${brl(recipe.other)}</td><td></td></tr>
-              <tr class="subtotal-row"><td colspan="6">Custo direto com perda</td><td class="num">${brl(cost.total)}</td></tr>
+              <tr class="subtotal-row"><td colspan="6">Subtotal embalagens</td><td data-label="Total" class="num">${brl(cost.packagingCost)}</td></tr>
+              <tr><td data-label="Grupo">Operação</td><td data-label="Insumo">Mão de obra por lote</td><td data-label="Qtd."><input type="number" value="${recipe.labor}" data-recipe-field="labor"></td><td data-label="Unidade">R$</td><td data-label="Custo compra"></td><td data-label="Custo no lote" class="num">${brl(recipe.labor)}</td><td data-label="Ações"></td></tr>
+              <tr><td data-label="Grupo">Operação</td><td data-label="Insumo">Água, energia e gás</td><td data-label="Qtd."><input type="number" value="${recipe.utilities}" data-recipe-field="utilities"></td><td data-label="Unidade">R$</td><td data-label="Custo compra"></td><td data-label="Custo no lote" class="num">${brl(recipe.utilities)}</td><td data-label="Ações"></td></tr>
+              <tr><td data-label="Grupo">Operação</td><td data-label="Insumo">Transporte, sanitização e outros</td><td data-label="Qtd."><input type="number" value="${recipe.other}" data-recipe-field="other"></td><td data-label="Unidade">R$</td><td data-label="Custo compra"></td><td data-label="Custo no lote" class="num">${brl(recipe.other)}</td><td data-label="Ações"></td></tr>
+              <tr class="subtotal-row"><td colspan="6">Custo direto com perda</td><td data-label="Total" class="num">${brl(cost.total)}</td></tr>
             </tbody>
           </table>
         </div>
@@ -1633,6 +1644,8 @@ function render() {
 function setModule(module) {
   currentModule = module;
   document.querySelectorAll("#adminNav button").forEach((button) => button.classList.toggle("is-active", button.dataset.module === module));
+  const mobileModuleSelector = document.querySelector("#mobileModuleSelector");
+  if (mobileModuleSelector && mobileModuleSelector.value !== module) mobileModuleSelector.value = module;
   render();
 }
 
@@ -2854,6 +2867,10 @@ function handleAction(action) {
 document.querySelector("#adminNav").addEventListener("click", (event) => {
   const button = event.target.closest("[data-module]");
   if (button) setModule(button.dataset.module);
+});
+
+document.querySelector("#mobileModuleSelector")?.addEventListener("change", (event) => {
+  setModule(event.target.value);
 });
 
 document.querySelector("#adminContent").addEventListener("click", (event) => {

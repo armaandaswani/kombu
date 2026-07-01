@@ -1176,6 +1176,17 @@ textarea:focus-visible {
   padding: 8px 10px;
 }
 
+.mobile-module-select {
+  display: none;
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: #fff;
+  color: var(--green);
+  font-weight: 850;
+  padding: 10px 14px;
+}
+
 .admin-content {
   width: min(1440px, calc(100% - 48px));
   margin: 0 auto;
@@ -1258,18 +1269,19 @@ textarea:focus-visible {
 }
 
 .table-card {
+  max-width: 100%;
   overflow: hidden;
   padding: 0;
 }
 
 .table-scroll {
-  overflow: auto;
+  max-width: 100%;
+  overflow: hidden;
 }
 
 .data-table {
   width: 100%;
   border-collapse: collapse;
-  min-width: 780px;
   font-size: 14px;
 }
 
@@ -1295,6 +1307,8 @@ textarea:focus-visible {
 
 .data-table td {
   color: #26302a;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .data-table tr:hover td {
@@ -1470,7 +1484,6 @@ textarea:focus-visible {
 
 .spreadsheet {
   width: 100%;
-  min-width: 860px;
   border-collapse: collapse;
   font-size: 13px;
 }
@@ -1479,6 +1492,8 @@ textarea:focus-visible {
 .spreadsheet td {
   border: 1px solid #d8ded8;
   padding: 8px;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .spreadsheet th {
@@ -1794,6 +1809,125 @@ textarea:focus-visible {
   }
 }
 
+@media (max-width: 900px) {
+  .image-control,
+  .image-fields,
+  .flavor-cms-control,
+  .flavor-cms-fields {
+    grid-template-columns: 1fr;
+  }
+
+  .image-preview,
+  .flavor-admin-preview {
+    width: 100%;
+  }
+}
+
+@media (max-width: 1540px) {
+  .admin-body .data-table,
+  .admin-body .spreadsheet,
+  .admin-body .data-table thead,
+  .admin-body .spreadsheet thead,
+  .admin-body .data-table tbody,
+  .admin-body .spreadsheet tbody,
+  .admin-body .data-table tr,
+  .admin-body .spreadsheet tr {
+    display: block;
+  }
+
+  .admin-body .data-table thead,
+  .admin-body .spreadsheet thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+
+  .admin-body .data-table,
+  .admin-body .spreadsheet {
+    border-collapse: separate;
+    border-spacing: 0;
+  }
+
+  .admin-body .data-table tbody,
+  .admin-body .spreadsheet tbody {
+    display: grid;
+    gap: 12px;
+    padding: 12px;
+  }
+
+  .admin-body .data-table tr,
+  .admin-body .spreadsheet tr {
+    overflow: hidden;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    background: #fff;
+    box-shadow: var(--shadow-soft);
+  }
+
+  .admin-body .data-table td,
+  .admin-body .spreadsheet td {
+    display: grid;
+    grid-template-columns: minmax(96px, 0.38fr) minmax(0, 1fr);
+    align-items: start;
+    gap: 10px;
+    border: 0;
+    border-bottom: 1px solid var(--line);
+    padding: 10px 12px;
+    text-align: left;
+  }
+
+  .admin-body .data-table td:last-child,
+  .admin-body .spreadsheet td:last-child {
+    border-bottom: 0;
+  }
+
+  .admin-body .data-table td::before,
+  .admin-body .spreadsheet td::before {
+    color: var(--muted);
+    font-size: 11px;
+    font-weight: 900;
+    letter-spacing: 0.05em;
+    line-height: 1.3;
+    text-transform: uppercase;
+    content: attr(data-label);
+  }
+
+  .admin-body .data-table td[colspan],
+  .admin-body .spreadsheet td[colspan] {
+    display: block;
+  }
+
+  .admin-body .data-table td[colspan]::before,
+  .admin-body .spreadsheet td[colspan]::before {
+    display: none;
+  }
+
+  .admin-body .data-table .num,
+  .admin-body .spreadsheet .num {
+    text-align: left;
+  }
+
+  .admin-body .row-actions {
+    justify-content: flex-start;
+  }
+
+  .admin-body .table-action {
+    width: 40px;
+    height: 40px;
+  }
+
+  .admin-body .spreadsheet input,
+  .admin-body .spreadsheet select {
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: #fff;
+    padding: 8px 10px;
+  }
+}
+
 @media (max-width: 760px) {
   html {
     scroll-padding-top: 78px;
@@ -1966,33 +2100,75 @@ textarea:focus-visible {
   }
 
   .admin-sidebar {
-    position: fixed;
-    inset: auto 0 0;
-    z-index: 50;
-    display: flex;
+    position: static;
+    display: grid;
+    gap: 12px;
     height: auto;
-    border-top: 1px solid var(--line);
+    border-bottom: 1px solid var(--line);
+    border-top: 0;
     border-right: 0;
-    padding: 8px;
+    padding: 12px 14px;
   }
 
-  .admin-sidebar .brand,
+  .admin-sidebar .brand {
+    display: flex;
+    margin: 0;
+  }
+
+  .admin-sidebar .brand-name,
+  .admin-nav span.label,
+  .quick-action span:not(.material-symbols-outlined) {
+    display: inline-flex;
+  }
+
+  .admin-sidebar .brand-name {
+    flex-direction: column;
+  }
+
   .quick-action {
-    display: none;
+    display: inline-flex;
+    width: 100%;
+    margin: 0;
   }
 
   .admin-nav {
-    display: flex;
-    gap: 3px;
-    overflow-x: auto;
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 6px;
+    overflow: visible;
     width: 100%;
   }
 
   .admin-nav button {
-    flex: 0 0 auto;
-    width: 58px;
+    display: grid;
+    width: 100%;
+    min-height: 62px;
     justify-content: center;
-    padding: 10px;
+    justify-items: center;
+    gap: 4px;
+    border-radius: 12px;
+    padding: 8px 4px;
+    font-size: 10px;
+    line-height: 1.15;
+    text-align: center;
+  }
+
+  .admin-nav button .material-symbols-outlined {
+    font-size: 23px;
+  }
+
+  .admin-nav span.label {
+    max-width: 100%;
+    justify-content: center;
+    overflow-wrap: anywhere;
+  }
+
+  .mobile-module-select {
+    display: block;
+  }
+
+  .admin-nav {
+    display: none;
   }
 
   .admin-topbar {
@@ -2003,7 +2179,8 @@ textarea:focus-visible {
 
   .admin-content {
     width: calc(100% - 28px);
-    padding-bottom: 104px;
+    padding-top: 18px;
+    padding-bottom: 42px;
   }
 
   .admin-page-head {
@@ -2031,5 +2208,46 @@ textarea:focus-visible {
 
   .role-pill {
     width: 100%;
+  }
+
+  .admin-user {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .admin-user .role-pill {
+    grid-column: 1 / -1;
+  }
+
+  .admin-user .btn {
+    width: 100%;
+    justify-content: center;
+    padding-inline: 10px;
+  }
+
+  .table-toolbar {
+    display: grid;
+    gap: 12px;
+  }
+
+  .table-toolbar .field {
+    min-width: 0 !important;
+  }
+
+  .metric-card {
+    min-height: auto;
+  }
+
+  .metric-card strong {
+    font-size: 1.62rem;
+  }
+
+  .admin-card {
+    padding: 14px;
+  }
+
+  .table-card {
+    padding: 0;
   }
 }

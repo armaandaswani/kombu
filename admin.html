@@ -14,7 +14,7 @@
       href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&family=Playfair+Display:wght@600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="assets/kombu.css?v=20260701d" />
+    <link rel="stylesheet" href="assets/kombu.css?v=20260701h" />
   </head>
   <body class="admin-body">
     <section class="admin-login" id="loginScreen" aria-labelledby="loginTitle">
@@ -139,6 +139,25 @@
 
       <main class="admin-main">
         <header class="admin-topbar">
+          <select class="mobile-module-select" id="mobileModuleSelector" aria-label="Selecionar módulo do admin">
+            <option value="dashboard">Dashboard</option>
+            <option value="products">Produtos</option>
+            <option value="ingredients">Ingredientes</option>
+            <option value="purchases">Compras</option>
+            <option value="suppliers">Fornecedores</option>
+            <option value="recipes">Receitas</option>
+            <option value="costs">Custos</option>
+            <option value="batches">Produção</option>
+            <option value="stock">Estoque</option>
+            <option value="packaging">Embalagens</option>
+            <option value="sales">Vendas</option>
+            <option value="leads">Leads CRM</option>
+            <option value="partners">Parceiros</option>
+            <option value="expenses">Despesas</option>
+            <option value="reports">Relatórios</option>
+            <option value="cms">CMS</option>
+            <option value="schema">Arquitetura</option>
+          </select>
           <label class="admin-search">
             <span class="material-symbols-outlined" aria-hidden="true">search</span>
             <input id="globalSearch" type="search" placeholder="Buscar EAN, lotes, ingredientes, parceiros ou vendas..." />
@@ -181,6 +200,6 @@
       </div>
     </div>
 
-    <script src="assets/admin.js?v=20260701e"></script>
+    <script src="assets/admin.js?v=20260701h"></script>
   </body>
 </html>
