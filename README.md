@@ -30,5 +30,12 @@ This is currently a static site with no build step. The root `index.html` can be
 
 ## Notes
 
-The admin uses localStorage for prototype persistence. Production should replace that with authenticated backend storage, role-based permissions, protected uploads and server-side cost snapshots.
+The admin is protected by a temporary front-end password gate for prototype review. This is not production security because static front-end code can be inspected.
 
+For production on Vercel, use Supabase or an equivalent backend for:
+
+- Supabase Auth for real admin login.
+- Postgres tables for ingredients, recipes, batches, stock, sales, expenses, partners and CMS.
+- Supabase Storage for public product images and invoice/receipt uploads.
+- Row-level security and role permissions.
+- Server-side cost snapshots for historical batch accuracy.

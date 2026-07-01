@@ -907,6 +907,71 @@ textarea:focus-visible {
 }
 
 /* Admin */
+.admin-login {
+  display: grid;
+  min-height: 100vh;
+  place-items: center;
+  background:
+    radial-gradient(circle at 12% 18%, rgba(217, 249, 157, 0.62), transparent 34%),
+    radial-gradient(circle at 86% 80%, rgba(245, 205, 195, 0.52), transparent 38%),
+    var(--surface);
+  padding: 24px;
+}
+
+.admin-login.is-hidden,
+.admin-shell.is-locked {
+  display: none;
+}
+
+.login-panel {
+  display: grid;
+  width: min(520px, 100%);
+  gap: 22px;
+  border: 1px solid var(--line);
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.88);
+  box-shadow: var(--shadow);
+  padding: 30px;
+  backdrop-filter: blur(18px);
+}
+
+.login-panel h1 {
+  margin-bottom: 10px;
+  font-size: clamp(2.2rem, 6vw, 3.7rem);
+}
+
+.login-panel p {
+  color: var(--muted);
+  margin-bottom: 0;
+}
+
+.password-field {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 46px;
+  gap: 8px;
+}
+
+.password-field input {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #fff;
+  color: var(--ink);
+  padding: 11px 12px;
+}
+
+.login-error {
+  border-radius: var(--radius-sm);
+  background: rgba(255, 218, 214, 0.88);
+  color: var(--danger) !important;
+  padding: 12px 14px;
+  font-weight: 850;
+}
+
+.login-note {
+  font-size: 13px;
+}
+
 .admin-shell {
   display: grid;
   grid-template-columns: 276px minmax(0, 1fr);
@@ -1354,6 +1419,81 @@ textarea:focus-visible {
   margin-bottom: 16px;
 }
 
+.builder-section {
+  display: grid;
+  gap: 12px;
+  margin: 24px 0;
+}
+
+.builder-section .table-toolbar {
+  margin-bottom: 0;
+}
+
+.builder-section h3,
+.builder-section p {
+  margin-bottom: 0;
+}
+
+.builder-section p {
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.builder-row {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(130px, 1fr)) 46px;
+  gap: 10px;
+  align-items: end;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: #fff;
+  padding: 12px;
+  margin-bottom: 10px;
+}
+
+.recipe-ingredient-row {
+  grid-template-columns: repeat(3, minmax(130px, 1fr)) repeat(3, minmax(92px, 0.7fr)) 46px;
+}
+
+.image-control-grid {
+  display: grid;
+  gap: 12px;
+  margin-top: 18px;
+}
+
+.image-control {
+  display: grid;
+  grid-template-columns: 130px minmax(0, 1fr);
+  gap: 14px;
+  align-items: center;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: #fff;
+  padding: 12px;
+}
+
+.image-preview {
+  display: grid;
+  width: 130px;
+  height: 130px;
+  place-items: center;
+  overflow: hidden;
+  border-radius: var(--radius-sm);
+  background: var(--surface-soft);
+}
+
+.image-preview img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+
+.image-fields {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(170px, 0.45fr);
+  gap: 10px;
+}
+
 .schema-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -1627,6 +1767,17 @@ textarea:focus-visible {
   }
 
   .admin-actions .btn {
+    width: 100%;
+  }
+
+  .builder-row,
+  .recipe-ingredient-row,
+  .image-control,
+  .image-fields {
+    grid-template-columns: 1fr;
+  }
+
+  .image-preview {
     width: 100%;
   }
 

@@ -17,7 +17,42 @@
     <link rel="stylesheet" href="assets/kombu.css" />
   </head>
   <body class="admin-body">
-    <div class="admin-shell">
+    <section class="admin-login" id="loginScreen" aria-labelledby="loginTitle">
+      <form class="login-panel" id="loginForm">
+        <a class="brand" href="index.html" aria-label="Voltar ao site público">
+          <span class="brand-mark">K</span>
+          <span class="brand-name">
+            <strong>Kombú Admin</strong>
+            <span>Acesso protegido</span>
+          </span>
+        </a>
+        <div>
+          <span class="eyebrow">
+            <span class="material-symbols-outlined" aria-hidden="true">lock</span>
+            Portal interno
+          </span>
+          <h1 id="loginTitle">Entre com a senha do admin.</h1>
+          <p>Este painel controla custos, receitas, estoque, vendas, CMS e dados operacionais da Kombú.</p>
+        </div>
+        <label class="field">
+          <span>Senha</span>
+          <div class="password-field">
+            <input id="adminPassword" name="password" type="password" autocomplete="current-password" required />
+            <button class="icon-btn" id="togglePassword" type="button" aria-label="Mostrar senha">
+              <span class="material-symbols-outlined" aria-hidden="true">visibility</span>
+            </button>
+          </div>
+        </label>
+        <button class="btn btn-primary" type="submit">
+          <span class="material-symbols-outlined" aria-hidden="true">login</span>
+          Entrar no portal
+        </button>
+        <p class="login-error hidden" id="loginError">Senha incorreta.</p>
+        <p class="login-note">Para segurança real em produção, use autenticação no servidor. A senha estática é apenas uma barreira temporária do protótipo.</p>
+      </form>
+    </section>
+
+    <div class="admin-shell is-locked" id="adminShell" aria-hidden="true">
       <aside class="admin-sidebar" aria-label="Navegação do admin">
         <a class="brand" href="index.html" aria-label="Voltar ao site público">
           <span class="brand-mark">K</span>
@@ -108,6 +143,10 @@
               <option value="Vendas">Vendas</option>
               <option value="Viewer">Viewer</option>
             </select>
+            <button class="btn btn-outline" id="logoutButton" type="button">
+              <span class="material-symbols-outlined" aria-hidden="true">logout</span>
+              Sair
+            </button>
             <a class="btn btn-outline" href="index.html">
               <span class="material-symbols-outlined" aria-hidden="true">public</span>
               Site público

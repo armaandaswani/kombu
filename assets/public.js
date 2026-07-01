@@ -1,9 +1,12 @@
 const imageBase = "https://static.wixstatic.com/media/";
+const ADMIN_STORAGE_KEY = "kombuAdminStateV2";
+const OFFICIAL_MAP_URL = "https://www.google.com/maps/d/u/0/edit?mid=1Zn4OECfeuJkhDkCj6noQKZDeLgOUbn8";
 
 const flavors = [
   {
     name: "Maracujá",
     slug: "maracuja",
+    imageKey: "maracuja",
     profile: "Cítrico e marcante",
     color: "#F7D8AD",
     image: `${imageBase}716adf_5b0b2489ee914e53b15b4a590915d974~mv2.png/v1/crop/x_6,y_0,w_1068,h_1920/fill/w_520,h_936,al_c,q_90,usm_0.66_1.00_0.01,enc_auto/4_edited.png`,
@@ -15,6 +18,7 @@ const flavors = [
   {
     name: "Maçã e Canela",
     slug: "maca-canela",
+    imageKey: "macaCanela",
     profile: "Doce e suave",
     color: "#F5CDC3",
     image:
@@ -27,6 +31,7 @@ const flavors = [
   {
     name: "Pêra e Alecrim",
     slug: "pera-alecrim",
+    imageKey: "peraAlecrim",
     profile: "Doce e suave",
     color: "#D9F99D",
     image: `${imageBase}716adf_2b695c9743c344a2a91acf67ed69ff5f~mv2.png/v1/fill/w_520,h_936,al_c,q_90,usm_0.66_1.00_0.01,enc_auto/6_edited_edited.png`,
@@ -38,6 +43,7 @@ const flavors = [
   {
     name: "Frutas Vermelhas",
     slug: "frutas-vermelhas",
+    imageKey: "frutasVermelhas",
     profile: "Doce e suave",
     color: "#F5CDC3",
     image: `${imageBase}716adf_5c8cd66d9eb842a0940b212d250fd255~mv2.png/v1/fill/w_520,h_936,al_c,q_90,usm_0.66_1.00_0.01,enc_auto/IMG_2897_PNG.png`,
@@ -49,6 +55,7 @@ const flavors = [
   {
     name: "Mirtilo e Flor Borboleta Azul",
     slug: "mirtilo-flor-borboleta",
+    imageKey: "mirtilo",
     profile: "Exótico",
     color: "#D8DDFF",
     image: `${imageBase}716adf_8da298261b9a4acd8e9e2264491cee1d~mv2.png/v1/fill/w_520,h_936,al_c,q_90,usm_0.66_1.00_0.01,enc_auto/7.png`,
@@ -60,6 +67,7 @@ const flavors = [
   {
     name: "Rosas e Cardamomo",
     slug: "rosas-cardamomo",
+    imageKey: "rosasCardamomo",
     profile: "Exótico",
     color: "#E5D7FF",
     image: `${imageBase}716adf_4d2ae2c8e77d48ea8aa11ceffef05be4~mv2.png/v1/fill/w_520,h_936,al_c,q_90,usm_0.66_1.00_0.01,enc_auto/3_edited.png`,
@@ -71,6 +79,7 @@ const flavors = [
   {
     name: "Imunidade",
     slug: "imunidade",
+    imageKey: "imunidade",
     profile: "Cítrico e marcante",
     color: "#F7D8AD",
     image:
@@ -83,6 +92,7 @@ const flavors = [
   {
     name: "Hibisco com Anis Estrelado",
     slug: "hibisco-anis-estrelado",
+    imageKey: "hibisco",
     profile: "Exótico",
     color: "#F5CDC3",
     image: `${imageBase}716adf_4d2ae2c8e77d48ea8aa11ceffef05be4~mv2.png/v1/fill/w_520,h_936,al_c,q_90,usm_0.66_1.00_0.01,enc_auto/3_edited.png`,
@@ -105,65 +115,63 @@ const benefits = [
   ["forest", "Produto da Amazônia", "Marca criada em Manaus com identidade local."],
 ];
 
-const partners = [
-  {
-    name: "Empório Amazônia Viva",
-    type: "empório",
-    neighborhood: "Adrianópolis",
-    address: "Av. Umberto Calderaro, 980",
-    hours: "Seg a Sáb, 09h às 20h",
-    whatsapp: "5592992097165",
-    instagram: "@emporioamazoniaviva",
-    flavors: ["Maracujá", "Frutas Vermelhas", "Imunidade"],
-    pin: [62, 34],
-  },
-  {
-    name: "Solar Café Regional",
-    type: "café",
-    neighborhood: "Centro",
-    address: "Rua Bernardo Ramos, 120",
-    hours: "Todos os dias, 08h às 18h",
-    whatsapp: "5592992097165",
-    instagram: "@solarcaferegional",
-    flavors: ["Hibisco com Anis", "Maçã e Canela"],
-    pin: [44, 53],
-  },
-  {
-    name: "Studio Corpo Leve",
-    type: "academia",
-    neighborhood: "Vieiralves",
-    address: "Rua Rio Madeira, 440",
-    hours: "Seg a Sex, 06h às 21h",
-    whatsapp: "5592992097165",
-    instagram: "@studiocorpoleve",
-    flavors: ["Imunidade", "Pêra e Alecrim"],
-    pin: [53, 41],
-  },
-  {
-    name: "Mercado Natural Ponta Negra",
-    type: "mercado",
-    neighborhood: "Ponta Negra",
-    address: "Av. Coronel Teixeira, 4300",
-    hours: "Seg a Sáb, 10h às 21h",
-    whatsapp: "5592992097165",
-    instagram: "@mercadonaturalpn",
-    flavors: ["Maracujá", "Mirtilo", "Frutas Vermelhas"],
-    pin: [28, 24],
-  },
-  {
-    name: "Folha Restaurante",
-    type: "restaurante",
-    neighborhood: "Nossa Senhora das Graças",
-    address: "Rua Pará, 620",
-    hours: "Ter a Dom, 11h às 23h",
-    whatsapp: "5592992097165",
-    instagram: "@folharestaurante",
-    flavors: ["Rosas e Cardamomo", "Hibisco"],
-    pin: [58, 48],
-  },
-];
+const partners = [];
 
 const formatList = (items) => items.map((item) => `<span class="tag">${item}</span>`).join("");
+
+function readAdminCms() {
+  try {
+    return JSON.parse(localStorage.getItem(ADMIN_STORAGE_KEY))?.cms || {};
+  } catch {
+    return {};
+  }
+}
+
+function getCmsImage(key, fallback) {
+  const image = readAdminCms().images?.find((item) => item.key === key);
+  return image?.url?.trim() || fallback;
+}
+
+function getOfficialMapUrl() {
+  return readAdminCms().officialMapUrl?.trim() || OFFICIAL_MAP_URL;
+}
+
+function getPublicPartners() {
+  try {
+    const adminState = JSON.parse(localStorage.getItem(ADMIN_STORAGE_KEY));
+    return (adminState?.partners || [])
+      .filter((partner) => partner.visible)
+      .map((partner, index) => ({
+        name: partner.name,
+        type: partner.type || "ponto de venda",
+        neighborhood: partner.neighborhood || "Manaus",
+        address: partner.address || partner.city || "Manaus",
+        hours: partner.hours || "Consulte o parceiro",
+        whatsapp: String(partner.whatsapp || "").replace(/\D/g, "") || "5592992097165",
+        instagram: partner.instagram || "",
+        flavors: String(partner.flavors || "").split(",").map((item) => item.trim()).filter(Boolean),
+        pin: [24 + ((index * 17) % 58), 24 + ((index * 13) % 48)],
+      }));
+  } catch {
+    return partners;
+  }
+}
+
+function applyPublicCms() {
+  const cms = readAdminCms();
+  const heroImage = document.querySelector(".bottle-stage img");
+  if (heroImage) heroImage.src = getCmsImage("heroBottle", heroImage.src);
+  if (cms.headline) {
+    const lines = cms.headline.split(/\s+/);
+    const title = document.querySelector("#hero-title");
+    if (title && lines.length > 0) {
+      title.textContent = cms.headline;
+    }
+  }
+  if (cms.subheadline) {
+    document.querySelector(".hero-copy .lead").textContent = cms.subheadline;
+  }
+}
 
 function renderBenefits() {
   const grid = document.querySelector("#benefitGrid");
@@ -184,11 +192,12 @@ function renderFlavors(filter = "todos") {
   const grid = document.querySelector("#flavorGrid");
   const visible = filter === "todos" ? flavors : flavors.filter((flavor) => flavor.profile === filter);
   grid.innerHTML = visible
-    .map(
-      (flavor) => `
+    .map((flavor) => {
+      const imageUrl = getCmsImage(flavor.imageKey, flavor.image);
+      return `
         <article class="flavor-card" style="background: linear-gradient(180deg, ${flavor.color}66 0%, #fff 58%);">
           <div class="flavor-card-media">
-            <img src="${flavor.image}" alt="Garrafa Kombú sabor ${flavor.name}" loading="lazy" />
+            <img src="${imageUrl}" alt="Garrafa Kombú sabor ${flavor.name}" loading="lazy" />
           </div>
           <div class="flavor-card-body">
             <span class="eyebrow">${flavor.profile}</span>
@@ -200,15 +209,15 @@ function renderFlavors(filter = "todos") {
                 <span class="material-symbols-outlined" aria-hidden="true">visibility</span>
                 Detalhes
               </button>
-              <a class="btn btn-outline" href="#onde-encontrar">
+              <a class="btn btn-outline" href="${getOfficialMapUrl()}" target="_blank" rel="noreferrer">
                 <span class="material-symbols-outlined" aria-hidden="true">location_on</span>
                 Onde encontrar
               </a>
             </div>
           </div>
         </article>
-      `,
-    )
+      `;
+    })
     .join("");
 }
 
@@ -228,7 +237,7 @@ function openFlavor(slug) {
   document.querySelector("#flavorModalBody").innerHTML = `
     <div class="flavor-detail">
       <div class="flavor-detail-media" style="background: ${flavor.color}66">
-        <img src="${flavor.image}" alt="Garrafa Kombú sabor ${flavor.name}" />
+        <img src="${getCmsImage(flavor.imageKey, flavor.image)}" alt="Garrafa Kombú sabor ${flavor.name}" />
       </div>
       <div>
         <p class="lead">${flavor.description}</p>
@@ -237,7 +246,7 @@ function openFlavor(slug) {
         <h3 style="margin-top: 24px">Ângulo funcional</h3>
         <p>${flavor.angle} A Kombú evita promessas médicas e posiciona o produto como parte de uma rotina equilibrada.</p>
         <div class="hero-actions">
-          <a class="btn btn-primary" href="#onde-encontrar">
+          <a class="btn btn-primary" href="${getOfficialMapUrl()}" target="_blank" rel="noreferrer">
             <span class="material-symbols-outlined" aria-hidden="true">near_me</span>
             Onde encontrar
           </a>
@@ -261,11 +270,13 @@ function closeFlavor() {
 }
 
 function partnerTypes() {
-  return ["todos", ...Array.from(new Set(partners.map((partner) => partner.type)))];
+  const visiblePartners = getPublicPartners();
+  return ["todos", ...Array.from(new Set(visiblePartners.map((partner) => partner.type)))];
 }
 
 function neighborhoods() {
-  return ["Todos os bairros", ...Array.from(new Set(partners.map((partner) => partner.neighborhood)))];
+  const visiblePartners = getPublicPartners();
+  return ["Todos os bairros", ...Array.from(new Set(visiblePartners.map((partner) => partner.neighborhood)))];
 }
 
 function renderPartnerFilters() {
@@ -288,7 +299,7 @@ function getPartnerFilterState() {
 
 function filteredPartners() {
   const { type, neighborhood } = getPartnerFilterState();
-  return partners.filter((partner) => {
+  return getPublicPartners().filter((partner) => {
     const typeMatch = type === "todos" || partner.type === type;
     const neighborhoodMatch = neighborhood === "Todos os bairros" || partner.neighborhood === neighborhood;
     return typeMatch && neighborhoodMatch;
@@ -335,7 +346,19 @@ function renderPartners() {
           `,
         )
         .join("")
-    : `<p class="empty-note">Nenhum parceiro encontrado com esses filtros.</p>`;
+    : `
+      <article class="partner-card">
+        <span class="eyebrow">Mapa oficial</span>
+        <h3>Veja onde comprar Kombú</h3>
+        <p>Os pontos de venda serão controlados pelo admin. Por enquanto, use o mapa oficial para comprar ou encontrar a Kombú.</p>
+        <div class="partner-actions">
+          <a class="btn btn-primary" href="${getOfficialMapUrl()}" target="_blank" rel="noreferrer">
+            <span class="material-symbols-outlined" aria-hidden="true">map</span>
+            Abrir mapa
+          </a>
+        </div>
+      </article>
+    `;
 }
 
 function setPartnerFilter(event) {
@@ -371,6 +394,7 @@ function handleHash() {
 }
 
 function bootPublicSite() {
+  applyPublicCms();
   renderBenefits();
   renderFlavors();
   renderPartnerFilters();

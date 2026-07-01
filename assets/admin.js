@@ -1,154 +1,87 @@
-const STORAGE_KEY = "kombuAdminStateV1";
+const STORAGE_KEY = "kombuAdminStateV2";
+const ADMIN_PASSWORD = "Rssb2009";
 
 const defaultState = {
-  ingredients: [
-    { id: "ing-tea", name: "Chá Verde Banchá Orgânico", category: "chá", supplier: "Ervas da Terra", purchaseUnit: "kg", costPerUnit: 85, stock: 15.5, min: 4, expires: "2026-10-20", location: "Prateleira A", status: "ativo" },
-    { id: "ing-sugar", name: "Açúcar Cristal Orgânico", category: "açúcar", supplier: "Doce Vida Agro", purchaseUnit: "kg", costPerUnit: 12.5, stock: 12, min: 20, expires: "2027-02-10", location: "Secos", status: "ativo" },
-    { id: "ing-ginger", name: "Gengibre Fresco", category: "especiaria", supplier: "Amazon Sabores", purchaseUnit: "kg", costPerUnit: 30, stock: 3.2, min: 5, expires: "2026-07-12", location: "Câmara fria", status: "ativo" },
-    { id: "ing-turmeric", name: "Cúrcuma", category: "especiaria", supplier: "Amazon Sabores", purchaseUnit: "kg", costPerUnit: 42, stock: 4.8, min: 2, expires: "2026-08-22", location: "Câmara fria", status: "ativo" },
-    { id: "ing-lemon", name: "Limão Tahiti", category: "fruta", supplier: "Feira Manaus Moderna", purchaseUnit: "kg", costPerUnit: 9, stock: 18, min: 8, expires: "2026-07-08", location: "Câmara fria", status: "ativo" },
-    { id: "ing-passion", name: "Polpa de Maracujá", category: "fruta", supplier: "Sítio Rio Negro", purchaseUnit: "kg", costPerUnit: 12, stock: 20, min: 10, expires: "2026-09-01", location: "Freezer", status: "ativo" },
-    { id: "ing-berries", name: "Mix de Frutas Vermelhas", category: "fruta", supplier: "Frutaria Norte", purchaseUnit: "kg", costPerUnit: 46, stock: 8.5, min: 6, expires: "2026-08-18", location: "Freezer", status: "ativo" },
-    { id: "ing-hibiscus", name: "Hibisco Seco", category: "flor", supplier: "Ervas da Terra", purchaseUnit: "kg", costPerUnit: 72, stock: 2, min: 4, expires: "2027-01-01", location: "Secos", status: "ativo" },
-    { id: "ing-apple", name: "Maçã Fuji", category: "fruta", supplier: "Frutaria Norte", purchaseUnit: "kg", costPerUnit: 8, stock: 25, min: 8, expires: "2026-07-14", location: "Câmara fria", status: "ativo" },
-    { id: "ing-cinnamon", name: "Canela em Pau", category: "especiaria", supplier: "Ervas da Terra", purchaseUnit: "kg", costPerUnit: 96, stock: 1.4, min: 0.8, expires: "2027-03-30", location: "Secos", status: "ativo" },
-    { id: "ing-butterfly", name: "Flor Borboleta Azul", category: "flor", supplier: "Jardim Comestível", purchaseUnit: "kg", costPerUnit: 180, stock: 1.1, min: 1, expires: "2026-12-05", location: "Secos", status: "ativo" },
-  ],
-  packaging: [
-    { id: "pkg-bottle", name: "Garrafa PET Transparente 500ml", supplier: "Vidros do Sul", unit: "un", costEach: 2.15, stock: 1240, min: 500, location: "Estoque seco" },
-    { id: "pkg-cap", name: "Tampa Branca Lacre", supplier: "Tampas Brasil", unit: "un", costEach: 0.45, stock: 2500, min: 800, location: "Estoque seco" },
-    { id: "pkg-label", name: "Rótulo Premium", supplier: "Print Manaus", unit: "un", costEach: 0.62, stock: 1800, min: 800, location: "Estoque seco" },
-    { id: "pkg-box", name: "Caixa de Transporte 12 unidades", supplier: "Embalagens Norte", unit: "un", costEach: 2.4, stock: 180, min: 70, location: "Estoque seco" },
-  ],
-  suppliers: [
-    { id: "sup-1", name: "Ervas da Terra", contact: "Luana", whatsapp: "(92) 98888-1010", email: "compras@ervasdaterra.com", city: "Manaus", categories: "chás, flores, especiarias", leadTime: "3 dias", status: "ativo" },
-    { id: "sup-2", name: "Amazon Sabores", contact: "Rafael", whatsapp: "(92) 97777-2323", email: "vendas@amazonsabores.com", city: "Manaus", categories: "frutas, extratos", leadTime: "2 dias", status: "ativo" },
-    { id: "sup-3", name: "Print Manaus", contact: "Bianca", whatsapp: "(92) 96666-4545", email: "print@manaus.com", city: "Manaus", categories: "rótulos", leadTime: "7 dias", status: "ativo" },
-  ],
-  partners: [
-    { id: "par-1", name: "Empório Amazônia Viva", type: "empório", neighborhood: "Adrianópolis", city: "Manaus", whatsapp: "(92) 99209-7165", instagram: "@emporioamazoniaviva", flavors: "Maracujá, Imunidade, Frutas Vermelhas", visible: true, terms: "15 dias", lastDelivery: "2026-06-22" },
-    { id: "par-2", name: "Solar Café Regional", type: "café", neighborhood: "Centro", city: "Manaus", whatsapp: "(92) 99209-7165", instagram: "@solarcaferegional", flavors: "Hibisco, Maçã e Canela", visible: true, terms: "à vista", lastDelivery: "2026-06-24" },
-    { id: "par-3", name: "Studio Corpo Leve", type: "academia", neighborhood: "Vieiralves", city: "Manaus", whatsapp: "(92) 99209-7165", instagram: "@studiocorpoleve", flavors: "Imunidade, Pêra", visible: true, terms: "7 dias", lastDelivery: "2026-06-25" },
-  ],
-  recipes: [
-    {
-      id: "rec-imunidade-v3",
-      flavor: "Imunidade",
-      version: "v3",
-      status: "ativa",
-      bottleMl: 500,
-      yieldBottles: 200,
-      wastePct: 4,
-      labor: 160,
-      utilities: 72,
-      other: 38,
-      wholesalePrice: 10.5,
-      retailPrice: 20,
-      ingredients: [
-        { ingredientId: "ing-tea", qty: 0.9, unit: "kg" },
-        { ingredientId: "ing-sugar", qty: 6, unit: "kg" },
-        { ingredientId: "ing-lemon", qty: 8, unit: "kg" },
-        { ingredientId: "ing-ginger", qty: 2, unit: "kg" },
-        { ingredientId: "ing-turmeric", qty: 0.8, unit: "kg" },
-      ],
-      packaging: [
-        { itemId: "pkg-bottle", qty: 1 },
-        { itemId: "pkg-cap", qty: 1 },
-        { itemId: "pkg-label", qty: 1 },
-        { itemId: "pkg-box", qty: 0.084 },
-      ],
-    },
-    {
-      id: "rec-maracuja-v2",
-      flavor: "Maracujá",
-      version: "v2",
-      status: "ativa",
-      bottleMl: 500,
-      yieldBottles: 200,
-      wastePct: 3,
-      labor: 150,
-      utilities: 68,
-      other: 35,
-      wholesalePrice: 10,
-      retailPrice: 20,
-      ingredients: [
-        { ingredientId: "ing-tea", qty: 0.85, unit: "kg" },
-        { ingredientId: "ing-sugar", qty: 6, unit: "kg" },
-        { ingredientId: "ing-passion", qty: 10, unit: "kg" },
-      ],
-      packaging: [
-        { itemId: "pkg-bottle", qty: 1 },
-        { itemId: "pkg-cap", qty: 1 },
-        { itemId: "pkg-label", qty: 1 },
-        { itemId: "pkg-box", qty: 0.084 },
-      ],
-    },
-    {
-      id: "rec-frutas-v1",
-      flavor: "Frutas Vermelhas",
-      version: "v1",
-      status: "ativa",
-      bottleMl: 500,
-      yieldBottles: 180,
-      wastePct: 5,
-      labor: 155,
-      utilities: 70,
-      other: 40,
-      wholesalePrice: 11,
-      retailPrice: 20,
-      ingredients: [
-        { ingredientId: "ing-tea", qty: 0.85, unit: "kg" },
-        { ingredientId: "ing-sugar", qty: 5.8, unit: "kg" },
-        { ingredientId: "ing-berries", qty: 8.5, unit: "kg" },
-      ],
-      packaging: [
-        { itemId: "pkg-bottle", qty: 1 },
-        { itemId: "pkg-cap", qty: 1 },
-        { itemId: "pkg-label", qty: 1 },
-        { itemId: "pkg-box", qty: 0.084 },
-      ],
-    },
-  ],
-  batches: [
-    { id: "bat-1", code: "KMB-2606-IMU", flavor: "Imunidade", recipeId: "rec-imunidade-v3", date: "2026-06-18", responsible: "Amanda", expected: 200, actual: 194, expiry: "2026-09-18", status: "aprovado" },
-    { id: "bat-2", code: "KMB-2606-MAR", flavor: "Maracujá", recipeId: "rec-maracuja-v2", date: "2026-06-20", responsible: "Lucas", expected: 200, actual: 203, expiry: "2026-09-20", status: "aprovado" },
-    { id: "bat-3", code: "KMB-2606-FRV", flavor: "Frutas Vermelhas", recipeId: "rec-frutas-v1", date: "2026-06-24", responsible: "Amanda", expected: 180, actual: 172, expiry: "2026-09-24", status: "bottled" },
-    { id: "bat-4", code: "KMB-2607-HIB", flavor: "Hibisco", recipeId: "rec-frutas-v1", date: "2026-07-02", responsible: "Equipe", expected: 160, actual: 0, expiry: "2026-10-02", status: "planejado" },
-  ],
-  sales: [
-    { id: "sale-1", date: "2026-06-22", partner: "Empório Amazônia Viva", channel: "revenda", flavor: "Imunidade", batchCode: "KMB-2606-IMU", qty: 60, unitPrice: 10.5, discount: 0, delivery: 18 },
-    { id: "sale-2", date: "2026-06-24", partner: "Solar Café Regional", channel: "parceiro", flavor: "Maracujá", batchCode: "KMB-2606-MAR", qty: 48, unitPrice: 11, discount: 0, delivery: 12 },
-    { id: "sale-3", date: "2026-06-25", partner: "Studio Corpo Leve", channel: "revenda", flavor: "Imunidade", batchCode: "KMB-2606-IMU", qty: 40, unitPrice: 10.5, discount: 20, delivery: 10 },
-    { id: "sale-4", date: "2026-06-26", partner: "Evento Wellness", channel: "evento", flavor: "Frutas Vermelhas", batchCode: "KMB-2606-FRV", qty: 75, unitPrice: 14, discount: 0, delivery: 25 },
-  ],
-  purchases: [
-    { id: "pur-1", date: "2026-06-15", supplier: "Amazon Sabores", item: "Gengibre Fresco", qty: 6, unit: "kg", total: 180, method: "Pix", buyer: "Amanda" },
-    { id: "pur-2", date: "2026-06-16", supplier: "Print Manaus", item: "Rótulo Premium", qty: 1000, unit: "un", total: 620, method: "Boleto", buyer: "Lucas" },
-    { id: "pur-3", date: "2026-06-20", supplier: "Ervas da Terra", item: "Hibisco Seco", qty: 2, unit: "kg", total: 144, method: "Pix", buyer: "Amanda" },
-  ],
-  expenses: [
-    { id: "exp-1", date: "2026-06-02", category: "Marketing", description: "Fotos de produto", amount: 850, method: "Pix", recurring: false },
-    { id: "exp-2", date: "2026-06-05", category: "Utilities", description: "Água e energia produção", amount: 420, method: "Débito", recurring: true },
-    { id: "exp-3", date: "2026-06-18", category: "Delivery/logística", description: "Entregas parceiros", amount: 260, method: "Pix", recurring: false },
-  ],
+  ingredients: [],
+  packaging: [],
+  suppliers: [],
+  partners: [],
+  recipes: [],
+  batches: [],
+  sales: [],
+  purchases: [],
+  expenses: [],
   cms: {
     headline: "Refrigerante saudável, natural e cheio de sabor.",
     subheadline: "Feita com ingredientes reais, fermentação natural e uma proposta simples: cuidar da saúde sem abrir mão do sabor.",
     whatsapp: "(92) 99209-7165",
-    announcement: "Novos pontos de venda em Manaus toda semana.",
-    flavors: [
-      { name: "Maracujá", visible: true, featured: true },
-      { name: "Imunidade", visible: true, featured: true },
-      { name: "Frutas Vermelhas", visible: true, featured: true },
-      { name: "Hibisco com Anis", visible: true, featured: false },
-      { name: "Lavanda com Limão", visible: false, featured: false },
-      { name: "Goiaba", visible: false, featured: false },
+    announcement: "",
+    officialMapUrl: "https://www.google.com/maps/d/u/0/edit?mid=1Zn4OECfeuJkhDkCj6noQKZDeLgOUbn8",
+    images: [
+      {
+        key: "heroBottle",
+        label: "Hero - garrafa principal",
+        recommended: "760 x 1367 px",
+        url: "https://static.wixstatic.com/media/716adf_5b0b2489ee914e53b15b4a590915d974~mv2.png/v1/crop/x_6,y_0,w_1068,h_1920/fill/w_760,h_1367,al_c,q_90,usm_0.66_1.00_0.01,enc_auto/4_edited.png",
+      },
+      {
+        key: "maracuja",
+        label: "Sabor - Maracujá",
+        recommended: "520 x 936 px",
+        url: "https://static.wixstatic.com/media/716adf_5b0b2489ee914e53b15b4a590915d974~mv2.png/v1/crop/x_6,y_0,w_1068,h_1920/fill/w_520,h_936,al_c,q_90,usm_0.66_1.00_0.01,enc_auto/4_edited.png",
+      },
+      {
+        key: "imunidade",
+        label: "Sabor - Imunidade",
+        recommended: "520 x 1071 px",
+        url: "https://static.wixstatic.com/media/716adf_c9ac20cf991c4796b8be299c33e22abc~mv2.png/v1/crop/x_62,y_0,w_931,h_1920/fill/w_520,h_1071,al_c,q_90,usm_0.66_1.00_0.01,enc_avif,quality_auto/2.png",
+      },
+      {
+        key: "macaCanela",
+        label: "Sabor - Maçã e Canela",
+        recommended: "520 x 693 px",
+        url: "https://static.wixstatic.com/media/716adf_673e38f87b0e41bd9972f7b8a5fda104~mv2.png/v1/fill/w_520,h_693,al_c,q_90,usm_0.66_1.00_0.01,enc_avif,quality_auto/IMG_6619_edited.png",
+      },
+      {
+        key: "peraAlecrim",
+        label: "Sabor - Pêra e Alecrim",
+        recommended: "520 x 936 px",
+        url: "https://static.wixstatic.com/media/716adf_2b695c9743c344a2a91acf67ed69ff5f~mv2.png/v1/fill/w_520,h_936,al_c,q_90,usm_0.66_1.00_0.01,enc_auto/6_edited_edited.png",
+      },
+      {
+        key: "frutasVermelhas",
+        label: "Sabor - Frutas Vermelhas",
+        recommended: "520 x 936 px",
+        url: "https://static.wixstatic.com/media/716adf_5c8cd66d9eb842a0940b212d250fd255~mv2.png/v1/fill/w_520,h_936,al_c,q_90,usm_0.66_1.00_0.01,enc_auto/IMG_2897_PNG.png",
+      },
+      {
+        key: "mirtilo",
+        label: "Sabor - Mirtilo e Flor Borboleta Azul",
+        recommended: "520 x 936 px",
+        url: "https://static.wixstatic.com/media/716adf_8da298261b9a4acd8e9e2264491cee1d~mv2.png/v1/fill/w_520,h_936,al_c,q_90,usm_0.66_1.00_0.01,enc_auto/7.png",
+      },
+      {
+        key: "rosasCardamomo",
+        label: "Sabor - Rosas e Cardamomo",
+        recommended: "520 x 936 px",
+        url: "https://static.wixstatic.com/media/716adf_4d2ae2c8e77d48ea8aa11ceffef05be4~mv2.png/v1/fill/w_520,h_936,al_c,q_90,usm_0.66_1.00_0.01,enc_auto/3_edited.png",
+      },
+      {
+        key: "hibisco",
+        label: "Sabor - Hibisco com Anis Estrelado",
+        recommended: "520 x 936 px",
+        url: "https://static.wixstatic.com/media/716adf_4d2ae2c8e77d48ea8aa11ceffef05be4~mv2.png/v1/fill/w_520,h_936,al_c,q_90,usm_0.66_1.00_0.01,enc_auto/3_edited.png",
+      },
+      {
+        key: "ogImage",
+        label: "Imagem social/SEO",
+        recommended: "1200 x 630 px",
+        url: "https://static.wixstatic.com/media/716adf_5b0b2489ee914e53b15b4a590915d974~mv2.png/v1/crop/x_6,y_0,w_1068,h_1920/fill/w_1200,h_630,al_c,q_90,enc_auto/4_edited.png",
+      },
     ],
+    flavors: [],
   },
-  audit: [
-    { at: "2026-06-26T10:22:00", user: "Owner / Admin", action: "Receita Imunidade v3 atualizada", detail: "Perda ajustada para 4%." },
-    { at: "2026-06-26T14:10:00", user: "Produção", action: "Lote KMB-2606-FRV engarrafado", detail: "Rendimento real de 172 garrafas." },
-  ],
+  audit: [],
 };
 
 let state = loadState();
@@ -156,6 +89,53 @@ let currentModule = "dashboard";
 let globalSearch = "";
 let activeRecipeId = state.recipes[0]?.id || "";
 let currentRole = "Owner / Admin";
+
+function isAuthenticated() {
+  return sessionStorage.getItem("kombuAdminAuthenticated") === "true";
+}
+
+function unlockAdmin() {
+  document.querySelector("#loginScreen")?.classList.add("is-hidden");
+  const shell = document.querySelector("#adminShell");
+  shell?.classList.remove("is-locked");
+  shell?.removeAttribute("aria-hidden");
+}
+
+function lockAdmin() {
+  sessionStorage.removeItem("kombuAdminAuthenticated");
+  document.querySelector("#loginScreen")?.classList.remove("is-hidden");
+  const shell = document.querySelector("#adminShell");
+  shell?.classList.add("is-locked");
+  shell?.setAttribute("aria-hidden", "true");
+  document.querySelector("#adminPassword")?.focus();
+}
+
+function bindAuth() {
+  const loginForm = document.querySelector("#loginForm");
+  const passwordInput = document.querySelector("#adminPassword");
+  const loginError = document.querySelector("#loginError");
+  const togglePassword = document.querySelector("#togglePassword");
+  loginForm?.addEventListener("submit", (event) => {
+    event.preventDefault();
+    if (passwordInput.value === ADMIN_PASSWORD) {
+      sessionStorage.setItem("kombuAdminAuthenticated", "true");
+      passwordInput.value = "";
+      loginError?.classList.add("hidden");
+      unlockAdmin();
+      render();
+      return;
+    }
+    loginError?.classList.remove("hidden");
+    passwordInput.select();
+  });
+  togglePassword?.addEventListener("click", () => {
+    const isPassword = passwordInput.type === "password";
+    passwordInput.type = isPassword ? "text" : "password";
+    togglePassword.setAttribute("aria-label", isPassword ? "Ocultar senha" : "Mostrar senha");
+    togglePassword.querySelector(".material-symbols-outlined").textContent = isPassword ? "visibility_off" : "visibility";
+  });
+  document.querySelector("#logoutButton")?.addEventListener("click", lockAdmin);
+}
 
 const brl = (value) =>
   new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(Number(value || 0));
@@ -171,9 +151,25 @@ function clone(value) {
   return JSON.parse(JSON.stringify(value));
 }
 
+function normalizeState(savedState) {
+  const base = clone(defaultState);
+  const saved = savedState || {};
+  const merged = { ...base, ...saved };
+  merged.cms = {
+    ...base.cms,
+    ...(saved.cms || {}),
+    images: saved.cms?.images?.length ? saved.cms.images : base.cms.images,
+    flavors: saved.cms?.flavors || base.cms.flavors,
+  };
+  ["ingredients", "packaging", "suppliers", "partners", "recipes", "batches", "sales", "purchases", "expenses", "audit"].forEach((key) => {
+    merged[key] = Array.isArray(saved[key]) ? saved[key] : base[key];
+  });
+  return merged;
+}
+
 function loadState() {
   try {
-    return JSON.parse(localStorage.getItem(STORAGE_KEY)) || clone(defaultState);
+    return normalizeState(JSON.parse(localStorage.getItem(STORAGE_KEY)));
   } catch {
     return clone(defaultState);
   }
@@ -223,6 +219,20 @@ function packagingLineCost(line, yieldBottles = 1) {
 }
 
 function recipeCost(recipe) {
+  if (!recipe) {
+    return {
+      ingredientCost: 0,
+      packagingCost: 0,
+      direct: 0,
+      total: 0,
+      costPerBottle: 0,
+      costPerLiter: 0,
+      wholesaleProfit: 0,
+      wholesaleMargin: 0,
+      retailProfit: 0,
+      retailMargin: 0,
+    };
+  }
   const ingredientCost = recipe.ingredients.reduce((sum, line) => sum + ingredientLineCost(line), 0);
   const packagingCost = recipe.packaging.reduce((sum, line) => sum + packagingLineCost(line, recipe.yieldBottles), 0);
   const direct = ingredientCost + packagingCost + Number(recipe.labor || 0) + Number(recipe.utilities || 0) + Number(recipe.other || 0);
@@ -247,6 +257,7 @@ function recipeCost(recipe) {
 
 function batchCost(batch) {
   const recipe = byId("recipes", batch.recipeId) || state.recipes.find((item) => item.flavor === batch.flavor) || state.recipes[0];
+  if (!recipe) return { ...recipeCost(null), batchTotal: 0, batchCostPerBottle: 0 };
   const cost = recipeCost(recipe);
   const actual = Number(batch.actual || batch.expected || recipe.yieldBottles || 1);
   const total = cost.costPerBottle * actual;
@@ -290,6 +301,27 @@ function totals() {
     sold,
     avgCost: state.recipes.reduce((sum, recipe) => sum + recipeCost(recipe).costPerBottle, 0) / Math.max(1, state.recipes.length),
   };
+}
+
+function monthlySalesRows(limit = 6) {
+  const rowsByMonth = state.sales.reduce((acc, sale) => {
+    if (!sale.date) return acc;
+    const monthKey = sale.date.slice(0, 7);
+    acc[monthKey] = acc[monthKey] || { key: monthKey, revenue: 0, qty: 0 };
+    acc[monthKey].revenue += Number(sale.qty || 0) * Number(sale.unitPrice || 0) - Number(sale.discount || 0);
+    acc[monthKey].qty += Number(sale.qty || 0);
+    return acc;
+  }, {});
+  return Object.values(rowsByMonth)
+    .sort((a, b) => a.key.localeCompare(b.key))
+    .slice(-limit)
+    .map((row) => {
+      const date = new Date(`${row.key}-01T00:00:00`);
+      return {
+        ...row,
+        label: date.toLocaleDateString("pt-BR", { month: "short", year: "2-digit" }).replace(".", ""),
+      };
+    });
 }
 
 function lowStockIngredients() {
@@ -388,10 +420,10 @@ function renderDashboard() {
       <article class="admin-card chart-card">
         <h3>Estoque por sabor</h3>
         <div class="bar-chart">
-          ${flavorRows
+          ${flavorRows.length ? flavorRows
             .slice(0, 6)
             .map(([flavor, qty]) => `<div class="bar" title="${flavor}"><i style="height:${Math.max(8, Math.min(100, qty / 2.4))}%"></i><span>${shortFlavor(flavor)}</span></div>`)
-            .join("")}
+            .join("") : `<p class="empty-note">Crie lotes aprovados para visualizar estoque por sabor.</p>`}
         </div>
       </article>
     </section>
@@ -399,7 +431,7 @@ function renderDashboard() {
       <article class="admin-card">
         <h3>Parceiros com maior volume</h3>
         <div class="stack-list">
-          ${partnerRows.map(([partner, qty]) => `<div class="report-row"><strong>${partner}</strong><span>${number(qty)} garrafas vendidas</span></div>`).join("")}
+          ${partnerRows.length ? partnerRows.map(([partner, qty]) => `<div class="report-row"><strong>${partner}</strong><span>${number(qty)} garrafas vendidas</span></div>`).join("") : `<p class="empty-note">Registre vendas para ver parceiros por volume.</p>`}
         </div>
       </article>
       <article class="admin-card">
@@ -418,12 +450,15 @@ function statusClass(value, type = "stock") {
 }
 
 function table(headers, rows, minWidth = 780) {
+  const bodyRows = rows.length
+    ? rows.join("")
+    : `<tr><td colspan="${headers.length}"><p class="empty-note">Nenhum registro ainda. Use os botões acima para começar.</p></td></tr>`;
   return `
     <article class="admin-card table-card">
       <div class="table-scroll">
         <table class="data-table" style="min-width:${minWidth}px">
           <thead><tr>${headers.map((header) => `<th class="${header.num ? "num" : ""}">${header.label}</th>`).join("")}</tr></thead>
-          <tbody>${rows.join("")}</tbody>
+          <tbody>${bodyRows}</tbody>
         </table>
       </div>
     </article>
@@ -581,6 +616,19 @@ function renderRecipes() {
 
 function renderCosts() {
   const recipe = state.recipes.find((item) => item.id === activeRecipeId) || state.recipes[0];
+  if (!recipe) {
+    return `
+      ${pageHead(
+        "Custo por Garrafa",
+        "Crie uma receita para o sistema calcular custo por lote, custo por garrafa e margem automaticamente.",
+        actionButton("new-recipe", "Criar primeira receita", "add"),
+      )}
+      <article class="admin-card">
+        <h3>Nenhuma receita cadastrada</h3>
+        <p class="lead" style="font-size:1rem">A calculadora depende de uma receita com rendimento, ingredientes, custos de compra, embalagens e perdas. Ao criar a receita, novos ingredientes e embalagens informados serão adicionados automaticamente aos respectivos módulos.</p>
+      </article>
+    `;
+  }
   activeRecipeId = recipe.id;
   const cost = recipeCost(recipe);
   const ingredientRows = recipe.ingredients
@@ -900,6 +948,8 @@ function renderExpenses() {
 
 function renderReports() {
   const total = totals();
+  const monthlyRows = monthlySalesRows();
+  const monthlyMax = Math.max(1, ...monthlyRows.map((row) => row.revenue));
   const byFlavor = state.sales.reduce((acc, sale) => {
     acc[sale.flavor] = acc[sale.flavor] || { qty: 0, revenue: 0, profit: 0 };
     const batch = state.batches.find((item) => item.code === sale.batchCode);
@@ -924,14 +974,14 @@ function renderReports() {
     </section>
     <section class="admin-grid">
       <article class="admin-card chart-card">
-        <h3>Vendas dos últimos meses</h3>
+        <h3>Vendas por mês</h3>
         <div class="bar-chart">
-          ${["Jan", "Fev", "Mar", "Abr", "Mai", "Jun"].map((month, index) => `<div class="bar"><i style="height:${[34, 48, 56, 72, 84, 96][index]}%"></i><span>${month}</span></div>`).join("")}
+          ${monthlyRows.length ? monthlyRows.map((row) => `<div class="bar" title="${row.label}: ${brl(row.revenue)}"><i style="height:${Math.max(8, (row.revenue / monthlyMax) * 100)}%"></i><span>${row.label}</span></div>`).join("") : `<p class="empty-note">Registre vendas para visualizar receita mensal.</p>`}
         </div>
       </article>
       <article class="admin-card">
         <h3>Lucro por sabor</h3>
-        <div class="stack-list">${reportRows}</div>
+        <div class="stack-list">${reportRows || `<p class="empty-note">Registre vendas para visualizar lucro por sabor.</p>`}</div>
       </article>
     </section>
     <section class="admin-grid">
@@ -949,6 +999,21 @@ function renderReports() {
 }
 
 function renderCMS() {
+  const imageRows = (state.cms.images || []).map(
+    (image, index) => `
+      <article class="image-control">
+        <div class="image-preview">
+          <img src="${image.url}" alt="${image.label}" loading="lazy">
+        </div>
+        <div class="image-fields">
+          <input type="hidden" data-cms-image="${index}" data-field="key" value="${image.key}">
+          <label class="field"><span>Imagem</span><input data-cms-image="${index}" data-field="label" value="${image.label}"></label>
+          <label class="field"><span>Tamanho perfeito</span><input data-cms-image="${index}" data-field="recommended" value="${image.recommended}" readonly></label>
+          <label class="field field-full"><span>URL da imagem</span><input data-cms-image="${index}" data-field="url" value="${image.url}"></label>
+        </div>
+      </article>
+    `,
+  ).join("");
   return `
     ${pageHead("CMS Público", "Controle headlines, sabores, parceiros, SEO, WhatsApp e anúncios do site público.", actionButton("save-cms", "Salvar CMS", "save"))}
     <section class="admin-grid">
@@ -957,27 +1022,19 @@ function renderCMS() {
           <label class="field field-full"><span>Headline da home</span><input name="headline" value="${state.cms.headline}"></label>
           <label class="field field-full"><span>Subheadline</span><textarea name="subheadline">${state.cms.subheadline}</textarea></label>
           <label class="field"><span>WhatsApp</span><input name="whatsapp" value="${state.cms.whatsapp}"></label>
+          <label class="field field-full"><span>Link oficial comprar / onde encontrar</span><input name="officialMapUrl" value="${state.cms.officialMapUrl || ""}"></label>
           <label class="field"><span>Anúncio</span><input name="announcement" value="${state.cms.announcement}"></label>
         </div>
       </form>
       <article class="admin-card">
-        <h3>Sabores publicados</h3>
-        <div class="stack-list">
-          ${state.cms.flavors
-            .map(
-              (flavor, index) => `
-                <label class="stock-row">
-                  <strong>${flavor.name}</strong>
-                  <span>
-                    <input type="checkbox" ${flavor.visible ? "checked" : ""} data-cms-flavor="${index}" data-field="visible"> Visível no site
-                    <input type="checkbox" ${flavor.featured ? "checked" : ""} data-cms-flavor="${index}" data-field="featured"> Destaque
-                  </span>
-                </label>
-              `,
-            )
-            .join("")}
-        </div>
+        <h3>Como publicar alterações</h3>
+        <p class="lead" style="font-size:1rem">Neste protótipo estático, as alterações ficam no navegador via localStorage. Para que imagens e textos mudem para todos os visitantes, precisamos ligar o site a um backend, como Supabase.</p>
       </article>
+    </section>
+    <section class="admin-card" style="margin-top:16px">
+      <h3>Imagens do site público</h3>
+      <p class="lead" style="font-size:1rem">Cole uma URL nova para trocar rapidamente a imagem. O campo "tamanho perfeito" mostra a dimensão recomendada em pixels para evitar corte estranho no layout.</p>
+      <div class="image-control-grid">${imageRows}</div>
     </section>
     <section class="admin-card" style="margin-top:16px">
       <h3>SEO planejado</h3>
@@ -996,7 +1053,7 @@ function renderSchema() {
     "Reports", "CMS Pages", "Media Library", "Audit Logs",
   ];
   return `
-    ${pageHead("Arquitetura e Banco de Dados", "Estrutura sugerida para evoluir este protótipo estático para um sistema seguro com autenticação, roles e histórico.", actionButton("reset-demo", "Resetar demo", "restart_alt", "btn-danger", "schema"))}
+    ${pageHead("Arquitetura e Banco de Dados", "Estrutura sugerida para evoluir este protótipo estático para um sistema seguro com autenticação, roles e histórico.", actionButton("reset-demo", "Limpar dados", "restart_alt", "btn-danger", "schema"))}
     <section class="admin-card">
       <h3>Entidades mínimas</h3>
       <div class="schema-grid">
@@ -1094,6 +1151,15 @@ function newIngredientForm() {
 }
 
 function newPurchaseForm() {
+  if (!state.ingredients.length) {
+    openModal(
+      "Cadastre um ingrediente primeiro",
+      "Compras",
+      `<p class="empty-note">Para registrar uma compra e atualizar estoque, primeiro crie um ingrediente. Você também pode criar ingredientes automaticamente ao criar uma receita.</p>
+       <button class="btn btn-primary" type="button" data-action="new-ingredient"><span class="material-symbols-outlined" aria-hidden="true">add</span>Novo ingrediente</button>`,
+    );
+    return;
+  }
   openModal(
     "Registrar compra",
     "Compras",
@@ -1129,6 +1195,15 @@ function newPurchaseForm() {
 
 function newSaleForm() {
   const stockRows = finishedStockRows().filter((row) => row.stock > 0);
+  if (!stockRows.length) {
+    openModal(
+      "Sem estoque disponível",
+      "Vendas",
+      `<p class="empty-note">Para vender, crie uma receita, registre um lote produzido/aprovado e só então lance a venda. Assim o sistema calcula COGS e margem corretamente.</p>
+       <button class="btn btn-primary" type="button" data-action="new-batch"><span class="material-symbols-outlined" aria-hidden="true">factory</span>Criar lote</button>`,
+    );
+    return;
+  }
   openModal(
     "Nova venda",
     "Vendas",
@@ -1136,7 +1211,7 @@ function newSaleForm() {
       <form id="saleForm">
         <div class="input-grid">
           <label class="field"><span>Data</span><input name="date" type="date" value="${todayIso()}" required></label>
-          <label class="field"><span>Parceiro / cliente</span><select name="partner">${state.partners.map((item) => `<option>${item.name}</option>`).join("")}<option>Cliente direto</option><option>Evento Wellness</option></select></label>
+          <label class="field"><span>Parceiro / cliente</span><select name="partner">${state.partners.map((item) => `<option>${item.name}</option>`).join("")}<option>Cliente direto</option><option>Venda avulsa</option></select></label>
           <label class="field"><span>Lote</span><select name="batchCode">${stockRows.map((row) => `<option value="${row.code}">${row.code} - ${row.flavor} (${row.stock} un)</option>`).join("")}</select></label>
           <label class="field"><span>Quantidade</span><input name="qty" type="number" min="1" required></label>
           <label class="field"><span>Preço unitário</span><input name="unitPrice" type="number" step="0.01" value="10.50" required></label>
@@ -1171,6 +1246,15 @@ function newSaleForm() {
 }
 
 function newBatchForm() {
+  if (!state.recipes.length) {
+    openModal(
+      "Crie uma receita primeiro",
+      "Produção",
+      `<p class="empty-note">Para criar um lote, primeiro cadastre uma receita/fórmula. Assim o lote já nasce com custo histórico calculado.</p>
+       <button class="btn btn-primary" type="button" data-action="new-recipe"><span class="material-symbols-outlined" aria-hidden="true">add</span>Criar receita</button>`,
+    );
+    return;
+  }
   openModal(
     "Novo lote",
     "Produção",
@@ -1209,6 +1293,225 @@ function newBatchForm() {
     addAudit("Lote criado", `${data.code} usando ${recipe?.flavor || "receita"}`);
     closeModal();
     render();
+  });
+}
+
+function unitOptions(selected = "kg") {
+  return ["kg", "g", "l", "ml", "un"].map((unit) => `<option value="${unit}" ${unit === selected ? "selected" : ""}>${unit}</option>`).join("");
+}
+
+function recipeIngredientRowTemplate() {
+  return `
+    <div class="builder-row recipe-ingredient-row">
+      <label class="field"><span>Ingrediente</span><input data-field="name" required placeholder="Ex: gengibre"></label>
+      <label class="field"><span>Categoria</span><input data-field="category" placeholder="fruta, chá, especiaria..."></label>
+      <label class="field"><span>Fornecedor</span><input data-field="supplier"></label>
+      <label class="field"><span>Un. compra</span><select data-field="purchaseUnit">${unitOptions("kg")}</select></label>
+      <label class="field"><span>Custo/un.</span><input data-field="costPerUnit" type="number" min="0" step="0.01" required></label>
+      <label class="field"><span>Estoque inicial</span><input data-field="stock" type="number" min="0" step="0.01" placeholder="0"></label>
+      <label class="field"><span>Estoque mínimo</span><input data-field="min" type="number" min="0" step="0.01" placeholder="0"></label>
+      <label class="field"><span>Qtd. usada no lote</span><input data-field="usageQty" type="number" min="0" step="0.001" required></label>
+      <label class="field"><span>Un. uso</span><select data-field="usageUnit">${unitOptions("g")}</select></label>
+      <button class="icon-btn" type="button" data-remove-builder-row aria-label="Remover ingrediente">
+        <span class="material-symbols-outlined" aria-hidden="true">delete</span>
+      </button>
+    </div>
+  `;
+}
+
+function recipePackagingRowTemplate() {
+  return `
+    <div class="builder-row recipe-packaging-row">
+      <label class="field"><span>Embalagem/material</span><input data-field="name" required placeholder="Ex: garrafa 500ml"></label>
+      <label class="field"><span>Fornecedor</span><input data-field="supplier"></label>
+      <label class="field"><span>Custo por unidade</span><input data-field="costEach" type="number" min="0" step="0.01" required></label>
+      <label class="field"><span>Estoque inicial</span><input data-field="stock" type="number" min="0" step="1" placeholder="0"></label>
+      <label class="field"><span>Estoque mínimo</span><input data-field="min" type="number" min="0" step="1" placeholder="0"></label>
+      <label class="field"><span>Qtd. por garrafa</span><input data-field="qtyPerBottle" type="number" min="0" step="0.001" value="1" required></label>
+      <button class="icon-btn" type="button" data-remove-builder-row aria-label="Remover embalagem">
+        <span class="material-symbols-outlined" aria-hidden="true">delete</span>
+      </button>
+    </div>
+  `;
+}
+
+function readBuilderRow(row) {
+  return Array.from(row.querySelectorAll("[data-field]")).reduce((data, input) => {
+    data[input.dataset.field] = input.value.trim();
+    return data;
+  }, {});
+}
+
+function findOrCreateIngredient(data) {
+  const normalizedName = data.name.toLowerCase();
+  let ingredient = state.ingredients.find((item) => item.name.toLowerCase() === normalizedName);
+  if (!ingredient) {
+    ingredient = {
+      id: id("ing"),
+      name: data.name,
+      category: data.category || "outro",
+      supplier: data.supplier || "",
+      purchaseUnit: data.purchaseUnit || "kg",
+      costPerUnit: Number(data.costPerUnit || 0),
+      stock: Number(data.stock || 0),
+      min: Number(data.min || 0),
+      expires: "",
+      location: "",
+      status: "ativo",
+    };
+    state.ingredients.push(ingredient);
+    return ingredient;
+  }
+  ingredient.category = data.category || ingredient.category;
+  ingredient.supplier = data.supplier || ingredient.supplier;
+  ingredient.purchaseUnit = data.purchaseUnit || ingredient.purchaseUnit;
+  ingredient.costPerUnit = Number(data.costPerUnit || ingredient.costPerUnit || 0);
+  if (data.stock !== "") ingredient.stock = Number(data.stock);
+  if (data.min !== "") ingredient.min = Number(data.min);
+  return ingredient;
+}
+
+function findOrCreatePackaging(data) {
+  const normalizedName = data.name.toLowerCase();
+  let material = state.packaging.find((item) => item.name.toLowerCase() === normalizedName);
+  if (!material) {
+    material = {
+      id: id("pkg"),
+      name: data.name,
+      supplier: data.supplier || "",
+      unit: "un",
+      costEach: Number(data.costEach || 0),
+      stock: Number(data.stock || 0),
+      min: Number(data.min || 0),
+      location: "",
+    };
+    state.packaging.push(material);
+    return material;
+  }
+  material.supplier = data.supplier || material.supplier;
+  material.costEach = Number(data.costEach || material.costEach || 0);
+  if (data.stock !== "") material.stock = Number(data.stock);
+  if (data.min !== "") material.min = Number(data.min);
+  return material;
+}
+
+function newRecipeForm() {
+  openModal(
+    "Nova receita",
+    "Receitas / custos",
+    `
+      <form id="recipeForm">
+        <div class="input-grid">
+          <label class="field"><span>Sabor</span><input name="flavor" required placeholder="Ex: Maracujá"></label>
+          <label class="field"><span>Versão</span><input name="version" value="v1" required></label>
+          <label class="field"><span>Tamanho da garrafa (ml)</span><input name="bottleMl" type="number" min="1" value="500" required></label>
+          <label class="field"><span>Rendimento esperado (garrafas)</span><input name="yieldBottles" type="number" min="1" value="1" required></label>
+          <label class="field"><span>Perda / quebra (%)</span><input name="wastePct" type="number" min="0" step="0.01" value="0"></label>
+          <label class="field"><span>Preço atacado desejado</span><input name="wholesalePrice" type="number" min="0" step="0.01" value="0"></label>
+          <label class="field"><span>Preço varejo desejado</span><input name="retailPrice" type="number" min="0" step="0.01" value="0"></label>
+          <label class="field"><span>Mão de obra por lote</span><input name="labor" type="number" min="0" step="0.01" value="0"></label>
+          <label class="field"><span>Água/luz/gás por lote</span><input name="utilities" type="number" min="0" step="0.01" value="0"></label>
+          <label class="field"><span>Outros custos variáveis</span><input name="other" type="number" min="0" step="0.01" value="0"></label>
+        </div>
+
+        <div class="builder-section">
+          <div class="table-toolbar">
+            <div>
+              <h3>Ingredientes da receita</h3>
+              <p>Se o ingrediente não existir, ele será criado automaticamente no estoque.</p>
+            </div>
+            <button class="btn btn-outline" type="button" data-add-ingredient-row>
+              <span class="material-symbols-outlined" aria-hidden="true">add</span>
+              Ingrediente
+            </button>
+          </div>
+          <div id="recipeIngredientRows">${recipeIngredientRowTemplate()}</div>
+        </div>
+
+        <div class="builder-section">
+          <div class="table-toolbar">
+            <div>
+              <h3>Embalagens e materiais</h3>
+              <p>Garrafa, tampa, rótulo, caixa, lacre ou qualquer material por garrafa.</p>
+            </div>
+            <button class="btn btn-outline" type="button" data-add-packaging-row>
+              <span class="material-symbols-outlined" aria-hidden="true">add</span>
+              Material
+            </button>
+          </div>
+          <div id="recipePackagingRows">${recipePackagingRowTemplate()}</div>
+        </div>
+
+        <button class="btn btn-primary" type="submit">
+          <span class="material-symbols-outlined" aria-hidden="true">calculate</span>
+          Salvar receita e calcular garrafa
+        </button>
+      </form>
+    `,
+  );
+  bindRecipeBuilder();
+}
+
+function bindRecipeBuilder() {
+  const form = document.querySelector("#recipeForm");
+  form.querySelector("[data-add-ingredient-row]").addEventListener("click", () => {
+    document.querySelector("#recipeIngredientRows").insertAdjacentHTML("beforeend", recipeIngredientRowTemplate());
+  });
+  form.querySelector("[data-add-packaging-row]").addEventListener("click", () => {
+    document.querySelector("#recipePackagingRows").insertAdjacentHTML("beforeend", recipePackagingRowTemplate());
+  });
+  form.addEventListener("click", (event) => {
+    const removeButton = event.target.closest("[data-remove-builder-row]");
+    if (!removeButton) return;
+    const parent = removeButton.closest(".builder-row");
+    const container = parent.parentElement;
+    if (container.children.length > 1) parent.remove();
+  });
+  form.addEventListener("submit", (event) => {
+    event.preventDefault();
+    const data = Object.fromEntries(new FormData(form).entries());
+    const ingredients = Array.from(form.querySelectorAll(".recipe-ingredient-row"))
+      .map(readBuilderRow)
+      .filter((row) => row.name && Number(row.usageQty) > 0)
+      .map((row) => {
+        const ingredient = findOrCreateIngredient(row);
+        return {
+          ingredientId: ingredient.id,
+          qty: Number(row.usageQty),
+          unit: row.usageUnit || ingredient.purchaseUnit,
+        };
+      });
+    const packaging = Array.from(form.querySelectorAll(".recipe-packaging-row"))
+      .map(readBuilderRow)
+      .filter((row) => row.name && Number(row.qtyPerBottle) > 0)
+      .map((row) => {
+        const material = findOrCreatePackaging(row);
+        return {
+          itemId: material.id,
+          qty: Number(row.qtyPerBottle),
+        };
+      });
+    const recipe = {
+      id: id("rec"),
+      flavor: data.flavor,
+      version: data.version,
+      status: "ativa",
+      bottleMl: Number(data.bottleMl),
+      yieldBottles: Number(data.yieldBottles),
+      wastePct: Number(data.wastePct || 0),
+      labor: Number(data.labor || 0),
+      utilities: Number(data.utilities || 0),
+      other: Number(data.other || 0),
+      wholesalePrice: Number(data.wholesalePrice || 0),
+      retailPrice: Number(data.retailPrice || 0),
+      ingredients,
+      packaging,
+    };
+    state.recipes.push(recipe);
+    activeRecipeId = recipe.id;
+    addAudit("Receita criada", `${recipe.flavor} ${recipe.version} com ${ingredients.length} ingredientes e ${packaging.length} materiais.`);
+    closeModal();
+    setModule("costs");
   });
 }
 
@@ -1309,6 +1612,13 @@ function bindModuleEvents() {
       saveState();
     });
   });
+  document.querySelectorAll("[data-cms-image]").forEach((input) => {
+    input.addEventListener("input", (event) => {
+      const image = state.cms.images[Number(event.target.dataset.cmsImage)];
+      image[event.target.dataset.field] = event.target.value;
+      saveState();
+    });
+  });
 }
 
 function handleAction(action) {
@@ -1360,7 +1670,7 @@ function handleAction(action) {
         { name: "amount", label: "Valor", type: "number", required: true },
         { name: "method", label: "Método", value: "Pix" },
       ]),
-    "new-recipe": () => alert("Estrutura pronta para nova receita. Próxima iteração: construtor visual de ingredientes por versão."),
+    "new-recipe": newRecipeForm,
     "go-costs": () => setModule("costs"),
     "save-costs": () => {
       addAudit("Simulação de custos salva", byId("recipes", activeRecipeId)?.flavor);
@@ -1370,6 +1680,10 @@ function handleAction(action) {
       const form = document.querySelector("#cmsForm");
       if (form) {
         const data = Object.fromEntries(new FormData(form).entries());
+        document.querySelectorAll("[data-cms-image]").forEach((input) => {
+          const image = state.cms.images[Number(input.dataset.cmsImage)];
+          image[input.dataset.field] = input.value;
+        });
         state.cms = { ...state.cms, ...data };
         addAudit("CMS atualizado", "Conteúdo público salvo no protótipo.");
         saveState();
@@ -1379,7 +1693,7 @@ function handleAction(action) {
     "reset-demo": () => {
       state = clone(defaultState);
       saveState();
-      addAudit("Demo resetada", "Dados restaurados.");
+      addAudit("Dados limpos", "Admin reiniciado sem registros operacionais.");
       render();
     },
     "export-ingredients": () => exportCSV("kombu-ingredientes", [["Nome", "Categoria", "Fornecedor", "Estoque", "Unidade", "Custo"], ...state.ingredients.map((i) => [i.name, i.category, i.supplier, i.stock, i.purchaseUnit, i.costPerUnit])]),
@@ -1408,6 +1722,8 @@ document.querySelector("#quickSaleButton").addEventListener("click", newSaleForm
 document.querySelector("#closeAdminModal").addEventListener("click", closeModal);
 document.querySelector("#adminModal").addEventListener("click", (event) => {
   if (event.target.id === "adminModal") closeModal();
+  const button = event.target.closest("[data-action]");
+  if (button && !button.disabled) handleAction(button.dataset.action);
 });
 document.querySelector("#globalSearch").addEventListener("input", (event) => {
   globalSearch = event.target.value.trim();
@@ -1419,4 +1735,14 @@ document.querySelector("#roleSelector").addEventListener("change", (event) => {
   render();
 });
 
-render();
+function initializeAdmin() {
+  bindAuth();
+  if (isAuthenticated()) {
+    unlockAdmin();
+    render();
+  } else {
+    lockAdmin();
+  }
+}
+
+initializeAdmin();

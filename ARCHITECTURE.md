@@ -85,11 +85,11 @@ Each production batch must store a snapshot of recipe version, ingredient costs,
 
 ## Security Direction
 
-For production:
+For production, Supabase is recommended because this site needs real authentication, shared database state and image/file storage. The current static password gate is only a prototype barrier.
 
-- Login required for `/admin`.
-- Role-based permissions.
-- File uploads protected.
+- Supabase Auth for `/admin`.
+- Role-based permissions with row-level security.
+- Supabase Storage for product images, invoices and receipts.
 - Audit log for edits and deletions.
 - No public access to cost, sales, stock or financial data.
 - Server-side validation for all calculations.
@@ -149,10 +149,11 @@ Admin CTAs:
 
 ## Next Production Steps
 
-1. Replace localStorage data with a backend database.
-2. Add authentication and role permissions.
-3. Add real file upload for invoices, receipts and product media.
-4. Connect partner locator to the CMS partner table.
-5. Add Excel import/export using a server-side library.
-6. Capture batch cost snapshots at creation.
-7. Add analytics events and ad pixels after consent strategy is defined.
+1. Create a Supabase project.
+2. Replace localStorage data with Supabase Postgres tables.
+3. Add Supabase Auth and role permissions.
+4. Add real file upload for invoices, receipts and product media through Supabase Storage.
+5. Connect partner locator to the CMS partner table.
+6. Add Excel import/export using a server-side library.
+7. Capture batch cost snapshots at creation.
+8. Add analytics events and ad pixels after consent strategy is defined.
