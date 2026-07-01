@@ -347,27 +347,66 @@
         </div>
       </section>
 
-      <section class="section-tight" id="revenda" aria-labelledby="revenda-title">
+      <section class="section revenda-section" id="revenda" aria-labelledby="revenda-title">
         <div class="container revenda-grid">
-          <div class="story-panel">
+          <div class="reseller-copy">
             <span class="eyebrow">
               <span class="material-symbols-outlined" aria-hidden="true">handshake</span>
-              Revenda
+              Revenda Kombú
             </span>
-            <h2 id="revenda-title">Leve a Kombú para o seu negócio.</h2>
+            <h2 id="revenda-title">Coloque na sua prateleira uma bebida premium que o cliente lembra.</h2>
             <p class="lead">
-              Uma bebida funcional, natural e premium para cafés, restaurantes, academias, empórios
-              e lojas que querem oferecer uma opção saudável com identidade amazônica.
+              A Kombú é para cafés, empórios, restaurantes, academias, mercados e lojas que querem
+              vender uma opção saudável sem cair no comum: uma kombucha artesanal, amazônica,
+              naturalmente gaseificada e feita com ingredientes reais.
             </p>
-            <div class="tag-list">
-              <span class="tag">Produto premium</span>
-              <span class="tag">Boa apresentação de gôndola</span>
-              <span class="tag">Reposição recorrente</span>
-              <span class="tag">Variedade de sabores</span>
-              <span class="tag">Marca local com propósito</span>
+            <div class="reseller-proof">
+              <div>
+                <strong>12</strong>
+                <span>sabores premium</span>
+              </div>
+              <div>
+                <strong>4x</strong>
+                <span>produção desde jan/2025</span>
+              </div>
+              <div>
+                <strong>100%</strong>
+                <span>ingredientes verdadeiros</span>
+              </div>
             </div>
+            <div class="reseller-benefits" aria-label="Benefícios para revendedores">
+              <article>
+                <span class="material-symbols-outlined" aria-hidden="true">category</span>
+                <strong>Variedade de sabores</strong>
+                <p>Mais escolhas para públicos diferentes, de frutados a florais e herbais.</p>
+              </article>
+              <article>
+                <span class="material-symbols-outlined" aria-hidden="true">local_shipping</span>
+                <strong>Reposição simples</strong>
+                <p>Produto local em Manaus, com relacionamento direto e operação próxima.</p>
+              </article>
+              <article>
+                <span class="material-symbols-outlined" aria-hidden="true">payments</span>
+                <strong>Venda com valor percebido</strong>
+                <p>Categoria funcional, apresentação premium e boa história para a equipe vender.</p>
+              </article>
+              <article>
+                <span class="material-symbols-outlined" aria-hidden="true">workspace_premium</span>
+                <strong>Produto diferenciado</strong>
+                <p>Sem conservantes, corantes ou aditivos artificiais, com gaseificação natural.</p>
+              </article>
+            </div>
+            <a class="btn btn-lime reseller-cta" href="#resellerForm">
+              <span class="material-symbols-outlined" aria-hidden="true">send</span>
+              Quero receber proposta de revenda
+            </a>
           </div>
           <form class="form-panel" id="resellerForm">
+            <div class="form-intro">
+              <span class="eyebrow">Parceria comercial</span>
+              <h3>Conte sobre o seu ponto de venda.</h3>
+              <p>Vamos entender seu perfil e responder com as condições para levar a Kombú ao seu negócio.</p>
+            </div>
             <div class="input-grid">
               <label class="field">
                 <span>Nome</span>
@@ -409,7 +448,7 @@
             </div>
             <button class="btn btn-primary" type="submit">
               <span class="material-symbols-outlined" aria-hidden="true">send</span>
-              Quero ser revendedor
+              Receber proposta de revenda
             </button>
             <p class="success-note hidden" id="resellerSuccess">Lead enviado para o CRM do admin. Você receberá a notificação por email quando o site estiver conectado no Vercel.</p>
           </form>
@@ -423,25 +462,43 @@
               <span class="material-symbols-outlined" aria-hidden="true">auto_stories</span>
               Nossa história
             </span>
-            <h2 id="historia-title">Uma história que começou pelo cuidado com a saúde.</h2>
+            <h2 id="historia-title">De uma virada de saúde a uma kombucha premium da Amazônia.</h2>
             <p class="lead">
-              A produção começou em 2017, para consumo próprio, depois de uma motivação ligada à saúde.
-              Amigos e vizinhos passaram a pedir a bebida, e a Kombú virou uma startup com produção
-              artesanal e propósito claro.
+              A Kombú nasceu em 2017, quando um dos sócios passou por um grave problema de saúde
+              e a família começou a repensar o que colocava na rotina. Foi nesse momento que a
+              kombucha entrou como alternativa natural às bebidas industrializadas.
+            </p>
+            <p class="story-copy">
+              A primeira produção era só para consumo próprio. Depois do primeiro lote, ficou difícil
+              voltar para refrigerantes cheios de conservantes e adoçantes artificiais. O sabor chamou
+              atenção de vizinhos e amigos, que insistiam que aquela bebida precisava chegar a mais pessoas.
+            </p>
+            <p class="story-copy">
+              A ideia só virou negócio depois que um dos fundadores morou fora do Brasil, viu kombuchas
+              menos saborosas ganhando espaço e voltou com uma certeza: se a Kombú já encantava em casa,
+              também poderia ocupar prateleiras com uma proposta premium, artesanal e amazônica.
             </p>
           </div>
           <div class="story-panel timeline">
             <article class="timeline-item">
               <strong>2017</strong>
-              <p>Primeiras produções para consumo próprio e troca de refrigerantes industrializados por uma opção natural.</p>
+              <p>Um problema sério de saúde abre espaço para uma rotina mais consciente e para a descoberta da kombucha.</p>
             </article>
             <article class="timeline-item">
-              <strong>Amigos</strong>
-              <p>O sabor chamou atenção de vizinhos, amigos e primeiros consumidores próximos.</p>
+              <strong>Casa</strong>
+              <p>A produção começa pequena, para consumo próprio, com fermentação natural e ingredientes de verdade.</p>
             </article>
             <article class="timeline-item">
-              <strong>Startup</strong>
-              <p>A marca nasce para mostrar que saudável também pode ser delicioso, premium e amazônico.</p>
+              <strong>Validação</strong>
+              <p>Vizinhos e amigos provam, pedem mais e incentivam a marca a vender.</p>
+            </article>
+            <article class="timeline-item">
+              <strong>2025</strong>
+              <p>Em janeiro, a Kombú começa a vender para terceiros e vira uma startup.</p>
+            </article>
+            <article class="timeline-item">
+              <strong>Hoje</strong>
+              <p>A produção já quadruplicou, mantendo processo artesanal, gaseificação natural e propósito claro.</p>
             </article>
           </div>
         </div>
