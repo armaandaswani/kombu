@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+
+<html lang="pt-BR"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Kombú Kombucha - Refrigerante Natural</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&amp;family=Plus+Jakarta+Sans:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "on-tertiary": "#ffffff",
+                      "on-surface": "#191c1c",
+                      "tertiary-container": "#001d34",
+                      "surface-container-lowest": "#ffffff",
+                      "on-secondary-fixed-variant": "#2f4f15",
+                      "on-error-container": "#93000a",
+                      "surface-tint": "#775080",
+                      "secondary-fixed-dim": "#abd289",
+                      "background": "#f9f9f8",
+                      "error-container": "#ffdad6",
+                      "on-background": "#191c1c",
+                      "surface-container": "#edeeed",
+                      "amazon-green": "#2D4B28",
+                      "primary-fixed-dim": "#e5b7ee",
+                      "primary-fixed": "#fbd7ff",
+                      "on-primary-container": "#9f75a8",
+                      "on-secondary": "#ffffff",
+                      "outline": "#7e747d",
+                      "inverse-primary": "#e5b7ee",
+                      "on-primary-fixed": "#2e0c38",
+                      "on-tertiary-container": "#6487ac",
+                      "on-error": "#ffffff",
+                      "inverse-on-surface": "#f0f1f0",
+                      "outline-variant": "#cfc3cd",
+                      "surface-container-low": "#f3f4f3",
+                      "berry-red": "#F5CDC3",
+                      "secondary-fixed": "#c7efa3",
+                      "primary-container": "#2e0c38",
+                      "on-primary": "#ffffff",
+                      "on-surface-variant": "#4c444d",
+                      "on-primary-fixed-variant": "#5d3967",
+                      "secondary": "#46672b",
+                      "surface": "#f9f9f8",
+                      "surface-variant": "#e1e3e2",
+                      "surface-bright": "#f9f9f8",
+                      "primary": "#000000",
+                      "error": "#ba1a1a",
+                      "tertiary-fixed-dim": "#a7caf2",
+                      "citrus-bright": "#D9F99D",
+                      "surface-container-high": "#e7e8e7",
+                      "on-tertiary-fixed-variant": "#25496b",
+                      "tertiary-fixed": "#d0e4ff",
+                      "surface-container-highest": "#e1e3e2",
+                      "passion-yellow": "#F7D8AD",
+                      "inverse-surface": "#2e3131",
+                      "on-secondary-container": "#4c6e30",
+                      "tertiary": "#000000",
+                      "on-tertiary-fixed": "#001d34",
+                      "secondary-container": "#c7efa3",
+                      "on-secondary-fixed": "#0c2000",
+                      "surface-dim": "#d9dad9"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.25rem",
+                      "lg": "0.5rem",
+                      "xl": "0.75rem",
+                      "full": "9999px",
+                      "2xl": "1.5rem",
+                      "3xl": "2rem",
+                      "4xl": "3rem"
+              },
+              "spacing": {
+                      "gutter": "24px",
+                      "unit": "4px",
+                      "container-max": "1280px",
+                      "stack-md": "16px",
+                      "margin-mobile": "16px",
+                      "stack-xl": "64px",
+                      "stack-lg": "32px",
+                      "margin-desktop": "64px",
+                      "stack-sm": "8px"
+              },
+              "fontFamily": {
+                      "label-sm": [
+                              "Plus Jakarta Sans"
+                      ],
+                      "hero-lg-mobile": [
+                              "Playfair Display"
+                      ],
+                      "headline-lg": [
+                              "Playfair Display"
+                      ],
+                      "label-md": [
+                              "Plus Jakarta Sans"
+                      ],
+                      "headline-display": [
+                              "Playfair Display"
+                      ],
+                      "body-md": [
+                              "Plus Jakarta Sans"
+                      ],
+                      "headline-md": [
+                              "Playfair Display"
+                      ],
+                      "hero-lg": [
+                              "Playfair Display"
+                      ],
+                      "body-lg": [
+                              "Plus Jakarta Sans"
+                      ]
+              },
+              "fontSize": {
+                      "label-sm": [
+                              "12px",
+                              {
+                                      "lineHeight": "16px",
+                                      "letterSpacing": "0.03em",
+                                      "fontWeight": "500"
+                              }
+                      ],
+                      "hero-lg-mobile": [
+                              "40px",
+                              {
+                                      "lineHeight": "48px",
+                                      "letterSpacing": "-0.01em",
+                                      "fontWeight": "700"
+                              }
+                      ],
+                      "headline-lg": [
+                              "32px",
+                              {
+                                      "lineHeight": "40px",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "label-md": [
+                              "14px",
+                              {
+                                      "lineHeight": "20px",
+                                      "letterSpacing": "0.05em",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "headline-display": [
+                              "48px",
+                              {
+                                      "lineHeight": "56px",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "body-md": [
+                              "16px",
+                              {
+                                      "lineHeight": "24px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "headline-md": [
+                              "24px",
+                              {
+                                      "lineHeight": "32px",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "hero-lg": [
+                              "64px",
+                              {
+                                      "lineHeight": "72px",
+                                      "letterSpacing": "-0.02em",
+                                      "fontWeight": "700"
+                              }
+                      ],
+                      "body-lg": [
+                              "18px",
+                              {
+                                      "lineHeight": "28px",
+                                      "fontWeight": "400"
+                              }
+                      ]
+              }
+            },
+          },
+        }
+      </script>
+<style>
+        .glass-nav {
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+        }
+        .organic-shape-1 {
+            border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%;
+        }
+        .organic-shape-2 {
+            border-radius: 30% 70% 70% 30% / 30% 30% 70% 70%;
+        }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.4);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.5);
+        }
+      </style>
+</head>
+<body class="bg-background text-on-background font-body-md text-body-md antialiased overflow-x-hidden selection:bg-citrus-bright selection:text-primary">
+<!-- TopNavBar -->
+<nav class="fixed top-0 left-0 w-full z-50 flex justify-between items-center px-margin-mobile md:px-margin-desktop py-stack-md max-w-container-max mx-auto bg-surface/80 dark:bg-surface-container-lowest/80 glass-nav flat no shadows">
+<div class="font-headline-lg text-headline-lg font-bold text-primary dark:text-on-surface">Kombú</div>
+<div class="hidden md:flex items-center gap-8">
+<a class="text-on-surface-variant dark:text-outline hover:text-amazon-green transition-colors font-label-md text-label-md" href="#">Sabores</a>
+<a class="text-on-surface-variant dark:text-outline hover:text-amazon-green transition-colors font-label-md text-label-md" href="#">Benefícios</a>
+<a class="text-amazon-green dark:text-on-surface font-bold border-b-2 border-amazon-green pb-1 font-label-md text-label-md" href="#">O que é?</a>
+<a class="text-on-surface-variant dark:text-outline hover:text-amazon-green transition-colors font-label-md text-label-md" href="#">Sobre a Kombú</a>
+</div>
+<div class="hidden md:flex items-center gap-4">
+<a class="font-label-md text-label-md text-amazon-green dark:text-on-surface border-2 border-amazon-green px-6 py-2 rounded-full hover:bg-surface-container-low/50 dark:hover:bg-surface-container-high/50 transition-all scale-95 duration-150 ease-in-out" href="#">Seja Revendedor</a>
+<a class="font-label-md text-label-md bg-amazon-green text-on-primary px-6 py-2.5 rounded-full hover:bg-amazon-green/90 transition-opacity" href="#">Onde Encontrar</a>
+<button class="w-10 h-10 flex items-center justify-center rounded-full hover:bg-surface-container-low/50 dark:hover:bg-surface-container-high/50 transition-all text-primary dark:text-on-surface">
+<span class="material-symbols-outlined" data-icon="shopping_cart">shopping_cart</span>
+</button>
+</div>
+<button class="md:hidden text-primary dark:text-on-surface p-2">
+<span class="material-symbols-outlined" data-icon="menu">menu</span>
+</button>
+</nav>
+<main class="pt-[100px] w-full relative">
+<!-- 1. Hero Section -->
+<section class="relative w-full min-h-[921px] flex items-center px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto pb-stack-xl">
+<div class="absolute inset-0 z-0 opacity-40">
+<div class="w-[800px] h-[800px] bg-secondary-fixed rounded-full blur-[120px] absolute -top-40 -left-40 mix-blend-multiply"></div>
+<div class="w-[600px] h-[600px] bg-berry-red rounded-full blur-[150px] absolute top-1/4 -right-20 mix-blend-multiply"></div>
+<div class="w-[500px] h-[500px] bg-citrus-bright rounded-full blur-[100px] absolute bottom-20 left-1/3 mix-blend-multiply"></div>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-12 gap-gutter w-full z-10 items-center">
+<div class="md:col-span-6 flex flex-col gap-stack-lg">
+<h1 class="font-hero-lg-mobile text-hero-lg-mobile md:font-hero-lg md:text-hero-lg text-primary leading-tight">
+                        Refrigerante saudável, natural e cheio de sabor.
+                    </h1>
+<p class="font-body-lg text-body-lg text-on-surface-variant max-w-lg font-medium">
+                        A energia da Amazônia engarrafada. Uma bebida viva, fermentada artesanalmente e naturalmente gaseificada para refrescar seus dias com funcionalidade.
+                    </p>
+<div class="flex flex-wrap gap-4 pt-4">
+<a class="bg-citrus-bright text-amazon-green px-8 py-4 rounded-full font-label-md text-label-md hover:bg-citrus-bright/90 transition-all shadow-[0_8px_16px_rgba(217,249,157,0.3)]" href="#sabores">Descobrir Sabores</a>
+<a class="border-2 border-amazon-green text-amazon-green px-8 py-4 rounded-full font-label-md text-label-md hover:bg-amazon-green/5 transition-all" href="#sobre">Saber Mais</a>
+</div>
+</div>
+<div class="md:col-span-6 relative h-[600px] flex justify-center items-center mt-stack-xl md:mt-0">
+<div class="absolute w-[90%] h-[90%] bg-white/40 rounded-full blur-3xl opacity-80 z-0"></div>
+<div class="absolute w-[60%] h-[60%] bg-passion-yellow rounded-full blur-3xl opacity-50 z-0 animate-pulse"></div>
+<img class="z-10 object-contain w-full h-full max-h-[550px] drop-shadow-[0_20px_40px_rgba(0,0,0,0.15)] hover:scale-105 transition-transform duration-700" data-alt="A highly detailed studio photograph of a premium 500ml glass bottle of Kombú kombucha. The bottle features clean, minimalist labeling and is surrounded by fresh, vibrant Amazonian ingredients like passion fruit, guarana berries, and green leaves. The lighting is bright, soft, and natural, evoking a refreshing, high-end light-mode aesthetic. The background is a clean, slightly warm off-white, emphasizing the vivid colors of the ingredients and the amber liquid inside the bottle." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBSSpJGYyeD7uvDBmQLnTAVHmWXz8R2x6pEv1-4BpmgcmdnaZ-lNms4V6fGrRxyX0MGf3G3egmszou1Bx1kX4zG1WGpdeY-KeaJiM_2i5rdPkhvKgOfGh8fRjmnPoAzk6-rUWjOnV38LbSJxS8bLp-_naoB1Oi11yPtzwvzbTDiKOzS9LzQRpS6oEtwV5qhFu1B-G8b1WdgbLEUB883HStZhhNRPddtLyUCrQAKRK56dcIzcRHz_YhkkHrDqj20gfU5JT7sVc4ssEY"/>
+<!-- Floating decorative elements -->
+<div class="absolute top-10 right-20 w-20 h-20 bg-citrus-bright organic-shape-1 opacity-70 animate-pulse shadow-lg backdrop-blur-md"></div>
+<div class="absolute bottom-10 left-10 w-32 h-32 bg-passion-yellow organic-shape-2 opacity-60 animate-pulse shadow-lg backdrop-blur-md" style="animation-delay: 1.5s;"></div>
+<div class="absolute top-1/2 -right-10 w-16 h-16 bg-berry-red organic-shape-1 opacity-50 animate-pulse shadow-lg backdrop-blur-md" style="animation-delay: 0.5s;"></div>
+</div>
+</div>
+</section>
+<!-- 2. Differentiators Strip -->
+<section class="w-full py-stack-lg relative z-20">
+<div class="max-w-container-max mx-auto px-margin-mobile md:px-margin-desktop">
+<div class="grid grid-cols-2 md:grid-cols-4 gap-stack-md text-center">
+<div class="flex flex-col items-center gap-4 glass-card p-6 rounded-3xl hover:-translate-y-2 transition-transform duration-300">
+<div class="w-16 h-16 rounded-full bg-secondary-fixed flex items-center justify-center text-amazon-green shadow-md">
+<span class="material-symbols-outlined text-[28px]" data-icon="eco">eco</span>
+</div>
+<span class="font-label-md text-label-md text-primary font-bold">Clean Label</span>
+</div>
+<div class="flex flex-col items-center gap-4 glass-card p-6 rounded-3xl hover:-translate-y-2 transition-transform duration-300 delay-75">
+<div class="w-16 h-16 rounded-full bg-tertiary-fixed-dim flex items-center justify-center text-on-tertiary-fixed-variant shadow-md">
+<span class="material-symbols-outlined text-[28px]" data-icon="water_drop">water_drop</span>
+</div>
+<span class="font-label-md text-label-md text-primary font-bold">Naturalmente Gaseificada</span>
+</div>
+<div class="flex flex-col items-center gap-4 glass-card p-6 rounded-3xl hover:-translate-y-2 transition-transform duration-300 delay-150">
+<div class="w-16 h-16 rounded-full bg-primary-fixed flex items-center justify-center text-primary-container shadow-md">
+<span class="material-symbols-outlined text-[28px]" data-icon="microbiology">microbiology</span>
+</div>
+<span class="font-label-md text-label-md text-primary font-bold">Probiótica</span>
+</div>
+<div class="flex flex-col items-center gap-4 glass-card p-6 rounded-3xl hover:-translate-y-2 transition-transform duration-300 delay-200">
+<div class="w-16 h-16 rounded-full bg-secondary-fixed flex items-center justify-center text-amazon-green shadow-md">
+<span class="material-symbols-outlined text-[28px]" data-icon="energy_savings_leaf">energy_savings_leaf</span>
+</div>
+<span class="font-label-md text-label-md text-primary font-bold">Vegana</span>
+</div>
+</div>
+</div>
+</section>
+<!-- 5. Educational: Afinal, o que é kombucha? -->
+<section class="w-full py-stack-xl mt-stack-xl max-w-container-max mx-auto px-margin-mobile md:px-margin-desktop relative z-20" id="sobre">
+<div class="grid grid-cols-1 md:grid-cols-12 gap-gutter items-center">
+<div class="md:col-span-5 relative h-[500px] rounded-[3rem] overflow-hidden shadow-[0_20px_40px_rgba(45,75,40,0.15)] group">
+<div class="absolute inset-0 bg-cover bg-center w-full h-full group-hover:scale-105 transition-transform duration-1000" data-alt="A macro, detailed photograph of tea leaves and a SCOBY fermenting in a large glass jar, bathed in soft, natural morning light. The scene is bright, clean, and artisanal, set in a modern laboratory-meets-kitchen environment. The color palette features warm amber, deep greens, and crisp whites. The focus is sharp on the effervescent bubbles rising through the golden liquid, conveying a sense of natural vitality and health." style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuA6oicKAZub5TRMSzTQdme2pzExiVbS8hpReL71bOGKQ2IFGeAuMhOSd3F5Hq138zee3ym-mZbLelFRVePD068fleK5XjC5JRELgGbN1KdD5I85idEqa0zL9NuQaomCEkefc5caIQQ-coEgWWpwte2lJvvSGhz6_2bwNNTOiIebBdksaOe3qF9mosuhY-Tkr7JqbobEtjBk2w7nsEX4Mj6Js8JCYGfJy1yaXkm_5ZV9bfsNEh8Mm4T3bzKQn4FmobSJ8IQwBeP9Egc')"></div>
+<div class="absolute inset-0 bg-gradient-to-t from-amazon-green/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+</div>
+<div class="md:col-span-7 md:pl-stack-lg flex flex-col gap-stack-md">
+<h2 class="font-headline-display text-headline-display text-primary leading-tight">Afinal, o que é kombucha?</h2>
+<p class="font-body-lg text-body-lg text-on-surface-variant font-medium">
+                        Kombucha é uma bebida milenar, viva e naturalmente frisante. Tudo começa com um chá adoçado (nós usamos um blend exclusivo) que passa por um processo de fermentação cuidadoso utilizando uma cultura de leveduras e bactérias do bem, conhecida como SCOBY.
+                    </p>
+<p class="font-body-lg text-body-lg text-on-surface-variant">
+                        O resultado? Uma bebida refrescante, levemente ácida e rica em probióticos naturais que auxiliam na digestão, fortalecem a imunidade e trazem vitalidade para o seu dia a dia. É o refrigerante do futuro, feito com a sabedoria do passado.
+                    </p>
+<div class="pt-4">
+<a class="inline-flex items-center gap-2 font-label-md text-label-md text-amazon-green border-b-2 border-amazon-green pb-1 hover:text-primary hover:border-primary transition-colors" href="#">
+                            Ler mais sobre os benefícios <span class="material-symbols-outlined text-[18px]" data-icon="arrow_forward">arrow_forward</span>
+</a>
+</div>
+</div>
+</div>
+</section>
+</main>
+<!-- Footer -->
+<footer class="w-full bg-amazon-green dark:bg-surface-container-highest py-stack-xl px-margin-mobile md:px-margin-desktop mt-stack-xl flex flex-col items-center gap-stack-lg full-width bottom flat no shadows relative z-20">
+<div class="font-headline-md text-headline-md text-citrus-bright">Kombú</div>
+<div class="flex flex-wrap justify-center gap-6">
+<a class="font-label-sm text-label-sm text-on-tertiary/80 hover:text-citrus-bright transition-colors opacity-90 hover:opacity-100" href="#">Termos de Uso</a>
+<a class="font-label-sm text-label-sm text-on-tertiary/80 hover:text-citrus-bright transition-colors opacity-90 hover:opacity-100" href="#">Política de Privacidade</a>
+<a class="font-label-sm text-label-sm text-on-tertiary/80 hover:text-citrus-bright transition-colors opacity-90 hover:opacity-100" href="#">SAC</a>
+<a class="font-label-sm text-label-sm text-passion-yellow font-bold opacity-90 hover:opacity-100 hover:underline" href="#">Seja Revendedor</a>
+</div>
+<div class="font-body-md text-body-md text-on-tertiary/60 text-center mt-4">
+            © 2024 Kombú Kombucha. Feito com vitalidade na Amazônia.
+        </div>
+</footer>
+</body></html>

@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+
+<html class="light" lang="pt-BR"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Kombú Admin - Ingredientes</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&amp;family=Plus+Jakarta+Sans:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "on-tertiary": "#ffffff",
+                      "on-surface": "#191c1c",
+                      "tertiary-container": "#001d34",
+                      "surface-container-lowest": "#ffffff",
+                      "on-secondary-fixed-variant": "#2f4f15",
+                      "on-error-container": "#93000a",
+                      "surface-tint": "#775080",
+                      "secondary-fixed-dim": "#abd289",
+                      "background": "#f9f9f8",
+                      "error-container": "#ffdad6",
+                      "on-background": "#191c1c",
+                      "surface-container": "#edeeed",
+                      "amazon-green": "#2D4B28",
+                      "primary-fixed-dim": "#e5b7ee",
+                      "primary-fixed": "#fbd7ff",
+                      "on-primary-container": "#9f75a8",
+                      "on-secondary": "#ffffff",
+                      "outline": "#7e747d",
+                      "inverse-primary": "#e5b7ee",
+                      "on-primary-fixed": "#2e0c38",
+                      "on-tertiary-container": "#6487ac",
+                      "on-error": "#ffffff",
+                      "inverse-on-surface": "#f0f1f0",
+                      "outline-variant": "#cfc3cd",
+                      "surface-container-low": "#f3f4f3",
+                      "berry-red": "#F5CDC3",
+                      "secondary-fixed": "#c7efa3",
+                      "primary-container": "#2e0c38",
+                      "on-primary": "#ffffff",
+                      "on-surface-variant": "#4c444d",
+                      "on-primary-fixed-variant": "#5d3967",
+                      "secondary": "#46672b",
+                      "surface": "#f9f9f8",
+                      "surface-variant": "#e1e3e2",
+                      "surface-bright": "#f9f9f8",
+                      "primary": "#000000",
+                      "error": "#ba1a1a",
+                      "tertiary-fixed-dim": "#a7caf2",
+                      "citrus-bright": "#D9F99D",
+                      "surface-container-high": "#e7e8e7",
+                      "on-tertiary-fixed-variant": "#25496b",
+                      "tertiary-fixed": "#d0e4ff",
+                      "surface-container-highest": "#e1e3e2",
+                      "passion-yellow": "#F7D8AD",
+                      "inverse-surface": "#2e3131",
+                      "on-secondary-container": "#4c6e30",
+                      "tertiary": "#000000",
+                      "on-tertiary-fixed": "#001d34",
+                      "secondary-container": "#c7efa3",
+                      "on-secondary-fixed": "#0c2000",
+                      "surface-dim": "#d9dad9"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.25rem",
+                      "lg": "0.5rem",
+                      "xl": "0.75rem",
+                      "full": "9999px"
+              },
+              "spacing": {
+                      "gutter": "24px",
+                      "unit": "4px",
+                      "container-max": "1280px",
+                      "stack-md": "16px",
+                      "margin-mobile": "16px",
+                      "stack-xl": "64px",
+                      "stack-lg": "32px",
+                      "margin-desktop": "64px",
+                      "stack-sm": "8px"
+              },
+              "fontFamily": {
+                      "label-sm": [
+                              "Plus Jakarta Sans"
+                      ],
+                      "hero-lg-mobile": [
+                              "Playfair Display"
+                      ],
+                      "headline-lg": [
+                              "Playfair Display"
+                      ],
+                      "label-md": [
+                              "Plus Jakarta Sans"
+                      ],
+                      "headline-display": [
+                              "Playfair Display"
+                      ],
+                      "body-md": [
+                              "Plus Jakarta Sans"
+                      ],
+                      "headline-md": [
+                              "Playfair Display"
+                      ],
+                      "hero-lg": [
+                              "Playfair Display"
+                      ],
+                      "body-lg": [
+                              "Plus Jakarta Sans"
+                      ]
+              },
+              "fontSize": {
+                      "label-sm": [
+                              "12px",
+                              {
+                                      "lineHeight": "16px",
+                                      "letterSpacing": "0.03em",
+                                      "fontWeight": "500"
+                              }
+                      ],
+                      "hero-lg-mobile": [
+                              "40px",
+                              {
+                                      "lineHeight": "48px",
+                                      "letterSpacing": "-0.01em",
+                                      "fontWeight": "700"
+                              }
+                      ],
+                      "headline-lg": [
+                              "32px",
+                              {
+                                      "lineHeight": "40px",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "label-md": [
+                              "14px",
+                              {
+                                      "lineHeight": "20px",
+                                      "letterSpacing": "0.05em",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "headline-display": [
+                              "48px",
+                              {
+                                      "lineHeight": "56px",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "body-md": [
+                              "16px",
+                              {
+                                      "lineHeight": "24px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "headline-md": [
+                              "24px",
+                              {
+                                      "lineHeight": "32px",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "hero-lg": [
+                              "64px",
+                              {
+                                      "lineHeight": "72px",
+                                      "letterSpacing": "-0.02em",
+                                      "fontWeight": "700"
+                              }
+                      ],
+                      "body-lg": [
+                              "18px",
+                              {
+                                      "lineHeight": "28px",
+                                      "fontWeight": "400"
+                              }
+                      ]
+              }
+      },
+          },
+        }
+      </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .material-symbols-outlined[data-weight="fill"] {
+            font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+    </style>
+</head>
+<body class="bg-background text-on-background font-body-md text-body-md antialiased overflow-x-hidden">
+<!-- SideNavBar -->
+<aside class="fixed left-0 top-0 h-full w-64 flex flex-col py-stack-lg border-r border-outline-variant/30 bg-surface-container dark:bg-surface-container-lowest z-50">
+<div class="px-6 mb-8">
+<h1 class="font-headline-md text-headline-md font-bold text-primary dark:text-on-surface">Kombú Admin</h1>
+<p class="font-label-sm text-label-sm text-on-surface-variant">Painel Operacional</p>
+</div>
+<div class="px-4 mb-6">
+<button class="w-full bg-primary text-on-primary py-3 rounded-lg font-label-md text-label-md hover:opacity-90 transition-opacity shadow-[0_4px_12px_rgba(35,2,46,0.1)]">Nova Venda</button>
+</div>
+<nav class="flex-1 overflow-y-auto px-2 space-y-1">
+<a class="text-on-surface-variant dark:text-outline flex items-center gap-3 px-4 py-3 hover:bg-surface-container-high dark:hover:bg-surface-container-highest transition-all rounded-lg" href="#">
+<span class="material-symbols-outlined">dashboard</span>
+<span class="font-label-md text-label-md">Dashboard</span>
+</a>
+<a class="bg-secondary-container dark:bg-secondary text-on-secondary-container dark:text-on-secondary rounded-lg font-bold flex items-center gap-3 px-4 py-3 translate-x-1 duration-200" href="#">
+<span class="material-symbols-outlined" data-weight="fill">egg_alt</span>
+<span class="font-label-md text-label-md">Ingredientes</span>
+</a>
+<a class="text-on-surface-variant dark:text-outline flex items-center gap-3 px-4 py-3 hover:bg-surface-container-high dark:hover:bg-surface-container-highest transition-all rounded-lg" href="#">
+<span class="material-symbols-outlined">shopping_bag</span>
+<span class="font-label-md text-label-md">Compras</span>
+</a>
+<a class="text-on-surface-variant dark:text-outline flex items-center gap-3 px-4 py-3 hover:bg-surface-container-high dark:hover:bg-surface-container-highest transition-all rounded-lg" href="#">
+<span class="material-symbols-outlined">local_shipping</span>
+<span class="font-label-md text-label-md">Fornecedores</span>
+</a>
+<a class="text-on-surface-variant dark:text-outline flex items-center gap-3 px-4 py-3 hover:bg-surface-container-high dark:hover:bg-surface-container-highest transition-all rounded-lg" href="#">
+<span class="material-symbols-outlined">menu_book</span>
+<span class="font-label-md text-label-md">Receitas</span>
+</a>
+<a class="text-on-surface-variant dark:text-outline flex items-center gap-3 px-4 py-3 hover:bg-surface-container-high dark:hover:bg-surface-container-highest transition-all rounded-lg" href="#">
+<span class="material-symbols-outlined">calculate</span>
+<span class="font-label-md text-label-md">Custos</span>
+</a>
+<a class="text-on-surface-variant dark:text-outline flex items-center gap-3 px-4 py-3 hover:bg-surface-container-high dark:hover:bg-surface-container-highest transition-all rounded-lg" href="#">
+<span class="material-symbols-outlined">factory</span>
+<span class="font-label-md text-label-md">Produção</span>
+</a>
+<a class="text-on-surface-variant dark:text-outline flex items-center gap-3 px-4 py-3 hover:bg-surface-container-high dark:hover:bg-surface-container-highest transition-all rounded-lg" href="#">
+<span class="material-symbols-outlined">inventory_2</span>
+<span class="font-label-md text-label-md">Estoque</span>
+</a>
+<a class="text-on-surface-variant dark:text-outline flex items-center gap-3 px-4 py-3 hover:bg-surface-container-high dark:hover:bg-surface-container-highest transition-all rounded-lg" href="#">
+<span class="material-symbols-outlined">receipt_long</span>
+<span class="font-label-md text-label-md">Vendas</span>
+</a>
+<a class="text-on-surface-variant dark:text-outline flex items-center gap-3 px-4 py-3 hover:bg-surface-container-high dark:hover:bg-surface-container-highest transition-all rounded-lg" href="#">
+<span class="material-symbols-outlined">handshake</span>
+<span class="font-label-md text-label-md">Parceiros</span>
+</a>
+<a class="text-on-surface-variant dark:text-outline flex items-center gap-3 px-4 py-3 hover:bg-surface-container-high dark:hover:bg-surface-container-highest transition-all rounded-lg" href="#">
+<span class="material-symbols-outlined">payments</span>
+<span class="font-label-md text-label-md">Despesas</span>
+</a>
+<a class="text-on-surface-variant dark:text-outline flex items-center gap-3 px-4 py-3 hover:bg-surface-container-high dark:hover:bg-surface-container-highest transition-all rounded-lg" href="#">
+<span class="material-symbols-outlined">bar_chart</span>
+<span class="font-label-md text-label-md">Relatórios</span>
+</a>
+<a class="text-on-surface-variant dark:text-outline flex items-center gap-3 px-4 py-3 hover:bg-surface-container-high dark:hover:bg-surface-container-highest transition-all rounded-lg" href="#">
+<span class="material-symbols-outlined">edit_note</span>
+<span class="font-label-md text-label-md">CMS</span>
+</a>
+</nav>
+<div class="mt-auto px-2 pt-4 border-t border-outline-variant/30 space-y-1">
+<a class="text-on-surface-variant dark:text-outline flex items-center gap-3 px-4 py-3 hover:bg-surface-container-high dark:hover:bg-surface-container-highest transition-all rounded-lg" href="#">
+<span class="material-symbols-outlined">settings</span>
+<span class="font-label-md text-label-md">Configurações</span>
+</a>
+<a class="text-on-surface-variant dark:text-outline flex items-center gap-3 px-4 py-3 hover:bg-surface-container-high dark:hover:bg-surface-container-highest transition-all rounded-lg" href="#">
+<span class="material-symbols-outlined">logout</span>
+<span class="font-label-md text-label-md">Sair</span>
+</a>
+</div>
+</aside>
+<!-- TopNavBar -->
+<header class="sticky top-0 left-64 w-[calc(100%-16rem)] z-40 flex justify-between items-center px-gutter py-stack-sm bg-surface/95 backdrop-blur-sm border-b border-outline-variant/30 ml-64">
+<div class="flex-1 flex items-center gap-4">
+<div class="relative w-96">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant">search</span>
+<input class="w-full pl-10 pr-4 py-2 bg-surface-container-low border-none rounded-full font-body-md text-body-md text-on-surface focus:ring-2 focus:ring-secondary/50 placeholder:text-on-surface-variant/50 transition-all" placeholder="Buscar ingredientes..." type="text"/>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<button class="text-on-surface-variant hover:bg-surface-container-low transition-all p-2 rounded-full"><span class="material-symbols-outlined">notifications</span></button>
+<button class="text-on-surface-variant hover:bg-surface-container-low transition-all p-2 rounded-full"><span class="material-symbols-outlined">help_outline</span></button>
+<button class="text-on-surface-variant hover:bg-surface-container-low transition-all p-2 rounded-full"><span class="material-symbols-outlined">account_circle</span></button>
+</div>
+</header>
+<!-- Main Content Canvas -->
+<main class="ml-64 p-margin-desktop min-h-screen">
+<div class="flex justify-between items-end mb-stack-lg">
+<div>
+<h2 class="font-headline-lg text-headline-lg font-bold text-primary mb-2">Gestão de Ingredientes</h2>
+<p class="font-body-md text-body-md text-on-surface-variant">Controle de estoque, custos e fornecedores para produção.</p>
+</div>
+<div class="flex gap-4">
+<button class="flex items-center gap-2 px-4 py-2 bg-surface-container-high text-on-surface rounded-lg hover:bg-surface-container-highest transition-colors font-label-md text-label-md border border-outline-variant/50">
+<span class="material-symbols-outlined">filter_list</span> Filtrar
+                </button>
+<button class="flex items-center gap-2 px-4 py-2 bg-surface-container-high text-on-surface rounded-lg hover:bg-surface-container-highest transition-colors font-label-md text-label-md border border-outline-variant/50">
+<span class="material-symbols-outlined">download</span> Exportar
+                </button>
+<button class="flex items-center gap-2 px-4 py-2 bg-primary text-on-primary rounded-lg hover:opacity-90 transition-opacity font-label-md text-label-md shadow-sm">
+<span class="material-symbols-outlined">add</span> Novo Ingrediente
+                </button>
+</div>
+</div>
+<div class="grid grid-cols-1 xl:grid-cols-3 gap-gutter">
+<!-- Left Column: Table (Takes up 2 columns on XL) -->
+<div class="xl:col-span-2 flex flex-col gap-gutter">
+<!-- Table Card -->
+<div class="bg-surface-container-lowest rounded-xl p-1 border border-outline-variant/30 shadow-[0_4px_24px_rgba(35,2,46,0.02)] overflow-hidden flex flex-col">
+<div class="overflow-x-auto">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="bg-surface-container-low/50 font-label-sm text-label-sm text-on-surface-variant border-b border-outline-variant/30">
+<th class="p-4 font-semibold w-1/4">Nome</th>
+<th class="p-4 font-semibold">Categoria</th>
+<th class="p-4 font-semibold">Fornecedor</th>
+<th class="p-4 font-semibold text-right">Estoque</th>
+<th class="p-4 font-semibold text-right">Custo Un. (R$)</th>
+<th class="p-4 font-semibold text-center">Status</th>
+<th class="p-4 font-semibold text-center w-16">Ações</th>
+</tr>
+</thead>
+<tbody class="font-body-md text-body-md text-on-surface">
+<!-- Row 1 -->
+<tr class="border-b border-outline-variant/10 hover:bg-surface-container-low/30 transition-colors">
+<td class="p-4 font-medium">Chá Verde Banchá Orgânico</td>
+<td class="p-4">
+<span class="inline-flex items-center px-2 py-1 bg-secondary-fixed-dim/20 text-on-secondary-fixed-variant rounded-full font-label-sm text-label-sm">Chá</span>
+</td>
+<td class="p-4 text-on-surface-variant">Ervas da Terra Ltda</td>
+<td class="p-4 text-right">15.5 kg</td>
+<td class="p-4 text-right">R$ 85,00</td>
+<td class="p-4 text-center">
+<span class="inline-flex items-center gap-1 text-secondary"><span class="w-2 h-2 rounded-full bg-secondary"></span> Bom</span>
+</td>
+<td class="p-4 text-center">
+<button class="text-on-surface-variant hover:text-primary transition-colors"><span class="material-symbols-outlined text-xl">more_vert</span></button>
+</td>
+</tr>
+<!-- Row 2 -->
+<tr class="border-b border-outline-variant/10 hover:bg-surface-container-low/30 transition-colors bg-error-container/10">
+<td class="p-4 font-medium">Açúcar Cristal Orgânico</td>
+<td class="p-4">
+<span class="inline-flex items-center px-2 py-1 bg-passion-yellow/20 text-on-surface rounded-full font-label-sm text-label-sm">Adoçante</span>
+</td>
+<td class="p-4 text-on-surface-variant">Doce Vida Agro</td>
+<td class="p-4 text-right text-error font-semibold">12.0 kg</td>
+<td class="p-4 text-right">R$ 12,50</td>
+<td class="p-4 text-center">
+<span class="inline-flex items-center gap-1 text-error"><span class="w-2 h-2 rounded-full bg-error"></span> Baixo</span>
+</td>
+<td class="p-4 text-center">
+<button class="text-on-surface-variant hover:text-primary transition-colors"><span class="material-symbols-outlined text-xl">more_vert</span></button>
+</td>
+</tr>
+<!-- Row 3 -->
+<tr class="border-b border-outline-variant/10 hover:bg-surface-container-low/30 transition-colors">
+<td class="p-4 font-medium">Garrafa Vidro Âmbar 500ml</td>
+<td class="p-4">
+<span class="inline-flex items-center px-2 py-1 bg-surface-variant text-on-surface-variant rounded-full font-label-sm text-label-sm">Embalagem</span>
+</td>
+<td class="p-4 text-on-surface-variant">Vidros do Sul S.A.</td>
+<td class="p-4 text-right">1240 un</td>
+<td class="p-4 text-right">R$ 2,15</td>
+<td class="p-4 text-center">
+<span class="inline-flex items-center gap-1 text-secondary"><span class="w-2 h-2 rounded-full bg-secondary"></span> Bom</span>
+</td>
+<td class="p-4 text-center">
+<button class="text-on-surface-variant hover:text-primary transition-colors"><span class="material-symbols-outlined text-xl">more_vert</span></button>
+</td>
+</tr>
+<!-- Row 4 -->
+<tr class="border-b border-outline-variant/10 hover:bg-surface-container-low/30 transition-colors">
+<td class="p-4 font-medium">Extrato de Gengibre</td>
+<td class="p-4">
+<span class="inline-flex items-center px-2 py-1 bg-citrus-bright/30 text-on-surface rounded-full font-label-sm text-label-sm">Fruta/Extrato</span>
+</td>
+<td class="p-4 text-on-surface-variant">Amazon Sabores</td>
+<td class="p-4 text-right">3.2 L</td>
+<td class="p-4 text-right">R$ 145,00</td>
+<td class="p-4 text-center">
+<span class="inline-flex items-center gap-1 text-secondary"><span class="w-2 h-2 rounded-full bg-secondary"></span> Bom</span>
+</td>
+<td class="p-4 text-center">
+<button class="text-on-surface-variant hover:text-primary transition-colors"><span class="material-symbols-outlined text-xl">more_vert</span></button>
+</td>
+</tr>
+<!-- Row 5 -->
+<tr class="hover:bg-surface-container-low/30 transition-colors">
+<td class="p-4 font-medium">Tampa Metálica Dourada</td>
+<td class="p-4">
+<span class="inline-flex items-center px-2 py-1 bg-surface-variant text-on-surface-variant rounded-full font-label-sm text-label-sm">Embalagem</span>
+</td>
+<td class="p-4 text-on-surface-variant">Tampas Brasil</td>
+<td class="p-4 text-right">2500 un</td>
+<td class="p-4 text-right">R$ 0,45</td>
+<td class="p-4 text-center">
+<span class="inline-flex items-center gap-1 text-secondary"><span class="w-2 h-2 rounded-full bg-secondary"></span> Bom</span>
+</td>
+<td class="p-4 text-center">
+<button class="text-on-surface-variant hover:text-primary transition-colors"><span class="material-symbols-outlined text-xl">more_vert</span></button>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="p-4 border-t border-outline-variant/30 flex justify-between items-center bg-surface-container-low/20">
+<span class="font-label-sm text-label-sm text-on-surface-variant">Mostrando 5 de 42 ingredientes</span>
+<div class="flex gap-2">
+<button class="p-1 rounded hover:bg-surface-container-high transition-colors text-on-surface-variant"><span class="material-symbols-outlined text-sm">chevron_left</span></button>
+<button class="p-1 rounded hover:bg-surface-container-high transition-colors text-on-surface-variant"><span class="material-symbols-outlined text-sm">chevron_right</span></button>
+</div>
+</div>
+</div>
+</div>
+<!-- Right Column: Calculator Widget -->
+<div class="xl:col-span-1">
+<div class="bg-surface-container-lowest rounded-xl p-6 border border-outline-variant/30 shadow-[0_8px_32px_rgba(35,2,46,0.04)] sticky top-24">
+<div class="flex items-center justify-between mb-6">
+<h3 class="font-headline-md text-headline-md font-bold text-primary flex items-center gap-2">
+<span class="material-symbols-outlined text-secondary">calculate</span> Simulador
+                        </h3>
+<span class="font-label-sm text-label-sm px-2 py-1 bg-surface-container rounded-full text-on-surface-variant">Lote: 100L</span>
+</div>
+<div class="space-y-4 mb-6">
+<div>
+<label class="block font-label-sm text-label-sm text-on-surface-variant mb-1">Insumos Base (Chá, Açúcar)</label>
+<div class="relative">
+<span class="absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant font-body-md text-body-md">R$</span>
+<input class="w-full pl-9 pr-4 py-2 bg-surface-container-low border-none rounded-lg font-body-md text-body-md text-on-surface focus:ring-2 focus:ring-secondary/50 text-right transition-all" type="number" value="125.50"/>
+</div>
+</div>
+<div>
+<label class="block font-label-sm text-label-sm text-on-surface-variant mb-1">Embalagem (Garrafa, Tampa, Rótulo)</label>
+<div class="relative">
+<span class="absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant font-body-md text-body-md">R$</span>
+<input class="w-full pl-9 pr-4 py-2 bg-surface-container-low border-none rounded-lg font-body-md text-body-md text-on-surface focus:ring-2 focus:ring-secondary/50 text-right transition-all" type="number" value="580.00"/>
+</div>
+</div>
+<div>
+<label class="block font-label-sm text-label-sm text-on-surface-variant mb-1">Mão de Obra &amp; Gastos Fixos</label>
+<div class="relative">
+<span class="absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant font-body-md text-body-md">R$</span>
+<input class="w-full pl-9 pr-4 py-2 bg-surface-container-low border-none rounded-lg font-body-md text-body-md text-on-surface focus:ring-2 focus:ring-secondary/50 text-right transition-all" type="number" value="150.00"/>
+</div>
+</div>
+</div>
+<div class="bg-surface-container rounded-xl p-4 mb-6">
+<div class="flex justify-between items-end mb-2">
+<span class="font-label-sm text-label-sm text-on-surface-variant">Custo por Garrafa (500ml)</span>
+<span class="font-headline-md text-headline-md font-bold text-primary">R$ 4,27</span>
+</div>
+<div class="w-full bg-outline-variant/30 h-1 rounded-full mb-2">
+<div class="bg-secondary h-1 rounded-full w-[65%]"></div>
+</div>
+<div class="flex justify-between font-label-sm text-label-sm text-on-surface-variant">
+<span>Custo Lote: R$ 855,50</span>
+<span>Rendimento: 200 un</span>
+</div>
+</div>
+<div class="grid grid-cols-2 gap-4">
+<div class="bg-surface border border-outline-variant/30 rounded-lg p-3 text-center">
+<span class="block font-label-sm text-label-sm text-on-surface-variant mb-1">Preço Sugerido (Atacado)</span>
+<span class="font-label-md text-label-md font-bold text-on-surface">R$ 8,50</span>
+<span class="block text-[10px] text-secondary font-medium mt-1">Margem: 50%</span>
+</div>
+<div class="bg-surface border border-outline-variant/30 rounded-lg p-3 text-center">
+<span class="block font-label-sm text-label-sm text-on-surface-variant mb-1">Preço Sugerido (Varejo)</span>
+<span class="font-label-md text-label-md font-bold text-on-surface">R$ 12,00</span>
+<span class="block text-[10px] text-secondary font-medium mt-1">Margem: 64%</span>
+</div>
+</div>
+<button class="w-full mt-6 bg-surface-container-high text-on-surface py-2 rounded-lg font-label-md text-label-md hover:bg-surface-container-highest transition-colors border border-outline-variant/50">
+                        Salvar Simulação
+                    </button>
+</div>
+</div>
+</div>
+</main>
+</body></html>

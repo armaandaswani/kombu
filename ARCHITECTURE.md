@@ -1,0 +1,158 @@
+# Kombú New Site - Architecture Notes
+
+This folder contains a static operational prototype built from the Stitch base:
+
+- `index.html`: public institutional/catalog site in Brazilian Portuguese.
+- `admin.html`: internal operating dashboard prototype.
+- `assets/kombu.css`: shared visual system based on the Amazonian Vitality Stitch palette.
+- `assets/public.js`: public flavor cards, partner locator, forms and flavor detail views.
+- `assets/admin.js`: local operational data, cost calculations, admin modules and CSV export.
+
+## Product Shape
+
+The public side is intentionally not direct ecommerce. CTAs route users to:
+
+- Partner locator.
+- WhatsApp.
+- Reseller lead form.
+- External sales links later, if approved.
+
+The admin side is structured as the business operating system for Kombú:
+
+- Dashboard geral.
+- Ingredientes.
+- Compras.
+- Fornecedores.
+- Receitas e versões.
+- Calculadora de custo por garrafa.
+- Lotes de produção.
+- Estoque.
+- Embalagens.
+- Vendas.
+- Parceiros.
+- Despesas.
+- Relatórios.
+- CMS público.
+- Arquitetura/schema.
+
+## Calculation Rules
+
+The cost engine in `assets/admin.js` already models:
+
+- Unit conversion between `kg/g`, `l/ml` and `un`.
+- Ingredient cost per used quantity.
+- Packaging cost per bottle.
+- Labor, utilities, other variable costs and loss percentage.
+- Batch cost.
+- Cost per bottle.
+- Cost per liter.
+- Wholesale and retail margin.
+- Sales COGS by batch.
+- Gross profit, gross margin and estimated net result.
+
+Historical costing rule for a real backend:
+
+Each production batch must store a snapshot of recipe version, ingredient costs, packaging costs and assumptions at the time of production. Future price changes must update future estimates only.
+
+## Suggested Database Entities
+
+- Users
+- Roles
+- Ingredients
+- Ingredient Categories
+- Suppliers
+- Purchases
+- Purchase Items
+- Packaging Materials
+- Recipes
+- Recipe Ingredients
+- Recipe Versions
+- Production Batches
+- Batch Ingredients Used
+- Finished Product Stock
+- Stock Movements
+- Flavors
+- Partners
+- Sales
+- Sale Items
+- Expenses
+- Expense Categories
+- Cost Assumptions
+- Reports
+- CMS Pages
+- Media Library
+- Audit Logs
+
+## Security Direction
+
+For production:
+
+- Login required for `/admin`.
+- Role-based permissions.
+- File uploads protected.
+- Audit log for edits and deletions.
+- No public access to cost, sales, stock or financial data.
+- Server-side validation for all calculations.
+
+## SEO Plan
+
+Priority pages and search intent:
+
+- Home: `Kombú Kombucha Premium | Refrigerante Saudável Natural em Manaus`
+- Sabores: `Sabores Kombú | Kombucha artesanal premium da Amazônia`
+- Each flavor: `Kombucha de [Sabor] 500ml | Kombú Manaus`
+- Benefícios: `Benefícios da Kombucha | Bebida funcional clean label`
+- O que é Kombucha: `O que é Kombucha? Guia simples da Kombú`
+- Onde Encontrar: `Onde comprar Kombú Kombucha em Manaus`
+- Seja Revendedor: `Revenda Kombú | Bebida saudável para cafés, empórios e restaurantes`
+- Sobre: `Sobre a Kombú | Kombucha premium feita em Manaus`
+- Contato: `Contato Kombú Kombucha da Amazônia`
+
+Target keyword clusters:
+
+- kombucha em Manaus
+- kombucha artesanal Manaus
+- kombucha premium Amazonas
+- refrigerante saudável Manaus
+- bebida funcional Manaus
+- kombucha natural
+- kombucha probiótica
+- kombucha clean label
+- kombucha revenda Manaus
+- bebida saudável para revenda
+- kombucha para cafés e restaurantes
+- bebida funcional para empórios
+
+Schema:
+
+- `LocalBusiness` on the public site.
+- `Product` or `ItemList` for flavor pages.
+- `FAQPage` for "O que é Kombucha?" after final copy is approved.
+
+## CTA Strategy
+
+Public CTAs:
+
+- Primary: `Onde encontrar`
+- Secondary: `Conhecer sabores`
+- Commercial: `Seja revendedor`
+- Support: `WhatsApp`
+
+Admin CTAs:
+
+- `Nova venda`
+- `Registrar compra`
+- `Novo lote`
+- `Novo ingrediente`
+- `Salvar simulação`
+- `Exportar CSV`
+
+## Next Production Steps
+
+1. Replace localStorage data with a backend database.
+2. Add authentication and role permissions.
+3. Add real file upload for invoices, receipts and product media.
+4. Connect partner locator to the CMS partner table.
+5. Add Excel import/export using a server-side library.
+6. Capture batch cost snapshots at creation.
+7. Add analytics events and ad pixels after consent strategy is defined.

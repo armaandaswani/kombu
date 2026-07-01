@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Kombú Admin | Sistema Operacional de Produção, Custos e Estoque</title>
+    <meta
+      name="description"
+      content="Protótipo operacional para gerir custos por garrafa, ingredientes, compras, receitas, lotes, estoque, vendas, parceiros, despesas, relatórios e CMS da Kombú."
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&family=Playfair+Display:wght@600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="assets/kombu.css" />
+  </head>
+  <body class="admin-body">
+    <div class="admin-shell">
+      <aside class="admin-sidebar" aria-label="Navegação do admin">
+        <a class="brand" href="index.html" aria-label="Voltar ao site público">
+          <span class="brand-mark">K</span>
+          <span class="brand-name">
+            <strong>Kombú Admin</strong>
+            <span>Painel Operacional</span>
+          </span>
+        </a>
+        <button class="btn btn-primary quick-action" id="quickSaleButton" type="button">
+          <span class="material-symbols-outlined" aria-hidden="true">add</span>
+          <span>Nova Venda</span>
+        </button>
+        <nav class="admin-nav" id="adminNav">
+          <button class="is-active" type="button" data-module="dashboard" title="Dashboard">
+            <span class="material-symbols-outlined" aria-hidden="true">dashboard</span>
+            <span class="label">Dashboard</span>
+          </button>
+          <button type="button" data-module="ingredients" title="Ingredientes">
+            <span class="material-symbols-outlined" aria-hidden="true">egg_alt</span>
+            <span class="label">Ingredientes</span>
+          </button>
+          <button type="button" data-module="purchases" title="Compras">
+            <span class="material-symbols-outlined" aria-hidden="true">shopping_bag</span>
+            <span class="label">Compras</span>
+          </button>
+          <button type="button" data-module="suppliers" title="Fornecedores">
+            <span class="material-symbols-outlined" aria-hidden="true">local_shipping</span>
+            <span class="label">Fornecedores</span>
+          </button>
+          <button type="button" data-module="recipes" title="Receitas">
+            <span class="material-symbols-outlined" aria-hidden="true">menu_book</span>
+            <span class="label">Receitas</span>
+          </button>
+          <button type="button" data-module="costs" title="Custos">
+            <span class="material-symbols-outlined" aria-hidden="true">calculate</span>
+            <span class="label">Custos</span>
+          </button>
+          <button type="button" data-module="batches" title="Produção">
+            <span class="material-symbols-outlined" aria-hidden="true">factory</span>
+            <span class="label">Produção</span>
+          </button>
+          <button type="button" data-module="stock" title="Estoque">
+            <span class="material-symbols-outlined" aria-hidden="true">inventory_2</span>
+            <span class="label">Estoque</span>
+          </button>
+          <button type="button" data-module="packaging" title="Embalagens">
+            <span class="material-symbols-outlined" aria-hidden="true">deployed_code</span>
+            <span class="label">Embalagens</span>
+          </button>
+          <button type="button" data-module="sales" title="Vendas">
+            <span class="material-symbols-outlined" aria-hidden="true">receipt_long</span>
+            <span class="label">Vendas</span>
+          </button>
+          <button type="button" data-module="partners" title="Parceiros">
+            <span class="material-symbols-outlined" aria-hidden="true">handshake</span>
+            <span class="label">Parceiros</span>
+          </button>
+          <button type="button" data-module="expenses" title="Despesas">
+            <span class="material-symbols-outlined" aria-hidden="true">payments</span>
+            <span class="label">Despesas</span>
+          </button>
+          <button type="button" data-module="reports" title="Relatórios">
+            <span class="material-symbols-outlined" aria-hidden="true">bar_chart</span>
+            <span class="label">Relatórios</span>
+          </button>
+          <button type="button" data-module="cms" title="CMS">
+            <span class="material-symbols-outlined" aria-hidden="true">edit_note</span>
+            <span class="label">CMS</span>
+          </button>
+          <button type="button" data-module="schema" title="Arquitetura">
+            <span class="material-symbols-outlined" aria-hidden="true">account_tree</span>
+            <span class="label">Arquitetura</span>
+          </button>
+        </nav>
+      </aside>
+
+      <main class="admin-main">
+        <header class="admin-topbar">
+          <label class="admin-search">
+            <span class="material-symbols-outlined" aria-hidden="true">search</span>
+            <input id="globalSearch" type="search" placeholder="Buscar lotes, ingredientes, parceiros ou vendas..." />
+          </label>
+          <div class="admin-user">
+            <select class="role-pill" id="roleSelector" aria-label="Perfil de acesso">
+              <option value="Owner / Admin">Owner / Admin</option>
+              <option value="Produção">Produção</option>
+              <option value="Financeiro">Financeiro</option>
+              <option value="Vendas">Vendas</option>
+              <option value="Viewer">Viewer</option>
+            </select>
+            <a class="btn btn-outline" href="index.html">
+              <span class="material-symbols-outlined" aria-hidden="true">public</span>
+              Site público
+            </a>
+          </div>
+        </header>
+
+        <div class="admin-content" id="adminContent" aria-live="polite"></div>
+      </main>
+    </div>
+
+    <div class="modal admin-modal" id="adminModal" role="dialog" aria-modal="true" aria-labelledby="adminModalTitle">
+      <div class="modal-panel">
+        <div class="modal-head">
+          <div>
+            <span class="eyebrow" id="adminModalEyebrow">Admin</span>
+            <h2 id="adminModalTitle">Ação</h2>
+          </div>
+          <button class="icon-btn" id="closeAdminModal" aria-label="Fechar" type="button">
+            <span class="material-symbols-outlined" aria-hidden="true">close</span>
+          </button>
+        </div>
+        <div id="adminModalBody"></div>
+      </div>
+    </div>
+
+    <script src="assets/admin.js"></script>
+  </body>
+</html>
