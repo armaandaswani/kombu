@@ -529,6 +529,18 @@ function productWholesalePrice(product) {
   return Number(product?.wholesalePrice || 0);
 }
 
+function commonProductPrice(field, fallback = 0) {
+  const counts = state.products.reduce((acc, product) => {
+    const price = Number(product[field] || 0);
+    if (!price) return acc;
+    const key = price.toFixed(2);
+    acc[key] = (acc[key] || 0) + 1;
+    return acc;
+  }, {});
+  const common = Object.entries(counts).sort((a, b) => b[1] - a[1])[0]?.[0];
+  return Number(common || fallback || 0);
+}
+
 const unitFactor = { g: 1, kg: 1000, ml: 1, l: 1000, L: 1000, un: 1 };
 const unitFamily = { g: "mass", kg: "mass", ml: "volume", l: "volume", L: "volume", un: "unit" };
 
@@ -953,7 +965,7 @@ function renderProducts() {
     ${pageHead(
       "Produtos / EAN",
       "Catálogo operacional com código de barras, item, descrição, preço e vínculo com receitas/custos.",
-      `${actionButton("new-product", "Novo produto", "add")} ${actionButton("import-cost-base", "Restaurar base dos prints", "upload_file", "btn-outline")} ${actionButton("export-products", "CSV", "download", "btn-outline")}`,
+      `${actionButton("new-product", "Novo produto", "add")} ${actionButton("global-prices", "Preço global", "price_change", "btn-outline")} ${actionButton("import-cost-base", "Restaurar base dos prints", "upload_file", "btn-outline")} ${actionButton("export-products", "CSV", "download", "btn-outline")}`,
     )}
     <section class="metric-grid">
       ${metric("Produtos cadastrados", number(state.products.length), "Itens KMB e variações", "barcode_scanner")}
@@ -1654,7 +1666,112 @@ function restoreCostBase() {
   render();
 }
 
+function productsForPriceScope(scope) {
+  const filters = {
+    all: () => true,
+    active: (product) => product.status === "ativo",
+    visible: (product) => product.visible,
+    size500: (product) => Number(product.sizeMl) === 500,
+    search: (product) => matchesSearch(product),
+  };
+  const filter = filters[scope] || filters.all;
+  return state.products.filter(filter);
+}
+
+function syncRecipePricesForProducts(products, prices) {
+  let recipeCount = 0;
+  state.recipes.forEach((recipe) => {
+    const product = products.find(
+      (item) =>
+        recipe.productId === item.id ||
+        (!recipe.productId && recipe.flavor === item.flavor && Number(recipe.bottleMl) === Number(item.sizeMl)),
+    );
+    if (!product) return;
+    if (prices.hasRetail) recipe.retailPrice = prices.retailPrice;
+    if (prices.hasWholesale) recipe.wholesalePrice = prices.wholesalePrice;
+    recipeCount += 1;
+  });
+  return recipeCount;
+}
+
+function globalPriceForm() {
+  const retailDefault = commonProductPrice("retailPrice", 18.5).toFixed(2);
+  const wholesaleDefault = commonProductPrice("wholesalePrice", 13).toFixed(2);
+  const searchLabel = globalSearch ? `Busca atual (${productsForPriceScope("search").length})` : "Busca atual";
+  openModal(
+    "Preço global",
+    "Produtos / EAN",
+    `
+      <form id="globalPriceForm">
+        <div class="input-grid">
+          <label class="field field-full">
+            <span>Aplicar em</span>
+            <select name="scope">
+              <option value="all">Todos os produtos (${state.products.length})</option>
+              <option value="active">Somente status ativo (${productsForPriceScope("active").length})</option>
+              <option value="visible">Somente públicos/visíveis (${productsForPriceScope("visible").length})</option>
+              <option value="size500">Somente 500ml (${productsForPriceScope("size500").length})</option>
+              <option value="search">${searchLabel}</option>
+            </select>
+          </label>
+          <label class="field">
+            <span>Novo preço varejo</span>
+            <input name="retailPrice" type="number" min="0" step="0.01" placeholder="${retailDefault}" />
+          </label>
+          <label class="field">
+            <span>Novo preço atacado</span>
+            <input name="wholesalePrice" type="number" min="0" step="0.01" placeholder="${wholesaleDefault}" />
+          </label>
+          <label class="check-row field-full">
+            <input name="syncRecipes" type="checkbox" checked />
+            <span>Atualizar também os preços das receitas vinculadas para manter custos e margens alinhados</span>
+          </label>
+          <p class="empty-note field-full">Preencha varejo, atacado ou os dois. Campo em branco não será alterado.</p>
+        </div>
+        <button class="btn btn-primary" type="submit">
+          <span class="material-symbols-outlined" aria-hidden="true">price_change</span>
+          Aplicar preço global
+        </button>
+      </form>
+    `,
+  );
+  document.querySelector("#globalPriceForm").addEventListener("submit", (event) => {
+    event.preventDefault();
+    const data = new FormData(event.target);
+    const retailRaw = String(data.get("retailPrice") || "").trim();
+    const wholesaleRaw = String(data.get("wholesalePrice") || "").trim();
+    const hasRetail = retailRaw !== "";
+    const hasWholesale = wholesaleRaw !== "";
+    if (!hasRetail && !hasWholesale) {
+      window.alert("Informe pelo menos um preço para atualizar.");
+      return;
+    }
+    const retailPrice = Number(retailRaw);
+    const wholesalePrice = Number(wholesaleRaw);
+    if ((hasRetail && !Number.isFinite(retailPrice)) || (hasWholesale && !Number.isFinite(wholesalePrice))) {
+      window.alert("Informe preços válidos.");
+      return;
+    }
+    const products = productsForPriceScope(data.get("scope"));
+    if (!products.length) {
+      window.alert("Nenhum produto encontrado para este filtro.");
+      return;
+    }
+    products.forEach((product) => {
+      if (hasRetail) product.retailPrice = retailPrice;
+      if (hasWholesale) product.wholesalePrice = wholesalePrice;
+    });
+    const recipeCount = data.get("syncRecipes") === "on" ? syncRecipePricesForProducts(products, { hasRetail, hasWholesale, retailPrice, wholesalePrice }) : 0;
+    const changed = [hasRetail ? `varejo ${brl(retailPrice)}` : "", hasWholesale ? `atacado ${brl(wholesalePrice)}` : ""].filter(Boolean).join(" | ");
+    addAudit("Preço global atualizado", `${products.length} produtos | ${changed}${recipeCount ? ` | ${recipeCount} receitas` : ""}`);
+    closeModal();
+    render();
+  });
+}
+
 function newProductForm() {
+  const retailDefault = commonProductPrice("retailPrice", 18.5).toFixed(2);
+  const wholesaleDefault = commonProductPrice("wholesalePrice", 13).toFixed(2);
   openModal(
     "Novo produto",
     "Produtos / EAN",
@@ -1665,8 +1782,8 @@ function newProductForm() {
           <label class="field"><span>EAN-13</span><input name="ean" inputmode="numeric" placeholder="789..." maxlength="13"></label>
           <label class="field"><span>Sabor</span><input name="flavor" required></label>
           <label class="field"><span>Tamanho ml</span><input name="sizeMl" type="number" min="1" value="500" required></label>
-          <label class="field"><span>Preço varejo</span><input name="retailPrice" type="number" min="0" step="0.01" value="18.50"></label>
-          <label class="field"><span>Preço atacado</span><input name="wholesalePrice" type="number" min="0" step="0.01" value="13.00"></label>
+          <label class="field"><span>Preço varejo</span><input name="retailPrice" type="number" min="0" step="0.01" value="${retailDefault}"></label>
+          <label class="field"><span>Preço atacado</span><input name="wholesalePrice" type="number" min="0" step="0.01" value="${wholesaleDefault}"></label>
           <label class="field"><span>Custo base</span><input name="baselineCost" type="number" min="0" step="0.01" value="0"></label>
           <label class="field"><span>Status</span><select name="status"><option>ativo</option><option>planejado</option><option>pausado</option></select></label>
           <label class="field field-full"><span>Descrição</span><input name="description" placeholder="Kombucha Premium de 500ml - Sabor ..."></label>
@@ -2638,6 +2755,7 @@ function handleAction(action) {
   }
   const actionMap = {
     "new-product": newProductForm,
+    "global-prices": globalPriceForm,
     "import-cost-base": restoreCostBase,
     "new-ingredient": newIngredientForm,
     "new-purchase": newPurchaseForm,
