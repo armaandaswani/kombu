@@ -7,6 +7,7 @@ This folder contains a static operational prototype built from the Stitch base:
 - `assets/kombu.css`: shared visual system based on the Amazonian Vitality Stitch palette.
 - `assets/public.js`: public flavor cards, partner locator, forms and flavor detail views.
 - `assets/admin.js`: local operational data, cost calculations, admin modules and CSV export.
+- `api/lead.js`: Vercel serverless notification endpoint for new leads.
 
 ## Product Shape
 
@@ -15,6 +16,7 @@ The public side is intentionally not direct ecommerce. CTAs route users to:
 - Partner locator.
 - WhatsApp.
 - Reseller lead form.
+- General contact form.
 - External sales links later, if approved.
 
 The admin side is structured as the business operating system for Kombú:
@@ -30,6 +32,7 @@ The admin side is structured as the business operating system for Kombú:
 - Estoque.
 - Embalagens.
 - Vendas.
+- Leads CRM.
 - Parceiros.
 - Despesas.
 - Relatórios.
@@ -80,6 +83,8 @@ Each production batch must store a snapshot of recipe version, ingredient costs,
 - Partners
 - Sales
 - Sale Items
+- Leads
+- Lead Status History
 - Expenses
 - Expense Categories
 - Cost Assumptions
@@ -98,6 +103,18 @@ For production, Supabase is recommended because this site needs real authenticat
 - Audit log for edits and deletions.
 - No public access to cost, sales, stock or financial data.
 - Server-side validation for all calculations.
+
+## Lead Notifications
+
+The public reseller and contact forms save leads into the admin CRM prototype and call `/api/lead`.
+
+On Vercel, email delivery uses Resend:
+
+- `RESEND_API_KEY`: required to send.
+- `LEAD_NOTIFY_EMAIL`: optional recipient override. Default is `armaandaswani@icloud.com`.
+- `LEAD_FROM_EMAIL`: optional sender address. For production, this should be a verified sender/domain in Resend.
+
+The endpoint returns `emailSent: false` when `RESEND_API_KEY` is missing, so local/static previews keep working while the CRM still receives the lead in browser storage.
 
 ## SEO Plan
 
@@ -158,7 +175,7 @@ Admin CTAs:
 2. Replace localStorage data with Supabase Postgres tables.
 3. Add Supabase Auth and role permissions.
 4. Add real file upload for invoices, receipts and product media through Supabase Storage.
-5. Connect partner locator to the CMS partner table.
+5. Persist leads, partners and CMS globally instead of browser-only localStorage.
 6. Add Excel import/export using a server-side library.
 7. Capture batch cost snapshots at creation.
 8. Add analytics events and ad pixels after consent strategy is defined.

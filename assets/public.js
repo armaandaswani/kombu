@@ -1,106 +1,142 @@
-const imageBase = "https://static.wixstatic.com/media/";
+const menuBottleBase = "assets/menu-bottles/";
 const ADMIN_STORAGE_KEY = "kombuAdminStateV3";
 const LEGACY_ADMIN_STORAGE_KEYS = ["kombuAdminStateV2"];
-const OFFICIAL_MAP_URL = "https://www.google.com/maps/d/u/0/edit?mid=1Zn4OECfeuJkhDkCj6noQKZDeLgOUbn8";
+const ADMIN_EMAIL = "armaandaswani@icloud.com";
+const OFFICIAL_MAP_ID = "1Zn4OECfeuJkhDkCj6noQKZDeLgOUbn8";
+const OFFICIAL_MAP_URL = `https://www.google.com/maps/d/viewer?mid=${OFFICIAL_MAP_ID}`;
 
 const flavors = [
+  {
+    name: "Goiaba",
+    slug: "goiaba",
+    imageKey: "goiaba",
+    profile: "Frutados",
+    color: "#F5CDC3",
+    image: `${menuBottleBase}goiaba.png`,
+    ingredients: ["Goiaba", "chá fermentado", "vitamina C"],
+    angle: "Naturalmente rica em vitamina C, nutritiva e refrescante.",
+    description: "É naturalmente rica em vitamina C e traz uma proposta nutritiva e refrescante.",
+  },
+  {
+    name: "Uva",
+    slug: "uva",
+    imageKey: "uva",
+    profile: "Frutados",
+    color: "#E5D7FF",
+    image: `${menuBottleBase}uva.png`,
+    ingredients: ["Uva", "chá fermentado", "antioxidantes"],
+    angle: "Encorpada, levemente adocicada e associada à vitalidade.",
+    description: "Encorpado e levemente adocicado, traz antioxidantes naturais associados à vitalidade e proteção celular.",
+  },
   {
     name: "Maracujá",
     slug: "maracuja",
     imageKey: "maracuja",
-    profile: "Cítrico e marcante",
+    profile: "Frutados",
     color: "#F7D8AD",
-    image: `${imageBase}716adf_5b0b2489ee914e53b15b4a590915d974~mv2.png/v1/crop/x_6,y_0,w_1068,h_1920/fill/w_520,h_936,al_c,q_90,usm_0.66_1.00_0.01,enc_auto/4_edited.png`,
-    ingredients: ["Maracujá", "chá verde", "fermentação natural"],
-    angle: "Refrescância tropical com acidez viva para substituir refrigerantes artificiais.",
-    description:
-      "A versão mais solar da Kombú: aromática, refrescante e equilibrada, com presença de fruta real e final levemente ácido.",
+    image: `${menuBottleBase}maracuja.png`,
+    ingredients: ["Maracujá", "chá fermentado", "bem-estar"],
+    angle: "Tropical, refrescante e associado à sensação de calma.",
+    description: "Tropical e refrescante, com uma proposta mais leve e associada à sensação de calma e bem-estar.",
   },
   {
-    name: "Maçã e Canela",
-    slug: "maca-canela",
-    imageKey: "macaCanela",
-    profile: "Doce e suave",
+    name: "Rosas & Cardamomo",
+    slug: "rosas-cardamomo",
+    imageKey: "rosasCardamomo",
+    profile: "Florais",
     color: "#F5CDC3",
-    image:
-      "https://static.wixstatic.com/media/716adf_673e38f87b0e41bd9972f7b8a5fda104~mv2.png/v1/fill/w_520,h_693,al_c,q_90,usm_0.66_1.00_0.01,enc_avif,quality_auto/IMG_6619_edited.png",
-    ingredients: ["Maçã", "canela", "chá fermentado"],
-    angle: "Conforto aromático, leve dulçor natural e experiência clássica.",
-    description:
-      "Inspirada em memórias boas, combina a doçura delicada da maçã ao toque aromático da canela.",
+    image: `${menuBottleBase}rosas-cardamomo.png`,
+    ingredients: ["Rosas", "cardamomo", "chá verde"],
+    angle: "Floral, elegante e associado à digestão e conforto.",
+    description: "Floral e elegante, traz o cardamomo como destaque, associado à digestão e sensação de conforto.",
   },
   {
-    name: "Pêra e Alecrim",
+    name: "Pêra & Alecrim",
     slug: "pera-alecrim",
     imageKey: "peraAlecrim",
-    profile: "Doce e suave",
+    profile: "Herbais",
     color: "#D9F99D",
-    image: `${imageBase}716adf_2b695c9743c344a2a91acf67ed69ff5f~mv2.png/v1/fill/w_520,h_936,al_c,q_90,usm_0.66_1.00_0.01,enc_auto/6_edited_edited.png`,
+    image: `${menuBottleBase}pera-alecrim.png`,
     ingredients: ["Pêra", "alecrim", "chá verde"],
-    angle: "Suavidade herbal para um gole fresco, leve e gastronômico.",
-    description:
-      "Uma combinação elegante de fruta e erva, com final aromático e perfil fácil de harmonizar.",
+    angle: "Leve, herbal e associada à digestão e clareza mental.",
+    description: "Leve e herbal, une o frescor da pêra ao alecrim, associado à digestão e clareza mental.",
+  },
+  {
+    name: "Hibisco & Anis Estrelado",
+    slug: "hibisco-anis-estrelado",
+    imageKey: "hibisco",
+    profile: "Florais",
+    color: "#F5CDC3",
+    image: `${menuBottleBase}hibisco-anis.png`,
+    ingredients: ["Hibisco", "anis estrelado", "chá fermentado"],
+    angle: "Perfil detox, diurético e com sensação de leveza.",
+    description: "Tem sabor com proposta mais detox, associado à ação diurética e sensação de leveza.",
+  },
+  {
+    name: "Lavanda & Limão",
+    slug: "lavanda-limao",
+    imageKey: "lavandaLimao",
+    profile: "Cítricos",
+    color: "#E5D7FF",
+    image: `${menuBottleBase}lavanda-limao.png`,
+    ingredients: ["Lavanda", "limão", "chá fermentado"],
+    angle: "Cítrico, floral e refrescante.",
+    description: "Cítrico, floral e refrescante, une a lavanda associada ao relaxamento com o frescor natural do limão.",
   },
   {
     name: "Frutas Vermelhas",
     slug: "frutas-vermelhas",
     imageKey: "frutasVermelhas",
-    profile: "Doce e suave",
+    profile: "Frutados",
     color: "#F5CDC3",
-    image: `${imageBase}716adf_5c8cd66d9eb842a0940b212d250fd255~mv2.png/v1/fill/w_520,h_936,al_c,q_90,usm_0.66_1.00_0.01,enc_auto/IMG_2897_PNG.png`,
+    image: `${menuBottleBase}frutas-vermelhas.png`,
     ingredients: ["Morango", "mirtilo", "oxicoco"],
-    angle: "Colorida, vibrante e associada a uma rotina mais equilibrada.",
-    description:
-      "Explosão de frutas com acidez controlada, dulçor natural e presença marcante no copo.",
-  },
-  {
-    name: "Mirtilo e Flor Borboleta Azul",
-    slug: "mirtilo-flor-borboleta",
-    imageKey: "mirtilo",
-    profile: "Exótico",
-    color: "#D8DDFF",
-    image: `${imageBase}716adf_8da298261b9a4acd8e9e2264491cee1d~mv2.png/v1/fill/w_520,h_936,al_c,q_90,usm_0.66_1.00_0.01,enc_auto/7.png`,
-    ingredients: ["Mirtilo", "flor borboleta azul", "chá fermentado"],
-    angle: "Perfil sensorial diferenciado, visual expressivo e proposta premium.",
-    description:
-      "Um sabor mais autoral, feito para quem quer sair do comum sem perder leveza.",
-  },
-  {
-    name: "Rosas e Cardamomo",
-    slug: "rosas-cardamomo",
-    imageKey: "rosasCardamomo",
-    profile: "Exótico",
-    color: "#E5D7FF",
-    image: `${imageBase}716adf_4d2ae2c8e77d48ea8aa11ceffef05be4~mv2.png/v1/fill/w_520,h_936,al_c,q_90,usm_0.66_1.00_0.01,enc_auto/3_edited.png`,
-    ingredients: ["Pétalas de rosa", "cardamomo", "chá verde"],
-    angle: "Floral, aromático e sofisticado para uma experiência de baixa doçura.",
-    description:
-      "Uma versão elegante e perfumada, feita para consumo lento e ocasiões especiais.",
+    angle: "Frutado, levemente ácido e rico em antioxidantes naturais.",
+    description: "Frutado e levemente ácido, é rico em antioxidantes naturais associados à vitalidade e proteção celular.",
   },
   {
     name: "Imunidade",
     slug: "imunidade",
     imageKey: "imunidade",
-    profile: "Cítrico e marcante",
+    profile: "Cítricos",
     color: "#F7D8AD",
-    image:
-      "https://static.wixstatic.com/media/716adf_c9ac20cf991c4796b8be299c33e22abc~mv2.png/v1/crop/x_62,y_0,w_931,h_1920/fill/w_520,h_1071,al_c,q_90,usm_0.66_1.00_0.01,enc_avif,quality_auto/2.png",
+    image: `${menuBottleBase}imunidade.png`,
     ingredients: ["Limão", "gengibre", "cúrcuma"],
-    angle: "Cítrica, intensa e conectada a uma rotina de cuidado consciente.",
-    description:
-      "A acidez do limão se une ao calor do gengibre e à potência terrosa da cúrcuma.",
+    angle: "Cítrica e intensa, com ingredientes associados à vitamina C.",
+    description: "Feito com limão, gengibre e cúrcuma, combina ingredientes associados à vitamina C, vitalidade e proteção natural.",
   },
   {
-    name: "Hibisco com Anis Estrelado",
-    slug: "hibisco-anis-estrelado",
-    imageKey: "hibisco",
-    profile: "Exótico",
+    name: "Flor Fada Azul & Blueberry",
+    slug: "flor-fada-azul-blueberry",
+    imageKey: "mirtilo",
+    profile: "Florais",
+    color: "#D8DDFF",
+    image: `${menuBottleBase}flor-fada-blueberry.png`,
+    ingredients: ["Flor fada azul", "blueberry", "chá fermentado"],
+    angle: "Delicado, visualmente único e associado à ação antioxidante.",
+    description: "Delicado e visualmente único, combina ingredientes associados à ação antioxidante e bem-estar.",
+  },
+  {
+    name: "Jasmim & Manga",
+    slug: "jasmim-manga",
+    imageKey: "jasmimManga",
+    profile: "Frutados",
+    color: "#F7D8AD",
+    image: `${menuBottleBase}jasmim-manga.png`,
+    ingredients: ["Jasmim", "manga", "chá fermentado"],
+    angle: "Doce, tropical, vibrante e naturalmente energético.",
+    description: "Doce, tropical e vibrante, traz uma proposta naturalmente energética e rica em frescor.",
+  },
+  {
+    name: "Maçã & Canela",
+    slug: "maca-canela",
+    imageKey: "macaCanela",
+    profile: "Herbais",
     color: "#F5CDC3",
-    image: `${imageBase}716adf_4d2ae2c8e77d48ea8aa11ceffef05be4~mv2.png/v1/fill/w_520,h_936,al_c,q_90,usm_0.66_1.00_0.01,enc_auto/3_edited.png`,
-    ingredients: ["Hibisco", "anis estrelado", "chá fermentado"],
-    angle: "Floral intenso, acidez presente e toque especiado.",
-    description:
-      "Vibrante e marcante, com hibisco intenso e anis estrelado para uma experiência ousada.",
+    image: `${menuBottleBase}maca-canela.png`,
+    ingredients: ["Maçã", "canela", "chá fermentado"],
+    angle: "Aromática, acolhedora e associada ao equilíbrio metabólico.",
+    description: "Aromático e acolhedor, traz a canela como destaque, associada ao equilíbrio metabólico.",
   },
 ];
 
@@ -142,6 +178,14 @@ function getOfficialMapUrl() {
   return readAdminCms().officialMapUrl?.trim() || OFFICIAL_MAP_URL;
 }
 
+function getMapIdFromUrl(url) {
+  return url.match(/[?&]mid=([^&]+)/)?.[1] || OFFICIAL_MAP_ID;
+}
+
+function getOfficialMapEmbedUrl() {
+  return `https://www.google.com/maps/d/embed?mid=${encodeURIComponent(getMapIdFromUrl(getOfficialMapUrl()))}`;
+}
+
 function getPublicPartners() {
   try {
     const adminState = readAdminState();
@@ -177,6 +221,8 @@ function applyPublicCms() {
   if (cms.subheadline) {
     document.querySelector(".hero-copy .lead").textContent = cms.subheadline;
   }
+  const mapFrame = document.querySelector("#officialMapFrame");
+  if (mapFrame) mapFrame.src = getOfficialMapEmbedUrl();
 }
 
 function renderBenefits() {
@@ -201,15 +247,13 @@ function renderFlavors(filter = "todos") {
     .map((flavor) => {
       const imageUrl = getCmsImage(flavor.imageKey, flavor.image);
       return `
-        <article class="flavor-card" style="background: linear-gradient(180deg, ${flavor.color}66 0%, #fff 58%);">
+        <article class="flavor-card">
           <div class="flavor-card-media">
             <img src="${imageUrl}" alt="Garrafa Kombú sabor ${flavor.name}" loading="lazy" />
           </div>
           <div class="flavor-card-body">
-            <span class="eyebrow">${flavor.profile}</span>
             <h3>${flavor.name}</h3>
             <p>${flavor.angle}</p>
-            <div class="tag-list">${formatList(flavor.ingredients)}</div>
             <div class="flavor-card-actions">
               <button class="btn btn-primary" type="button" data-open-flavor="${flavor.slug}">
                 <span class="material-symbols-outlined" aria-hidden="true">visibility</span>
@@ -314,7 +358,8 @@ function filteredPartners() {
 
 function renderPartners() {
   const visible = filteredPartners();
-  document.querySelector("#mapPins").innerHTML = visible
+  const pins = document.querySelector("#mapPins");
+  if (pins) pins.innerHTML = visible
     .map(
       (partner) => `
         <span class="map-pin" style="left:${partner.pin[0]}%; top:${partner.pin[1]}%" title="${partner.name}">
@@ -378,15 +423,63 @@ function setPartnerFilter(event) {
 function persistForm(formId, successId, storageKey) {
   const form = document.querySelector(formId);
   const success = document.querySelector(successId);
-  form.addEventListener("submit", (event) => {
+  form.addEventListener("submit", async (event) => {
     event.preventDefault();
     const data = Object.fromEntries(new FormData(form).entries());
+    const type = formId === "#resellerForm" ? "revenda" : "contato";
+    const lead = normalizeLead(data, type);
     const existing = JSON.parse(localStorage.getItem(storageKey) || "[]");
-    existing.push({ ...data, createdAt: new Date().toISOString() });
+    existing.push(lead);
     localStorage.setItem(storageKey, JSON.stringify(existing));
+    syncLeadToAdminCrm(lead);
+    const notification = await notifyLeadByEmail(lead);
     success.classList.remove("hidden");
+    success.textContent = notification.emailSent
+      ? "Lead enviado para o CRM do admin. Notificação enviada para armaandaswani@icloud.com."
+      : "Lead enviado para o CRM do admin. A notificação por email será ativada no Vercel com RESEND_API_KEY.";
     form.reset();
   });
+}
+
+function normalizeLead(data, type) {
+  return {
+    id: `lead-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    type,
+    status: "novo",
+    source: "site-publico",
+    name: data.nome || "",
+    business: data.negocio || "",
+    businessType: data.tipo || "",
+    location: data.bairro || "",
+    whatsapp: data.whatsapp || "",
+    instagram: data.instagram || "",
+    message: data.mensagem || "",
+    emailTo: ADMIN_EMAIL,
+    createdAt: new Date().toISOString(),
+  };
+}
+
+function syncLeadToAdminCrm(lead) {
+  const state = readAdminState();
+  const leads = Array.isArray(state.leads) ? state.leads : [];
+  if (!leads.some((item) => item.id === lead.id)) leads.unshift(lead);
+  state.leads = leads.slice(0, 200);
+  state.notifications = { ...(state.notifications || {}), adminEmail: ADMIN_EMAIL };
+  localStorage.setItem(ADMIN_STORAGE_KEY, JSON.stringify(state));
+}
+
+async function notifyLeadByEmail(lead) {
+  try {
+    const response = await fetch("/api/lead", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ lead }),
+    });
+    if (!response.ok) return { emailSent: false };
+    return response.json();
+  } catch {
+    return { emailSent: false };
+  }
 }
 
 function handleHash() {

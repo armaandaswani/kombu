@@ -1,5 +1,6 @@
 const STORAGE_KEY = "kombuAdminStateV3";
 const ADMIN_PASSWORD = "Rssb2009";
+const ADMIN_NOTIFICATION_EMAIL = "armaandaswani@icloud.com";
 
 const PRODUCT_CATALOG_SEED = [
   { id: "prod-kmb001", ean: "7890528600010", item: "KMB001", flavor: "Maracujá", sizeMl: 500, description: "Kombucha Premium de 500ml - Sabor Maracujá", wholesalePrice: 13, retailPrice: 18.5, baselineCost: 3.29, status: "ativo", visible: true },
@@ -96,6 +97,7 @@ const defaultState = {
   recipes: RECIPE_SEED,
   batches: [],
   sales: [],
+  leads: [],
   purchases: [],
   expenses: [],
   cms: {
@@ -103,7 +105,7 @@ const defaultState = {
     subheadline: "Feita com ingredientes reais, fermentação natural e uma proposta simples: cuidar da saúde sem abrir mão do sabor.",
     whatsapp: "(92) 99209-7165",
     announcement: "",
-    officialMapUrl: "https://www.google.com/maps/d/u/0/edit?mid=1Zn4OECfeuJkhDkCj6noQKZDeLgOUbn8",
+    officialMapUrl: "https://www.google.com/maps/d/viewer?mid=1Zn4OECfeuJkhDkCj6noQKZDeLgOUbn8",
     images: [
       {
         key: "heroBottle",
@@ -178,6 +180,10 @@ const defaultState = {
       wholesalePrice500: 13,
     },
   ],
+  notifications: {
+    adminEmail: ADMIN_NOTIFICATION_EMAIL,
+    provider: "resend",
+  },
   audit: [],
 };
 
@@ -258,7 +264,8 @@ function normalizeState(savedState) {
     images: saved.cms?.images?.length ? saved.cms.images : base.cms.images,
     flavors: saved.cms?.flavors || base.cms.flavors,
   };
-  ["products", "ingredients", "packaging", "suppliers", "partners", "recipes", "batches", "sales", "purchases", "expenses", "costSources", "audit"].forEach((key) => {
+  merged.notifications = { ...base.notifications, ...(saved.notifications || {}) };
+  ["products", "ingredients", "packaging", "suppliers", "partners", "recipes", "batches", "sales", "leads", "purchases", "expenses", "costSources", "audit"].forEach((key) => {
     merged[key] = Array.isArray(saved[key]) ? saved[key] : base[key];
   });
   return merged;
@@ -286,7 +293,7 @@ function canWrite(module = currentModule) {
   if (currentRole === "Viewer") return false;
   if (currentRole === "Produção") return ["dashboard", "products", "ingredients", "recipes", "costs", "batches", "stock", "packaging"].includes(module);
   if (currentRole === "Financeiro") return ["dashboard", "products", "purchases", "suppliers", "costs", "expenses", "reports"].includes(module);
-  if (currentRole === "Vendas") return ["dashboard", "products", "sales", "partners", "cms", "reports"].includes(module);
+  if (currentRole === "Vendas") return ["dashboard", "products", "sales", "leads", "partners", "cms", "reports"].includes(module);
   return true;
 }
 
@@ -1074,6 +1081,50 @@ function renderSales() {
   `;
 }
 
+function renderLeads() {
+  const rows = state.leads
+    .filter((lead) => matchesSearch(lead))
+    .map((lead) => `
+      <tr>
+        <td><strong>${lead.type === "revenda" ? "Revenda" : "Contato"}</strong><br><span>${new Date(lead.createdAt).toLocaleString("pt-BR")}</span></td>
+        <td><strong>${lead.name || "Sem nome"}</strong><br><span>${lead.whatsapp || "Sem WhatsApp"}</span></td>
+        <td>${lead.business || "-"}<br><span>${lead.businessType || ""}${lead.location ? ` | ${lead.location}` : ""}</span></td>
+        <td>${lead.instagram || "-"}</td>
+        <td>${lead.message || "-"}</td>
+        <td>
+          <select class="admin-select compact-select" data-lead-status="${lead.id}">
+            ${["novo", "contatado", "qualificado", "ganho", "perdido"].map((status) => `<option value="${status}" ${lead.status === status ? "selected" : ""}>${status}</option>`).join("")}
+          </select>
+        </td>
+      </tr>
+    `);
+  return `
+    ${pageHead(
+      "Leads CRM",
+      `Leads capturados no site público e notificações enviadas para ${state.notifications.adminEmail}.`,
+      `${actionButton("export-leads", "Exportar CSV", "download", "btn-outline")}`,
+    )}
+    <section class="metric-grid">
+      ${metric("Leads novos", number(state.leads.filter((lead) => lead.status === "novo").length), "Ainda sem contato", "mark_email_unread")}
+      ${metric("Revenda", number(state.leads.filter((lead) => lead.type === "revenda").length), "Formulário seja revendedor", "storefront")}
+      ${metric("Contato geral", number(state.leads.filter((lead) => lead.type === "contato").length), "Mensagens do site", "chat")}
+      ${metric("Email admin", state.notifications.adminEmail, "Canal de notificação", "alternate_email")}
+    </section>
+    ${table(
+      [
+        { label: "Origem / data" },
+        { label: "Contato" },
+        { label: "Negócio / região" },
+        { label: "Instagram" },
+        { label: "Mensagem" },
+        { label: "Status" },
+      ],
+      rows,
+      1160,
+    )}
+  `;
+}
+
 function renderPartners() {
   const rows = state.partners
     .filter((item) => matchesSearch(item))
@@ -1243,8 +1294,8 @@ function renderSchema() {
   const entities = [
     "Users", "Roles", "Products / EAN", "Product Variants", "Ingredients", "Ingredient Categories", "Suppliers", "Purchases", "Purchase Items", "Packaging Materials",
     "Recipes", "Recipe Ingredients", "Recipe Versions", "Production Batches", "Batch Ingredients Used", "Finished Product Stock",
-    "Stock Movements", "Flavors", "Partners", "Sales", "Sale Items", "Expenses", "Expense Categories", "Cost Assumptions",
-    "Reports", "CMS Pages", "Media Library", "Audit Logs",
+    "Stock Movements", "Flavors", "Partners", "Sales", "Sale Items", "Leads", "Lead Status History",
+    "Expenses", "Expense Categories", "Cost Assumptions", "Reports", "CMS Pages", "Media Library", "Audit Logs",
   ];
   return `
     ${pageHead("Arquitetura e Banco de Dados", "Estrutura sugerida para evoluir este protótipo estático para um sistema seguro com autenticação, roles e histórico.", actionButton("reset-demo", "Limpar dados", "restart_alt", "btn-danger", "schema"))}
@@ -1287,6 +1338,7 @@ function render() {
     stock: renderStock,
     packaging: renderPackaging,
     sales: renderSales,
+    leads: renderLeads,
     partners: renderPartners,
     expenses: renderExpenses,
     reports: renderReports,
@@ -1900,10 +1952,19 @@ function bindModuleEvents() {
       saveState();
     });
   });
+  document.querySelectorAll("[data-lead-status]").forEach((select) => {
+    select.addEventListener("change", (event) => {
+      const lead = state.leads.find((item) => item.id === event.target.dataset.leadStatus);
+      if (!lead) return;
+      lead.status = event.target.value;
+      addAudit("Lead atualizado", `${lead.name || lead.whatsapp || lead.id}: ${lead.status}`);
+      render();
+    });
+  });
 }
 
 function handleAction(action) {
-  if (!canWrite() && !["export-products", "export-ingredients", "export-purchases", "export-sales", "export-reports", "export-costs"].includes(action)) return;
+  if (!canWrite() && !["export-products", "export-ingredients", "export-purchases", "export-sales", "export-leads", "export-reports", "export-costs"].includes(action)) return;
   const actionMap = {
     "new-product": newProductForm,
     "import-cost-base": restoreCostBase,
@@ -1983,6 +2044,7 @@ function handleAction(action) {
     "export-ingredients": () => exportCSV("kombu-ingredientes", [["Nome", "Categoria", "Fornecedor", "Estoque", "Unidade", "Custo"], ...state.ingredients.map((i) => [i.name, i.category, i.supplier, i.stock, i.purchaseUnit, i.costPerUnit])]),
     "export-purchases": () => exportCSV("kombu-compras", [["Data", "Fornecedor", "Item", "Qtd", "Unidade", "Total"], ...state.purchases.map((p) => [p.date, p.supplier, p.item, p.qty, p.unit, p.total])]),
     "export-sales": () => exportCSV("kombu-vendas", [["Data", "Parceiro", "Canal", "Sabor", "Lote", "Qtd", "Preço"], ...state.sales.map((s) => [s.date, s.partner, s.channel, s.flavor, s.batchCode, s.qty, s.unitPrice])]),
+    "export-leads": () => exportCSV("kombu-leads-crm", [["Criado em", "Tipo", "Status", "Nome", "Negócio", "Tipo negócio", "Local", "WhatsApp", "Instagram", "Mensagem"], ...state.leads.map((lead) => [lead.createdAt, lead.type, lead.status, lead.name, lead.business, lead.businessType, lead.location, lead.whatsapp, lead.instagram, lead.message])]),
     "export-reports": () => exportCSV("kombu-relatorio", [["Métrica", "Valor"], ["Receita", totals().salesRevenue], ["COGS", totals().cogs], ["Lucro bruto", totals().grossProfit], ["Despesas", totals().expenses], ["Líquido", totals().net]]),
     "export-costs": () => {
       const recipe = byId("recipes", activeRecipeId);

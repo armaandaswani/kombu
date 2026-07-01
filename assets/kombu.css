@@ -126,8 +126,8 @@ h2 {
 }
 
 h1 {
-  font-size: clamp(3rem, 7vw, 6.4rem);
-  max-width: 860px;
+  font-size: clamp(2.75rem, 5.4vw, 5.15rem);
+  max-width: 800px;
   margin-bottom: 22px;
 }
 
@@ -136,7 +136,7 @@ h1 {
 }
 
 h2 {
-  font-size: clamp(2.2rem, 4.6vw, 4.6rem);
+  font-size: clamp(2rem, 3.35vw, 3.35rem);
   margin-bottom: 18px;
 }
 
@@ -147,8 +147,8 @@ h3 {
 
 .lead {
   color: var(--muted);
-  font-size: clamp(1rem, 2vw, 1.2rem);
-  max-width: 680px;
+  font-size: clamp(1rem, 1.35vw, 1.12rem);
+  max-width: 640px;
 }
 
 .section-head {
@@ -442,12 +442,15 @@ textarea:focus-visible {
 .marquee-strip {
   border-block: 1px solid var(--line);
   background: var(--surface-strong);
+  contain: paint;
   overflow: hidden;
+  overflow: clip;
 }
 
 .marquee-row {
   display: flex;
   width: max-content;
+  max-width: none;
   animation: slide 34s linear infinite;
 }
 
@@ -561,42 +564,60 @@ textarea:focus-visible {
   color: #fff;
 }
 
+.flavor-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 30px 46px;
+}
+
 .flavor-card {
   position: relative;
   display: grid;
-  min-height: 520px;
-  overflow: hidden;
+  grid-template-columns: 96px minmax(0, 1fr);
+  align-items: center;
+  min-height: 172px;
+  overflow: visible;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
 }
 
 .flavor-card-media {
   position: relative;
   display: grid;
-  min-height: 290px;
+  min-height: 152px;
   place-items: center;
-  padding: 28px 24px 0;
+  padding: 0;
 }
 
 .flavor-card-media img {
-  max-height: 300px;
+  width: 78px;
+  max-height: 152px;
   object-fit: contain;
-  filter: drop-shadow(0 20px 18px rgba(25, 28, 28, 0.17));
+  filter: drop-shadow(0 14px 14px rgba(25, 28, 28, 0.15));
 }
 
 .flavor-card-body {
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  padding: 22px;
+  gap: 8px;
+  padding: 0;
 }
 
 .flavor-card h3 {
   margin-bottom: 0;
-  font-family: var(--font-serif);
-  font-size: 1.55rem;
+  color: var(--green);
+  font-family: var(--font-sans);
+  font-size: clamp(1.35rem, 1.85vw, 1.9rem);
+  font-weight: 900;
+  line-height: 1.04;
+  text-transform: uppercase;
 }
 
 .flavor-card p {
-  color: var(--muted);
+  color: var(--ink);
+  font-size: clamp(0.95rem, 1.1vw, 1.05rem);
+  line-height: 1.28;
   margin-bottom: 0;
 }
 
@@ -620,7 +641,13 @@ textarea:focus-visible {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  margin-top: auto;
+  margin-top: 6px;
+}
+
+.flavor-card-actions .btn {
+  min-height: 38px;
+  padding: 9px 13px;
+  font-size: 12px;
 }
 
 .education-grid {
@@ -669,23 +696,26 @@ textarea:focus-visible {
   overflow: hidden;
   border: 1px solid var(--line);
   border-radius: 24px;
-  background:
-    linear-gradient(90deg, rgba(45, 75, 40, 0.05) 1px, transparent 1px),
-    linear-gradient(0deg, rgba(45, 75, 40, 0.05) 1px, transparent 1px),
-    linear-gradient(135deg, #f5faef, #fff2f0 52%, #eef6ff);
-  background-size: 46px 46px, 46px 46px, auto;
+  background: var(--surface-strong);
 }
 
-.map-river {
+.map-panel iframe {
   position: absolute;
-  inset: 20% -10% auto;
-  height: 110px;
-  background: rgba(150, 207, 219, 0.44);
-  transform: rotate(-10deg);
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+}
+
+#mapPins {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
 }
 
 .map-pin {
   position: absolute;
+  z-index: 2;
   display: grid;
   width: 42px;
   height: 42px;
@@ -1092,7 +1122,7 @@ textarea:focus-visible {
 
 .admin-page-head h1 {
   margin-bottom: 6px;
-  font-size: clamp(2rem, 4vw, 3.2rem);
+  font-size: clamp(1.85rem, 3.2vw, 2.75rem);
 }
 
 .admin-page-head p {
@@ -1567,7 +1597,6 @@ textarea:focus-visible {
 
   .feature-grid,
   .benefit-grid,
-  .flavor-grid,
   .admin-grid-3,
   .schema-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1666,7 +1695,7 @@ textarea:focus-visible {
   }
 
   h1 {
-    font-size: clamp(2.35rem, 11.5vw, 3rem);
+    font-size: clamp(2.25rem, 10vw, 2.85rem);
     max-width: 100%;
   }
 
@@ -1690,8 +1719,22 @@ textarea:focus-visible {
     min-width: 0;
   }
 
+  .flavor-toolbar .segmented,
+  .locator-toolbar .segmented {
+    justify-content: flex-start;
+    width: 100%;
+    max-width: 100%;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .flavor-toolbar .segmented::-webkit-scrollbar,
+  .locator-toolbar .segmented::-webkit-scrollbar {
+    display: none;
+  }
+
   h2 {
-    font-size: clamp(2.1rem, 11vw, 3.1rem);
+    font-size: clamp(1.9rem, 8.6vw, 2.55rem);
   }
 
   .hero {
@@ -1715,6 +1758,22 @@ textarea:focus-visible {
     border-radius: 24px;
   }
 
+  .marquee-row {
+    width: 100%;
+    flex-wrap: wrap;
+    justify-content: center;
+    animation: none;
+  }
+
+  .marquee-row span {
+    padding: 10px 12px;
+    font-size: 11px;
+  }
+
+  .marquee-row span:nth-child(n+7) {
+    display: none;
+  }
+
   .bottle-stage img {
     max-height: 380px;
   }
@@ -1724,6 +1783,33 @@ textarea:focus-visible {
   }
 
   .flavor-detail {
+    grid-template-columns: 1fr;
+  }
+
+  .flavor-grid {
+    gap: 24px;
+  }
+
+  .flavor-card {
+    grid-template-columns: 78px minmax(0, 1fr);
+    min-height: 142px;
+  }
+
+  .flavor-card-media {
+    min-height: 132px;
+  }
+
+  .flavor-card-media img {
+    width: 64px;
+    max-height: 132px;
+  }
+
+  .flavor-card h3 {
+    font-size: clamp(1.12rem, 5vw, 1.35rem);
+  }
+
+  .flavor-card-actions {
+    display: grid;
     grid-template-columns: 1fr;
   }
 

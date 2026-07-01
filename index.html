@@ -72,7 +72,7 @@
             <span class="material-symbols-outlined" aria-hidden="true">handshake</span>
             Revenda
           </a>
-          <a class="btn btn-primary" href="https://www.google.com/maps/d/u/0/edit?mid=1Zn4OECfeuJkhDkCj6noQKZDeLgOUbn8" target="_blank" rel="noreferrer">
+          <a class="btn btn-primary" href="https://www.google.com/maps/d/viewer?mid=1Zn4OECfeuJkhDkCj6noQKZDeLgOUbn8" target="_blank" rel="noreferrer">
             <span class="material-symbols-outlined" aria-hidden="true">location_on</span>
             Onde Encontrar
           </a>
@@ -106,7 +106,7 @@
                 <span class="material-symbols-outlined" aria-hidden="true">local_bar</span>
                 Conhecer sabores
               </a>
-              <a class="btn btn-lime" href="https://www.google.com/maps/d/u/0/edit?mid=1Zn4OECfeuJkhDkCj6noQKZDeLgOUbn8" target="_blank" rel="noreferrer">
+              <a class="btn btn-lime" href="https://www.google.com/maps/d/viewer?mid=1Zn4OECfeuJkhDkCj6noQKZDeLgOUbn8" target="_blank" rel="noreferrer">
                 <span class="material-symbols-outlined" aria-hidden="true">near_me</span>
                 Onde encontrar
               </a>
@@ -228,7 +228,7 @@
                 <span class="material-symbols-outlined" aria-hidden="true">local_bar</span>
                 Sabores
               </span>
-              <h2 id="sabores-title">Sabores que fazem bem e dão vontade de beber.</h2>
+              <h2 id="sabores-title">Sabores & benefícios em garrafas de 500ml.</h2>
             </div>
             <p>
               Cada Kombú combina ingredientes reais, equilíbrio sensorial e uma experiência leve,
@@ -238,9 +238,10 @@
           <div class="flavor-toolbar">
             <div class="segmented" role="tablist" aria-label="Filtrar sabores">
               <button class="is-active" type="button" data-flavor-filter="todos">Todos</button>
-              <button type="button" data-flavor-filter="Doce e suave">Doce</button>
-              <button type="button" data-flavor-filter="Cítrico e marcante">Cítrico</button>
-              <button type="button" data-flavor-filter="Exótico">Exótico</button>
+              <button type="button" data-flavor-filter="Frutados">Frutados</button>
+              <button type="button" data-flavor-filter="Cítricos">Cítricos</button>
+              <button type="button" data-flavor-filter="Florais">Florais</button>
+              <button type="button" data-flavor-filter="Herbais">Herbais</button>
             </div>
             <a class="btn btn-outline" href="#revenda">
               <span class="material-symbols-outlined" aria-hidden="true">storefront</span>
@@ -332,8 +333,13 @@
             </label>
           </div>
           <div class="locator-layout">
-            <div class="map-panel" aria-label="Mapa estilizado de pontos de venda em Manaus">
-              <div class="map-river" aria-hidden="true"></div>
+            <div class="map-panel" aria-label="Mapa oficial de pontos de venda Kombú">
+              <iframe
+                id="officialMapFrame"
+                title="Mapa oficial de pontos de venda Kombú"
+                loading="lazy"
+                referrerpolicy="no-referrer-when-downgrade"
+              ></iframe>
               <div id="mapPins"></div>
             </div>
             <div class="partner-list" id="partnerList"></div>
@@ -405,7 +411,7 @@
               <span class="material-symbols-outlined" aria-hidden="true">send</span>
               Quero ser revendedor
             </button>
-            <p class="success-note hidden" id="resellerSuccess">Contato salvo neste protótipo. Próximo passo: conectar CRM ou WhatsApp.</p>
+            <p class="success-note hidden" id="resellerSuccess">Lead enviado para o CRM do admin. Você receberá a notificação por email quando o site estiver conectado no Vercel.</p>
           </form>
         </div>
       </section>
@@ -458,7 +464,7 @@
                 <span class="material-symbols-outlined" aria-hidden="true">local_bar</span>
                 Conhecer sabores
               </a>
-              <a class="btn btn-lime" href="https://www.google.com/maps/d/u/0/edit?mid=1Zn4OECfeuJkhDkCj6noQKZDeLgOUbn8" target="_blank" rel="noreferrer">
+              <a class="btn btn-lime" href="https://www.google.com/maps/d/viewer?mid=1Zn4OECfeuJkhDkCj6noQKZDeLgOUbn8" target="_blank" rel="noreferrer">
                 <span class="material-symbols-outlined" aria-hidden="true">near_me</span>
                 Onde encontrar
               </a>
@@ -487,7 +493,7 @@
               <span class="material-symbols-outlined" aria-hidden="true">chat</span>
               Enviar contato
             </button>
-            <p class="success-note hidden" id="contactSuccess">Mensagem salva no protótipo. Em produção, isso deve virar ticket, CRM ou WhatsApp.</p>
+            <p class="success-note hidden" id="contactSuccess">Contato enviado para o CRM do admin. Você receberá a notificação por email quando o site estiver conectado no Vercel.</p>
           </form>
         </div>
       </section>
@@ -522,7 +528,7 @@
         <div>
           <h4>Navegação</h4>
           <p><a href="#sabores">Sabores</a></p>
-          <p><a href="https://www.google.com/maps/d/u/0/edit?mid=1Zn4OECfeuJkhDkCj6noQKZDeLgOUbn8" target="_blank" rel="noreferrer">Onde Encontrar</a></p>
+          <p><a href="https://www.google.com/maps/d/viewer?mid=1Zn4OECfeuJkhDkCj6noQKZDeLgOUbn8" target="_blank" rel="noreferrer">Onde Encontrar</a></p>
           <p><a href="#revenda">Revenda</a></p>
         </div>
         <div>
