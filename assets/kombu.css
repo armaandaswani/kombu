@@ -1604,7 +1604,35 @@ textarea:focus-visible {
 }
 
 .recipe-ingredient-row {
-  grid-template-columns: repeat(3, minmax(130px, 1fr)) repeat(3, minmax(92px, 0.7fr)) 46px;
+  grid-template-columns: repeat(4, minmax(120px, 1fr)) 46px;
+}
+
+.recipe-edit-ingredient-row {
+  grid-template-columns: repeat(4, minmax(120px, 1fr)) 46px;
+}
+
+.calculated-note {
+  display: grid;
+  align-self: stretch;
+  align-content: center;
+  gap: 2px;
+  min-height: 48px;
+  border: 1px solid rgba(45, 75, 40, 0.16);
+  border-radius: var(--radius-sm);
+  background: var(--surface-soft);
+  color: var(--muted);
+  padding: 9px 10px;
+  font-size: 12px;
+  font-weight: 750;
+}
+
+.calculated-note strong {
+  color: var(--green);
+  font-size: 14px;
+}
+
+.calculated-note span {
+  line-height: 1.25;
 }
 
 .image-control-grid {
@@ -1714,7 +1742,7 @@ textarea:focus-visible {
 }
 
 .admin-modal .modal-panel {
-  max-width: 760px;
+  max-width: min(1080px, calc(100vw - 32px));
 }
 
 .hidden {
@@ -2198,6 +2226,7 @@ textarea:focus-visible {
 
   .builder-row,
   .recipe-ingredient-row,
+  .recipe-edit-ingredient-row,
   .image-control,
   .image-fields,
   .flavor-cms-control,
