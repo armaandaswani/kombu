@@ -939,6 +939,10 @@ textarea:focus-visible {
   padding-top: 18px;
 }
 
+.mobile-quickbar {
+  display: none;
+}
+
 .modal {
   position: fixed;
   inset: 0;
@@ -2249,5 +2253,603 @@ textarea:focus-visible {
 
   .table-card {
     padding: 0;
+  }
+}
+
+@media (max-width: 760px) {
+  body:not(.admin-body) {
+    padding-bottom: 78px;
+  }
+
+  body:not(.admin-body) .container {
+    width: min(100% - 20px, var(--container));
+  }
+
+  body:not(.admin-body) .section,
+  body:not(.admin-body) .section-tight {
+    padding: 32px 0;
+  }
+
+  body:not(.admin-body) .section-head {
+    gap: 8px;
+    margin-bottom: 14px;
+  }
+
+  body:not(.admin-body) .section-head p,
+  body:not(.admin-body) .lead {
+    font-size: 0.92rem;
+    line-height: 1.48;
+  }
+
+  body:not(.admin-body) .eyebrow {
+    font-size: 0.66rem;
+    letter-spacing: 0.06em;
+  }
+
+  body:not(.admin-body) h1 {
+    font-size: clamp(1.78rem, 8vw, 2.18rem);
+    line-height: 1.02;
+    margin-bottom: 10px;
+  }
+
+  body:not(.admin-body) h2 {
+    font-size: clamp(1.32rem, 6.2vw, 1.74rem);
+    margin-bottom: 8px;
+  }
+
+  body:not(.admin-body) h3 {
+    font-size: 1rem;
+  }
+
+  body:not(.admin-body) .site-nav {
+    min-height: 58px;
+  }
+
+  body:not(.admin-body) .brand-mark {
+    width: 34px;
+    height: 34px;
+    font-size: 1rem;
+  }
+
+  body:not(.admin-body) .brand-name strong {
+    font-size: 1.03rem;
+  }
+
+  body:not(.admin-body) .brand-name span {
+    max-width: 150px;
+    font-size: 0.5rem;
+    line-height: 1.1;
+  }
+
+  body:not(.admin-body) .nav-links.is-open {
+    top: 58px;
+  }
+
+  body:not(.admin-body) .hero {
+    padding: 24px 0 20px;
+  }
+
+  body:not(.admin-body) .hero-grid {
+    gap: 14px;
+  }
+
+  body:not(.admin-body) .hero-copy .lead {
+    margin-bottom: 14px;
+  }
+
+  body:not(.admin-body) .hero-actions {
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+
+  body:not(.admin-body) .hero-actions .btn {
+    min-height: 42px;
+    padding: 9px 10px;
+    font-size: 0.78rem;
+  }
+
+  body:not(.admin-body) .hero-actions .btn-outline {
+    grid-column: 1 / -1;
+  }
+
+  body:not(.admin-body) .hero-proof {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 7px;
+  }
+
+  body:not(.admin-body) .proof-pill {
+    padding: 8px 7px;
+    text-align: center;
+  }
+
+  body:not(.admin-body) .proof-pill strong {
+    font-size: 0.95rem;
+  }
+
+  body:not(.admin-body) .proof-pill span {
+    font-size: 0.61rem;
+    line-height: 1.15;
+  }
+
+  body:not(.admin-body) .hero-media {
+    min-height: 245px;
+    border-radius: var(--radius);
+  }
+
+  body:not(.admin-body) .hero-media::before {
+    inset: 10px;
+  }
+
+  body:not(.admin-body) .bottle-stage {
+    inset: 14px 12px 8px;
+  }
+
+  body:not(.admin-body) .bottle-stage img {
+    max-height: 226px;
+  }
+
+  body:not(.admin-body) .feature-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  body:not(.admin-body) .feature-card,
+  body:not(.admin-body) .benefit-card {
+    padding: 10px 8px;
+  }
+
+  body:not(.admin-body) .feature-card .material-symbols-outlined,
+  body:not(.admin-body) .benefit-card .material-symbols-outlined {
+    width: 28px;
+    height: 28px;
+    margin-bottom: 8px;
+    font-size: 17px;
+  }
+
+  body:not(.admin-body) .feature-card h3,
+  body:not(.admin-body) .benefit-card h3 {
+    margin-bottom: 0;
+    font-size: 0.78rem;
+    line-height: 1.15;
+  }
+
+  body:not(.admin-body) .feature-card p {
+    display: none;
+  }
+
+  body:not(.admin-body) .benefit-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  body:not(.admin-body) .benefit-card p {
+    font-size: 0.73rem;
+    line-height: 1.32;
+  }
+
+  body:not(.admin-body) .flavor-toolbar,
+  body:not(.admin-body) .locator-toolbar {
+    display: grid;
+    gap: 10px;
+    margin-bottom: 14px;
+  }
+
+  body:not(.admin-body) .flavor-toolbar > .btn {
+    display: none;
+  }
+
+  body:not(.admin-body) .segmented {
+    gap: 4px;
+    padding: 4px;
+  }
+
+  body:not(.admin-body) .segmented button {
+    padding: 7px 9px;
+    font-size: 0.72rem;
+  }
+
+  body:not(.admin-body) .flavor-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  body:not(.admin-body) .flavor-card {
+    min-height: 166px;
+    cursor: pointer;
+  }
+
+  body:not(.admin-body) .flavor-card:focus-visible {
+    outline: 3px solid rgba(70, 103, 43, 0.28);
+    outline-offset: 2px;
+  }
+
+  body:not(.admin-body) .flavor-card-media {
+    min-height: 88px;
+    padding: 9px 6px 2px;
+  }
+
+  body:not(.admin-body) .flavor-card-media img {
+    max-width: 88%;
+    max-height: 88px;
+    filter: drop-shadow(0 8px 9px rgba(25, 28, 28, 0.13));
+  }
+
+  body:not(.admin-body) .flavor-card-body {
+    gap: 4px;
+    padding: 2px 7px 8px;
+  }
+
+  body:not(.admin-body) .flavor-kicker {
+    font-size: 0.54rem;
+    letter-spacing: 0.05em;
+  }
+
+  body:not(.admin-body) .flavor-card h3 {
+    font-size: clamp(0.74rem, 3vw, 0.9rem);
+    line-height: 1.08;
+  }
+
+  body:not(.admin-body) .flavor-card p,
+  body:not(.admin-body) .flavor-card-actions {
+    display: none;
+  }
+
+  body:not(.admin-body) .education-grid,
+  body:not(.admin-body) .revenda-grid,
+  body:not(.admin-body) .story-grid,
+  body:not(.admin-body) .final-cta-grid {
+    gap: 14px;
+  }
+
+  body:not(.admin-body) .process-card {
+    grid-template-columns: 34px minmax(0, 1fr);
+    gap: 10px;
+    padding: 10px;
+  }
+
+  body:not(.admin-body) .process-card span:first-child {
+    width: 30px;
+    height: 30px;
+    font-size: 0.82rem;
+  }
+
+  body:not(.admin-body) .process-card h3 {
+    margin-bottom: 2px;
+  }
+
+  body:not(.admin-body) .process-card p {
+    font-size: 0.8rem;
+    line-height: 1.35;
+  }
+
+  body:not(.admin-body) .locator-toolbar .field {
+    min-width: 0 !important;
+  }
+
+  body:not(.admin-body) .map-panel {
+    min-height: 252px;
+    border-radius: var(--radius);
+  }
+
+  body:not(.admin-body) .partner-list {
+    max-height: none;
+    overflow: visible;
+    padding-right: 0;
+  }
+
+  body:not(.admin-body) .partner-card {
+    padding: 12px;
+  }
+
+  body:not(.admin-body) .partner-card p,
+  body:not(.admin-body) .partner-meta {
+    font-size: 0.8rem;
+  }
+
+  body:not(.admin-body) .revenda-section .revenda-grid {
+    gap: 14px;
+  }
+
+  body:not(.admin-body) .reseller-copy h2 {
+    font-size: clamp(1.38rem, 6.4vw, 1.84rem);
+  }
+
+  body:not(.admin-body) .reseller-copy .lead {
+    font-size: 0.9rem;
+  }
+
+  body:not(.admin-body) .reseller-points {
+    gap: 6px;
+    margin: 12px 0;
+  }
+
+  body:not(.admin-body) .reseller-points li {
+    font-size: 0.82rem;
+    line-height: 1.3;
+  }
+
+  body:not(.admin-body) .reseller-cta {
+    width: 100%;
+  }
+
+  body:not(.admin-body) .form-panel,
+  body:not(.admin-body) .story-panel {
+    padding: 14px;
+  }
+
+  body:not(.admin-body) .form-intro {
+    margin-bottom: 10px;
+  }
+
+  body:not(.admin-body) .form-intro p {
+    font-size: 0.82rem;
+  }
+
+  body:not(.admin-body) .input-grid {
+    gap: 9px;
+  }
+
+  body:not(.admin-body) .field {
+    gap: 4px;
+  }
+
+  body:not(.admin-body) .field input,
+  body:not(.admin-body) .field select,
+  body:not(.admin-body) .field textarea {
+    min-height: 41px;
+    padding: 9px 10px;
+  }
+
+  body:not(.admin-body) .field textarea {
+    min-height: 72px;
+  }
+
+  body:not(.admin-body) .story-copy {
+    display: none;
+  }
+
+  body:not(.admin-body) .timeline {
+    gap: 8px;
+  }
+
+  body:not(.admin-body) .timeline-item {
+    grid-template-columns: 78px minmax(0, 1fr);
+    gap: 10px;
+    padding-top: 9px;
+  }
+
+  body:not(.admin-body) .timeline-item p {
+    font-size: 0.78rem;
+    line-height: 1.35;
+  }
+
+  body:not(.admin-body) #contato .form-panel {
+    display: none;
+  }
+
+  body:not(.admin-body) .footer {
+    padding: 30px 0 24px;
+  }
+
+  body:not(.admin-body) .footer-grid {
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+
+  body:not(.admin-body) .footer-grid > div:first-child {
+    grid-column: 1 / -1;
+  }
+
+  body:not(.admin-body) .footer h3,
+  body:not(.admin-body) .footer h4 {
+    margin-bottom: 6px;
+  }
+
+  body:not(.admin-body) .footer p {
+    margin-bottom: 6px;
+    font-size: 0.8rem;
+    line-height: 1.35;
+  }
+
+  body:not(.admin-body) .modal {
+    align-items: end;
+    padding: 0;
+  }
+
+  body:not(.admin-body) .modal-panel {
+    width: 100%;
+    max-height: 86vh;
+    border-radius: 18px 18px 0 0;
+    padding: 16px;
+  }
+
+  body:not(.admin-body) .modal-head {
+    margin-bottom: 12px;
+  }
+
+  body:not(.admin-body) .flavor-detail {
+    gap: 12px;
+  }
+
+  body:not(.admin-body) .flavor-detail-media {
+    min-height: 190px;
+    padding: 12px;
+  }
+
+  body:not(.admin-body) .flavor-detail-media img {
+    max-height: 185px;
+  }
+
+  body:not(.admin-body) .flavor-detail .hero-actions {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .mobile-quickbar {
+    position: fixed;
+    right: 10px;
+    bottom: 10px;
+    left: 10px;
+    z-index: 60;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 6px;
+    border: 1px solid rgba(45, 75, 40, 0.16);
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.92);
+    box-shadow: 0 10px 24px rgba(25, 28, 28, 0.16);
+    padding: 6px;
+    backdrop-filter: blur(18px);
+  }
+
+  .mobile-quickbar a {
+    display: inline-flex;
+    min-height: 44px;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    border-radius: 999px;
+    color: var(--green);
+    font-size: 0.72rem;
+    font-weight: 900;
+    line-height: 1;
+  }
+
+  .mobile-quickbar a:nth-child(2) {
+    background: var(--green);
+    color: #fff;
+  }
+
+  .mobile-quickbar .material-symbols-outlined {
+    font-size: 18px;
+  }
+}
+
+@media (max-width: 760px) {
+  body:not(.admin-body) section[id] {
+    scroll-margin-top: 74px;
+  }
+
+  body:not(.admin-body) .flavor-card {
+    min-height: 150px;
+  }
+
+  body:not(.admin-body) .flavor-card-media {
+    min-height: 76px;
+    padding: 6px 4px 0;
+  }
+
+  body:not(.admin-body) .flavor-card-media img {
+    max-height: 74px;
+  }
+
+  body:not(.admin-body) .flavor-card-body {
+    padding: 8px;
+  }
+
+  body:not(.admin-body) .flavor-card h3 {
+    font-size: 0.78rem;
+  }
+
+  body:not(.admin-body) .flavor-toolbar .segmented {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 5px;
+    overflow: visible;
+    border-radius: 22px;
+    width: 100%;
+  }
+
+  body:not(.admin-body) .flavor-toolbar .segmented button {
+    justify-content: center;
+    min-height: 35px;
+    padding: 0 6px;
+    font-size: 0.76rem;
+  }
+
+  body:not(.admin-body) .reseller-points {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 6px;
+  }
+
+  body:not(.admin-body) .reseller-points li {
+    min-height: 58px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.7);
+    padding: 8px;
+    font-size: 0.68rem;
+    font-weight: 900;
+    line-height: 1.15;
+  }
+
+  body:not(.admin-body) .reseller-points li::before {
+    display: none;
+  }
+
+  body:not(.admin-body) .form-panel .input-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  body:not(.admin-body) .form-panel .field-full {
+    grid-column: 1 / -1;
+  }
+
+  body:not(.admin-body) .field > span {
+    color: var(--muted);
+    font-size: 0.68rem;
+    font-weight: 900;
+    letter-spacing: 0.04em;
+    line-height: 1.1;
+    text-transform: uppercase;
+  }
+
+  body:not(.admin-body) .field input,
+  body:not(.admin-body) .field select,
+  body:not(.admin-body) .field textarea {
+    min-height: 39px;
+    font-size: 16px;
+  }
+
+  body:not(.admin-body) .field textarea {
+    min-height: 58px;
+  }
+
+  body:not(.admin-body) #resellerForm .form-intro h3 {
+    font-size: 1rem;
+    line-height: 1.08;
+  }
+
+  body:not(.admin-body) #resellerForm .form-intro p {
+    display: none;
+  }
+
+  body:not(.admin-body) #resellerForm {
+    padding-bottom: 72px;
+  }
+
+  body:not(.admin-body) #resellerForm .field {
+    gap: 3px;
+  }
+
+  body:not(.admin-body) #resellerForm .input-grid {
+    gap: 7px;
+  }
+
+  body:not(.admin-body) #resellerForm .field input,
+  body:not(.admin-body) #resellerForm .field select,
+  body:not(.admin-body) #resellerForm .field textarea {
+    min-height: 38px;
+    padding: 7px 9px;
+  }
+
+  body:not(.admin-body) #resellerForm .field textarea {
+    min-height: 46px;
+  }
+
+  body:not(.admin-body) #resellerForm button[type="submit"] {
+    min-height: 42px;
+    margin-top: 2px;
   }
 }

@@ -373,6 +373,13 @@ function renderFlavors(filter = "todos") {
       `;
     })
     .join("");
+  grid.querySelectorAll(".flavor-card").forEach((card, index) => {
+    const flavor = visible[index];
+    card.setAttribute("role", "button");
+    card.setAttribute("tabindex", "0");
+    card.dataset.openFlavor = flavor.slug;
+    card.setAttribute("aria-label", `Ver detalhes do sabor ${flavor.name}`);
+  });
 }
 
 function setFlavorFilter(event) {
@@ -608,8 +615,15 @@ function bootPublicSite() {
   renderPartners();
   document.querySelector(".flavor-toolbar").addEventListener("click", setFlavorFilter);
   document.querySelector("#flavorGrid").addEventListener("click", (event) => {
-    const button = event.target.closest("[data-open-flavor]");
-    if (button) openFlavor(button.dataset.openFlavor);
+    const trigger = event.target.closest("[data-open-flavor]");
+    if (trigger) openFlavor(trigger.dataset.openFlavor);
+  });
+  document.querySelector("#flavorGrid").addEventListener("keydown", (event) => {
+    if (event.key !== "Enter" && event.key !== " ") return;
+    const trigger = event.target.closest("[data-open-flavor]");
+    if (!trigger) return;
+    event.preventDefault();
+    openFlavor(trigger.dataset.openFlavor);
   });
   document.querySelector("#closeFlavorModal").addEventListener("click", closeFlavor);
   document.querySelector("#flavorModal").addEventListener("click", (event) => {
