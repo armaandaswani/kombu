@@ -3,6 +3,7 @@ const ADMIN_PASSWORD = "Rssb2010";
 const ADMIN_NOTIFICATION_EMAIL = "armaandaswani@icloud.com";
 const FLAVOR_CATEGORIES = ["Frutados", "Cítricos", "Florais", "Herbais", "Especiados"];
 const FLAVOR_IMAGE_RECOMMENDED = "mín. 760 x 1368 px; ideal 1040 x 1872 px";
+const ORDER_STATUSES = ["recebido", "confirmado", "em produção", "pronto", "entregue", "cancelado"];
 
 const PRODUCT_CATALOG_SEED = [
   { id: "prod-kmb001", ean: "7890528600010", item: "KMB001", flavor: "Maracujá", sizeMl: 500, description: "Kombucha Premium de 500ml - Sabor Maracujá", wholesalePrice: 13, retailPrice: 18.5, baselineCost: 3.29, status: "ativo", visible: true },
@@ -291,6 +292,7 @@ const defaultState = {
   recipes: RECIPE_SEED,
   batches: [],
   sales: [],
+  orders: [],
   leads: [],
   purchases: [],
   expenses: [],
@@ -533,7 +535,7 @@ function normalizeState(savedState) {
     flavors: normalizeCmsFlavors(saved.cms?.flavors || base.cms.flavors),
   };
   merged.notifications = { ...base.notifications, ...(saved.notifications || {}) };
-  ["products", "ingredients", "packaging", "suppliers", "partners", "recipes", "batches", "sales", "leads", "purchases", "expenses", "costSources", "audit"].forEach((key) => {
+  ["products", "ingredients", "packaging", "suppliers", "partners", "recipes", "batches", "sales", "orders", "leads", "purchases", "expenses", "costSources", "audit"].forEach((key) => {
     merged[key] = Array.isArray(saved[key]) ? saved[key] : base[key];
   });
   merged.packaging = merged.packaging.map((item) => ({ ...item, type: inferPackagingType(item), productId: item.productId || "" }));
@@ -561,9 +563,9 @@ function addAudit(action, detail = "") {
 
 function canWrite(module = currentModule) {
   if (currentRole === "Viewer") return false;
-  if (currentRole === "Produção") return ["dashboard", "products", "ingredients", "recipes", "costs", "batches", "stock", "packaging"].includes(module);
-  if (currentRole === "Financeiro") return ["dashboard", "products", "purchases", "suppliers", "costs", "expenses", "reports"].includes(module);
-  if (currentRole === "Vendas") return ["dashboard", "products", "sales", "leads", "partners", "cms", "reports"].includes(module);
+  if (currentRole === "Produção") return ["dashboard", "products", "ingredients", "recipes", "costs", "batches", "stock", "packaging", "orders"].includes(module);
+  if (currentRole === "Financeiro") return ["dashboard", "products", "purchases", "suppliers", "costs", "expenses", "reports", "orders"].includes(module);
+  if (currentRole === "Vendas") return ["dashboard", "products", "sales", "orders", "leads", "partners", "cms", "reports"].includes(module);
   return true;
 }
 
@@ -859,6 +861,52 @@ function customerStats() {
     .sort((a, b) => b.revenue - a.revenue || b.qty - a.qty);
 }
 
+function orderItems(order) {
+  return Array.isArray(order?.items) ? order.items : [];
+}
+
+function orderQuantity(order) {
+  return orderItems(order).reduce((sum, item) => sum + Number(item.qty || 0), 0);
+}
+
+function orderTotal(order) {
+  return orderItems(order).reduce((sum, item) => sum + Number(item.qty || 0) * Number(item.unitPrice || 0), 0);
+}
+
+function isOpenOrder(order) {
+  return !["entregue", "cancelado"].includes(order?.status);
+}
+
+function nextOrderCode(dateIso = todayIso()) {
+  const compactDate = String(dateIso || todayIso()).slice(2).replaceAll("-", "");
+  const prefix = `PED-${compactDate}`;
+  const existing = (state.orders || []).filter((order) => String(order.code || "").startsWith(prefix)).length;
+  return `${prefix}-${String(existing + 1).padStart(2, "0")}`;
+}
+
+function orderProductText(item) {
+  const product = byId("products", item.productId);
+  return product ? productLabel(product) : item.productName || item.flavor || "Produto não informado";
+}
+
+function orderStatusBadge(status) {
+  const current = ORDER_STATUSES.includes(status) ? status : "recebido";
+  return `<span class="status ${statusClass(current, "general")}">${current}</span>`;
+}
+
+function daysUntil(dateIso) {
+  if (!dateIso) return null;
+  return Math.ceil((new Date(`${dateIso}T00:00:00`) - new Date(`${todayIso()}T00:00:00`)) / 86400000);
+}
+
+function orderDateNote(order) {
+  const days = daysUntil(order.estimatedReadyDate);
+  if (days == null) return "Sem previsão";
+  if (days < 0) return `${Math.abs(days)} dia(s) em atraso`;
+  if (days === 0) return "Pronto hoje";
+  return `${days} dia(s) restantes`;
+}
+
 function monthlySalesRows(limit = 6) {
   const rowsByMonth = state.sales.reduce((acc, sale) => {
     if (!sale.date) return acc;
@@ -981,7 +1029,7 @@ function renderDashboard() {
     ${pageHead(
       "Visão Geral",
       "Controle operacional e financeiro da Kombú: produção, estoque, custo por garrafa, vendas e alertas.",
-      `${actionButton("new-batch", "Novo lote", "science", "btn-outline")} ${actionButton("new-purchase", "Registrar compra", "shopping_bag", "btn-outline")} ${actionButton("new-sale", "Nova saída", "receipt_long")}`,
+      `${actionButton("new-order", "Novo pedido", "assignment", "btn-outline")} ${actionButton("new-batch", "Novo lote", "science", "btn-outline")} ${actionButton("new-purchase", "Registrar compra", "shopping_bag", "btn-outline")} ${actionButton("new-sale", "Nova saída", "receipt_long")}`,
     )}
     <section class="metric-grid">
       ${metric("Garrafas em estoque", number(total.finishedStock), "Prontas para venda por lote", "water_bottle")}
@@ -1034,8 +1082,8 @@ function renderDashboard() {
 
 function statusClass(value, type = "stock") {
   if (type === "stock") return value <= 0 ? "bad" : value <= 1 ? "warn" : "good";
-  if (["aprovado", "ativo", "ativa", "pago"].includes(value)) return "good";
-  if (["planejado", "bottled", "pendente", "custo pendente"].includes(value)) return "warn";
+  if (["aprovado", "ativo", "ativa", "pago", "confirmado", "pronto", "entregue"].includes(value)) return "good";
+  if (["planejado", "bottled", "pendente", "custo pendente", "recebido", "em produção"].includes(value)) return "warn";
   return "bad";
 }
 
@@ -1687,6 +1735,65 @@ function renderSales() {
   `;
 }
 
+function renderOrders() {
+  const orders = state.orders || [];
+  const filteredOrders = orders.filter((order) => matchesSearch(order));
+  const openOrders = orders.filter(isOpenOrder);
+  const inProduction = orders.filter((order) => order.status === "em produção");
+  const dueSoon = openOrders.filter((order) => {
+    const days = daysUntil(order.estimatedReadyDate);
+    return days != null && days <= 7;
+  });
+  const rows = filteredOrders.map((order) => {
+    const items = orderItems(order);
+    const itemSummary = items.length
+      ? items
+          .slice(0, 3)
+          .map((item) => `${number(item.qty)}x ${escapeHtml(orderProductText(item))}${item.note ? ` (${escapeHtml(item.note)})` : ""}`)
+          .join("<br>")
+      : "Sem itens";
+    const extra = items.length > 3 ? `<br><span>+${items.length - 3} item(ns)</span>` : "";
+    return `
+      <tr>
+        <td><strong>${escapeHtml(order.code || "Pedido")}</strong><br><span>${order.orderDate || "-"}</span></td>
+        <td><strong>${escapeHtml(order.customerName || "Cliente sem nome")}</strong><br><span>${escapeHtml(order.businessName || order.whatsapp || "")}</span></td>
+        <td>${itemSummary}${extra}</td>
+        <td class="num">${number(orderQuantity(order))}</td>
+        <td>${orderStatusBadge(order.status)}</td>
+        <td>${order.estimatedReadyDate || "-"}<br><span>${escapeHtml(orderDateNote(order))}</span></td>
+        <td class="num"><strong>${brl(orderTotal(order))}</strong></td>
+        <td>${rowActions([tableAction(`edit-order:${order.id}`, "Editar pedido"), tableAction(`delete-order:${order.id}`, "Excluir pedido", "delete", "danger")])}</td>
+      </tr>
+    `;
+  });
+  return `
+    ${pageHead(
+      "Pedidos",
+      "Acompanhe encomendas grandes antes da venda: cliente, itens, status de produção, previsão de pronto e valor estimado.",
+      `${actionButton("new-order", "Novo pedido", "add")} ${actionButton("export-orders", "CSV", "download", "btn-outline")}`,
+    )}
+    <section class="metric-grid">
+      ${metric("Pedidos abertos", number(openOrders.length), `${number(openOrders.reduce((sum, order) => sum + orderQuantity(order), 0))} garrafas no pipeline`, "pending_actions")}
+      ${metric("Em produção", number(inProduction.length), "Pedidos marcados como em produção", "factory")}
+      ${metric("Atenção 7 dias", number(dueSoon.length), "Prontos, atrasados ou próximos da data", "event_upcoming")}
+      ${metric("Valor aberto", brl(openOrders.reduce((sum, order) => sum + orderTotal(order), 0)), "Receita prevista, ainda não baixada em estoque", "request_quote")}
+    </section>
+    ${table(
+      [
+        { label: "Pedido / data" },
+        { label: "Cliente" },
+        { label: "Itens" },
+        { label: "Qtd.", num: true },
+        { label: "Status" },
+        { label: "Previsão" },
+        { label: "Valor", num: true },
+        { label: "Ações" },
+      ],
+      rows,
+    )}
+  `;
+}
+
 function renderLeads() {
   const rows = state.leads
     .filter((lead) => matchesSearch(lead))
@@ -1860,12 +1967,13 @@ function renderCMS() {
     (image, index) => `
       <article class="image-control">
         <div class="image-preview">
-          <img src="${escapeHtml(image.url)}" alt="${escapeHtml(image.label)}" loading="lazy">
+          <img data-cms-preview="image-${index}" src="${escapeHtml(image.url)}" alt="${escapeHtml(image.label)}" loading="lazy">
         </div>
         <div class="image-fields">
           <input type="hidden" data-cms-image="${index}" data-field="key" value="${escapeHtml(image.key)}">
           <label class="field"><span>Imagem</span><input data-cms-image="${index}" data-field="label" value="${escapeHtml(image.label)}"></label>
           <label class="field"><span>Tamanho perfeito</span><input data-cms-image="${index}" data-field="recommended" value="${escapeHtml(image.recommended)}" readonly></label>
+          <label class="field field-full upload-field"><span>Upload com ajuste automático</span><input type="file" accept="image/*" data-cms-image-upload="${index}"><small>${escapeHtml(image.uploadedName ? `${image.uploadedName} ajustada para ${image.resizedSize || image.recommended}` : `A imagem será encaixada em ${image.recommended}, sem distorcer.`)}</small></label>
           <label class="field field-full"><span>URL da imagem</span><input data-cms-image="${index}" data-field="url" value="${escapeHtml(image.url)}"></label>
         </div>
       </article>
@@ -1878,7 +1986,7 @@ function renderCMS() {
     return `
       <article class="flavor-cms-control">
         <div class="image-preview flavor-admin-preview">
-          <img src="${escapeHtml(flavor.imageUrl || `assets/menu-bottles/${flavor.slug}.png`)}" alt="${escapeHtml(flavor.name)}" loading="lazy">
+          <img data-cms-preview="flavor-${index}" src="${escapeHtml(flavor.imageUrl || `assets/menu-bottles/${flavor.slug}.png`)}" alt="${escapeHtml(flavor.name)}" loading="lazy">
         </div>
         <div class="flavor-cms-fields">
           <input type="hidden" data-cms-flavor="${index}" data-field="slug" value="${escapeHtml(flavor.slug)}">
@@ -1888,6 +1996,7 @@ function renderCMS() {
           <label class="field"><span>Ordem</span><input type="number" min="1" step="1" data-cms-flavor="${index}" data-field="order" value="${escapeHtml(flavor.order)}"></label>
           <label class="field checkbox-field"><span>Visível no site</span><input type="checkbox" data-cms-flavor="${index}" data-field="visible" ${flavor.visible ? "checked" : ""}></label>
           <label class="field"><span>Tamanho perfeito</span><input data-cms-flavor="${index}" data-field="recommended" value="${escapeHtml(flavor.recommended || FLAVOR_IMAGE_RECOMMENDED)}" readonly></label>
+          <label class="field field-full upload-field"><span>Upload com ajuste automático</span><input type="file" accept="image/*" data-cms-flavor-upload="${index}"><small>${escapeHtml(flavor.uploadedName ? `${flavor.uploadedName} ajustada para ${flavor.resizedSize || flavor.recommended || FLAVOR_IMAGE_RECOMMENDED}` : `A imagem será encaixada em ${flavor.recommended || FLAVOR_IMAGE_RECOMMENDED}, sem distorcer.`)}</small></label>
           <label class="field field-full"><span>URL da foto</span><input data-cms-flavor="${index}" data-field="imageUrl" value="${escapeHtml(flavor.imageUrl || "")}"></label>
           <label class="field field-full"><span>Ingredientes separados por vírgula</span><input data-cms-flavor="${index}" data-field="ingredients" value="${escapeHtml(flavor.ingredients || "")}"></label>
           <label class="field field-full"><span>Texto do card</span><input data-cms-flavor="${index}" data-field="angle" value="${escapeHtml(flavor.angle || "")}"></label>
@@ -1915,12 +2024,12 @@ function renderCMS() {
     </section>
     <section class="admin-card" style="margin-top:16px">
       <h3>Imagens gerais do site público</h3>
-      <p class="lead" style="font-size:1rem">Cole uma URL nova para trocar rapidamente hero e imagens gerais. O campo "tamanho perfeito" mostra a dimensão recomendada em pixels.</p>
+      <p class="lead" style="font-size:1rem">Cole uma URL ou envie um arquivo. Se a imagem for maior que o espaço, o sistema redimensiona e encaixa no tamanho recomendado sem distorcer.</p>
       <div class="image-control-grid">${imageRows}</div>
     </section>
     <section class="admin-card" style="margin-top:16px">
       <h3>Cardápio público: fotos, ordem e categorias</h3>
-      <p class="lead" style="font-size:1rem">Reordene sabores, mude categorias, esconda itens e cole fotos melhores sem editar código. Use imagens verticais em alta para o modal abrir nítido.</p>
+      <p class="lead" style="font-size:1rem">Reordene sabores, mude categorias, esconda itens e envie fotos melhores sem editar código. Use imagens verticais em alta para o modal abrir nítido.</p>
       <div class="flavor-cms-grid">${flavorRows}</div>
     </section>
     <section class="admin-card" style="margin-top:16px">
@@ -1980,6 +2089,7 @@ function render() {
     stock: renderStock,
     packaging: renderPackaging,
     sales: renderSales,
+    orders: renderOrders,
     leads: renderLeads,
     partners: renderPartners,
     expenses: renderExpenses,
@@ -3368,6 +3478,172 @@ function editSaleForm(saleId) {
   });
 }
 
+function orderItemRowTemplate(item = {}) {
+  const selectedProductId = item.productId || state.products[0]?.id || "";
+  const selectedProduct = byId("products", selectedProductId) || state.products[0];
+  const defaultPrice = item.unitPrice ?? (productWholesalePrice(selectedProduct) || productRetailPrice(selectedProduct) || 0);
+  return `
+    <div class="builder-row order-item-row">
+      <label class="field"><span>Produto / sabor</span><select data-field="productId">${state.products.map((product) => `<option value="${product.id}" ${selectedProductId === product.id ? "selected" : ""}>${escapeHtml(productLabel(product))}</option>`).join("")}</select></label>
+      <label class="field"><span>Qtd. garrafas</span><input data-field="qty" type="number" min="1" step="1" value="${item.qty || 1}"></label>
+      <label class="field"><span>Preço unitário</span><input data-field="unitPrice" type="number" min="0" step="0.01" value="${defaultPrice}"></label>
+      <label class="field"><span>Obs. do item</span><input data-field="note" value="${escapeHtml(item.note || "")}" placeholder="Ex: caixa, entrega, condição..."></label>
+      <button class="icon-btn" type="button" data-remove-builder-row aria-label="Remover item">
+        <span class="material-symbols-outlined" aria-hidden="true">delete</span>
+      </button>
+    </div>
+  `;
+}
+
+function readOrderItemRow(row) {
+  const data = readBuilderRow(row);
+  const product = byId("products", data.productId);
+  if (!product || Number(data.qty || 0) <= 0) return null;
+  return {
+    productId: product.id,
+    productName: productLabel(product),
+    flavor: product.flavor,
+    qty: Number(data.qty || 0),
+    unitPrice: Number(data.unitPrice || 0),
+    note: data.note || "",
+  };
+}
+
+function updateOrderPreview(form) {
+  const preview = form.querySelector("#orderPreview");
+  const items = Array.from(form.querySelectorAll(".order-item-row")).map(readOrderItemRow).filter(Boolean);
+  const totalQty = items.reduce((sum, item) => sum + Number(item.qty || 0), 0);
+  const totalValue = items.reduce((sum, item) => sum + Number(item.qty || 0) * Number(item.unitPrice || 0), 0);
+  if (preview) {
+    preview.innerHTML = `
+      <small>Resumo do pedido</small>
+      <strong>${number(totalQty)} garrafas | ${brl(totalValue)}</strong>
+      <span>Pedido não baixa estoque automaticamente; venda/saída continua sendo registrada em Vendas.</span>
+    `;
+  }
+  return { items, totalQty, totalValue };
+}
+
+function bindOrderForm(form) {
+  const rows = form.querySelector("#orderItemsRows");
+  form.querySelector("[data-add-order-item]")?.addEventListener("click", () => {
+    rows.insertAdjacentHTML("beforeend", orderItemRowTemplate());
+    updateOrderPreview(form);
+  });
+  form.addEventListener("click", (event) => {
+    const removeButton = event.target.closest("[data-remove-builder-row]");
+    if (!removeButton) return;
+    const row = removeButton.closest(".order-item-row");
+    if (row && rows.children.length > 1) row.remove();
+    updateOrderPreview(form);
+  });
+  form.addEventListener("change", (event) => {
+    const row = event.target.closest(".order-item-row");
+    if (row && event.target.dataset.field === "productId") {
+      const product = byId("products", event.target.value);
+      setRowField(row, "unitPrice", productWholesalePrice(product) || productRetailPrice(product) || 0);
+    }
+    updateOrderPreview(form);
+  });
+  form.addEventListener("input", () => updateOrderPreview(form));
+  updateOrderPreview(form);
+}
+
+function orderForm(orderId) {
+  if (!state.products.length) {
+    openModal(
+      "Cadastre produtos primeiro",
+      "Pedidos",
+      `<p class="empty-note">Pedidos precisam de produtos/sabores cadastrados para calcular quantidade e valor.</p>
+       <button class="btn btn-primary" type="button" data-action="new-product"><span class="material-symbols-outlined" aria-hidden="true">add</span>Novo produto</button>`,
+    );
+    return;
+  }
+  const existing = orderId ? byId("orders", orderId) : null;
+  const orderDate = existing?.orderDate || todayIso();
+  const readyDate = existing?.estimatedReadyDate || addDaysIso(orderDate, 7);
+  openModal(
+    existing ? "Editar pedido" : "Novo pedido",
+    "Pedidos",
+    `
+      <form id="orderForm">
+        <div class="input-grid">
+          <label class="field"><span>Código</span><input name="code" value="${escapeHtml(existing?.code || nextOrderCode(orderDate))}" required></label>
+          <label class="field"><span>Data do pedido</span><input name="orderDate" type="date" value="${orderDate}" required></label>
+          <label class="field"><span>Status</span><select name="status" class="admin-select">${ORDER_STATUSES.map((status) => `<option value="${status}" ${existing?.status === status ? "selected" : ""}>${status}</option>`).join("")}</select></label>
+          <label class="field"><span>Previsão de pronto</span><input name="estimatedReadyDate" type="date" value="${readyDate}"></label>
+          <label class="field"><span>Cliente</span><input name="customerName" value="${escapeHtml(existing?.customerName || "")}" required></label>
+          <label class="field"><span>Negócio / empresa</span><input name="businessName" value="${escapeHtml(existing?.businessName || "")}"></label>
+          <label class="field"><span>WhatsApp</span><input name="whatsapp" value="${escapeHtml(existing?.whatsapp || "")}"></label>
+          <label class="field"><span>Cliente precisa até</span><input name="neededBy" type="date" value="${existing?.neededBy || ""}"></label>
+          <label class="field"><span>Origem</span><input name="source" value="${escapeHtml(existing?.source || "")}" placeholder="WhatsApp, feira, revendedor..."></label>
+          <label class="field field-full"><span>Observações do pedido</span><textarea name="notes" placeholder="Condição comercial, entrega, prioridade, cobrança...">${escapeHtml(existing?.notes || "")}</textarea></label>
+          <div class="result-card field-full" id="orderPreview"></div>
+        </div>
+
+        <div class="builder-section">
+          <div class="table-toolbar">
+            <div>
+              <h3>Itens do pedido</h3>
+              <p>Escolha os sabores, quantidades e preço combinado. Isso é pipeline; a baixa real acontece em Vendas.</p>
+            </div>
+            <button class="btn btn-outline" type="button" data-add-order-item>
+              <span class="material-symbols-outlined" aria-hidden="true">add</span>
+              Item
+            </button>
+          </div>
+          <div id="orderItemsRows">${(existing && orderItems(existing).length ? orderItems(existing) : [{}]).map(orderItemRowTemplate).join("")}</div>
+        </div>
+
+        <button class="btn btn-primary" type="submit">
+          <span class="material-symbols-outlined" aria-hidden="true">save</span>
+          Salvar pedido
+        </button>
+      </form>
+    `,
+  );
+  const form = document.querySelector("#orderForm");
+  form.elements.orderDate.addEventListener("change", () => {
+    if (!form.elements.estimatedReadyDate.value) form.elements.estimatedReadyDate.value = addDaysIso(form.elements.orderDate.value, 7);
+    if (!existing) form.elements.code.value = nextOrderCode(form.elements.orderDate.value);
+  });
+  bindOrderForm(form);
+  form.addEventListener("submit", (event) => {
+    event.preventDefault();
+    const data = Object.fromEntries(new FormData(form).entries());
+    const { items, totalQty, totalValue } = updateOrderPreview(form);
+    if (!items.length) {
+      window.alert("Adicione pelo menos um item ao pedido.");
+      return;
+    }
+    const payload = {
+      code: data.code,
+      orderDate: data.orderDate,
+      estimatedReadyDate: data.estimatedReadyDate,
+      neededBy: data.neededBy,
+      status: data.status,
+      customerName: data.customerName,
+      businessName: data.businessName,
+      whatsapp: data.whatsapp,
+      source: data.source,
+      notes: data.notes,
+      items,
+      totalQty,
+      totalValue,
+      updatedAt: new Date().toISOString(),
+    };
+    if (existing) {
+      Object.assign(existing, payload);
+      addAudit("Pedido atualizado", `${payload.code}: ${payload.customerName}`);
+    } else {
+      state.orders.unshift({ id: id("ord"), createdAt: new Date().toISOString(), ...payload });
+      addAudit("Pedido criado", `${payload.code}: ${payload.customerName} | ${number(totalQty)} garrafas`);
+    }
+    closeModal();
+    setModule("orders");
+  });
+}
+
 function editPurchaseForm(purchaseId) {
   const purchase = byId("purchases", purchaseId);
   if (purchase && !purchase.packageCount) {
@@ -3597,6 +3873,85 @@ function exportCSV(name, rows) {
   addAudit("CSV exportado", name);
 }
 
+function parseRecommendedSize(value) {
+  const text = String(value || "");
+  const pairs = [...text.matchAll(/(\d{2,5})\s*x\s*(\d{2,5})/gi)];
+  const pair = pairs.at(-1);
+  if (pair) return { width: Number(pair[1]), height: Number(pair[2]) };
+  const numbers = text.match(/\d{2,5}/g)?.map(Number) || [];
+  if (numbers.length >= 2) return { width: numbers[0], height: numbers[1] };
+  return { width: 1200, height: 1200 };
+}
+
+function readFileDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+function loadImage(src) {
+  return new Promise((resolve, reject) => {
+    const image = new Image();
+    image.onload = () => resolve(image);
+    image.onerror = reject;
+    image.src = src;
+  });
+}
+
+async function resizeImageFile(file, recommended) {
+  const { width, height } = parseRecommendedSize(recommended);
+  const source = await readFileDataUrl(file);
+  const image = await loadImage(source);
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext("2d");
+  ctx.clearRect(0, 0, width, height);
+  const scale = Math.min(width / image.naturalWidth, height / image.naturalHeight);
+  const drawWidth = Math.round(image.naturalWidth * scale);
+  const drawHeight = Math.round(image.naturalHeight * scale);
+  const x = Math.round((width - drawWidth) / 2);
+  const y = Math.round((height - drawHeight) / 2);
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = "high";
+  ctx.drawImage(image, x, y, drawWidth, drawHeight);
+  return {
+    dataUrl: canvas.toDataURL("image/webp", 0.9),
+    sourceSize: `${image.naturalWidth} x ${image.naturalHeight}px`,
+    resizedSize: `${width} x ${height}px`,
+  };
+}
+
+function setCmsPreview(key, url) {
+  const preview = document.querySelector(`[data-cms-preview="${key}"]`);
+  if (preview && url) preview.src = url;
+}
+
+async function handleCmsImageUpload(kind, index, file) {
+  if (!file) return;
+  try {
+    const target = kind === "flavor" ? state.cms.flavors[Number(index)] : state.cms.images[Number(index)];
+    if (!target) return;
+    const urlField = kind === "flavor" ? "imageUrl" : "url";
+    const recommended = target.recommended || FLAVOR_IMAGE_RECOMMENDED;
+    const resized = await resizeImageFile(file, recommended);
+    target[urlField] = resized.dataUrl;
+    target.uploadedName = file.name;
+    target.sourceSize = resized.sourceSize;
+    target.resizedSize = resized.resizedSize;
+    saveState();
+    setCmsPreview(`${kind}-${index}`, resized.dataUrl);
+    const urlInput = document.querySelector(kind === "flavor" ? `[data-cms-flavor="${index}"][data-field="imageUrl"]` : `[data-cms-image="${index}"][data-field="url"]`);
+    if (urlInput) urlInput.value = resized.dataUrl;
+  } catch (error) {
+    window.alert("Não consegui processar essa imagem. Tente PNG, JPG, WebP ou uma imagem menor.");
+    console.error(error);
+  }
+}
+
 function fieldValue(input) {
   if (input.type === "checkbox") return input.checked;
   if (input.dataset.field === "order") return Number(input.value || 0);
@@ -3629,17 +3984,29 @@ function bindModuleEvents() {
   document.querySelectorAll("[data-cms-flavor]").forEach((input) => {
     const eventType = input.type === "checkbox" || input.tagName === "SELECT" ? "change" : "input";
     input.addEventListener(eventType, (event) => {
-      const flavor = state.cms.flavors[Number(event.target.dataset.cmsFlavor)];
-      flavor[event.target.dataset.field] = fieldValue(event.target);
+      const index = Number(event.target.dataset.cmsFlavor);
+      const flavor = state.cms.flavors[index];
+      const field = event.target.dataset.field;
+      flavor[field] = fieldValue(event.target);
+      if (field === "imageUrl") setCmsPreview(`flavor-${index}`, event.target.value);
       saveState();
     });
   });
   document.querySelectorAll("[data-cms-image]").forEach((input) => {
     input.addEventListener("input", (event) => {
-      const image = state.cms.images[Number(event.target.dataset.cmsImage)];
-      image[event.target.dataset.field] = event.target.value;
+      const index = Number(event.target.dataset.cmsImage);
+      const image = state.cms.images[index];
+      const field = event.target.dataset.field;
+      image[field] = event.target.value;
+      if (field === "url") setCmsPreview(`image-${index}`, event.target.value);
       saveState();
     });
+  });
+  document.querySelectorAll("[data-cms-image-upload]").forEach((input) => {
+    input.addEventListener("change", (event) => handleCmsImageUpload("image", event.target.dataset.cmsImageUpload, event.target.files?.[0]));
+  });
+  document.querySelectorAll("[data-cms-flavor-upload]").forEach((input) => {
+    input.addEventListener("change", (event) => handleCmsImageUpload("flavor", event.target.dataset.cmsFlavorUpload, event.target.files?.[0]));
   });
   document.querySelectorAll("[data-lead-status]").forEach((select) => {
     select.addEventListener("change", (event) => {
@@ -3659,7 +4026,7 @@ function bindModuleEvents() {
 }
 
 function handleAction(action) {
-  if (!canWrite() && !["export-products", "export-ingredients", "export-purchases", "export-sales", "export-leads", "export-reports", "export-costs"].includes(action)) return;
+  if (!canWrite() && !["export-products", "export-ingredients", "export-purchases", "export-sales", "export-orders", "export-leads", "export-reports", "export-costs"].includes(action)) return;
   const [dynamicAction, ...dynamicParts] = action.split(":");
   const dynamicPayload = dynamicParts.join(":");
   const dynamicMap = {
@@ -3691,6 +4058,8 @@ function handleAction(action) {
     "delete-batch": deleteBatch,
     "edit-sale": editSaleForm,
     "delete-sale": (itemId) => deleteRecord("sales", itemId),
+    "edit-order": orderForm,
+    "delete-order": (itemId) => deleteRecord("orders", itemId),
     "edit-purchase": editPurchaseForm,
     "delete-purchase": deletePurchase,
     "delete-lead": (itemId) => deleteRecord("leads", itemId),
@@ -3710,6 +4079,7 @@ function handleAction(action) {
     "new-ingredient": newIngredientForm,
     "new-purchase": newPurchaseForm,
     "new-sale": newSaleForm,
+    "new-order": () => orderForm(),
     "new-batch": newBatchForm,
     "stock-adjustment": stockAdjustmentForm,
     "new-supplier": () =>
@@ -3793,6 +4163,7 @@ function handleAction(action) {
     "export-ingredients": () => exportCSV("kombu-ingredientes", [["Nome", "Categoria", "Fornecedor", "Estoque", "Unidade", "Custo", "Status"], ...state.ingredients.map((i) => [i.name, i.category, i.supplier, i.stock, i.purchaseUnit, i.costPerUnit, ingredientNeedsCost(i) ? "custo pendente" : i.status])]),
     "export-purchases": () => exportCSV("kombu-compras", [["Data", "Fornecedor", "Item", "Pacotes", "Conteúdo pacote", "Unidade pacote", "Entra estoque", "Unidade estoque", "Total", "Custo unitário", "Método", "Comprador"], ...state.purchases.map((p) => [p.date, p.supplier, p.item, p.packageCount || "", p.packageSize || "", p.packageUnit || "", p.qty, p.unit, p.total, p.costPerUnit || "", p.method, p.buyer])]),
     "export-sales": () => exportCSV("kombu-saidas-vendas", [["Data", "Tipo", "Cliente/destino", "Preço", "Sabor", "Lote", "Qtd", "Preço unitário", "Receita", "Desconto", "Entrega", "Observação"], ...state.sales.map((s) => [s.date, s.movementType || "venda", s.customerName || s.partner, s.priceType || s.channel, s.flavor, s.batchCode, s.qty, s.unitPrice, saleRevenue(s), s.discount, s.delivery, s.note || ""])]),
+    "export-orders": () => exportCSV("kombu-pedidos", [["Código", "Data", "Status", "Cliente", "Negócio", "WhatsApp", "Previsão pronto", "Precisa até", "Qtd", "Valor", "Itens", "Observações"], ...(state.orders || []).map((order) => [order.code, order.orderDate, order.status, order.customerName, order.businessName, order.whatsapp, order.estimatedReadyDate, order.neededBy, orderQuantity(order), orderTotal(order), orderItems(order).map((item) => `${item.qty}x ${orderProductText(item)} @ ${brl(item.unitPrice)}`).join("; "), order.notes || ""])]),
     "export-leads": () => exportCSV("kombu-leads-crm", [["Criado em", "Tipo", "Status", "Nome", "Negócio", "Tipo negócio", "Local", "WhatsApp", "Instagram", "Mensagem"], ...state.leads.map((lead) => [lead.createdAt, lead.type, lead.status, lead.name, lead.business, lead.businessType, lead.location, lead.whatsapp, lead.instagram, lead.message])]),
     "export-reports": () => exportCSV("kombu-relatorio", [["Métrica", "Valor"], ["Receita", totals().salesRevenue], ["COGS", totals().cogs], ["Lucro bruto", totals().grossProfit], ["Despesas", totals().expenses], ["Líquido", totals().net]]),
     "export-costs": () => {

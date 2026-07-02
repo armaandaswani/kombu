@@ -15,7 +15,7 @@
       rel="stylesheet"
     />
     <link rel="icon" href="favicon.svg" type="image/svg+xml" />
-    <link rel="stylesheet" href="assets/kombu.css?v=20260702d" />
+    <link rel="stylesheet" href="assets/kombu.css?v=20260702e" />
   </head>
   <body class="admin-body">
     <section class="admin-login" id="loginScreen" aria-labelledby="loginTitle">
@@ -111,6 +111,10 @@
             <span class="material-symbols-outlined" aria-hidden="true">receipt_long</span>
             <span class="label">Vendas</span>
           </button>
+          <button type="button" data-module="orders" title="Pedidos">
+            <span class="material-symbols-outlined" aria-hidden="true">assignment</span>
+            <span class="label">Pedidos</span>
+          </button>
           <button type="button" data-module="leads" title="Leads CRM">
             <span class="material-symbols-outlined" aria-hidden="true">contact_mail</span>
             <span class="label">Leads CRM</span>
@@ -152,6 +156,7 @@
             <option value="stock">Estoque</option>
             <option value="packaging">Embalagens</option>
             <option value="sales">Vendas</option>
+            <option value="orders">Pedidos</option>
             <option value="leads">Leads CRM</option>
             <option value="partners">Parceiros</option>
             <option value="expenses">Despesas</option>
@@ -161,7 +166,7 @@
           </select>
           <label class="admin-search">
             <span class="material-symbols-outlined" aria-hidden="true">search</span>
-            <input id="globalSearch" type="search" placeholder="Buscar EAN, lotes, ingredientes, parceiros ou vendas..." />
+            <input id="globalSearch" type="search" placeholder="Buscar EAN, lotes, ingredientes, pedidos, clientes ou vendas..." />
           </label>
           <div class="admin-user">
             <select class="role-pill" id="roleSelector" aria-label="Perfil de acesso">
@@ -201,6 +206,6 @@
       </div>
     </div>
 
-    <script src="assets/admin.js?v=20260702d"></script>
+    <script src="assets/admin.js?v=20260702e"></script>
   </body>
 </html>
