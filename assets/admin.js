@@ -4,6 +4,15 @@ const ADMIN_NOTIFICATION_EMAIL = "armaandaswani@icloud.com";
 const FLAVOR_CATEGORIES = ["Frutados", "Cítricos", "Florais", "Herbais", "Especiados"];
 const FLAVOR_IMAGE_RECOMMENDED = "mín. 760 x 1368 px; ideal 1040 x 1872 px";
 const ORDER_STATUSES = ["recebido", "confirmado", "em produção", "pronto", "entregue", "cancelado"];
+const ORDER_ITEM_STATUSES = ["pendente", "em produção", "produzido", "reservado", "entregue"];
+const ORDER_CLIENT_TYPES = [
+  { value: "novo_cliente", label: "Novo cliente", price: "retail" },
+  { value: "varejo_recorrente", label: "Cliente varejo recorrente", price: "recurringRetail" },
+  { value: "novo_parceiro", label: "Novo parceiro", price: "wholesale" },
+  { value: "parceiro_recorrente", label: "Parceiro recorrente", price: "wholesale" },
+];
+const PAYMENT_STATUSES = ["aberto", "aguardando pagamento", "pago", "atrasado", "cancelado"];
+const RECURRING_RETAIL_PRICE = 20;
 
 const PRODUCT_CATALOG_SEED = [
   { id: "prod-kmb001", ean: "7890528600010", item: "KMB001", flavor: "Maracujá", sizeMl: 500, description: "Kombucha Premium de 500ml - Sabor Maracujá", wholesalePrice: 13, retailPrice: 18.5, baselineCost: 3.29, status: "ativo", visible: true },
@@ -391,6 +400,10 @@ let activeRecipeId = state.recipes[0]?.id || "";
 let currentRole = "Owner / Admin";
 let currentStockView = "kombuchas";
 
+(state.purchases || []).forEach(syncPurchaseExpense);
+(state.orders || []).forEach(syncOrderIntegrations);
+saveState();
+
 function isAuthenticated() {
   return sessionStorage.getItem("kombuAdminAuthenticated") === "true";
 }
@@ -688,6 +701,17 @@ function productRetailPrice(product) {
   return Number(product?.retailPrice || 0);
 }
 
+function orderClientTypeLabel(value) {
+  return ORDER_CLIENT_TYPES.find((type) => type.value === value)?.label || "Novo cliente";
+}
+
+function priceForOrderClientType(product, clientType) {
+  const type = ORDER_CLIENT_TYPES.find((item) => item.value === clientType) || ORDER_CLIENT_TYPES[0];
+  if (type.price === "wholesale") return productWholesalePrice(product) || 15;
+  if (type.price === "recurringRetail") return RECURRING_RETAIL_PRICE;
+  return productRetailPrice(product) || productWholesalePrice(product) || 0;
+}
+
 function commonProductPrice(field, fallback = 0) {
   const counts = state.products.reduce((acc, product) => {
     const price = Number(product[field] || 0);
@@ -871,13 +895,18 @@ function soldFromBatch(code) {
 function finishedStockRows() {
   return state.batches
     .filter((batch) => batch.status !== "planejado" && batch.status !== "descartado")
-    .map((batch) => ({
-      ...batch,
-      product: productForBatch(batch),
-      sold: soldFromBatch(batch.code),
-      stock: Math.max(0, Number(batch.actual || 0) - soldFromBatch(batch.code)),
-      cost: batchCost(batch),
-    }));
+    .map((batch) => {
+      const sold = soldFromBatch(batch.code);
+      const reserved = reservedFromBatch(batch.code);
+      return {
+        ...batch,
+        product: productForBatch(batch),
+        sold,
+        reserved,
+        stock: Math.max(0, Number(batch.actual || 0) - sold - reserved),
+        cost: batchCost(batch),
+      };
+    });
 }
 
 function totals() {
@@ -890,6 +919,11 @@ function totals() {
   const finishedStock = finishedStockRows().reduce((sum, row) => sum + row.stock, 0);
   const produced = state.batches.reduce((sum, batch) => sum + Number(batch.actual || 0), 0);
   const sold = state.sales.reduce((sum, sale) => sum + Number(sale.qty || 0), 0);
+  const openOrders = (state.orders || []).filter(isOpenOrder);
+  const openOrderValue = openOrders.reduce((sum, order) => sum + orderTotal(order), 0);
+  const openOrderQty = openOrders.reduce((sum, order) => sum + orderQuantity(order), 0);
+  const receivable = (state.orders || []).reduce((sum, order) => sum + orderReceivableValue(order), 0);
+  const productionMissing = orderProductionRows().reduce((sum, row) => sum + row.missing, 0);
   return {
     salesRevenue,
     cogs,
@@ -900,6 +934,11 @@ function totals() {
     finishedStock,
     produced,
     sold,
+    openOrderValue,
+    openOrderQty,
+    receivable,
+    productionMissing,
+    purchasesTotal: state.purchases.reduce((sum, purchase) => sum + Number(purchase.total || 0), 0),
     avgCost: state.recipes.reduce((sum, recipe) => sum + recipeCost(recipe).costPerBottle, 0) / Math.max(1, state.recipes.length),
   };
 }
@@ -911,17 +950,21 @@ function saleRevenue(sale) {
 
 function customerStats() {
   const rows = new Map();
+  const register = ({ name, qty, revenue, date }) => {
+    const key = (name || "Cliente sem nome").trim();
+    const current = rows.get(key) || { name: key, orders: 0, qty: 0, revenue: 0, dates: [] };
+    current.orders += 1;
+    current.qty += Number(qty || 0);
+    current.revenue += Number(revenue || 0);
+    if (date) current.dates.push(date);
+    rows.set(key, current);
+  };
   state.sales
     .filter((sale) => !sale.movementType || sale.movementType === "venda")
-    .forEach((sale) => {
-      const name = (sale.customerName || sale.partner || "Cliente sem nome").trim();
-      const current = rows.get(name) || { name, orders: 0, qty: 0, revenue: 0, dates: [] };
-      current.orders += 1;
-      current.qty += Number(sale.qty || 0);
-      current.revenue += saleRevenue(sale);
-      if (sale.date) current.dates.push(sale.date);
-      rows.set(name, current);
-    });
+    .forEach((sale) => register({ name: sale.customerName || sale.partner, qty: sale.qty, revenue: saleRevenue(sale), date: sale.date }));
+  (state.orders || [])
+    .filter((order) => !state.sales.some((sale) => sale.orderId === order.id) && order.status !== "cancelado")
+    .forEach((order) => register({ name: order.customerName || order.businessName, qty: orderQuantity(order), revenue: orderTotal(order), date: order.deliveredAt || order.orderDate }));
   return [...rows.values()]
     .map((row) => {
       const dates = [...new Set(row.dates)].sort();
@@ -977,6 +1020,212 @@ function orderDateNote(order) {
   if (days < 0) return `${Math.abs(days)} dia(s) em atraso`;
   if (days === 0) return "Pronto hoje";
   return `${days} dia(s) restantes`;
+}
+
+function orderPaymentDueDate(order) {
+  if (order?.paymentDueDate) return order.paymentDueDate;
+  if (order?.deliveredAt) return addDaysIso(order.deliveredAt, 15);
+  return "";
+}
+
+function orderReceivableStatus(order) {
+  if (order?.status === "cancelado") return "cancelado";
+  if (order?.paymentStatus === "pago") return "pago";
+  if (order?.status !== "entregue") return "em produção";
+  const due = orderPaymentDueDate(order);
+  if (due && daysUntil(due) < 0) return "atrasado";
+  return order.paymentStatus || "aguardando pagamento";
+}
+
+function orderReceivableValue(order) {
+  return order?.status === "entregue" && orderReceivableStatus(order) !== "pago" ? orderTotal(order) : 0;
+}
+
+function orderItemRemainingQty(item) {
+  return Math.max(0, Number(item.qty || 0) - Math.max(Number(item.reservedQty || 0), Number(item.producedQty || 0)));
+}
+
+function reservedFromBatch(code) {
+  return (state.orders || [])
+    .filter((order) => !["entregue", "cancelado"].includes(order.status))
+    .flatMap((order) => orderItems(order))
+    .filter((item) => item.batchCode === code)
+    .reduce((sum, item) => sum + Number(item.reservedQty || item.producedQty || 0), 0);
+}
+
+function orderProductionRows() {
+  const rows = new Map();
+  (state.orders || [])
+    .filter((order) => !["entregue", "cancelado"].includes(order.status))
+    .forEach((order) => {
+      orderItems(order).forEach((item) => {
+        const key = item.productId || item.flavor || item.productName;
+        const current = rows.get(key) || {
+          productId: item.productId,
+          flavor: item.flavor || orderProductText(item),
+          ordered: 0,
+          reserved: 0,
+          produced: 0,
+          missing: 0,
+          nextDue: "",
+          orders: [],
+        };
+        current.ordered += Number(item.qty || 0);
+        current.reserved += Number(item.reservedQty || 0);
+        current.produced += Number(item.producedQty || 0);
+        current.missing += orderItemRemainingQty(item);
+        const due = item.readyDate || order.estimatedReadyDate || order.neededBy || "";
+        if (due && (!current.nextDue || due < current.nextDue)) current.nextDue = due;
+        current.orders.push(order.code);
+        rows.set(key, current);
+      });
+    });
+  return [...rows.values()].sort((a, b) => b.missing - a.missing || String(a.nextDue).localeCompare(String(b.nextDue)));
+}
+
+function paymentReminderRows() {
+  return (state.orders || [])
+    .filter((order) => order.status === "entregue" && orderReceivableStatus(order) !== "pago")
+    .map((order) => ({
+      order,
+      due: orderPaymentDueDate(order),
+      days: daysUntil(orderPaymentDueDate(order)),
+      value: orderReceivableValue(order),
+    }))
+    .sort((a, b) => String(a.due).localeCompare(String(b.due)));
+}
+
+function paymentReminderMailto(order) {
+  const subject = encodeURIComponent(`Lembrete de cobrança Kombú - ${order.code}`);
+  const body = encodeURIComponent(
+    [
+      `Pedido: ${order.code}`,
+      `Cliente: ${order.customerName || "-"}`,
+      `Negócio: ${order.businessName || "-"}`,
+      `Valor: ${brl(orderTotal(order))}`,
+      `Entrega: ${order.deliveredAt || "-"}`,
+      `Receber até: ${orderPaymentDueDate(order) || "-"}`,
+      "",
+      "Ação: enviar lembrete de pagamento ao cliente.",
+    ].join("\n"),
+  );
+  return `mailto:${state.notifications.adminEmail}?subject=${subject}&body=${body}`;
+}
+
+function syncOrderPartner(order) {
+  const clientType = order.clientType || "novo_cliente";
+  if (!clientType.includes("parceiro")) return;
+  const name = (order.businessName || order.customerName || "").trim();
+  if (!name) return;
+  const key = normalizeText(`${name}|${order.whatsapp || ""}`);
+  const existing =
+    state.partners.find((partner) => normalizeText(`${partner.name}|${partner.whatsapp || ""}`) === key) ||
+    state.partners.find((partner) => normalizeText(partner.name) === normalizeText(name));
+  const flavors = [...new Set(orderItems(order).map((item) => item.flavor || orderProductText(item)).filter(Boolean))].join(", ");
+  const payload = {
+    name,
+    type: orderClientTypeLabel(clientType),
+    neighborhood: order.neighborhood || "",
+    city: order.city || "Manaus",
+    whatsapp: order.whatsapp || "",
+    instagram: order.instagram || "",
+    flavors,
+    terms: "15 dias após entrega",
+    lastDelivery: order.deliveredAt || order.orderDate || "",
+    visible: existing?.visible ?? false,
+    sourceOrderId: order.id,
+  };
+  if (existing) Object.assign(existing, payload);
+  else state.partners.unshift({ id: id("par"), ...payload });
+}
+
+function salePayloadFromOrderItem(order, item) {
+  return {
+    date: order.deliveredAt || order.orderDate || todayIso(),
+    partner: order.customerName,
+    customerName: order.customerName,
+    channel: order.clientType?.includes("parceiro") ? "atacado" : "pedido",
+    movementType: "venda",
+    priceType: order.clientType || "novo_cliente",
+    flavor: item.flavor || "",
+    productId: item.productId || "",
+    batchCode: item.batchCode || "",
+    qty: Number(item.qty || 0),
+    unitPrice: Number(item.unitPrice || 0),
+    discount: 0,
+    delivery: Number(order.deliveryFee || 0),
+    note: `Gerado pelo pedido ${order.code}`,
+    orderId: order.id,
+    orderCode: order.code,
+    orderItemKey: item.key || `${item.productId || item.flavor}-${item.qty}-${item.unitPrice}`,
+  };
+}
+
+function syncOrderSales(order) {
+  state.sales = state.sales.filter((sale) => sale.orderId !== order.id);
+  if (order.status !== "entregue") return;
+  orderItems(order).forEach((item) => {
+    if (Number(item.qty || 0) <= 0) return;
+    state.sales.unshift({ id: id("sale"), ...salePayloadFromOrderItem(order, item) });
+  });
+}
+
+function syncOrderIntegrations(order) {
+  if (!order) return;
+  if (order.status === "entregue" && !order.deliveredAt) order.deliveredAt = todayIso();
+  if (order.deliveredAt && !order.paymentDueDate) order.paymentDueDate = addDaysIso(order.deliveredAt, 15);
+  order.paymentStatus = order.paymentStatus || (order.status === "entregue" ? "aguardando pagamento" : "aberto");
+  syncOrderPartner(order);
+  syncOrderSales(order);
+}
+
+function syncPurchaseExpense(purchase) {
+  if (!purchase || !Number(purchase.total || 0)) return;
+  const existing = state.expenses.find((expense) => expense.purchaseId === purchase.id);
+  const description = purchase.kind === "operational" ? purchase.item : `Compra: ${purchase.item}`;
+  const payload = {
+    date: purchase.date || todayIso(),
+    category: purchase.kind === "operational" ? "Compra operacional" : "Compra de estoque",
+    description,
+    amount: Number(purchase.total || 0),
+    method: purchase.method || "Pix",
+    recurring: false,
+    purchaseId: purchase.id,
+    source: "purchase",
+  };
+  if (existing) Object.assign(existing, payload);
+  else state.expenses.unshift({ id: id("exp"), ...payload });
+}
+
+function allocateBatchToOrders(batch) {
+  if (!batch || !Number(batch.actual || 0)) return 0;
+  let available = Number(batch.actual || 0);
+  const recipe = byId("recipes", batch.recipeId);
+  const productId = batch.productId || recipe?.productId || "";
+  const openOrders = (state.orders || [])
+    .filter((order) => !["entregue", "cancelado"].includes(order.status))
+    .sort((a, b) => String(a.neededBy || a.estimatedReadyDate || a.orderDate).localeCompare(String(b.neededBy || b.estimatedReadyDate || b.orderDate)));
+  openOrders.forEach((order) => {
+    orderItems(order).forEach((item) => {
+      if (!available) return;
+      const matchesProduct = productId && item.productId === productId;
+      const matchesFlavor = !productId && normalizeText(item.flavor) === normalizeText(batch.flavor);
+      if (!matchesProduct && !matchesFlavor) return;
+      const need = orderItemRemainingQty(item);
+      if (!need) return;
+      const allocated = Math.min(need, available);
+      item.reservedQty = Number(item.reservedQty || 0) + allocated;
+      item.producedQty = Number(item.producedQty || 0) + allocated;
+      item.batchCode = batch.code;
+      item.productionStatus = Number(item.reservedQty || 0) >= Number(item.qty || 0) ? "reservado" : "produzido";
+      item.readyDate = batch.date;
+      available -= allocated;
+    });
+    const allReady = orderItems(order).length && orderItems(order).every((item) => Number(item.reservedQty || 0) >= Number(item.qty || 0));
+    if (allReady && !["pronto", "entregue"].includes(order.status)) order.status = "pronto";
+    else if (!["pronto", "entregue"].includes(order.status) && orderItems(order).some((item) => Number(item.producedQty || 0) > 0)) order.status = "em produção";
+  });
+  return Number(batch.actual || 0) - available;
 }
 
 function monthlySalesRows(limit = 6) {
@@ -1076,6 +1325,8 @@ function metric(label, value, note, icon = "monitoring") {
 
 function renderDashboard() {
   const total = totals();
+  const productionRows = orderProductionRows();
+  const receivableRows = paymentReminderRows();
   const flavorRows = Object.entries(
     finishedStockRows().reduce((acc, row) => {
       acc[row.flavor] = (acc[row.flavor] || 0) + row.stock;
@@ -1105,9 +1356,11 @@ function renderDashboard() {
     )}
     <section class="metric-grid">
       ${metric("Garrafas em estoque", number(total.finishedStock), "Prontas para venda por lote", "water_bottle")}
-      ${metric("Produção vs saídas", `${number(total.produced)} / ${number(total.sold)}`, `${number(total.produced - total.sold)} unidades de diferença`, "autorenew")}
+      ${metric("Pedidos em aberto", number(total.openOrderQty), `${brl(total.openOrderValue)} em pipeline`, "assignment")}
+      ${metric("A receber", brl(total.receivable), `${receivableRows.length} cobrança(s) pendentes`, "event_available")}
+      ${metric("Produção faltante", number(total.productionMissing), "Garrafas necessárias para pedidos", "factory")}
       ${metric("Receita do período", brl(total.salesRevenue), `Lucro bruto ${brl(total.grossProfit)} (${pct(total.grossMargin)})`, "account_balance_wallet")}
-      ${metric("Custo médio/garrafa", brl(total.avgCost), "Média das receitas ativas", "price_check")}
+      ${metric("Despesas + compras", brl(total.expenses), `Compras registradas: ${brl(total.purchasesTotal)}`, "receipt_long")}
     </section>
     <section class="admin-grid">
       <article class="admin-card">
@@ -1139,6 +1392,20 @@ function renderDashboard() {
     </section>
     <section class="admin-grid">
       <article class="admin-card">
+        <h3>Produção puxada por pedidos</h3>
+        <div class="stack-list">
+          ${productionRows.length ? productionRows.slice(0, 6).map((row) => `<div class="report-row"><strong>${escapeHtml(row.flavor)}</strong><span>${number(row.missing)} faltando de ${number(row.ordered)} | próximo: ${row.nextDue || "-"}</span></div>`).join("") : `<p class="empty-note">Sem pedido aberto exigindo produção.</p>`}
+        </div>
+      </article>
+      <article class="admin-card">
+        <h3>Cobranças próximas</h3>
+        <div class="stack-list">
+          ${receivableRows.length ? receivableRows.slice(0, 6).map(({ order, due, days, value }) => `<div class="report-row"><strong>${escapeHtml(order.customerName || order.code)}</strong><span>${brl(value)} | vence ${due || "-"}${days != null ? ` (${days < 0 ? `${Math.abs(days)} dias atrasado` : `${days} dias`})` : ""} | <a href="${paymentReminderMailto(order)}">preparar lembrete</a></span></div>`).join("") : `<p class="empty-note">Nenhuma cobrança em aberto por entrega.</p>`}
+        </div>
+      </article>
+    </section>
+    <section class="admin-grid">
+      <article class="admin-card">
         <h3>Parceiros com maior volume</h3>
         <div class="stack-list">
           ${partnerRows.length ? partnerRows.map(([partner, qty]) => `<div class="report-row"><strong>${partner}</strong><span>${number(qty)} garrafas vendidas</span></div>`).join("") : `<p class="empty-note">Registre vendas para ver parceiros por volume.</p>`}
@@ -1155,7 +1422,7 @@ function renderDashboard() {
 function statusClass(value, type = "stock") {
   if (type === "stock") return value <= 0 ? "bad" : value <= 1 ? "warn" : "good";
   if (["aprovado", "ativo", "ativa", "pago", "confirmado", "pronto", "entregue"].includes(value)) return "good";
-  if (["planejado", "bottled", "pendente", "custo pendente", "recebido", "em produção"].includes(value)) return "warn";
+  if (["planejado", "bottled", "pendente", "custo pendente", "recebido", "em produção", "aberto", "aguardando pagamento"].includes(value)) return "warn";
   return "bad";
 }
 
@@ -1233,11 +1500,11 @@ function renderPurchases() {
       (item) => `
         <tr>
           <td>${item.date}</td>
-          <td><strong>${item.item}</strong><br><span>${item.supplier}</span></td>
-          <td class="num">${item.packageCount ? `${number(item.packageCount)} x ${number(item.packageSize, 3)} ${item.packageUnit}` : `${number(item.qty, 2)} ${item.unit}`}</td>
-          <td class="num"><strong>${number(item.qty, 3)} ${item.unit}</strong></td>
+          <td><strong>${item.item}</strong><br><span>${item.supplier}</span><br><span>${item.kind === "operational" ? "Despesa operacional" : "Estoque/custo"}</span></td>
+          <td class="num">${item.kind === "operational" ? "-" : item.packageCount ? `${number(item.packageCount)} x ${number(item.packageSize, 3)} ${item.packageUnit}` : `${number(item.qty, 2)} ${item.unit}`}</td>
+          <td class="num"><strong>${item.kind === "operational" ? "-" : `${number(item.qty, 3)} ${item.unit}`}</strong></td>
           <td class="num">${brl(item.total)}</td>
-          <td class="num">${brl(item.costPerUnit || Number(item.total || 0) / Math.max(Number(item.qty || 0), 0.000001))} / ${item.unit}</td>
+          <td class="num">${item.kind === "operational" ? "não entra" : `${brl(item.costPerUnit || Number(item.total || 0) / Math.max(Number(item.qty || 0), 0.000001))} / ${item.unit}`}</td>
           <td>${item.method}</td>
           <td>${item.buyer}</td>
           <td>${rowActions([tableAction(`edit-purchase:${item.id}`, "Editar compra"), tableAction(`delete-purchase:${item.id}`, "Excluir compra", "delete", "danger")])}</td>
@@ -1247,7 +1514,7 @@ function renderPurchases() {
   return `
     ${pageHead(
       "Compras",
-      "Registre compras com múltiplos itens, atualize estoque e preserve histórico de custo.",
+      "Registre estoque e despesas operacionais em um só lugar. Compras entram automaticamente em Despesas.",
       `${actionButton("new-purchase", "Registrar compra", "add")} ${actionButton("export-purchases", "CSV", "download", "btn-outline")}`,
     )}
     ${table(
@@ -1529,6 +1796,7 @@ function renderCosts() {
 }
 
 function renderBatches() {
+  const productionRows = orderProductionRows();
   const rows = state.batches
     .filter((item) => matchesSearch(item))
     .map((batch) => {
@@ -1558,6 +1826,12 @@ function renderBatches() {
       "Controle de lotes, versão da receita, rendimento real, vencimento, custo histórico e rastreabilidade.",
       `${actionButton("new-batch", "Novo lote", "add")} ${actionButton("stock-adjustment", "Ajuste de estoque", "tune", "btn-outline")}`,
     )}
+    <section class="admin-card order-production-card">
+      <h3>O que precisa ser produzido</h3>
+      <div class="production-chip-grid">
+        ${productionRows.length ? productionRows.map((row) => `<div class="production-chip"><strong>${escapeHtml(row.flavor)}</strong><span>${number(row.missing)} faltando</span><small>${number(row.reserved)} reservado de ${number(row.ordered)} | pedido(s): ${escapeHtml([...new Set(row.orders)].slice(0, 3).join(", "))}</small></div>`).join("") : `<p class="empty-note">Nenhum pedido aberto exigindo produção.</p>`}
+      </div>
+    </section>
     ${table(
       [
         { label: "Lote / sabor" },
@@ -1610,6 +1884,7 @@ function renderStock() {
           { label: "Sabor / lote" },
           { label: "Produzido", num: true },
           { label: "Saídas", num: true },
+          { label: "Reservado", num: true },
           { label: "Saldo", num: true },
           { label: "Ideal até" },
           { label: "Vender até" },
@@ -1622,6 +1897,7 @@ function renderStock() {
               <td><strong>${row.flavor}</strong><br><span>${row.product ? productLabel(row.product) : row.code}</span></td>
               <td class="num">${number(row.actual)}</td>
               <td class="num">${number(row.sold)}</td>
+              <td class="num">${number(row.reserved)}</td>
               <td class="num"><strong>${number(row.stock)}</strong></td>
               <td>${row.idealSellBy || "-"}</td>
               <td>${row.sellBy || "-"}</td>
@@ -1821,18 +2097,25 @@ function renderOrders() {
     const itemSummary = items.length
       ? items
           .slice(0, 3)
-          .map((item) => `${number(item.qty)}x ${escapeHtml(orderProductText(item))}${item.note ? ` (${escapeHtml(item.note)})` : ""}`)
+          .map((item) => {
+            const ready = Number(item.reservedQty || 0) || Number(item.producedQty || 0);
+            return `${number(item.qty)}x ${escapeHtml(orderProductText(item))} <span class="inline-muted">${number(ready)}/${number(item.qty)} ${escapeHtml(item.productionStatus || "pendente")}</span>${item.note ? ` (${escapeHtml(item.note)})` : ""}`;
+          })
           .join("<br>")
       : "Sem itens";
     const extra = items.length > 3 ? `<br><span>+${items.length - 3} item(ns)</span>` : "";
+    const receivableStatus = orderReceivableStatus(order);
+    const due = orderPaymentDueDate(order);
     return `
       <tr>
         <td><strong>${escapeHtml(order.code || "Pedido")}</strong><br><span>${order.orderDate || "-"}</span></td>
-        <td><strong>${escapeHtml(order.customerName || "Cliente sem nome")}</strong><br><span>${escapeHtml(order.businessName || order.whatsapp || "")}</span></td>
+        <td><strong>${escapeHtml(order.customerName || "Cliente sem nome")}</strong><br><span>${escapeHtml(order.businessName || order.whatsapp || "")}</span><br><span>${escapeHtml(orderClientTypeLabel(order.clientType))}</span></td>
         <td>${itemSummary}${extra}</td>
         <td class="num">${number(orderQuantity(order))}</td>
         <td>${orderStatusBadge(order.status)}</td>
         <td>${order.estimatedReadyDate || "-"}<br><span>${escapeHtml(orderDateNote(order))}</span></td>
+        <td>${order.deliveredAt || "-"}<br><span>${due ? `Receber até ${due}` : "Entrega pendente"}</span></td>
+        <td>${order.status === "entregue" ? `<span class="status ${statusClass(receivableStatus, "general")}">${receivableStatus}</span>` : "-"}</td>
         <td class="num"><strong>${brl(orderTotal(order))}</strong></td>
         <td>${rowActions([tableAction(`edit-order:${order.id}`, "Editar pedido"), tableAction(`delete-order:${order.id}`, "Excluir pedido", "delete", "danger")])}</td>
       </tr>
@@ -1848,7 +2131,14 @@ function renderOrders() {
       ${metric("Pedidos abertos", number(openOrders.length), `${number(openOrders.reduce((sum, order) => sum + orderQuantity(order), 0))} garrafas no pipeline`, "pending_actions")}
       ${metric("Em produção", number(inProduction.length), "Pedidos marcados como em produção", "factory")}
       ${metric("Atenção 7 dias", number(dueSoon.length), "Prontos, atrasados ou próximos da data", "event_upcoming")}
-      ${metric("Valor aberto", brl(openOrders.reduce((sum, order) => sum + orderTotal(order), 0)), "Receita prevista, ainda não baixada em estoque", "request_quote")}
+      ${metric("Valor em pedidos", brl(openOrders.reduce((sum, order) => sum + orderTotal(order), 0)), "Receita prevista em pipeline", "request_quote")}
+      ${metric("A receber", brl(orders.reduce((sum, order) => sum + orderReceivableValue(order), 0)), "15 dias após entrega", "payments")}
+    </section>
+    <section class="admin-card order-production-card">
+      <h3>Fila de produção por sabor</h3>
+      <div class="production-chip-grid">
+        ${orderProductionRows().length ? orderProductionRows().map((row) => `<div class="production-chip"><strong>${escapeHtml(row.flavor)}</strong><span>${number(row.missing)} faltando</span><small>${number(row.reserved)} reservado de ${number(row.ordered)} | ${row.nextDue || "sem data"}</small></div>`).join("") : `<p class="empty-note">Sem produção pendente para pedidos abertos.</p>`}
+      </div>
     </section>
     ${table(
       [
@@ -1858,6 +2148,8 @@ function renderOrders() {
         { label: "Qtd.", num: true },
         { label: "Status" },
         { label: "Previsão" },
+        { label: "Entrega / cobrança" },
+        { label: "Pagamento" },
         { label: "Valor", num: true },
         { label: "Ações" },
       ],
@@ -1913,21 +2205,26 @@ function renderLeads() {
 }
 
 function renderPartners() {
+  const statsByName = new Map(customerStats().map((customer) => [normalizeText(customer.name), customer]));
   const rows = state.partners
     .filter((item) => matchesSearch(item))
     .map(
-      (partner) => `
+      (partner) => {
+        const stats = statsByName.get(normalizeText(partner.name));
+        return `
         <tr>
           <td><strong>${partner.name}</strong><br><span>${partner.type} | ${partner.neighborhood}</span></td>
           <td>${partner.whatsapp}</td>
           <td>${partner.instagram}</td>
           <td>${partner.flavors}</td>
           <td>${partner.terms}</td>
-          <td>${partner.lastDelivery}</td>
+          <td>${partner.lastDelivery || stats?.lastOrder || "-"}</td>
+          <td>${stats?.nextOrder || "Sem padrão ainda"}<br><span>${stats ? `${number(stats.qty)} garrafas no histórico` : ""}</span></td>
           <td><span class="status ${partner.visible ? "good" : "warn"}">${partner.visible ? "público" : "oculto"}</span></td>
           <td>${rowActions([tableAction(`edit-partner:${partner.id}`, "Editar parceiro"), tableAction(`delete-partner:${partner.id}`, "Excluir parceiro", "delete", "danger")])}</td>
         </tr>
-      `,
+      `;
+      },
     );
   return `
     ${pageHead("Parceiros", "Controle pontos de venda e gerencie quem aparece no localizador público.", actionButton("new-partner", "Novo parceiro", "add"))}
@@ -1939,6 +2236,7 @@ function renderPartners() {
         { label: "Sabores" },
         { label: "Prazo" },
         { label: "Última entrega" },
+        { label: "Próximo estimado" },
         { label: "Visibilidade" },
         { label: "Ações" },
       ],
@@ -2148,6 +2446,34 @@ function matchesSearch(item) {
   return normalizeText(JSON.stringify(item)).includes(normalizeText(globalSearch));
 }
 
+function enhanceSelectSearch(container = document) {
+  if (!container) return;
+  container.querySelectorAll("select").forEach((select) => {
+    if (select.dataset.searchEnhanced === "true" || select.options.length < 8) return;
+    select.dataset.searchEnhanced = "true";
+    const wrapper = document.createElement("div");
+    wrapper.className = "select-search-wrap";
+    select.parentNode.insertBefore(wrapper, select);
+    wrapper.appendChild(select);
+    const input = document.createElement("input");
+    input.type = "search";
+    input.className = "select-search";
+    input.placeholder = "Digite para filtrar...";
+    input.autocomplete = "off";
+    wrapper.insertBefore(input, select);
+    const options = Array.from(select.options).map((option) => ({
+      option,
+      haystack: normalizeText(`${option.textContent} ${option.value}`),
+    }));
+    input.addEventListener("input", () => {
+      const query = normalizeText(input.value);
+      options.forEach(({ option, haystack }) => {
+        option.hidden = Boolean(query) && !haystack.includes(query);
+      });
+    });
+  });
+}
+
 function render() {
   const view = {
     dashboard: renderDashboard,
@@ -2171,6 +2497,7 @@ function render() {
   }[currentModule];
   document.querySelector("#adminContent").innerHTML = view();
   bindModuleEvents();
+  enhanceSelectSearch(document.querySelector("#adminContent"));
 }
 
 function setModule(module) {
@@ -2186,6 +2513,7 @@ function openModal(title, eyebrow, body) {
   document.querySelector("#adminModalEyebrow").textContent = eyebrow;
   document.querySelector("#adminModalBody").innerHTML = body;
   document.querySelector("#adminModal").classList.add("is-open");
+  enhanceSelectSearch(document.querySelector("#adminModalBody"));
 }
 
 function closeModal() {
@@ -2441,6 +2769,7 @@ function newPurchaseForm() {
       <form id="purchaseForm">
         <div class="input-grid">
           <label class="field"><span>Data</span><input name="date" type="date" value="${todayIso()}" required></label>
+          <label class="field"><span>Tipo de compra</span><select name="kind"><option value="stock">Entra no estoque/custo</option><option value="operational">Despesa operacional</option></select></label>
           <label class="field"><span>Item de estoque</span><select name="stockKey">${purchaseStockOptions(defaultKey)}</select></label>
           <label class="field"><span>Fornecedor</span><input name="supplier" value="${state.suppliers[0]?.name || ""}" required></label>
           <label class="field" data-new-purchase-field><span>Nome do novo item</span><input name="newItemName" placeholder="Ex: lavanda, datador, caixa"></label>
@@ -2465,7 +2794,11 @@ function newPurchaseForm() {
   const form = document.querySelector("#purchaseForm");
   const preview = document.querySelector("#purchasePreview");
   const updateNewFields = ({ suggestUnit = false } = {}) => {
-    const isNewItem = form.elements.stockKey.value.startsWith("new:");
+    const isOperational = form.elements.kind.value === "operational";
+    const isNewItem = isOperational || form.elements.stockKey.value.startsWith("new:");
+    form.elements.stockKey.closest(".field").hidden = isOperational;
+    form.elements.packageCount.required = !isOperational;
+    form.elements.packageSize.required = !isOperational;
     form.querySelectorAll("[data-new-purchase-field]").forEach((field) => {
       field.hidden = !isNewItem;
     });
@@ -2475,8 +2808,9 @@ function newPurchaseForm() {
     }
   };
   const purchaseCalc = () => {
+    const isOperational = form.elements.kind.value === "operational";
     const stockKey = form.elements.stockKey.value;
-    const isNewItem = stockKey.startsWith("new:");
+    const isNewItem = isOperational || stockKey.startsWith("new:");
     const target = isNewItem ? { collection: parsePurchaseStockKey(stockKey).itemId, item: null } : stockItemFromKey(stockKey);
     const packageCount = Number(form.elements.packageCount.value || 0);
     const packageSize = Number(form.elements.packageSize.value || 0);
@@ -2486,6 +2820,14 @@ function newPurchaseForm() {
     const qty = purchaseQuantityInStockUnit({ packageCount, packageSize, packageUnit }, stockUnit);
     const costPerUnit = total / Math.max(qty, 0.000001);
     const itemName = isNewItem ? form.elements.newItemName.value || "Novo item" : target.item?.name || "Item";
+    if (isOperational) {
+      preview.innerHTML = `
+        <small>Despesa operacional</small>
+        <strong>${brl(total)}</strong>
+        <span>${itemName}: entra em Despesas e não altera estoque/custo da garrafa.</span>
+      `;
+      return { target, isNewItem, isOperational, packageCount, packageSize, packageUnit, stockUnit, qty: 0, total, costPerUnit: 0 };
+    }
     preview.innerHTML = `
       <small>Total que entra no estoque</small>
       <strong>${number(qty, 3)} ${stockUnit}</strong>
@@ -2494,20 +2836,49 @@ function newPurchaseForm() {
     return { target, isNewItem, packageCount, packageSize, packageUnit, stockUnit, qty, total, costPerUnit };
   };
   form.addEventListener("input", purchaseCalc);
-  form.addEventListener("change", purchaseCalc);
+  form.addEventListener("change", () => {
+    updateNewFields();
+    purchaseCalc();
+  });
   form.elements.stockKey.addEventListener("change", () => updateNewFields({ suggestUnit: true }));
   updateNewFields();
   purchaseCalc();
   form.addEventListener("submit", (event) => {
     event.preventDefault();
     const data = Object.fromEntries(new FormData(form).entries());
-    const { target, isNewItem, packageCount, packageSize, packageUnit, stockUnit, qty, total, costPerUnit } = purchaseCalc();
+    const { target, isNewItem, isOperational, packageCount, packageSize, packageUnit, stockUnit, qty, total, costPerUnit } = purchaseCalc();
     if (isNewItem && !data.newItemName.trim()) {
       window.alert("Informe o nome do novo item.");
       return;
     }
-    if (!qty || !total) {
+    if ((!qty && !isOperational) || !total) {
       window.alert("Informe item, quantidade comprada e total pago.");
+      return;
+    }
+    if (isOperational) {
+      const purchase = {
+        id: id("pur"),
+        kind: "operational",
+        date: data.date,
+        supplier: data.supplier,
+        item: data.newItemName || "Despesa operacional",
+        stockCollection: "expense",
+        stockItemId: "",
+        packageCount: 0,
+        packageSize: 0,
+        packageUnit: "",
+        qty: 0,
+        unit: "",
+        total,
+        costPerUnit: 0,
+        method: data.method,
+        buyer: data.buyer,
+      };
+      state.purchases.unshift(purchase);
+      syncPurchaseExpense(purchase);
+      addAudit("Despesa operacional registrada", `${purchase.item}: ${brl(total)}`);
+      closeModal();
+      render();
       return;
     }
     let collection = target.collection;
@@ -2558,8 +2929,9 @@ function newPurchaseForm() {
       stockItem.purchaseUnit = stockUnit;
       stockItem.costPerUnit = costPerUnit;
     }
-    state.purchases.unshift({
+    const purchase = {
       id: id("pur"),
+      kind: "stock",
       date: data.date,
       supplier: data.supplier,
       item: stockItem.name,
@@ -2576,7 +2948,9 @@ function newPurchaseForm() {
       costPerUnit,
       method: data.method,
       buyer: data.buyer,
-    });
+    };
+    state.purchases.unshift(purchase);
+    syncPurchaseExpense(purchase);
     addAudit("Compra registrada", `${stockItem.name}: ${number(qty, 3)} ${stockUnit} por ${brl(total)} (${brl(costPerUnit)}/${stockUnit})`);
     closeModal();
     render();
@@ -2715,7 +3089,7 @@ function newBatchForm() {
     const plan = batchDatePlan(data.date);
     const bottles = Number(data.actual || 0);
     if (!recipe || !bottles) return;
-    state.batches.unshift({
+    const batch = {
       id: id("bat"),
       code: data.code,
       flavor: recipe?.flavor || "",
@@ -2731,9 +3105,11 @@ function newBatchForm() {
       status: "aprovado",
       inventoryAdjusted: true,
       inventoryQty: bottles,
-    });
+    };
+    state.batches.unshift(batch);
     applyBatchInventory(recipe, bottles, -1);
-    addAudit("Lote criado", `${data.code}: ${number(bottles)} garrafas de ${recipe?.flavor || "receita"}; insumos baixados automaticamente.`);
+    const reserved = allocateBatchToOrders(batch);
+    addAudit("Lote criado", `${data.code}: ${number(bottles)} garrafas de ${recipe?.flavor || "receita"}; ${number(reserved)} reservadas para pedidos.`);
     closeModal();
     render();
   });
@@ -3090,6 +3466,7 @@ function bindRecipeBuilder() {
     const isKombucha = event.target.value === "yes";
     ingredientRows.innerHTML = isKombucha ? `${kombuchaBaseIngredientRows()}${recipeIngredientRowTemplate()}` : recipeIngredientRowTemplate();
     packagingRows.innerHTML = isKombucha ? `${kombuchaBasePackagingRows()}${recipePackagingRowTemplate()}` : recipePackagingRowTemplate();
+    enhanceSelectSearch(form);
   });
   form.querySelector("[name='productId']")?.addEventListener("change", (event) => {
     const product = byId("products", event.target.value);
@@ -3101,9 +3478,11 @@ function bindRecipeBuilder() {
   });
   form.querySelector("[data-add-ingredient-row]").addEventListener("click", () => {
     ingredientRows.insertAdjacentHTML("beforeend", recipeIngredientRowTemplate());
+    enhanceSelectSearch(ingredientRows);
   });
   form.querySelector("[data-add-packaging-row]").addEventListener("click", () => {
     packagingRows.insertAdjacentHTML("beforeend", recipePackagingRowTemplate());
+    enhanceSelectSearch(packagingRows);
   });
   bindIngredientBuilderRows(form);
   form.addEventListener("click", (event) => {
@@ -3271,7 +3650,18 @@ function deletePurchase(recordId) {
   const target = stockItemForPurchase(purchase);
   if (target?.item) target.item.stock = Math.max(0, Number(target.item.stock || 0) - Number(purchase.qty || 0));
   state.purchases = state.purchases.filter((item) => item.id !== recordId);
+  state.expenses = state.expenses.filter((expense) => expense.purchaseId !== recordId);
   addAudit("Compra excluída", purchase.item);
+  render();
+}
+
+function deleteOrder(recordId) {
+  const order = byId("orders", recordId);
+  if (!order) return;
+  if (!window.confirm(`Excluir pedido "${order.code}"? Vendas automáticas vinculadas a ele também serão removidas.`)) return;
+  state.orders = state.orders.filter((item) => item.id !== recordId);
+  state.sales = state.sales.filter((sale) => sale.orderId !== recordId);
+  addAudit("Pedido excluído", order.code);
   render();
 }
 
@@ -3452,10 +3842,14 @@ function editRecipeForm(recipeId) {
   );
   const form = document.querySelector("#recipeEditForm");
   form.querySelector("[data-add-edit-ingredient]").addEventListener("click", () => {
-    document.querySelector("#recipeEditIngredientRows").insertAdjacentHTML("beforeend", recipeIngredientEditRow());
+    const target = document.querySelector("#recipeEditIngredientRows");
+    target.insertAdjacentHTML("beforeend", recipeIngredientEditRow());
+    enhanceSelectSearch(target);
   });
   form.querySelector("[data-add-edit-packaging]").addEventListener("click", () => {
-    document.querySelector("#recipeEditPackagingRows").insertAdjacentHTML("beforeend", recipePackagingEditRow());
+    const target = document.querySelector("#recipeEditPackagingRows");
+    target.insertAdjacentHTML("beforeend", recipePackagingEditRow());
+    enhanceSelectSearch(target);
   });
   bindIngredientBuilderRows(form);
   form.addEventListener("click", (event) => {
@@ -3612,16 +4006,23 @@ function editSaleForm(saleId) {
   });
 }
 
-function orderItemRowTemplate(item = {}) {
+function orderItemRowTemplate(item = {}, clientType = "novo_cliente") {
   const selectedProductId = item.productId || state.products[0]?.id || "";
   const selectedProduct = byId("products", selectedProductId) || state.products[0];
-  const defaultPrice = item.unitPrice ?? (productWholesalePrice(selectedProduct) || productRetailPrice(selectedProduct) || 0);
+  const defaultPrice = item.unitPrice ?? priceForOrderClientType(selectedProduct, clientType);
+  const status = item.productionStatus || "pendente";
   return `
     <div class="builder-row order-item-row">
       <label class="field"><span>Produto / sabor</span><select data-field="productId">${state.products.map((product) => `<option value="${product.id}" ${selectedProductId === product.id ? "selected" : ""}>${escapeHtml(productLabel(product))}</option>`).join("")}</select></label>
       <label class="field"><span>Qtd. garrafas</span><input data-field="qty" type="number" min="1" step="1" value="${item.qty || 1}"></label>
       <label class="field"><span>Preço unitário</span><input data-field="unitPrice" type="number" min="0" step="0.01" value="${defaultPrice}"></label>
+      <label class="field"><span>Status produção</span><select data-field="productionStatus">${ORDER_ITEM_STATUSES.map((option) => `<option value="${option}" ${status === option ? "selected" : ""}>${option}</option>`).join("")}</select></label>
+      <label class="field"><span>Qtd. reservada</span><input data-field="reservedQty" type="number" min="0" step="1" value="${item.reservedQty || 0}"></label>
+      <label class="field"><span>Pronto em</span><input data-field="readyDate" type="date" value="${item.readyDate || ""}"></label>
       <label class="field"><span>Obs. do item</span><input data-field="note" value="${escapeHtml(item.note || "")}" placeholder="Ex: caixa, entrega, condição..."></label>
+      <input type="hidden" data-field="batchCode" value="${escapeHtml(item.batchCode || "")}">
+      <input type="hidden" data-field="producedQty" value="${Number(item.producedQty || 0)}">
+      <input type="hidden" data-field="key" value="${escapeHtml(item.key || id("oi"))}">
       <button class="icon-btn" type="button" data-remove-builder-row aria-label="Remover item">
         <span class="material-symbols-outlined" aria-hidden="true">delete</span>
       </button>
@@ -3637,8 +4038,14 @@ function readOrderItemRow(row) {
     productId: product.id,
     productName: productLabel(product),
     flavor: product.flavor,
+    key: data.key || id("oi"),
     qty: Number(data.qty || 0),
     unitPrice: Number(data.unitPrice || 0),
+    productionStatus: data.productionStatus || "pendente",
+    producedQty: Number(data.producedQty || 0),
+    reservedQty: Math.min(Number(data.reservedQty || 0), Number(data.qty || 0)),
+    readyDate: data.readyDate || "",
+    batchCode: data.batchCode || "",
     note: data.note || "",
   };
 }
@@ -3652,7 +4059,7 @@ function updateOrderPreview(form) {
     preview.innerHTML = `
       <small>Resumo do pedido</small>
       <strong>${number(totalQty)} garrafas | ${brl(totalValue)}</strong>
-      <span>Pedido não baixa estoque automaticamente; venda/saída continua sendo registrada em Vendas.</span>
+      <span>Pedido alimenta produção; ao marcar entregue, vira venda e cobrança automaticamente.</span>
     `;
   }
   return { items, totalQty, totalValue };
@@ -3660,8 +4067,14 @@ function updateOrderPreview(form) {
 
 function bindOrderForm(form) {
   const rows = form.querySelector("#orderItemsRows");
+  const applyClientPricing = (row) => {
+    const product = byId("products", row.querySelector('[data-field="productId"]')?.value);
+    setRowField(row, "unitPrice", priceForOrderClientType(product, form.elements.clientType?.value || "novo_cliente"));
+  };
   form.querySelector("[data-add-order-item]")?.addEventListener("click", () => {
-    rows.insertAdjacentHTML("beforeend", orderItemRowTemplate());
+    rows.insertAdjacentHTML("beforeend", orderItemRowTemplate({}, form.elements.clientType?.value || "novo_cliente"));
+    enhanceSelectSearch(rows);
+    applyClientPricing(rows.lastElementChild);
     updateOrderPreview(form);
   });
   form.addEventListener("click", (event) => {
@@ -3674,12 +4087,24 @@ function bindOrderForm(form) {
   form.addEventListener("change", (event) => {
     const row = event.target.closest(".order-item-row");
     if (row && event.target.dataset.field === "productId") {
-      const product = byId("products", event.target.value);
-      setRowField(row, "unitPrice", productWholesalePrice(product) || productRetailPrice(product) || 0);
+      applyClientPricing(row);
+    }
+    if (event.target.name === "clientType") {
+      rows.querySelectorAll(".order-item-row").forEach(applyClientPricing);
+    }
+    if (event.target.name === "status" && event.target.value === "entregue" && !form.elements.deliveredAt.value) {
+      form.elements.deliveredAt.value = todayIso();
+      form.elements.paymentDueDate.value = addDaysIso(todayIso(), 15);
+    }
+    if (event.target.name === "deliveredAt" && event.target.value && !form.elements.paymentDueDate.value) {
+      form.elements.paymentDueDate.value = addDaysIso(event.target.value, 15);
     }
     updateOrderPreview(form);
   });
   form.addEventListener("input", () => updateOrderPreview(form));
+  rows.querySelectorAll(".order-item-row").forEach((row) => {
+    if (!Number(row.querySelector('[data-field="unitPrice"]')?.value || 0)) applyClientPricing(row);
+  });
   updateOrderPreview(form);
 }
 
@@ -3696,6 +4121,9 @@ function orderForm(orderId) {
   const existing = orderId ? byId("orders", orderId) : null;
   const orderDate = existing?.orderDate || todayIso();
   const readyDate = existing?.estimatedReadyDate || addDaysIso(orderDate, 7);
+  const deliveredAt = existing?.deliveredAt || "";
+  const paymentDueDate = existing?.paymentDueDate || (deliveredAt ? addDaysIso(deliveredAt, 15) : "");
+  const clientType = existing?.clientType || "novo_cliente";
   openModal(
     existing ? "Editar pedido" : "Novo pedido",
     "Pedidos",
@@ -3705,7 +4133,11 @@ function orderForm(orderId) {
           <label class="field"><span>Código</span><input name="code" value="${escapeHtml(existing?.code || nextOrderCode(orderDate))}" required></label>
           <label class="field"><span>Data do pedido</span><input name="orderDate" type="date" value="${orderDate}" required></label>
           <label class="field"><span>Status</span><select name="status" class="admin-select">${ORDER_STATUSES.map((status) => `<option value="${status}" ${existing?.status === status ? "selected" : ""}>${status}</option>`).join("")}</select></label>
+          <label class="field"><span>Tipo de cliente</span><select name="clientType" class="admin-select">${ORDER_CLIENT_TYPES.map((type) => `<option value="${type.value}" ${clientType === type.value ? "selected" : ""}>${type.label}</option>`).join("")}</select></label>
           <label class="field"><span>Previsão de pronto</span><input name="estimatedReadyDate" type="date" value="${readyDate}"></label>
+          <label class="field"><span>Data de entrega</span><input name="deliveredAt" type="date" value="${deliveredAt}"></label>
+          <label class="field"><span>Receber até</span><input name="paymentDueDate" type="date" value="${paymentDueDate}"></label>
+          <label class="field"><span>Status pagamento</span><select name="paymentStatus" class="admin-select">${PAYMENT_STATUSES.map((status) => `<option value="${status}" ${orderReceivableStatus(existing || {}) === status || existing?.paymentStatus === status ? "selected" : ""}>${status}</option>`).join("")}</select></label>
           <label class="field"><span>Cliente</span><input name="customerName" value="${escapeHtml(existing?.customerName || "")}" required></label>
           <label class="field"><span>Negócio / empresa</span><input name="businessName" value="${escapeHtml(existing?.businessName || "")}"></label>
           <label class="field"><span>WhatsApp</span><input name="whatsapp" value="${escapeHtml(existing?.whatsapp || "")}"></label>
@@ -3719,14 +4151,14 @@ function orderForm(orderId) {
           <div class="table-toolbar">
             <div>
               <h3>Itens do pedido</h3>
-              <p>Escolha os sabores, quantidades e preço combinado. Isso é pipeline; a baixa real acontece em Vendas.</p>
+              <p>Cada sabor tem seu próprio andamento. Lotes produzidos reservam garrafas automaticamente para pedidos abertos.</p>
             </div>
             <button class="btn btn-outline" type="button" data-add-order-item>
               <span class="material-symbols-outlined" aria-hidden="true">add</span>
               Item
             </button>
           </div>
-          <div id="orderItemsRows">${(existing && orderItems(existing).length ? orderItems(existing) : [{}]).map(orderItemRowTemplate).join("")}</div>
+          <div id="orderItemsRows">${(existing && orderItems(existing).length ? orderItems(existing) : [{}]).map((item) => orderItemRowTemplate(item, clientType)).join("")}</div>
         </div>
 
         <button class="btn btn-primary" type="submit">
@@ -3754,8 +4186,12 @@ function orderForm(orderId) {
       code: data.code,
       orderDate: data.orderDate,
       estimatedReadyDate: data.estimatedReadyDate,
+      deliveredAt: data.deliveredAt,
+      paymentDueDate: data.paymentDueDate || (data.deliveredAt ? addDaysIso(data.deliveredAt, 15) : ""),
+      paymentStatus: data.paymentStatus,
       neededBy: data.neededBy,
       status: data.status,
+      clientType: data.clientType || "novo_cliente",
       customerName: data.customerName,
       businessName: data.businessName,
       whatsapp: data.whatsapp,
@@ -3768,9 +4204,12 @@ function orderForm(orderId) {
     };
     if (existing) {
       Object.assign(existing, payload);
+      syncOrderIntegrations(existing);
       addAudit("Pedido atualizado", `${payload.code}: ${payload.customerName}`);
     } else {
-      state.orders.unshift({ id: id("ord"), createdAt: new Date().toISOString(), ...payload });
+      const order = { id: id("ord"), createdAt: new Date().toISOString(), ...payload };
+      syncOrderIntegrations(order);
+      state.orders.unshift(order);
       addAudit("Pedido criado", `${payload.code}: ${payload.customerName} | ${number(totalQty)} garrafas`);
     }
     closeModal();
@@ -3780,6 +4219,29 @@ function orderForm(orderId) {
 
 function editPurchaseForm(purchaseId) {
   const purchase = byId("purchases", purchaseId);
+  if (purchase?.kind === "operational") {
+    editRecordForm(
+      "purchases",
+      purchaseId,
+      "Editar despesa operacional",
+      [
+        { name: "date", label: "Data", type: "date", required: true },
+        { name: "supplier", label: "Fornecedor" },
+        { name: "item", label: "Descrição", full: true, required: true },
+        { name: "total", label: "Total pago", type: "number", min: 0, step: "0.01" },
+        { name: "method", label: "Método" },
+        { name: "buyer", label: "Comprador" },
+      ],
+      (record) => {
+        record.kind = "operational";
+        record.qty = 0;
+        record.unit = "";
+        record.costPerUnit = 0;
+        syncPurchaseExpense(record);
+      },
+    );
+    return;
+  }
   if (purchase && !purchase.packageCount) {
     purchase.packageCount = 1;
     purchase.packageSize = Number(purchase.qty || 0);
@@ -3842,6 +4304,7 @@ function editPurchaseForm(purchaseId) {
     record.stockItemId = nextTarget.item?.id || "";
     record.ingredientId = nextTarget.collection === "ingredients" ? nextTarget.item?.id || "" : "";
     record.packagingId = nextTarget.collection === "packaging" ? nextTarget.item?.id || "" : "";
+    syncPurchaseExpense(record);
   });
 }
 
@@ -4222,7 +4685,7 @@ function handleAction(action) {
     "edit-sale": editSaleForm,
     "delete-sale": (itemId) => deleteRecord("sales", itemId),
     "edit-order": orderForm,
-    "delete-order": (itemId) => deleteRecord("orders", itemId),
+    "delete-order": deleteOrder,
     "edit-purchase": editPurchaseForm,
     "delete-purchase": deletePurchase,
     "delete-lead": (itemId) => deleteRecord("leads", itemId),
@@ -4326,9 +4789,9 @@ function handleAction(action) {
     "export-ingredients": () => exportCSV("kombu-ingredientes", [["Nome", "Categoria", "Fornecedor", "Estoque", "Unidade", "Custo", "Status"], ...state.ingredients.map((i) => [i.name, i.category, i.supplier, i.stock, i.purchaseUnit, i.costPerUnit, ingredientNeedsCost(i) ? "custo pendente" : i.status])]),
     "export-purchases": () => exportCSV("kombu-compras", [["Data", "Fornecedor", "Item", "Pacotes", "Conteúdo pacote", "Unidade pacote", "Entra estoque", "Unidade estoque", "Total", "Custo unitário", "Método", "Comprador"], ...state.purchases.map((p) => [p.date, p.supplier, p.item, p.packageCount || "", p.packageSize || "", p.packageUnit || "", p.qty, p.unit, p.total, p.costPerUnit || "", p.method, p.buyer])]),
     "export-sales": () => exportCSV("kombu-saidas-vendas", [["Data", "Tipo", "Cliente/destino", "Preço", "Sabor", "Lote", "Qtd", "Preço unitário", "Receita", "Desconto", "Entrega", "Observação"], ...state.sales.map((s) => [s.date, s.movementType || "venda", s.customerName || s.partner, s.priceType || s.channel, s.flavor, s.batchCode, s.qty, s.unitPrice, saleRevenue(s), s.discount, s.delivery, s.note || ""])]),
-    "export-orders": () => exportCSV("kombu-pedidos", [["Código", "Data", "Status", "Cliente", "Negócio", "WhatsApp", "Previsão pronto", "Precisa até", "Qtd", "Valor", "Itens", "Observações"], ...(state.orders || []).map((order) => [order.code, order.orderDate, order.status, order.customerName, order.businessName, order.whatsapp, order.estimatedReadyDate, order.neededBy, orderQuantity(order), orderTotal(order), orderItems(order).map((item) => `${item.qty}x ${orderProductText(item)} @ ${brl(item.unitPrice)}`).join("; "), order.notes || ""])]),
+    "export-orders": () => exportCSV("kombu-pedidos", [["Código", "Data", "Tipo cliente", "Status", "Cliente", "Negócio", "WhatsApp", "Previsão pronto", "Entrega", "Receber até", "Pagamento", "Precisa até", "Qtd", "Valor", "Itens", "Observações"], ...(state.orders || []).map((order) => [order.code, order.orderDate, orderClientTypeLabel(order.clientType), order.status, order.customerName, order.businessName, order.whatsapp, order.estimatedReadyDate, order.deliveredAt || "", orderPaymentDueDate(order), orderReceivableStatus(order), order.neededBy, orderQuantity(order), orderTotal(order), orderItems(order).map((item) => `${item.qty}x ${orderProductText(item)} | ${item.productionStatus || "pendente"} | reservado ${item.reservedQty || 0} @ ${brl(item.unitPrice)}`).join("; "), order.notes || ""])]),
     "export-leads": () => exportCSV("kombu-leads-crm", [["Criado em", "Tipo", "Status", "Nome", "Negócio", "Tipo negócio", "Local", "WhatsApp", "Instagram", "Mensagem"], ...state.leads.map((lead) => [lead.createdAt, lead.type, lead.status, lead.name, lead.business, lead.businessType, lead.location, lead.whatsapp, lead.instagram, lead.message])]),
-    "export-reports": () => exportCSV("kombu-relatorio", [["Métrica", "Valor"], ["Receita", totals().salesRevenue], ["COGS", totals().cogs], ["Lucro bruto", totals().grossProfit], ["Despesas", totals().expenses], ["Líquido", totals().net]]),
+    "export-reports": () => exportCSV("kombu-relatorio", [["Métrica", "Valor"], ["Receita", totals().salesRevenue], ["COGS", totals().cogs], ["Lucro bruto", totals().grossProfit], ["Despesas", totals().expenses], ["Líquido", totals().net], ["Pedidos em aberto", totals().openOrderValue], ["A receber", totals().receivable], ["Produção faltante", totals().productionMissing]]),
     "export-costs": () => {
       const recipe = byId("recipes", activeRecipeId);
       exportCSV("kombu-custo-garrafa", [["Receita", recipe.flavor, recipe.version], ["Custo lote", recipeCost(recipe).total], ["Custo garrafa", recipeCost(recipe).costPerBottle]]);

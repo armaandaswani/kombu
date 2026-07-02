@@ -1080,6 +1080,8 @@ textarea:focus-visible {
   display: grid;
   grid-template-columns: 276px minmax(0, 1fr);
   min-height: 100vh;
+  max-width: 100%;
+  overflow-x: hidden;
 }
 
 .admin-sidebar {
@@ -1129,6 +1131,7 @@ textarea:focus-visible {
 
 .admin-main {
   min-width: 0;
+  overflow-x: hidden;
 }
 
 .admin-topbar {
@@ -1195,6 +1198,7 @@ textarea:focus-visible {
   width: min(1440px, calc(100% - 48px));
   margin: 0 auto;
   padding: 28px 0 70px;
+  min-width: 0;
 }
 
 .admin-page-head {
@@ -1203,6 +1207,7 @@ textarea:focus-visible {
   justify-content: space-between;
   gap: 20px;
   margin-bottom: 22px;
+  min-width: 0;
 }
 
 .admin-page-head h1 {
@@ -1213,6 +1218,7 @@ textarea:focus-visible {
 .admin-page-head p {
   color: var(--muted);
   margin-bottom: 0;
+  max-width: 78ch;
 }
 
 .admin-actions {
@@ -1223,7 +1229,7 @@ textarea:focus-visible {
 
 .metric-grid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(230px, 100%), 1fr));
   gap: 14px;
 }
 
@@ -1233,6 +1239,7 @@ textarea:focus-visible {
 
 .metric-card {
   min-height: 142px;
+  min-width: 0;
 }
 
 .metric-card small {
@@ -1248,8 +1255,11 @@ textarea:focus-visible {
   display: block;
   margin: 10px 0 6px;
   font-family: var(--font-serif);
-  font-size: 2.1rem;
+  font-size: clamp(1.55rem, 2.4vw, 2.1rem);
   line-height: 1;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .metric-card span {
@@ -1260,7 +1270,7 @@ textarea:focus-visible {
 
 .admin-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1.2fr) minmax(300px, 0.72fr);
+  grid-template-columns: repeat(auto-fit, minmax(min(360px, 100%), 1fr));
   gap: 16px;
   margin-top: 16px;
 }
@@ -1276,6 +1286,7 @@ textarea:focus-visible {
   max-width: 100%;
   overflow: hidden;
   padding: 0;
+  min-width: 0;
 }
 
 .table-scroll {
@@ -1287,6 +1298,7 @@ textarea:focus-visible {
   width: 100%;
   border-collapse: collapse;
   font-size: 14px;
+  table-layout: auto;
 }
 
 .data-table th {
@@ -1305,7 +1317,7 @@ textarea:focus-visible {
 .data-table th,
 .data-table td {
   border-bottom: 1px solid var(--line);
-  padding: 12px;
+  padding: 10px;
   vertical-align: middle;
 }
 
@@ -1313,6 +1325,62 @@ textarea:focus-visible {
   color: #26302a;
   overflow-wrap: anywhere;
   word-break: break-word;
+}
+
+.inline-muted {
+  color: var(--muted);
+  font-size: 0.86em;
+  font-weight: 750;
+}
+
+.select-search-wrap {
+  display: grid;
+  gap: 8px;
+  width: 100%;
+  min-width: 0;
+}
+
+.select-search {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #fff;
+  color: var(--ink);
+  font: inherit;
+  padding: 10px 12px;
+}
+
+.production-chip-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(220px, 100%), 1fr));
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.production-chip {
+  display: grid;
+  gap: 4px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: #fbfff6;
+  padding: 12px;
+  min-width: 0;
+}
+
+.production-chip strong,
+.production-chip span,
+.production-chip small {
+  overflow-wrap: anywhere;
+}
+
+.production-chip span {
+  color: var(--green);
+  font-weight: 900;
+}
+
+.production-chip small {
+  color: var(--muted);
+  font-weight: 700;
 }
 
 .data-table tr:hover td {
@@ -1898,7 +1966,7 @@ textarea:focus-visible {
   }
 }
 
-@media (max-width: 1540px) {
+@media (max-width: 820px) {
   .admin-body .data-table,
   .admin-body .spreadsheet,
   .admin-body .data-table thead,
