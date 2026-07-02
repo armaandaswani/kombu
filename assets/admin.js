@@ -51,9 +51,30 @@ const COST_INGREDIENT_SEED = [
 }));
 
 const PACKAGING_SEED = [
-  { id: "pkg-bottle-500", name: "Garrafa 500ml", supplier: "Base de custos Kombú", unit: "un", costEach: 0.84, stock: 0, min: 0, location: "" },
-  { id: "pkg-label-500", name: "Rótulo 500ml", supplier: "Base de custos Kombú", unit: "un", costEach: 0.85, stock: 0, min: 0, location: "" },
+  { id: "pkg-bottle-500", name: "Garrafa 500ml", type: "bottle", productId: "", supplier: "Base de custos Kombú", unit: "un", costEach: 0.84, stock: 0, min: 0, location: "" },
+  { id: "pkg-label-500", name: "Rótulo 500ml", type: "label", productId: "", supplier: "Base de custos Kombú", unit: "un", costEach: 0.85, stock: 0, min: 0, location: "" },
 ];
+
+function labelPackagingIdForProduct(product) {
+  return `pkg-label-${String(product?.item || product?.id || "produto").toLowerCase()}-${Number(product?.sizeMl || 500)}`;
+}
+
+function labelPackagingForProduct(product, costEach = 0.85) {
+  return {
+    id: labelPackagingIdForProduct(product),
+    name: `Rótulo ${product.flavor} ${product.sizeMl}ml`,
+    type: "label",
+    productId: product.id,
+    supplier: "Base de custos Kombú",
+    unit: "un",
+    costEach,
+    stock: 0,
+    min: 0,
+    location: "",
+  };
+}
+
+const PRODUCT_LABEL_PACKAGING_SEED = PRODUCT_CATALOG_SEED.map((product) => labelPackagingForProduct(product));
 
 const RECIPE_BLUEPRINTS = [
   { productId: "prod-kmb001", flavor: "Maracujá", ingredients: [["ing-tea", 4], ["ing-sugar", 45], ["ing-passion", 40]] },
@@ -85,7 +106,7 @@ const RECIPE_SEED = RECIPE_BLUEPRINTS.map((recipe) => {
     ingredients: recipe.ingredients.map(([ingredientId, qty]) => ({ ingredientId, qty, unit: "g" })),
     packaging: [
       { itemId: "pkg-bottle-500", qty: 1 },
-      { itemId: "pkg-label-500", qty: 1 },
+      { itemId: labelPackagingIdForProduct(product), qty: 1 },
     ],
   };
 });
@@ -259,7 +280,7 @@ const CMS_FLAVOR_SEED = [
 const defaultState = {
   products: PRODUCT_CATALOG_SEED,
   ingredients: COST_INGREDIENT_SEED,
-  packaging: PACKAGING_SEED,
+  packaging: [...PACKAGING_SEED, ...PRODUCT_LABEL_PACKAGING_SEED],
   suppliers: [],
   partners: [],
   recipes: RECIPE_SEED,
@@ -360,6 +381,7 @@ let currentModule = "dashboard";
 let globalSearch = "";
 let activeRecipeId = state.recipes[0]?.id || "";
 let currentRole = "Owner / Admin";
+let currentStockView = "kombuchas";
 
 function isAuthenticated() {
   return sessionStorage.getItem("kombuAdminAuthenticated") === "true";
@@ -422,6 +444,18 @@ function clone(value) {
   return JSON.parse(JSON.stringify(value));
 }
 
+function addDaysIso(dateIso, days) {
+  const date = new Date(`${dateIso || todayIso()}T00:00:00`);
+  date.setDate(date.getDate() + Number(days || 0));
+  return date.toISOString().slice(0, 10);
+}
+
+function addMonthsIso(dateIso, months) {
+  const date = new Date(`${dateIso || todayIso()}T00:00:00`);
+  date.setMonth(date.getMonth() + Number(months || 0));
+  return date.toISOString().slice(0, 10);
+}
+
 function escapeHtml(value) {
   return String(value ?? "")
     .replaceAll("&", "&amp;")
@@ -429,6 +463,14 @@ function escapeHtml(value) {
     .replaceAll(">", "&gt;")
     .replaceAll('"', "&quot;")
     .replaceAll("'", "&#039;");
+}
+
+function inferPackagingType(item = {}) {
+  const name = String(item.name || "").toLowerCase();
+  if (item.type) return item.type;
+  if (name.includes("rótulo") || name.includes("rotulo") || name.includes("label")) return "label";
+  if (name.includes("garrafa") || name.includes("tampa") || name.includes("frasco")) return "bottle";
+  return "material";
 }
 
 function normalizeCmsFlavors(savedFlavors = []) {
@@ -447,6 +489,27 @@ function normalizeCmsFlavors(savedFlavors = []) {
   return [...normalized, ...savedBySlug.values()];
 }
 
+function ensureProductLabelInventory(data) {
+  const genericLabelCost = Number(data.packaging.find((item) => item.id === "pkg-label-500")?.costEach || 0.85);
+  data.products.forEach((product) => {
+    const labelId = labelPackagingIdForProduct(product);
+    if (!data.packaging.some((item) => item.id === labelId)) data.packaging.push(labelPackagingForProduct(product, genericLabelCost));
+  });
+  data.recipes.forEach((recipe) => {
+    const product = data.products.find((item) => item.id === recipe.productId);
+    if (!product) return;
+    const labelId = labelPackagingIdForProduct(product);
+    const packaging = Array.isArray(recipe.packaging) ? recipe.packaging : [];
+    const genericIndex = packaging.findIndex((line) => line.itemId === "pkg-label-500");
+    if (genericIndex >= 0) {
+      packaging[genericIndex] = { ...packaging[genericIndex], itemId: labelId };
+    } else if (!packaging.some((line) => line.itemId === labelId)) {
+      packaging.push({ itemId: labelId, qty: 1 });
+    }
+    recipe.packaging = packaging;
+  });
+}
+
 function normalizeState(savedState) {
   const base = clone(defaultState);
   const saved = savedState || {};
@@ -461,6 +524,8 @@ function normalizeState(savedState) {
   ["products", "ingredients", "packaging", "suppliers", "partners", "recipes", "batches", "sales", "leads", "purchases", "expenses", "costSources", "audit"].forEach((key) => {
     merged[key] = Array.isArray(saved[key]) ? saved[key] : base[key];
   });
+  merged.packaging = merged.packaging.map((item) => ({ ...item, type: inferPackagingType(item), productId: item.productId || "" }));
+  ensureProductLabelInventory(merged);
   return merged;
 }
 
@@ -510,6 +575,10 @@ function productForBatch(batch) {
   return byId("products", batch?.productId) || productForRecipe(byId("recipes", batch?.recipeId));
 }
 
+function ingredientForPurchase(purchase) {
+  return byId("ingredients", purchase?.ingredientId) || state.ingredients.find((item) => item.name === purchase?.item);
+}
+
 function productLabel(product) {
   if (!product) return "Produto não vinculado";
   return `${product.item} - ${product.flavor} ${product.sizeMl}ml`;
@@ -527,6 +596,10 @@ function productDisplayCost(product) {
 
 function productWholesalePrice(product) {
   return Number(product?.wholesalePrice || 0);
+}
+
+function productRetailPrice(product) {
+  return Number(product?.retailPrice || 0);
 }
 
 function commonProductPrice(field, fallback = 0) {
@@ -550,6 +623,28 @@ function convertedAmount(qty, fromUnit, toUnit) {
   return (Number(qty || 0) * unitFactor[fromUnit]) / unitFactor[toUnit];
 }
 
+function purchaseQuantityInStockUnit({ packageCount, packageSize, packageUnit }, stockUnit) {
+  const rawTotal = Number(packageCount || 0) * Number(packageSize || 0);
+  return convertedAmount(rawTotal, packageUnit, stockUnit);
+}
+
+function nextBatchCode(recipe, dateIso) {
+  const product = productForRecipe(recipe);
+  const base = product?.item || recipe?.flavor || "KMB";
+  const compactDate = String(dateIso || todayIso()).slice(2).replaceAll("-", "");
+  const prefix = `${base}-${compactDate}`.toUpperCase().replace(/[^A-Z0-9-]/g, "");
+  const existing = state.batches.filter((batch) => String(batch.code || "").startsWith(prefix)).length;
+  return existing ? `${prefix}-${existing + 1}` : prefix;
+}
+
+function batchDatePlan(dateIso) {
+  return {
+    idealSellBy: addMonthsIso(dateIso, 1),
+    sellBy: addMonthsIso(dateIso, 2),
+    expiry: addMonthsIso(dateIso, 4),
+  };
+}
+
 function ingredientLineCost(line) {
   const ingredient = byId("ingredients", line.ingredientId);
   if (!ingredient) return 0;
@@ -560,6 +655,36 @@ function packagingLineCost(line, yieldBottles = 1) {
   const item = byId("packaging", line.itemId);
   if (!item) return 0;
   return Number(line.qty || 0) * yieldBottles * item.costEach;
+}
+
+function batchUsage(recipe, bottles) {
+  const multiplier = Number(bottles || 0) / Math.max(Number(recipe?.yieldBottles || 1), 1);
+  const ingredients = (recipe?.ingredients || []).map((line) => {
+    const ingredient = byId("ingredients", line.ingredientId);
+    const qty = convertedAmount(Number(line.qty || 0) * multiplier, line.unit, ingredient?.purchaseUnit || line.unit);
+    return { ingredient, qty };
+  });
+  const packaging = (recipe?.packaging || []).map((line) => {
+    const item = byId("packaging", line.itemId);
+    return { item, qty: Number(line.qty || 0) * Number(bottles || 0) };
+  });
+  return { ingredients, packaging };
+}
+
+function applyBatchInventory(recipe, bottles, direction) {
+  const usage = batchUsage(recipe, bottles);
+  usage.ingredients.forEach(({ ingredient, qty }) => {
+    if (!ingredient) return;
+    ingredient.stock = Number((Number(ingredient.stock || 0) + Number(direction || 0) * qty).toFixed(6));
+  });
+  usage.packaging.forEach(({ item, qty }) => {
+    if (!item) return;
+    item.stock = Number((Number(item.stock || 0) + Number(direction || 0) * qty).toFixed(6));
+  });
+}
+
+function shouldConsumeBatch(batch) {
+  return Number(batch?.actual || 0) > 0 && !["planejado", "bloqueado", "descartado"].includes(batch?.status);
 }
 
 function recipeCost(recipe) {
@@ -625,7 +750,7 @@ function finishedStockRows() {
 }
 
 function totals() {
-  const salesRevenue = state.sales.reduce((sum, sale) => sum + Number(sale.qty || 0) * Number(sale.unitPrice || 0) - Number(sale.discount || 0), 0);
+  const salesRevenue = state.sales.reduce((sum, sale) => sum + saleRevenue(sale), 0);
   const cogs = state.sales.reduce((sum, sale) => {
     const batch = state.batches.find((item) => item.code === sale.batchCode);
     return sum + Number(sale.qty || 0) * (batch ? batchCost(batch).batchCostPerBottle : 0);
@@ -648,12 +773,41 @@ function totals() {
   };
 }
 
+function saleRevenue(sale) {
+  if (sale.movementType && sale.movementType !== "venda") return 0;
+  return Number(sale.qty || 0) * Number(sale.unitPrice || 0) - Number(sale.discount || 0);
+}
+
+function customerStats() {
+  const rows = new Map();
+  state.sales
+    .filter((sale) => !sale.movementType || sale.movementType === "venda")
+    .forEach((sale) => {
+      const name = (sale.customerName || sale.partner || "Cliente sem nome").trim();
+      const current = rows.get(name) || { name, orders: 0, qty: 0, revenue: 0, dates: [] };
+      current.orders += 1;
+      current.qty += Number(sale.qty || 0);
+      current.revenue += saleRevenue(sale);
+      if (sale.date) current.dates.push(sale.date);
+      rows.set(name, current);
+    });
+  return [...rows.values()]
+    .map((row) => {
+      const dates = [...new Set(row.dates)].sort();
+      const intervals = dates.slice(1).map((date, index) => (new Date(`${date}T00:00:00`) - new Date(`${dates[index]}T00:00:00`)) / 86400000);
+      const avgInterval = intervals.length ? intervals.reduce((sum, days) => sum + days, 0) / intervals.length : 0;
+      const nextOrder = avgInterval && dates.length ? addDaysIso(dates.at(-1), Math.round(avgInterval)) : "";
+      return { ...row, lastOrder: dates.at(-1) || "", avgInterval, nextOrder };
+    })
+    .sort((a, b) => b.revenue - a.revenue || b.qty - a.qty);
+}
+
 function monthlySalesRows(limit = 6) {
   const rowsByMonth = state.sales.reduce((acc, sale) => {
     if (!sale.date) return acc;
     const monthKey = sale.date.slice(0, 7);
     acc[monthKey] = acc[monthKey] || { key: monthKey, revenue: 0, qty: 0 };
-    acc[monthKey].revenue += Number(sale.qty || 0) * Number(sale.unitPrice || 0) - Number(sale.discount || 0);
+    acc[monthKey].revenue += saleRevenue(sale);
     acc[monthKey].qty += Number(sale.qty || 0);
     return acc;
   }, {});
@@ -738,10 +892,13 @@ function renderDashboard() {
     }, {}),
   ).sort((a, b) => b[1] - a[1]);
   const partnerRows = Object.entries(
-    state.sales.reduce((acc, sale) => {
-      acc[sale.partner] = (acc[sale.partner] || 0) + Number(sale.qty || 0);
-      return acc;
-    }, {}),
+    state.sales
+      .filter((sale) => !sale.movementType || sale.movementType === "venda")
+      .reduce((acc, sale) => {
+        const partner = sale.customerName || sale.partner || "Cliente sem nome";
+        acc[partner] = (acc[partner] || 0) + Number(sale.qty || 0);
+        return acc;
+      }, {}),
   ).sort((a, b) => b[1] - a[1]);
   const shortFlavor = (flavor) =>
     ({
@@ -753,11 +910,11 @@ function renderDashboard() {
     ${pageHead(
       "Visão Geral",
       "Controle operacional e financeiro da Kombú: produção, estoque, custo por garrafa, vendas e alertas.",
-      `${actionButton("new-batch", "Novo lote", "science", "btn-outline")} ${actionButton("new-purchase", "Registrar compra", "shopping_bag", "btn-outline")} ${actionButton("new-sale", "Nova venda", "receipt_long")}`,
+      `${actionButton("new-batch", "Novo lote", "science", "btn-outline")} ${actionButton("new-purchase", "Registrar compra", "shopping_bag", "btn-outline")} ${actionButton("new-sale", "Nova saída", "receipt_long")}`,
     )}
     <section class="metric-grid">
       ${metric("Garrafas em estoque", number(total.finishedStock), "Prontas para venda por lote", "water_bottle")}
-      ${metric("Produção vs vendas", `${number(total.produced)} / ${number(total.sold)}`, `${number(total.produced - total.sold)} unidades de diferença`, "autorenew")}
+      ${metric("Produção vs saídas", `${number(total.produced)} / ${number(total.sold)}`, `${number(total.produced - total.sold)} unidades de diferença`, "autorenew")}
       ${metric("Receita do período", brl(total.salesRevenue), `Lucro bruto ${brl(total.grossProfit)} (${pct(total.grossMargin)})`, "account_balance_wallet")}
       ${metric("Custo médio/garrafa", brl(total.avgCost), "Média das receitas ativas", "price_check")}
     </section>
@@ -883,8 +1040,10 @@ function renderPurchases() {
         <tr>
           <td>${item.date}</td>
           <td><strong>${item.item}</strong><br><span>${item.supplier}</span></td>
-          <td class="num">${number(item.qty, 2)} ${item.unit}</td>
+          <td class="num">${item.packageCount ? `${number(item.packageCount)} x ${number(item.packageSize, 3)} ${item.packageUnit}` : `${number(item.qty, 2)} ${item.unit}`}</td>
+          <td class="num"><strong>${number(item.qty, 3)} ${item.unit}</strong></td>
           <td class="num">${brl(item.total)}</td>
+          <td class="num">${brl(item.costPerUnit || Number(item.total || 0) / Math.max(Number(item.qty || 0), 0.000001))} / ${item.unit}</td>
           <td>${item.method}</td>
           <td>${item.buyer}</td>
           <td>${rowActions([tableAction(`edit-purchase:${item.id}`, "Editar compra"), tableAction(`delete-purchase:${item.id}`, "Excluir compra", "delete", "danger")])}</td>
@@ -901,8 +1060,10 @@ function renderPurchases() {
       [
         { label: "Data" },
         { label: "Item / fornecedor" },
-        { label: "Quantidade", num: true },
+        { label: "Compra", num: true },
+        { label: "Entra no estoque", num: true },
         { label: "Total", num: true },
+        { label: "Custo unitário", num: true },
         { label: "Pagamento" },
         { label: "Comprador" },
         { label: "Ações" },
@@ -1189,6 +1350,8 @@ function renderBatches() {
           <td class="num">${number(batch.expected)} / ${number(batch.actual)}</td>
           <td class="num">${number(loss)}</td>
           <td class="num">${brl(cost.batchCostPerBottle)}</td>
+          <td>${batch.idealSellBy || "-"}</td>
+          <td>${batch.sellBy || "-"}</td>
           <td>${batch.expiry}</td>
           <td><span class="status ${statusClass(batch.status, "general")}">${batch.status}</span></td>
           <td>${rowActions([tableAction(`edit-batch:${batch.id}`, "Editar lote"), tableAction(`delete-batch:${batch.id}`, "Excluir lote", "delete", "danger")])}</td>
@@ -1210,6 +1373,8 @@ function renderBatches() {
         { label: "Esperado / real", num: true },
         { label: "Perda", num: true },
         { label: "Custo/garrafa", num: true },
+        { label: "Ideal até" },
+        { label: "Vender até" },
         { label: "Validade" },
         { label: "Status" },
         { label: "Ações" },
@@ -1221,33 +1386,113 @@ function renderBatches() {
 }
 
 function renderStock() {
-  const finishedRows = finishedStockRows().map(
-    (row) => `
-      <tr>
-        <td><strong>${row.flavor}</strong><br><span>${row.product ? productLabel(row.product) : row.code}</span></td>
-        <td class="num">${number(row.actual)}</td>
-        <td class="num">${number(row.sold)}</td>
-        <td class="num"><strong>${number(row.stock)}</strong></td>
-        <td>${row.expiry}</td>
-        <td class="num">${brl(row.stock * row.cost.batchCostPerBottle)}</td>
-      </tr>
-    `,
-  );
-  return `
-    ${pageHead("Estoque", "Produtos acabados, ingredientes, embalagens e movimentos com alertas de mínimo e vencimento.", actionButton("stock-adjustment", "Ajuste com motivo", "tune"))}
-    <section class="admin-grid">
-      ${table(
+  const viewButtons = [
+    ["kombuchas", "Kombuchas"],
+    ["ingredients", "Ingredientes"],
+    ["labels", "Rótulos"],
+    ["bottles", "Garrafas"],
+  ]
+    .map((view) => `<button class="segment ${currentStockView === view[0] ? "is-active" : ""}" type="button" data-stock-view="${view[0]}">${view[1]}</button>`)
+    .join("");
+  const materialRows = (items) =>
+    items.map((item) => {
+      const hasMinimum = Number(item.min) > 0;
+      const product = byId("products", item.productId);
+      return `
+        <tr>
+          <td><strong>${item.name}</strong><br><span>${product ? product.flavor : "Genérico"}</span></td>
+          <td>${item.supplier || "-"}</td>
+          <td class="num">${number(item.stock, 2)} ${item.unit}</td>
+          <td class="num">${number(item.min, 2)} ${item.unit}</td>
+          <td class="num">${brl(item.costEach)}</td>
+          <td><span class="status ${hasMinimum ? statusClass(item.stock / item.min) : "warn"}">${hasMinimum ? (item.stock <= item.min ? "baixo" : "bom") : "sem mínimo"}</span></td>
+        </tr>
+      `;
+    });
+  const inventoryViews = {
+    kombuchas: () =>
+      table(
         [
           { label: "Sabor / lote" },
           { label: "Produzido", num: true },
-          { label: "Vendido", num: true },
+          { label: "Saídas", num: true },
           { label: "Saldo", num: true },
+          { label: "Ideal até" },
+          { label: "Vender até" },
           { label: "Validade" },
           { label: "Valor em estoque", num: true },
         ],
-        finishedRows,
-        760,
-      )}
+        finishedStockRows().map(
+          (row) => `
+            <tr>
+              <td><strong>${row.flavor}</strong><br><span>${row.product ? productLabel(row.product) : row.code}</span></td>
+              <td class="num">${number(row.actual)}</td>
+              <td class="num">${number(row.sold)}</td>
+              <td class="num"><strong>${number(row.stock)}</strong></td>
+              <td>${row.idealSellBy || "-"}</td>
+              <td>${row.sellBy || "-"}</td>
+              <td>${row.expiry}</td>
+              <td class="num">${brl(row.stock * row.cost.batchCostPerBottle)}</td>
+            </tr>
+          `,
+        ),
+      ),
+    ingredients: () =>
+      table(
+        [
+          { label: "Ingrediente" },
+          { label: "Categoria" },
+          { label: "Fornecedor" },
+          { label: "Estoque", num: true },
+          { label: "Mínimo", num: true },
+          { label: "Custo", num: true },
+          { label: "Status" },
+        ],
+        state.ingredients.map((item) => {
+          const hasMinimum = Number(item.min) > 0;
+          return `
+            <tr>
+              <td><strong>${item.name}</strong><br><span>${item.location || ""}</span></td>
+              <td>${item.category || "-"}</td>
+              <td>${item.supplier || "-"}</td>
+              <td class="num">${number(item.stock, 3)} ${item.purchaseUnit}</td>
+              <td class="num">${number(item.min, 3)} ${item.purchaseUnit}</td>
+              <td class="num">${brl(item.costPerUnit)} / ${item.purchaseUnit}</td>
+              <td><span class="status ${hasMinimum ? statusClass(item.stock / item.min) : "warn"}">${hasMinimum ? (item.stock <= item.min ? "baixo" : "bom") : "sem mínimo"}</span></td>
+            </tr>
+          `;
+        }),
+      ),
+    labels: () =>
+      table(
+        [
+          { label: "Rótulo" },
+          { label: "Fornecedor" },
+          { label: "Estoque", num: true },
+          { label: "Mínimo", num: true },
+          { label: "Custo", num: true },
+          { label: "Status" },
+        ],
+        materialRows(state.packaging.filter((item) => inferPackagingType(item) === "label")),
+      ),
+    bottles: () =>
+      table(
+        [
+          { label: "Garrafa / tampa" },
+          { label: "Fornecedor" },
+          { label: "Estoque", num: true },
+          { label: "Mínimo", num: true },
+          { label: "Custo", num: true },
+          { label: "Status" },
+        ],
+        materialRows(state.packaging.filter((item) => inferPackagingType(item) === "bottle")),
+      ),
+  };
+  return `
+    ${pageHead("Estoque", "Escolha o tipo de estoque para ver saldos sem poluição visual.", actionButton("stock-adjustment", "Ajuste com motivo", "tune"))}
+    <div class="module-tabs">${viewButtons}</div>
+    <section class="admin-grid">
+      ${inventoryViews[currentStockView]?.() || inventoryViews.kombuchas()}
       <article class="admin-card">
         <h3>Alertas de estoque</h3>
         <div class="stack-list">
@@ -1265,9 +1510,11 @@ function renderPackaging() {
     .filter((item) => matchesSearch(item))
     .map((item) => {
       const hasMinimum = Number(item.min) > 0;
+      const product = byId("products", item.productId);
       return `
         <tr>
           <td><strong>${item.name}</strong><br><span>${item.location}</span></td>
+          <td>${inferPackagingType(item)}<br><span>${product ? product.flavor : "Genérico"}</span></td>
           <td>${item.supplier}</td>
           <td class="num">${number(item.stock)} ${item.unit}</td>
           <td class="num">${number(item.min)} ${item.unit}</td>
@@ -1282,6 +1529,7 @@ function renderPackaging() {
     ${table(
       [
         { label: "Item" },
+        { label: "Tipo / sabor" },
         { label: "Fornecedor" },
         { label: "Estoque", num: true },
         { label: "Mínimo", num: true },
@@ -1296,18 +1544,30 @@ function renderPackaging() {
 }
 
 function renderSales() {
+  const customerRows = customerStats()
+    .slice(0, 8)
+    .map((customer) => `
+      <tr>
+        <td><strong>${customer.name}</strong></td>
+        <td class="num">${number(customer.orders)}</td>
+        <td class="num">${number(customer.qty)}</td>
+        <td class="num">${brl(customer.revenue)}</td>
+        <td>${customer.lastOrder || "-"}</td>
+        <td>${customer.nextOrder || "Sem padrão ainda"}</td>
+      </tr>
+    `);
   const rows = state.sales
     .filter((item) => matchesSearch(item))
     .map((sale) => {
-      const revenue = Number(sale.qty) * Number(sale.unitPrice) - Number(sale.discount || 0);
+      const revenue = saleRevenue(sale);
       const batch = state.batches.find((item) => item.code === sale.batchCode);
       const product = byId("products", sale.productId) || productForBatch(batch);
       const cogs = Number(sale.qty) * (batch ? batchCost(batch).batchCostPerBottle : 0);
       return `
         <tr>
           <td>${sale.date}</td>
-          <td><strong>${sale.partner}</strong><br><span>${sale.channel}</span></td>
-          <td>${product ? productLabel(product) : sale.flavor}<br><span>${sale.batchCode}</span></td>
+          <td><strong>${sale.customerName || sale.partner}</strong><br><span>${sale.movementType || "venda"} | ${sale.priceType || sale.channel}</span></td>
+          <td>${product ? productLabel(product) : sale.flavor}<br><span>${sale.batchCode}${sale.note ? ` | ${sale.note}` : ""}</span></td>
           <td class="num">${number(sale.qty)}</td>
           <td class="num">${brl(revenue)}</td>
           <td class="num">${brl(cogs)}</td>
@@ -1318,11 +1578,28 @@ function renderSales() {
       `;
     });
   return `
-    ${pageHead("Vendas", "Registre vendas por canal, parceiro, lote e sabor para calcular COGS, lucro e margem.", `${actionButton("new-sale", "Nova venda", "add")} ${actionButton("export-sales", "CSV", "download", "btn-outline")}`)}
+    ${pageHead("Vendas", "Registre vendas, perdas, brindes e consumo próprio por lote para manter estoque e CRM atualizados.", `${actionButton("new-sale", "Nova saída", "add")} ${actionButton("export-sales", "CSV", "download", "btn-outline")}`)}
+    <section class="admin-grid">
+      ${table(
+        [
+          { label: "Cliente" },
+          { label: "Pedidos", num: true },
+          { label: "Garrafas", num: true },
+          { label: "Receita", num: true },
+          { label: "Último pedido" },
+          { label: "Próximo estimado" },
+        ],
+        customerRows,
+      )}
+      <article class="admin-card">
+        <h3>Como usar</h3>
+        <p class="empty-note">Use “Nova saída” também para perda, presente ou consumo próprio. Só movimentos marcados como venda entram como receita, mas todos baixam estoque do lote.</p>
+      </article>
+    </section>
     ${table(
       [
         { label: "Data" },
-        { label: "Cliente / canal" },
+        { label: "Cliente / tipo" },
         { label: "Produto / lote" },
         { label: "Qtd.", num: true },
         { label: "Receita", num: true },
@@ -1879,25 +2156,70 @@ function newPurchaseForm() {
           <label class="field"><span>Data</span><input name="date" type="date" value="${todayIso()}" required></label>
           <label class="field"><span>Item</span><select name="ingredientId">${state.ingredients.map((item) => `<option value="${item.id}">${item.name}</option>`).join("")}</select></label>
           <label class="field"><span>Fornecedor</span><input name="supplier" value="${state.suppliers[0]?.name || ""}" required></label>
-          <label class="field"><span>Quantidade</span><input name="qty" type="number" step="0.01" required></label>
+          <label class="field"><span>Pacotes / unidades compradas</span><input name="packageCount" type="number" min="0" step="1" value="1" required></label>
+          <label class="field"><span>Conteúdo de cada pacote</span><input name="packageSize" type="number" min="0" step="0.001" required placeholder="Ex: 200"></label>
+          <label class="field"><span>Unidade do pacote</span><select name="packageUnit">${unitOptions("g")}</select></label>
           <label class="field"><span>Total pago</span><input name="total" type="number" step="0.01" required></label>
           <label class="field"><span>Método</span><select name="method"><option>Pix</option><option>Boleto</option><option>Cartão</option><option>Dinheiro</option></select></label>
           <label class="field"><span>Quem comprou</span><input name="buyer" value="Owner / Admin"></label>
+          <div class="result-card field-full" id="purchasePreview">
+            <small>Total que entra no estoque</small>
+            <strong>Preencha quantidade e valor</strong>
+            <span>O custo unitário será calculado automaticamente.</span>
+          </div>
         </div>
         <button class="btn btn-primary" type="submit">Registrar e atualizar estoque</button>
       </form>
     `,
   );
-  document.querySelector("#purchaseForm").addEventListener("submit", (event) => {
+  const form = document.querySelector("#purchaseForm");
+  const preview = document.querySelector("#purchasePreview");
+  const purchaseCalc = () => {
+    const ingredient = byId("ingredients", form.elements.ingredientId.value);
+    const packageCount = Number(form.elements.packageCount.value || 0);
+    const packageSize = Number(form.elements.packageSize.value || 0);
+    const packageUnit = form.elements.packageUnit.value;
+    const total = Number(form.elements.total.value || 0);
+    const qty = purchaseQuantityInStockUnit({ packageCount, packageSize, packageUnit }, ingredient?.purchaseUnit || packageUnit);
+    const costPerUnit = total / Math.max(qty, 0.000001);
+    preview.innerHTML = `
+      <small>Total que entra no estoque</small>
+      <strong>${number(qty, 3)} ${ingredient?.purchaseUnit || packageUnit}</strong>
+      <span>Custo calculado: ${brl(costPerUnit)} por ${ingredient?.purchaseUnit || packageUnit}</span>
+    `;
+    return { ingredient, packageCount, packageSize, packageUnit, qty, total, costPerUnit };
+  };
+  form.addEventListener("input", purchaseCalc);
+  form.addEventListener("change", purchaseCalc);
+  purchaseCalc();
+  form.addEventListener("submit", (event) => {
     event.preventDefault();
-    const data = Object.fromEntries(new FormData(event.target).entries());
-    const ingredient = byId("ingredients", data.ingredientId);
-    const qty = Number(data.qty);
-    const total = Number(data.total);
+    const data = Object.fromEntries(new FormData(form).entries());
+    const { ingredient, packageCount, packageSize, packageUnit, qty, total, costPerUnit } = purchaseCalc();
+    if (!ingredient || !qty || !total) {
+      window.alert("Informe item, quantidade comprada e total pago.");
+      return;
+    }
     ingredient.stock = Number(ingredient.stock || 0) + qty;
-    ingredient.costPerUnit = total / Math.max(qty, 0.0001);
-    state.purchases.unshift({ id: id("pur"), date: data.date, supplier: data.supplier, item: ingredient.name, qty, unit: ingredient.purchaseUnit, total, method: data.method, buyer: data.buyer });
-    addAudit("Compra registrada", `${ingredient.name}: ${number(qty, 2)} ${ingredient.purchaseUnit} por ${brl(total)}`);
+    ingredient.costPerUnit = costPerUnit;
+    ingredient.supplier = data.supplier || ingredient.supplier;
+    state.purchases.unshift({
+      id: id("pur"),
+      date: data.date,
+      supplier: data.supplier,
+      item: ingredient.name,
+      ingredientId: ingredient.id,
+      packageCount,
+      packageSize,
+      packageUnit,
+      qty,
+      unit: ingredient.purchaseUnit,
+      total,
+      costPerUnit,
+      method: data.method,
+      buyer: data.buyer,
+    });
+    addAudit("Compra registrada", `${ingredient.name}: ${number(qty, 3)} ${ingredient.purchaseUnit} por ${brl(total)} (${brl(costPerUnit)}/${ingredient.purchaseUnit})`);
     closeModal();
     render();
   });
@@ -1915,51 +2237,76 @@ function newSaleForm() {
     return;
   }
   openModal(
-    "Nova venda",
+    "Nova saída",
     "Vendas",
     `
       <form id="saleForm">
         <div class="input-grid">
           <label class="field"><span>Data</span><input name="date" type="date" value="${todayIso()}" required></label>
-          <label class="field"><span>Parceiro / cliente</span><select name="partner">${state.partners.map((item) => `<option>${item.name}</option>`).join("")}<option>Cliente direto</option><option>Venda avulsa</option></select></label>
-          <label class="field"><span>Lote</span><select name="batchCode">${stockRows.map((row) => `<option value="${row.code}" data-price="${productWholesalePrice(row.product)}">${row.code} - ${row.product ? productLabel(row.product) : row.flavor} (${row.stock} un)</option>`).join("")}</select></label>
+          <label class="field"><span>Tipo de saída</span><select name="movementType"><option value="venda">Venda</option><option value="consumo">Consumo próprio</option><option value="presente">Presente / amostra</option><option value="perda">Perda / quebra</option></select></label>
+          <label class="field field-full"><span>Cliente / destino</span><input name="customerName" list="customerOptions" placeholder="Nome do cliente, parceiro ou destino" required></label>
+          <datalist id="customerOptions">${[...new Set([...state.partners.map((item) => item.name), ...state.sales.map((sale) => sale.customerName || sale.partner).filter(Boolean)])].map((name) => `<option value="${escapeHtml(name)}"></option>`).join("")}</datalist>
+          <label class="field"><span>Lote</span><select name="batchCode">${stockRows.map((row) => `<option value="${row.code}" data-retail="${productRetailPrice(row.product)}" data-wholesale="${productWholesalePrice(row.product)}" data-stock="${row.stock}">${row.code} - ${row.product ? productLabel(row.product) : row.flavor} (${row.stock} un)</option>`).join("")}</select></label>
           <label class="field"><span>Quantidade</span><input name="qty" type="number" min="1" required></label>
-          <label class="field"><span>Preço unitário</span><input name="unitPrice" type="number" step="0.01" value="${productWholesalePrice(stockRows[0]?.product) || 10.5}" required></label>
+          <label class="field"><span>Preço</span><select name="priceType"><option value="varejo">Varejo</option><option value="atacado">Atacado</option><option value="custom">Valor combinado</option><option value="gratis">Sem cobrança</option></select></label>
+          <label class="field"><span>Preço unitário</span><input name="unitPrice" type="number" step="0.01" value="${productRetailPrice(stockRows[0]?.product) || productWholesalePrice(stockRows[0]?.product) || 0}" required></label>
           <label class="field"><span>Desconto</span><input name="discount" type="number" step="0.01" value="0"></label>
           <label class="field"><span>Entrega</span><input name="delivery" type="number" step="0.01" value="0"></label>
-          <label class="field"><span>Canal</span><select name="channel"><option>revenda</option><option>parceiro</option><option>evento</option><option>direto</option><option>externo</option></select></label>
+          <label class="field field-full"><span>Observação</span><input name="note" placeholder="Ex: recorrente com preço diferenciado, brinde, garrafa quebrada..."></label>
         </div>
-        <button class="btn btn-primary" type="submit">Salvar venda</button>
+        <button class="btn btn-primary" type="submit">Registrar saída</button>
       </form>
     `,
   );
   const saleForm = document.querySelector("#saleForm");
-  saleForm.querySelector("[name='batchCode']").addEventListener("change", (event) => {
-    const price = event.target.selectedOptions[0]?.dataset.price;
-    if (price && Number(price) > 0) saleForm.querySelector("[name='unitPrice']").value = price;
-  });
+  const updateSalePrice = () => {
+    const option = saleForm.elements.batchCode.selectedOptions[0];
+    const movement = saleForm.elements.movementType.value;
+    const type = saleForm.elements.priceType.value;
+    if (movement !== "venda" || type === "gratis") {
+      saleForm.elements.unitPrice.value = 0;
+      saleForm.elements.discount.value = 0;
+      return;
+    }
+    if (type === "varejo") saleForm.elements.unitPrice.value = Number(option?.dataset.retail || 0);
+    if (type === "atacado") saleForm.elements.unitPrice.value = Number(option?.dataset.wholesale || 0);
+  };
+  saleForm.elements.batchCode.addEventListener("change", updateSalePrice);
+  saleForm.elements.priceType.addEventListener("change", updateSalePrice);
+  saleForm.elements.movementType.addEventListener("change", updateSalePrice);
   saleForm.addEventListener("submit", (event) => {
     event.preventDefault();
     const data = Object.fromEntries(new FormData(event.target).entries());
     const batch = state.batches.find((item) => item.code === data.batchCode);
     const product = productForBatch(batch);
+    const qty = Number(data.qty || 0);
+    const available = finishedStockRows().find((row) => row.code === data.batchCode)?.stock || 0;
+    if (qty > available) {
+      window.alert(`Estoque insuficiente neste lote. Disponível: ${number(available)} garrafas.`);
+      return;
+    }
     state.sales.unshift({
       id: id("sale"),
       date: data.date,
-      partner: data.partner,
-      channel: data.channel,
+      partner: data.customerName,
+      customerName: data.customerName,
+      channel: data.movementType === "venda" ? data.priceType : data.movementType,
+      movementType: data.movementType,
+      priceType: data.priceType,
       flavor: batch?.flavor || "",
       productId: product?.id || "",
       batchCode: data.batchCode,
-      qty: Number(data.qty),
+      qty,
       unitPrice: Number(data.unitPrice),
       discount: Number(data.discount || 0),
       delivery: Number(data.delivery || 0),
+      note: data.note || "",
     });
-    addAudit("Venda registrada", `${data.qty} garrafas do lote ${data.batchCode}`);
+    addAudit(data.movementType === "venda" ? "Venda registrada" : "Saída registrada", `${number(qty)} garrafas do lote ${data.batchCode} para ${data.customerName}`);
     closeModal();
     render();
   });
+  updateSalePrice();
 }
 
 function newBatchForm() {
@@ -1978,23 +2325,38 @@ function newBatchForm() {
     `
       <form id="batchForm">
         <div class="input-grid">
-          <label class="field"><span>Código do lote</span><input name="code" value="KMB-${new Date().toISOString().slice(2, 10).replaceAll("-", "")}" required></label>
-          <label class="field"><span>Receita</span><select name="recipeId">${state.recipes.map((recipe) => `<option value="${recipe.id}">${recipeLabel(recipe)}</option>`).join("")}</select></label>
-          <label class="field"><span>Data de produção</span><input name="date" type="date" value="${todayIso()}" required></label>
-          <label class="field"><span>Responsável</span><input name="responsible" value="Equipe" required></label>
-          <label class="field"><span>Rendimento esperado</span><input name="expected" type="number" value="200" required></label>
-          <label class="field"><span>Rendimento real</span><input name="actual" type="number" value="0" required></label>
-          <label class="field"><span>Validade</span><input name="expiry" type="date" required></label>
-          <label class="field"><span>Status</span><select name="status"><option>planejado</option><option>em produção</option><option>bottled</option><option>aprovado</option><option>bloqueado</option></select></label>
+          <label class="field field-full"><span>Sabor produzido</span><select name="recipeId">${state.recipes.map((recipe) => `<option value="${recipe.id}">${recipeLabel(recipe)}</option>`).join("")}</select></label>
+          <label class="field"><span>Data de entrada / produção</span><input name="date" type="date" value="${todayIso()}" required></label>
+          <label class="field"><span>Garrafas produzidas</span><input name="actual" type="number" min="1" step="1" value="20" required></label>
+          <label class="field"><span>Código do lote</span><input name="code" required></label>
+          <label class="field"><span>Responsável</span><input name="responsible" value="Equipe"></label>
+          <div class="result-card field-full" id="batchDatePreview"></div>
         </div>
-        <button class="btn btn-primary" type="submit">Criar lote</button>
+        <button class="btn btn-primary" type="submit">Criar lote e baixar insumos</button>
       </form>
     `,
   );
-  document.querySelector("#batchForm").addEventListener("submit", (event) => {
+  const form = document.querySelector("#batchForm");
+  const updateBatchPreview = () => {
+    const recipe = byId("recipes", form.elements.recipeId.value);
+    const date = form.elements.date.value || todayIso();
+    const plan = batchDatePlan(date);
+    form.elements.code.value = nextBatchCode(recipe, date);
+    document.querySelector("#batchDatePreview").innerHTML = `
+      <small>Datas automáticas do lote</small>
+      <strong>Validade: ${plan.expiry}</strong>
+      <span>Ideal vender até ${plan.idealSellBy}; obrigatório vender até ${plan.sellBy}.</span>
+    `;
+  };
+  form.addEventListener("change", updateBatchPreview);
+  updateBatchPreview();
+  form.addEventListener("submit", (event) => {
     event.preventDefault();
-    const data = Object.fromEntries(new FormData(event.target).entries());
+    const data = Object.fromEntries(new FormData(form).entries());
     const recipe = byId("recipes", data.recipeId);
+    const plan = batchDatePlan(data.date);
+    const bottles = Number(data.actual || 0);
+    if (!recipe || !bottles) return;
     state.batches.unshift({
       id: id("bat"),
       code: data.code,
@@ -2003,12 +2365,17 @@ function newBatchForm() {
       recipeId: data.recipeId,
       date: data.date,
       responsible: data.responsible,
-      expected: Number(data.expected),
-      actual: Number(data.actual),
-      expiry: data.expiry,
-      status: data.status,
+      expected: bottles,
+      actual: bottles,
+      idealSellBy: plan.idealSellBy,
+      sellBy: plan.sellBy,
+      expiry: plan.expiry,
+      status: "aprovado",
+      inventoryAdjusted: true,
+      inventoryQty: bottles,
     });
-    addAudit("Lote criado", `${data.code} usando ${recipe?.flavor || "receita"}`);
+    applyBatchInventory(recipe, bottles, -1);
+    addAudit("Lote criado", `${data.code}: ${number(bottles)} garrafas de ${recipe?.flavor || "receita"}; insumos baixados automaticamente.`);
     closeModal();
     render();
   });
@@ -2041,6 +2408,7 @@ function recipePackagingRowTemplate() {
   return `
     <div class="builder-row recipe-packaging-row">
       <label class="field"><span>Embalagem/material</span><input data-field="name" required placeholder="Ex: garrafa 500ml"></label>
+      <label class="field"><span>Tipo</span><select data-field="type"><option value="bottle">Garrafa/tampa</option><option value="label">Rótulo</option><option value="box">Caixa</option><option value="material" selected>Outro</option></select></label>
       <label class="field"><span>Fornecedor</span><input data-field="supplier"></label>
       <label class="field"><span>Custo por unidade</span><input data-field="costEach" type="number" min="0" step="0.01" required></label>
       <label class="field"><span>Estoque inicial</span><input data-field="stock" type="number" min="0" step="1" placeholder="0"></label>
@@ -2096,8 +2464,10 @@ function findOrCreatePackaging(data) {
     material = {
       id: id("pkg"),
       name: data.name,
+      type: data.type || inferPackagingType(data),
+      productId: data.productId || "",
       supplier: data.supplier || "",
-      unit: "un",
+      unit: data.unit || "un",
       costEach: Number(data.costEach || 0),
       stock: Number(data.stock || 0),
       min: Number(data.min || 0),
@@ -2106,7 +2476,10 @@ function findOrCreatePackaging(data) {
     state.packaging.push(material);
     return material;
   }
+  material.type = data.type || material.type || inferPackagingType(material);
+  material.productId = data.productId || material.productId || "";
   material.supplier = data.supplier || material.supplier;
+  material.unit = data.unit || material.unit || "un";
   material.costEach = Number(data.costEach || material.costEach || 0);
   if (data.stock !== "") material.stock = Number(data.stock);
   if (data.min !== "") material.min = Number(data.min);
@@ -2329,7 +2702,7 @@ function deletePurchase(recordId) {
   const purchase = byId("purchases", recordId);
   if (!purchase) return;
   if (!window.confirm(`Excluir compra de "${purchase.item}"? O estoque correspondente será ajustado quando possível.`)) return;
-  const ingredient = state.ingredients.find((item) => item.name === purchase.item);
+  const ingredient = ingredientForPurchase(purchase);
   if (ingredient) ingredient.stock = Math.max(0, Number(ingredient.stock || 0) - Number(purchase.qty || 0));
   state.purchases = state.purchases.filter((item) => item.id !== recordId);
   addAudit("Compra excluída", purchase.item);
@@ -2364,6 +2737,8 @@ const ingredientFields = [
 
 const packagingFields = [
   { name: "name", label: "Nome", required: true },
+  { name: "type", label: "Tipo", type: "select", options: [{ value: "bottle", label: "Garrafa/tampa" }, { value: "label", label: "Rótulo" }, { value: "box", label: "Caixa" }, { value: "material", label: "Outro material" }] },
+  { name: "productId", label: "Sabor/produto do rótulo", type: "select", options: [{ value: "", label: "Genérico" }, ...state.products.map((product) => ({ value: product.id, label: productLabel(product) }))] },
   { name: "supplier", label: "Fornecedor" },
   { name: "unit", label: "Unidade", type: "select", options: ["un", "kg", "g", "l", "ml"] },
   { name: "costEach", label: "Custo unitário", type: "number", min: 0, step: "0.01" },
@@ -2405,89 +2780,325 @@ const expenseFields = [
   { name: "recurring", label: "Despesa recorrente", type: "checkbox", full: true },
 ];
 
+function recipeIngredientEditRow(line = {}) {
+  const ingredient = byId("ingredients", line.ingredientId) || {};
+  const selectedId = line.ingredientId || state.ingredients[0]?.id || "__new__";
+  const purchaseUnit = ingredient.purchaseUnit || "g";
+  return `
+    <div class="builder-row recipe-edit-ingredient-row">
+      <label class="field"><span>Ingrediente</span><select data-field="ingredientId"><option value="__new__" ${selectedId === "__new__" ? "selected" : ""}>Criar novo ingrediente</option>${state.ingredients.map((item) => `<option value="${item.id}" ${selectedId === item.id ? "selected" : ""}>${escapeHtml(item.name)} (${escapeHtml(item.purchaseUnit)})</option>`).join("")}</select></label>
+      <label class="field"><span>Nome / novo ingrediente</span><input data-field="name" value="${escapeHtml(ingredient.name || "")}" placeholder="Preencha se for novo ou para renomear"></label>
+      <label class="field"><span>Categoria</span><input data-field="category" value="${escapeHtml(ingredient.category || "")}" placeholder="fruta, chá, flor..."></label>
+      <label class="field"><span>Fornecedor</span><input data-field="supplier" value="${escapeHtml(ingredient.supplier || "")}"></label>
+      <label class="field"><span>Un. estoque</span><select data-field="purchaseUnit">${unitOptions(purchaseUnit)}</select></label>
+      <label class="field"><span>Custo/un. estoque</span><input data-field="costPerUnit" type="number" min="0" step="0.000001" value="${ingredient.costPerUnit ?? ""}"></label>
+      <label class="field"><span>Estoque atual</span><input data-field="stock" type="number" step="0.001" value="${ingredient.stock ?? ""}"></label>
+      <label class="field"><span>Estoque mínimo</span><input data-field="min" type="number" step="0.001" value="${ingredient.min ?? ""}"></label>
+      <label class="field"><span>Qtd. usada</span><input data-field="qty" type="number" min="0" step="0.001" value="${line.qty ?? 0}"></label>
+      <label class="field"><span>Un. de uso</span><select data-field="unit">${unitOptions(line.unit || "g")}</select></label>
+      <button class="icon-btn" type="button" data-remove-builder-row aria-label="Remover ingrediente">
+        <span class="material-symbols-outlined" aria-hidden="true">delete</span>
+      </button>
+    </div>
+  `;
+}
+
+function recipePackagingEditRow(line = {}) {
+  const material = byId("packaging", line.itemId) || {};
+  const selectedId = line.itemId || state.packaging[0]?.id || "__new__";
+  const productOptions = [{ value: "", label: "Genérico" }, ...state.products.map((product) => ({ value: product.id, label: productLabel(product) }))];
+  return `
+    <div class="builder-row recipe-edit-packaging-row">
+      <label class="field"><span>Material</span><select data-field="itemId"><option value="__new__" ${selectedId === "__new__" ? "selected" : ""}>Criar novo material</option>${state.packaging.map((item) => `<option value="${item.id}" ${selectedId === item.id ? "selected" : ""}>${escapeHtml(item.name)} (${inferPackagingType(item)})</option>`).join("")}</select></label>
+      <label class="field"><span>Nome / novo material</span><input data-field="name" value="${escapeHtml(material.name || "")}" placeholder="Garrafa, rótulo, tampa..."></label>
+      <label class="field"><span>Tipo</span><select data-field="type"><option value="bottle" ${inferPackagingType(material) === "bottle" ? "selected" : ""}>Garrafa/tampa</option><option value="label" ${inferPackagingType(material) === "label" ? "selected" : ""}>Rótulo</option><option value="box" ${inferPackagingType(material) === "box" ? "selected" : ""}>Caixa</option><option value="material" ${inferPackagingType(material) === "material" ? "selected" : ""}>Outro</option></select></label>
+      <label class="field"><span>Sabor/produto</span><select data-field="productId">${productOptions.map((option) => `<option value="${option.value}" ${String(option.value) === String(material.productId || "") ? "selected" : ""}>${escapeHtml(option.label)}</option>`).join("")}</select></label>
+      <label class="field"><span>Fornecedor</span><input data-field="supplier" value="${escapeHtml(material.supplier || "")}"></label>
+      <label class="field"><span>Un. estoque</span><select data-field="unit">${unitOptions(material.unit || "un")}</select></label>
+      <label class="field"><span>Custo unitário</span><input data-field="costEach" type="number" min="0" step="0.01" value="${material.costEach ?? ""}"></label>
+      <label class="field"><span>Estoque atual</span><input data-field="stock" type="number" step="1" value="${material.stock ?? ""}"></label>
+      <label class="field"><span>Estoque mínimo</span><input data-field="min" type="number" step="1" value="${material.min ?? ""}"></label>
+      <label class="field"><span>Qtd. por garrafa</span><input data-field="qty" type="number" min="0" step="0.001" value="${line.qty ?? 1}"></label>
+      <button class="icon-btn" type="button" data-remove-builder-row aria-label="Remover material">
+        <span class="material-symbols-outlined" aria-hidden="true">delete</span>
+      </button>
+    </div>
+  `;
+}
+
 function editRecipeForm(recipeId) {
-  const recipeFields = [
-    { name: "productId", label: "Produto / EAN", type: "select", options: [{ value: "", label: "Sem produto vinculado" }, ...state.products.map((product) => ({ value: product.id, label: productLabel(product) }))] },
-    { name: "flavor", label: "Sabor", required: true },
-    { name: "version", label: "Versão", required: true },
-    { name: "status", label: "Status", type: "select", options: ["ativa", "rascunho", "pausada", "arquivada"] },
-    { name: "bottleMl", label: "Tamanho ml", type: "number", min: 1, required: true },
-    { name: "yieldBottles", label: "Rendimento", type: "number", min: 1, required: true },
-    { name: "wastePct", label: "Perda %", type: "number", min: 0, step: "0.01" },
-    { name: "wholesalePrice", label: "Preço atacado", type: "number", min: 0, step: "0.01" },
-    { name: "retailPrice", label: "Preço varejo", type: "number", min: 0, step: "0.01" },
-    { name: "labor", label: "Mão de obra", type: "number", min: 0, step: "0.01" },
-    { name: "utilities", label: "Água/luz/gás", type: "number", min: 0, step: "0.01" },
-    { name: "other", label: "Outros custos", type: "number", min: 0, step: "0.01" },
-  ];
-  editRecordForm("recipes", recipeId, "Editar receita", recipeFields, (recipe) => {
-    const product = byId("products", recipe.productId);
-    if (product) {
-      recipe.flavor = recipe.flavor || product.flavor;
-      recipe.bottleMl = Number(recipe.bottleMl || product.sizeMl);
-    }
+  const recipe = byId("recipes", recipeId);
+  if (!recipe) return;
+  openModal(
+    "Editar receita",
+    "Receitas",
+    `
+      <form id="recipeEditForm">
+        <div class="input-grid">
+          <label class="field field-full"><span>Produto / EAN</span><select name="productId"><option value="">Sem produto vinculado</option>${state.products.map((product) => `<option value="${product.id}" ${recipe.productId === product.id ? "selected" : ""}>${productLabel(product)}</option>`).join("")}</select></label>
+          <label class="field"><span>Sabor</span><input name="flavor" value="${escapeHtml(recipe.flavor)}" required></label>
+          <label class="field"><span>Versão</span><input name="version" value="${escapeHtml(recipe.version)}" required></label>
+          <label class="field"><span>Status</span><select name="status">${["ativa", "rascunho", "pausada", "arquivada"].map((status) => `<option ${recipe.status === status ? "selected" : ""}>${status}</option>`).join("")}</select></label>
+          <label class="field"><span>Tamanho ml</span><input name="bottleMl" type="number" min="1" value="${recipe.bottleMl}" required></label>
+          <label class="field"><span>Rendimento da receita</span><input name="yieldBottles" type="number" min="1" value="${recipe.yieldBottles}" required></label>
+          <label class="field"><span>Perda %</span><input name="wastePct" type="number" min="0" step="0.01" value="${recipe.wastePct || 0}"></label>
+          <label class="field"><span>Atacado</span><input name="wholesalePrice" type="number" min="0" step="0.01" value="${recipe.wholesalePrice || 0}"></label>
+          <label class="field"><span>Varejo</span><input name="retailPrice" type="number" min="0" step="0.01" value="${recipe.retailPrice || 0}"></label>
+          <label class="field"><span>Mão de obra</span><input name="labor" type="number" min="0" step="0.01" value="${recipe.labor || 0}"></label>
+          <label class="field"><span>Água/luz/gás</span><input name="utilities" type="number" min="0" step="0.01" value="${recipe.utilities || 0}"></label>
+          <label class="field"><span>Outros custos</span><input name="other" type="number" min="0" step="0.01" value="${recipe.other || 0}"></label>
+        </div>
+
+        <div class="builder-section">
+          <div class="table-toolbar">
+            <div>
+              <h3>Ingredientes usados</h3>
+              <p>Edite as quantidades desta receita diretamente aqui.</p>
+            </div>
+            <button class="btn btn-outline" type="button" data-add-edit-ingredient>
+              <span class="material-symbols-outlined" aria-hidden="true">add</span>
+              Ingrediente
+            </button>
+          </div>
+          <div id="recipeEditIngredientRows">${(recipe.ingredients?.length ? recipe.ingredients : [{}]).map(recipeIngredientEditRow).join("")}</div>
+        </div>
+
+        <div class="builder-section">
+          <div class="table-toolbar">
+            <div>
+              <h3>Embalagens e rótulos</h3>
+              <p>Inclua garrafa, rótulo do sabor, tampa, caixa ou qualquer material consumido.</p>
+            </div>
+            <button class="btn btn-outline" type="button" data-add-edit-packaging>
+              <span class="material-symbols-outlined" aria-hidden="true">add</span>
+              Material
+            </button>
+          </div>
+          <div id="recipeEditPackagingRows">${(recipe.packaging?.length ? recipe.packaging : [{}]).map(recipePackagingEditRow).join("")}</div>
+        </div>
+
+        <button class="btn btn-primary" type="submit">
+          <span class="material-symbols-outlined" aria-hidden="true">save</span>
+          Salvar receita completa
+        </button>
+      </form>
+    `,
+  );
+  const form = document.querySelector("#recipeEditForm");
+  form.querySelector("[data-add-edit-ingredient]").addEventListener("click", () => {
+    document.querySelector("#recipeEditIngredientRows").insertAdjacentHTML("beforeend", recipeIngredientEditRow());
+  });
+  form.querySelector("[data-add-edit-packaging]").addEventListener("click", () => {
+    document.querySelector("#recipeEditPackagingRows").insertAdjacentHTML("beforeend", recipePackagingEditRow());
+  });
+  form.addEventListener("click", (event) => {
+    const removeButton = event.target.closest("[data-remove-builder-row]");
+    if (!removeButton) return;
+    const parent = removeButton.closest(".builder-row");
+    const container = parent.parentElement;
+    if (container.children.length > 1) parent.remove();
+  });
+  form.querySelector("[name='productId']").addEventListener("change", (event) => {
+    const product = byId("products", event.target.value);
+    if (!product) return;
+    form.elements.flavor.value = product.flavor;
+    form.elements.bottleMl.value = product.sizeMl;
+    form.elements.wholesalePrice.value = product.wholesalePrice || 0;
+    form.elements.retailPrice.value = product.retailPrice || 0;
+  });
+  form.addEventListener("submit", (event) => {
+    event.preventDefault();
+    const data = Object.fromEntries(new FormData(form).entries());
+    Object.assign(recipe, {
+      productId: data.productId || "",
+      flavor: data.flavor,
+      version: data.version,
+      status: data.status,
+      bottleMl: Number(data.bottleMl),
+      yieldBottles: Number(data.yieldBottles),
+      wastePct: Number(data.wastePct || 0),
+      wholesalePrice: Number(data.wholesalePrice || 0),
+      retailPrice: Number(data.retailPrice || 0),
+      labor: Number(data.labor || 0),
+      utilities: Number(data.utilities || 0),
+      other: Number(data.other || 0),
+      ingredients: Array.from(form.querySelectorAll(".recipe-edit-ingredient-row"))
+        .map(readBuilderRow)
+        .filter((row) => row.ingredientId && Number(row.qty) > 0)
+        .map((row) => {
+          let ingredient = row.ingredientId === "__new__" ? null : byId("ingredients", row.ingredientId);
+          if (ingredient) {
+            if (row.name) ingredient.name = row.name;
+            ingredient.category = row.category || ingredient.category || "outro";
+            ingredient.supplier = row.supplier || ingredient.supplier || "";
+            ingredient.purchaseUnit = row.purchaseUnit || ingredient.purchaseUnit || "g";
+            if (row.costPerUnit !== "") ingredient.costPerUnit = Number(row.costPerUnit || 0);
+            if (row.stock !== "") ingredient.stock = Number(row.stock || 0);
+            if (row.min !== "") ingredient.min = Number(row.min || 0);
+          } else if (row.name) {
+            ingredient = findOrCreateIngredient({
+              name: row.name,
+              category: row.category || "outro",
+              supplier: row.supplier || "",
+              purchaseUnit: row.purchaseUnit || "g",
+              costPerUnit: row.costPerUnit || 0,
+              stock: row.stock || 0,
+              min: row.min || 0,
+            });
+          }
+          if (!ingredient) return null;
+          return { ingredientId: ingredient.id, qty: Number(row.qty), unit: row.unit || ingredient.purchaseUnit || "g" };
+        })
+        .filter(Boolean),
+      packaging: Array.from(form.querySelectorAll(".recipe-edit-packaging-row"))
+        .map(readBuilderRow)
+        .filter((row) => row.itemId && Number(row.qty) > 0)
+        .map((row) => {
+          let material = row.itemId === "__new__" ? null : byId("packaging", row.itemId);
+          if (material) {
+            if (row.name) material.name = row.name;
+            material.type = row.type || material.type || inferPackagingType(material);
+            material.productId = row.productId || "";
+            material.supplier = row.supplier || material.supplier || "";
+            material.unit = row.unit || material.unit || "un";
+            if (row.costEach !== "") material.costEach = Number(row.costEach || 0);
+            if (row.stock !== "") material.stock = Number(row.stock || 0);
+            if (row.min !== "") material.min = Number(row.min || 0);
+          } else if (row.name) {
+            material = findOrCreatePackaging({
+              name: row.name,
+              type: row.type || "material",
+              productId: row.productId || "",
+              supplier: row.supplier || "",
+              unit: row.unit || "un",
+              costEach: row.costEach || 0,
+              stock: row.stock || 0,
+              min: row.min || 0,
+            });
+          }
+          if (!material) return null;
+          return { itemId: material.id, qty: Number(row.qty) };
+        })
+        .filter(Boolean),
+    });
     activeRecipeId = recipe.id;
+    addAudit("Receita atualizada", recipeLabel(recipe));
+    closeModal();
+    render();
   });
 }
 
 function editBatchForm(batchId) {
+  const original = clone(byId("batches", batchId));
   const batchFields = [
     { name: "code", label: "Código do lote", required: true },
     { name: "recipeId", label: "Receita", type: "select", options: state.recipes.map((recipe) => ({ value: recipe.id, label: recipeLabel(recipe) })) },
     { name: "date", label: "Data de produção", type: "date", required: true },
     { name: "responsible", label: "Responsável" },
-    { name: "expected", label: "Rendimento esperado", type: "number", min: 0 },
-    { name: "actual", label: "Rendimento real", type: "number", min: 0 },
+    { name: "actual", label: "Garrafas produzidas", type: "number", min: 0 },
+    { name: "idealSellBy", label: "Ideal vender até", type: "date" },
+    { name: "sellBy", label: "Vender até", type: "date" },
     { name: "expiry", label: "Validade", type: "date" },
     { name: "status", label: "Status", type: "select", options: ["planejado", "em produção", "bottled", "aprovado", "bloqueado"] },
   ];
   editRecordForm("batches", batchId, "Editar lote", batchFields, (batch) => {
+    const originalRecipe = byId("recipes", original?.recipeId);
+    if (original?.inventoryAdjusted && originalRecipe) applyBatchInventory(originalRecipe, Number(original.inventoryQty || original.actual || 0), 1);
     const recipe = byId("recipes", batch.recipeId);
     batch.flavor = recipe?.flavor || batch.flavor;
     batch.productId = recipe?.productId || batch.productId || "";
+    batch.expected = Number(batch.actual || 0);
+    const plan = batchDatePlan(batch.date);
+    batch.idealSellBy = batch.idealSellBy || plan.idealSellBy;
+    batch.sellBy = batch.sellBy || plan.sellBy;
+    batch.expiry = batch.expiry || plan.expiry;
+    if (recipe && shouldConsumeBatch(batch)) {
+      applyBatchInventory(recipe, Number(batch.actual || 0), -1);
+      batch.inventoryAdjusted = true;
+      batch.inventoryQty = Number(batch.actual || 0);
+    } else {
+      batch.inventoryAdjusted = false;
+      batch.inventoryQty = 0;
+    }
   });
 }
 
+function deleteBatch(batchId) {
+  const batch = byId("batches", batchId);
+  if (!batch) return;
+  if (!window.confirm(`Excluir lote "${batch.code}"? O estoque de ingredientes e materiais será restaurado quando este lote já tiver dado baixa.`)) return;
+  const recipe = byId("recipes", batch.recipeId);
+  if (batch.inventoryAdjusted && recipe) applyBatchInventory(recipe, Number(batch.inventoryQty || batch.actual || 0), 1);
+  state.batches = state.batches.filter((item) => item.id !== batchId);
+  addAudit("Lote excluído", batch.code);
+  render();
+}
+
 function editSaleForm(saleId) {
+  const sale = byId("sales", saleId);
+  const batchOptions = state.batches
+    .filter((batch) => batch.status !== "descartado")
+    .map((batch) => ({ value: batch.code, label: `${batch.code} - ${batch.flavor}` }));
+  if (sale?.batchCode && !batchOptions.some((option) => option.value === sale.batchCode)) {
+    batchOptions.unshift({ value: sale.batchCode, label: sale.batchCode });
+  }
   const saleFields = [
     { name: "date", label: "Data", type: "date", required: true },
-    { name: "partner", label: "Parceiro / cliente" },
-    { name: "batchCode", label: "Lote" },
+    { name: "movementType", label: "Tipo de saída", type: "select", options: [{ value: "venda", label: "Venda" }, { value: "consumo", label: "Consumo próprio" }, { value: "presente", label: "Presente / amostra" }, { value: "perda", label: "Perda / quebra" }] },
+    { name: "customerName", label: "Cliente / destino" },
+    { name: "batchCode", label: "Lote", type: "select", options: batchOptions },
     { name: "qty", label: "Quantidade", type: "number", min: 0, step: "1" },
+    { name: "priceType", label: "Preço", type: "select", options: [{ value: "varejo", label: "Varejo" }, { value: "atacado", label: "Atacado" }, { value: "custom", label: "Valor combinado" }, { value: "gratis", label: "Sem cobrança" }] },
     { name: "unitPrice", label: "Preço unitário", type: "number", min: 0, step: "0.01" },
     { name: "discount", label: "Desconto", type: "number", min: 0, step: "0.01" },
     { name: "delivery", label: "Entrega", type: "number", min: 0, step: "0.01" },
-    { name: "channel", label: "Canal", type: "select", options: ["revenda", "parceiro", "evento", "direto", "externo"] },
+    { name: "note", label: "Observação", full: true },
   ];
   editRecordForm("sales", saleId, "Editar venda", saleFields, (sale) => {
     const batch = state.batches.find((item) => item.code === sale.batchCode);
     const product = productForBatch(batch);
     sale.flavor = batch?.flavor || sale.flavor || "";
     sale.productId = product?.id || sale.productId || "";
+    sale.partner = sale.customerName || sale.partner;
+    sale.channel = sale.movementType === "venda" ? sale.priceType : sale.movementType;
   });
 }
 
 function editPurchaseForm(purchaseId) {
   const purchase = byId("purchases", purchaseId);
-  const previousItem = purchase?.item;
+  if (purchase && !purchase.packageCount) {
+    purchase.packageCount = 1;
+    purchase.packageSize = Number(purchase.qty || 0);
+    purchase.packageUnit = purchase.unit || "g";
+  }
+  if (purchase && !purchase.ingredientId) purchase.ingredientId = ingredientForPurchase(purchase)?.id || "";
+  const previousIngredientId = purchase?.ingredientId;
   const previousQty = Number(purchase?.qty || 0);
   const purchaseFields = [
     { name: "date", label: "Data", type: "date", required: true },
     { name: "supplier", label: "Fornecedor" },
-    { name: "item", label: "Item", required: true },
-    { name: "qty", label: "Quantidade", type: "number", min: 0, step: "0.01" },
-    { name: "unit", label: "Unidade", type: "select", options: ["kg", "g", "l", "ml", "un"] },
+    { name: "ingredientId", label: "Item", type: "select", options: state.ingredients.map((ingredient) => ({ value: ingredient.id, label: `${ingredient.name} (${ingredient.purchaseUnit})` })) },
+    { name: "packageCount", label: "Pacotes / unidades", type: "number", min: 0, step: "1" },
+    { name: "packageSize", label: "Conteúdo por pacote", type: "number", min: 0, step: "0.001" },
+    { name: "packageUnit", label: "Unidade do pacote", type: "select", options: ["kg", "g", "l", "ml", "un"] },
     { name: "total", label: "Total pago", type: "number", min: 0, step: "0.01" },
     { name: "method", label: "Método" },
     { name: "buyer", label: "Comprador" },
   ];
   editRecordForm("purchases", purchaseId, "Editar compra", purchaseFields, (record) => {
-    const previousIngredient = state.ingredients.find((item) => item.name === previousItem);
-    const nextIngredient = state.ingredients.find((item) => item.name === record.item);
-    if (previousIngredient && previousIngredient === nextIngredient) {
-      previousIngredient.stock = Number(previousIngredient.stock || 0) - previousQty + Number(record.qty || 0);
-      previousIngredient.costPerUnit = Number(record.total || 0) / Math.max(Number(record.qty || 0), 0.0001);
+    const previousIngredient = byId("ingredients", previousIngredientId);
+    const nextIngredient = byId("ingredients", record.ingredientId);
+    const nextQty = purchaseQuantityInStockUnit(record, nextIngredient?.purchaseUnit || record.packageUnit || record.unit);
+    if (previousIngredient) previousIngredient.stock = Math.max(0, Number(previousIngredient.stock || 0) - previousQty);
+    if (nextIngredient) {
+      nextIngredient.stock = Number(nextIngredient.stock || 0) + nextQty;
+      nextIngredient.costPerUnit = Number(record.total || 0) / Math.max(nextQty, 0.000001);
+      nextIngredient.supplier = record.supplier || nextIngredient.supplier;
     }
+    record.item = nextIngredient?.name || record.item;
+    record.qty = nextQty;
+    record.unit = nextIngredient?.purchaseUnit || record.unit || record.packageUnit;
+    record.costPerUnit = Number(record.total || 0) / Math.max(nextQty, 0.000001);
   });
 }
 
@@ -2635,13 +3246,17 @@ function simpleRecordForm(collection, title, fields) {
 }
 
 function stockAdjustmentForm() {
+  const options = [
+    ...state.ingredients.map((item) => ({ key: `ingredients:${item.id}`, label: `Ingrediente - ${item.name}`, stock: item.stock, unit: item.purchaseUnit })),
+    ...state.packaging.map((item) => ({ key: `packaging:${item.id}`, label: `${inferPackagingType(item) === "label" ? "Rótulo" : inferPackagingType(item) === "bottle" ? "Garrafa/material" : "Material"} - ${item.name}`, stock: item.stock, unit: item.unit })),
+  ];
   openModal(
     "Ajuste de estoque",
     "Estoque",
     `
       <form id="adjustForm">
         <div class="input-grid">
-          <label class="field"><span>Ingrediente</span><select name="ingredientId">${state.ingredients.map((item) => `<option value="${item.id}">${item.name} (${number(item.stock, 2)} ${item.purchaseUnit})</option>`).join("")}</select></label>
+          <label class="field field-full"><span>Item de estoque</span><select name="stockKey">${options.map((item) => `<option value="${item.key}">${item.label} (${number(item.stock, 2)} ${item.unit})</option>`).join("")}</select></label>
           <label class="field"><span>Nova quantidade</span><input name="stock" type="number" step="0.01" required></label>
           <label class="field field-full"><span>Motivo obrigatório</span><input name="reason" required placeholder="Perda, inventário, devolução, correção..."></label>
         </div>
@@ -2652,10 +3267,12 @@ function stockAdjustmentForm() {
   document.querySelector("#adjustForm").addEventListener("submit", (event) => {
     event.preventDefault();
     const data = Object.fromEntries(new FormData(event.target).entries());
-    const ingredient = byId("ingredients", data.ingredientId);
-    const previous = ingredient.stock;
-    ingredient.stock = Number(data.stock);
-    addAudit("Ajuste de estoque", `${ingredient.name}: ${previous} -> ${ingredient.stock}. Motivo: ${data.reason}`);
+    const [collection, itemId] = data.stockKey.split(":");
+    const item = byId(collection, itemId);
+    if (!item) return;
+    const previous = item.stock;
+    item.stock = Number(data.stock);
+    addAudit("Ajuste de estoque", `${item.name}: ${previous} -> ${item.stock}. Motivo: ${data.reason}`);
     closeModal();
     render();
   });
@@ -2729,6 +3346,12 @@ function bindModuleEvents() {
       render();
     });
   });
+  document.querySelectorAll("[data-stock-view]").forEach((button) => {
+    button.addEventListener("click", () => {
+      currentStockView = button.dataset.stockView;
+      render();
+    });
+  });
 }
 
 function handleAction(action) {
@@ -2751,7 +3374,7 @@ function handleAction(action) {
     "edit-recipe": editRecipeForm,
     "delete-recipe": (itemId) => deleteRecord("recipes", itemId),
     "edit-batch": editBatchForm,
-    "delete-batch": (itemId) => deleteRecord("batches", itemId),
+    "delete-batch": deleteBatch,
     "edit-sale": editSaleForm,
     "delete-sale": (itemId) => deleteRecord("sales", itemId),
     "edit-purchase": editPurchaseForm,
@@ -2789,6 +3412,8 @@ function handleAction(action) {
     "new-packaging": () =>
       simpleRecordForm("packaging", "Novo material", [
         { name: "name", label: "Nome", required: true },
+        { name: "type", label: "Tipo", type: "select", options: [{ value: "bottle", label: "Garrafa/tampa" }, { value: "label", label: "Rótulo" }, { value: "box", label: "Caixa" }, { value: "material", label: "Outro material" }], value: "material" },
+        { name: "productId", label: "Sabor/produto do rótulo", type: "select", options: [{ value: "", label: "Genérico" }, ...state.products.map((product) => ({ value: product.id, label: productLabel(product) }))] },
         { name: "supplier", label: "Fornecedor" },
         { name: "unit", label: "Unidade", value: "un" },
         { name: "costEach", label: "Custo unitário", type: "number" },
@@ -2852,8 +3477,8 @@ function handleAction(action) {
     },
     "export-products": () => exportCSV("kombu-produtos-ean", [["EAN-13", "Item", "Sabor", "Tamanho ml", "Descricao", "Varejo", "Atacado", "Custo base"], ...state.products.map((p) => [p.ean, p.item, p.flavor, p.sizeMl, p.description, p.retailPrice, p.wholesalePrice, p.baselineCost])]),
     "export-ingredients": () => exportCSV("kombu-ingredientes", [["Nome", "Categoria", "Fornecedor", "Estoque", "Unidade", "Custo"], ...state.ingredients.map((i) => [i.name, i.category, i.supplier, i.stock, i.purchaseUnit, i.costPerUnit])]),
-    "export-purchases": () => exportCSV("kombu-compras", [["Data", "Fornecedor", "Item", "Qtd", "Unidade", "Total"], ...state.purchases.map((p) => [p.date, p.supplier, p.item, p.qty, p.unit, p.total])]),
-    "export-sales": () => exportCSV("kombu-vendas", [["Data", "Parceiro", "Canal", "Sabor", "Lote", "Qtd", "Preço"], ...state.sales.map((s) => [s.date, s.partner, s.channel, s.flavor, s.batchCode, s.qty, s.unitPrice])]),
+    "export-purchases": () => exportCSV("kombu-compras", [["Data", "Fornecedor", "Item", "Pacotes", "Conteúdo pacote", "Unidade pacote", "Entra estoque", "Unidade estoque", "Total", "Custo unitário", "Método", "Comprador"], ...state.purchases.map((p) => [p.date, p.supplier, p.item, p.packageCount || "", p.packageSize || "", p.packageUnit || "", p.qty, p.unit, p.total, p.costPerUnit || "", p.method, p.buyer])]),
+    "export-sales": () => exportCSV("kombu-saidas-vendas", [["Data", "Tipo", "Cliente/destino", "Preço", "Sabor", "Lote", "Qtd", "Preço unitário", "Receita", "Desconto", "Entrega", "Observação"], ...state.sales.map((s) => [s.date, s.movementType || "venda", s.customerName || s.partner, s.priceType || s.channel, s.flavor, s.batchCode, s.qty, s.unitPrice, saleRevenue(s), s.discount, s.delivery, s.note || ""])]),
     "export-leads": () => exportCSV("kombu-leads-crm", [["Criado em", "Tipo", "Status", "Nome", "Negócio", "Tipo negócio", "Local", "WhatsApp", "Instagram", "Mensagem"], ...state.leads.map((lead) => [lead.createdAt, lead.type, lead.status, lead.name, lead.business, lead.businessType, lead.location, lead.whatsapp, lead.instagram, lead.message])]),
     "export-reports": () => exportCSV("kombu-relatorio", [["Métrica", "Valor"], ["Receita", totals().salesRevenue], ["COGS", totals().cogs], ["Lucro bruto", totals().grossProfit], ["Despesas", totals().expenses], ["Líquido", totals().net]]),
     "export-costs": () => {
