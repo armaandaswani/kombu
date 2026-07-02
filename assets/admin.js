@@ -55,6 +55,11 @@ const PACKAGING_SEED = [
   { id: "pkg-label-500", name: "Rótulo 500ml", type: "label", productId: "", supplier: "Base de custos Kombú", unit: "un", costEach: 0.85, stock: 0, min: 0, location: "" },
 ];
 
+const KOMBUCHA_BASE_INGREDIENTS = [
+  { name: "Chá", category: "chá", usageQty: 4, usageUnit: "g" },
+  { name: "Açúcar", category: "açúcar", usageQty: 45, usageUnit: "g" },
+];
+
 function labelPackagingIdForProduct(product) {
   return `pkg-label-${String(product?.item || product?.id || "produto").toLowerCase()}-${Number(product?.sizeMl || 500)}`;
 }
@@ -827,6 +832,20 @@ function lowStockIngredients() {
   return state.ingredients.filter((item) => Number(item.min) > 0 && Number(item.stock) <= Number(item.min));
 }
 
+function ingredientNeedsCost(item) {
+  return item?.needsCost || item?.status === "custo pendente";
+}
+
+function missingCostIngredients() {
+  return state.ingredients.filter(ingredientNeedsCost);
+}
+
+function ingredientStatusBadge(item) {
+  if (ingredientNeedsCost(item)) return `<span class="status warn">custo pendente</span>`;
+  const hasMinimum = Number(item.min) > 0;
+  return `<span class="status ${hasMinimum ? statusClass(item.stock / item.min) : "warn"}">${hasMinimum ? (Number(item.stock) <= Number(item.min) ? "baixo" : "bom") : "sem mínimo"}</span>`;
+}
+
 function lowStockPackaging() {
   return state.packaging.filter((item) => Number(item.min) > 0 && Number(item.stock) <= Number(item.min));
 }
@@ -922,6 +941,10 @@ function renderDashboard() {
       <article class="admin-card">
         <h3>Atenção necessária</h3>
         <div class="alert-list">
+          ${missingCostIngredients()
+            .slice(0, 5)
+            .map((item) => `<div class="alert-item"><strong>Custo pendente: ${item.name}</strong><span>Complete o custo unitário para a receita calcular margem real.</span></div>`)
+            .join("")}
           ${[...lowStockIngredients(), ...lowStockPackaging()]
             .slice(0, 5)
             .map((item) => `<div class="alert-item"><strong>Estoque baixo: ${item.name}</strong><span>Atual ${number(item.stock, 2)} | mínimo ${number(item.min, 2)}</span></div>`)
@@ -929,7 +952,7 @@ function renderDashboard() {
           ${nearExpiryBatches()
             .map((batch) => `<div class="alert-item"><strong>Lote próximo ao vencimento: ${batch.code}</strong><span>${batch.stock} garrafas vencem em ${batch.expiry}</span></div>`)
             .join("")}
-          ${lowStockIngredients().length || lowStockPackaging().length || nearExpiryBatches().length ? "" : `<div class="empty-note">Nenhum alerta crítico no momento.</div>`}
+          ${missingCostIngredients().length || lowStockIngredients().length || lowStockPackaging().length || nearExpiryBatches().length ? "" : `<div class="empty-note">Nenhum alerta crítico no momento.</div>`}
         </div>
       </article>
       <article class="admin-card chart-card">
@@ -960,7 +983,7 @@ function renderDashboard() {
 function statusClass(value, type = "stock") {
   if (type === "stock") return value <= 0 ? "bad" : value <= 1 ? "warn" : "good";
   if (["aprovado", "ativo", "ativa", "pago"].includes(value)) return "good";
-  if (["planejado", "bottled", "pendente"].includes(value)) return "warn";
+  if (["planejado", "bottled", "pendente", "custo pendente"].includes(value)) return "warn";
   return "bad";
 }
 
@@ -995,7 +1018,6 @@ function renderIngredients() {
   const rows = state.ingredients
     .filter((item) => matchesSearch(item))
     .map((item) => {
-      const hasMinimum = Number(item.min) > 0;
       return `
         <tr>
           <td><strong>${item.name}</strong><br><span>${item.location}</span></td>
@@ -1003,7 +1025,7 @@ function renderIngredients() {
           <td>${item.supplier}</td>
           <td class="num">${number(item.stock, 2)} ${item.purchaseUnit}</td>
           <td class="num">${brl(item.costPerUnit)} / ${item.purchaseUnit}</td>
-          <td><span class="status ${hasMinimum ? statusClass(item.stock / item.min) : "warn"}">${hasMinimum ? (item.stock <= item.min ? "baixo" : "bom") : "sem mínimo"}</span></td>
+          <td>${ingredientStatusBadge(item)}</td>
           <td>${item.expires}</td>
           <td>${rowActions([tableAction(`edit-ingredient:${item.id}`, "Editar ingrediente"), tableAction(`delete-ingredient:${item.id}`, "Excluir ingrediente", "delete", "danger")])}</td>
         </tr>
@@ -1449,7 +1471,6 @@ function renderStock() {
           { label: "Status" },
         ],
         state.ingredients.map((item) => {
-          const hasMinimum = Number(item.min) > 0;
           return `
             <tr>
               <td><strong>${item.name}</strong><br><span>${item.location || ""}</span></td>
@@ -1458,7 +1479,7 @@ function renderStock() {
               <td class="num">${number(item.stock, 3)} ${item.purchaseUnit}</td>
               <td class="num">${number(item.min, 3)} ${item.purchaseUnit}</td>
               <td class="num">${brl(item.costPerUnit)} / ${item.purchaseUnit}</td>
-              <td><span class="status ${hasMinimum ? statusClass(item.stock / item.min) : "warn"}">${hasMinimum ? (item.stock <= item.min ? "baixo" : "bom") : "sem mínimo"}</span></td>
+              <td>${ingredientStatusBadge(item)}</td>
             </tr>
           `;
         }),
@@ -2385,18 +2406,35 @@ function unitOptions(selected = "kg") {
   return ["kg", "g", "l", "ml", "un"].map((unit) => `<option value="${unit}" ${unit === selected ? "selected" : ""}>${unit}</option>`).join("");
 }
 
-function recipeIngredientRowTemplate() {
+function recipeIngredientPreset(line = {}) {
+  const ingredient = state.ingredients.find((item) => item.name.toLowerCase() === String(line.name || "").toLowerCase());
+  return {
+    name: ingredient?.name || line.name || "",
+    category: ingredient?.category || line.category || "",
+    supplier: ingredient?.supplier || line.supplier || "",
+    purchaseUnit: ingredient?.purchaseUnit || line.purchaseUnit || "g",
+    costPerUnit: ingredient?.costPerUnit ?? line.costPerUnit ?? "",
+    stock: ingredient?.stock ?? line.stock ?? "",
+    min: ingredient?.min ?? line.min ?? "",
+    usageQty: line.usageQty ?? "",
+    usageUnit: line.usageUnit || "g",
+    base: line.base || false,
+  };
+}
+
+function recipeIngredientRowTemplate(line = {}) {
+  const preset = recipeIngredientPreset(line);
   return `
-    <div class="builder-row recipe-ingredient-row">
-      <label class="field"><span>Ingrediente</span><input data-field="name" required placeholder="Ex: gengibre"></label>
-      <label class="field"><span>Categoria</span><input data-field="category" placeholder="fruta, chá, especiaria..."></label>
-      <label class="field"><span>Fornecedor</span><input data-field="supplier"></label>
-      <label class="field"><span>Un. compra</span><select data-field="purchaseUnit">${unitOptions("kg")}</select></label>
-      <label class="field"><span>Custo/un.</span><input data-field="costPerUnit" type="number" min="0" step="0.01" required></label>
-      <label class="field"><span>Estoque inicial</span><input data-field="stock" type="number" min="0" step="0.01" placeholder="0"></label>
-      <label class="field"><span>Estoque mínimo</span><input data-field="min" type="number" min="0" step="0.01" placeholder="0"></label>
-      <label class="field"><span>Qtd. usada no lote</span><input data-field="usageQty" type="number" min="0" step="0.001" required></label>
-      <label class="field"><span>Un. uso</span><select data-field="usageUnit">${unitOptions("g")}</select></label>
+    <div class="builder-row recipe-ingredient-row" ${preset.base ? "data-kombucha-base-row" : ""}>
+      <label class="field"><span>Ingrediente</span><input data-field="name" value="${escapeHtml(preset.name)}" placeholder="Ex: gengibre"></label>
+      <label class="field"><span>Categoria</span><input data-field="category" value="${escapeHtml(preset.category)}" placeholder="fruta, chá, especiaria..."></label>
+      <label class="field"><span>Fornecedor</span><input data-field="supplier" value="${escapeHtml(preset.supplier)}"></label>
+      <label class="field"><span>Un. estoque</span><select data-field="purchaseUnit">${unitOptions(preset.purchaseUnit)}</select></label>
+      <label class="field"><span>Custo/un. estoque</span><input data-field="costPerUnit" type="number" min="0" step="0.000001" value="${preset.costPerUnit}" placeholder="Preencher depois"></label>
+      <label class="field"><span>Estoque inicial</span><input data-field="stock" type="number" min="0" step="0.001" value="${preset.stock}" placeholder="0"></label>
+      <label class="field"><span>Estoque mínimo</span><input data-field="min" type="number" min="0" step="0.001" value="${preset.min}" placeholder="0"></label>
+      <label class="field"><span>Qtd. usada na receita</span><input data-field="usageQty" type="number" min="0" step="0.001" value="${preset.usageQty}"></label>
+      <label class="field"><span>Un. uso</span><select data-field="usageUnit">${unitOptions(preset.usageUnit)}</select></label>
       <button class="icon-btn" type="button" data-remove-builder-row aria-label="Remover ingrediente">
         <span class="material-symbols-outlined" aria-hidden="true">delete</span>
       </button>
@@ -2404,21 +2442,47 @@ function recipeIngredientRowTemplate() {
   `;
 }
 
-function recipePackagingRowTemplate() {
+function kombuchaBaseIngredientRows() {
+  return KOMBUCHA_BASE_INGREDIENTS.map((line) => recipeIngredientRowTemplate({ ...line, base: true })).join("");
+}
+
+function recipePackagingPreset(line = {}) {
+  const material = state.packaging.find((item) => item.name.toLowerCase() === String(line.name || "").toLowerCase());
+  return {
+    name: material?.name || line.name || "",
+    type: material?.type || line.type || "material",
+    supplier: material?.supplier || line.supplier || "",
+    costEach: material?.costEach ?? line.costEach ?? "",
+    stock: material?.stock ?? line.stock ?? "",
+    min: material?.min ?? line.min ?? "",
+    qtyPerBottle: line.qtyPerBottle ?? "",
+    base: line.base || false,
+  };
+}
+
+function recipePackagingRowTemplate(line = {}) {
+  const preset = recipePackagingPreset(line);
   return `
-    <div class="builder-row recipe-packaging-row">
-      <label class="field"><span>Embalagem/material</span><input data-field="name" required placeholder="Ex: garrafa 500ml"></label>
-      <label class="field"><span>Tipo</span><select data-field="type"><option value="bottle">Garrafa/tampa</option><option value="label">Rótulo</option><option value="box">Caixa</option><option value="material" selected>Outro</option></select></label>
-      <label class="field"><span>Fornecedor</span><input data-field="supplier"></label>
-      <label class="field"><span>Custo por unidade</span><input data-field="costEach" type="number" min="0" step="0.01" required></label>
-      <label class="field"><span>Estoque inicial</span><input data-field="stock" type="number" min="0" step="1" placeholder="0"></label>
-      <label class="field"><span>Estoque mínimo</span><input data-field="min" type="number" min="0" step="1" placeholder="0"></label>
-      <label class="field"><span>Qtd. por garrafa</span><input data-field="qtyPerBottle" type="number" min="0" step="0.001" value="1" required></label>
+    <div class="builder-row recipe-packaging-row" ${preset.base ? "data-kombucha-base-row" : ""}>
+      <label class="field"><span>Embalagem/material</span><input data-field="name" value="${escapeHtml(preset.name)}" placeholder="Ex: garrafa 500ml"></label>
+      <label class="field"><span>Tipo</span><select data-field="type"><option value="bottle" ${preset.type === "bottle" ? "selected" : ""}>Garrafa/tampa</option><option value="label" ${preset.type === "label" ? "selected" : ""}>Rótulo</option><option value="box" ${preset.type === "box" ? "selected" : ""}>Caixa</option><option value="material" ${preset.type === "material" ? "selected" : ""}>Outro</option></select></label>
+      <label class="field"><span>Fornecedor</span><input data-field="supplier" value="${escapeHtml(preset.supplier)}"></label>
+      <label class="field"><span>Custo por unidade</span><input data-field="costEach" type="number" min="0" step="0.01" value="${preset.costEach}" placeholder="0"></label>
+      <label class="field"><span>Estoque inicial</span><input data-field="stock" type="number" min="0" step="1" value="${preset.stock}" placeholder="0"></label>
+      <label class="field"><span>Estoque mínimo</span><input data-field="min" type="number" min="0" step="1" value="${preset.min}" placeholder="0"></label>
+      <label class="field"><span>Qtd. por garrafa</span><input data-field="qtyPerBottle" type="number" min="0" step="0.001" value="${preset.qtyPerBottle}"></label>
       <button class="icon-btn" type="button" data-remove-builder-row aria-label="Remover embalagem">
         <span class="material-symbols-outlined" aria-hidden="true">delete</span>
       </button>
     </div>
   `;
+}
+
+function kombuchaBasePackagingRows() {
+  return [
+    { name: "Garrafa 500ml", type: "bottle", qtyPerBottle: 1 },
+    { name: "Rótulo 500ml", type: "label", qtyPerBottle: 1 },
+  ].map((line) => recipePackagingRowTemplate({ ...line, base: true })).join("");
 }
 
 function readBuilderRow(row) {
@@ -2431,19 +2495,22 @@ function readBuilderRow(row) {
 function findOrCreateIngredient(data) {
   const normalizedName = data.name.toLowerCase();
   let ingredient = state.ingredients.find((item) => item.name.toLowerCase() === normalizedName);
+  const costWasProvided = String(data.costPerUnit ?? "").trim() !== "";
+  const costValue = Number(data.costPerUnit || 0);
   if (!ingredient) {
     ingredient = {
       id: id("ing"),
       name: data.name,
       category: data.category || "outro",
       supplier: data.supplier || "",
-      purchaseUnit: data.purchaseUnit || "kg",
-      costPerUnit: Number(data.costPerUnit || 0),
+      purchaseUnit: data.purchaseUnit || "g",
+      costPerUnit: costWasProvided ? costValue : 0,
       stock: Number(data.stock || 0),
       min: Number(data.min || 0),
       expires: "",
       location: "",
-      status: "ativo",
+      status: costWasProvided && costValue > 0 ? "ativo" : "custo pendente",
+      needsCost: !(costWasProvided && costValue > 0),
     };
     state.ingredients.push(ingredient);
     return ingredient;
@@ -2451,7 +2518,12 @@ function findOrCreateIngredient(data) {
   ingredient.category = data.category || ingredient.category;
   ingredient.supplier = data.supplier || ingredient.supplier;
   ingredient.purchaseUnit = data.purchaseUnit || ingredient.purchaseUnit;
-  ingredient.costPerUnit = Number(data.costPerUnit || ingredient.costPerUnit || 0);
+  if (costWasProvided) {
+    ingredient.costPerUnit = costValue;
+    ingredient.needsCost = costValue <= 0;
+    if (ingredient.status === "custo pendente" && costValue > 0) ingredient.status = "ativo";
+    if (costValue <= 0) ingredient.status = "custo pendente";
+  }
   if (data.stock !== "") ingredient.stock = Number(data.stock);
   if (data.min !== "") ingredient.min = Number(data.min);
   return ingredient;
@@ -2493,6 +2565,7 @@ function newRecipeForm() {
     `
       <form id="recipeForm">
         <div class="input-grid">
+          <label class="field field-full"><span>Essa receita é Kombucha?</span><select name="isKombucha"><option value="yes" selected>Sim - usar base fixa de chá + açúcar</option><option value="no">Não - começar sem base automática</option></select></label>
           ${
             state.products.length
               ? `<label class="field field-full"><span>Produto / EAN</span><select name="productId"><option value="">Sem produto vinculado</option>${state.products.map((product) => `<option value="${product.id}">${productLabel(product)}${product.ean ? ` - #${product.ean}` : ""}</option>`).join("")}</select></label>`
@@ -2514,14 +2587,14 @@ function newRecipeForm() {
           <div class="table-toolbar">
             <div>
               <h3>Ingredientes da receita</h3>
-              <p>Se o ingrediente não existir, ele será criado automaticamente no estoque.</p>
+              <p>Quando for Kombucha, chá e açúcar entram automaticamente. Ingrediente novo sem custo ficará como custo pendente.</p>
             </div>
             <button class="btn btn-outline" type="button" data-add-ingredient-row>
               <span class="material-symbols-outlined" aria-hidden="true">add</span>
               Ingrediente
             </button>
           </div>
-          <div id="recipeIngredientRows">${recipeIngredientRowTemplate()}</div>
+          <div id="recipeIngredientRows">${kombuchaBaseIngredientRows()}${recipeIngredientRowTemplate()}</div>
         </div>
 
         <div class="builder-section">
@@ -2535,7 +2608,7 @@ function newRecipeForm() {
               Material
             </button>
           </div>
-          <div id="recipePackagingRows">${recipePackagingRowTemplate()}</div>
+          <div id="recipePackagingRows">${kombuchaBasePackagingRows()}${recipePackagingRowTemplate()}</div>
         </div>
 
         <button class="btn btn-primary" type="submit">
@@ -2550,6 +2623,13 @@ function newRecipeForm() {
 
 function bindRecipeBuilder() {
   const form = document.querySelector("#recipeForm");
+  const ingredientRows = document.querySelector("#recipeIngredientRows");
+  const packagingRows = document.querySelector("#recipePackagingRows");
+  form.querySelector("[name='isKombucha']")?.addEventListener("change", (event) => {
+    const isKombucha = event.target.value === "yes";
+    ingredientRows.innerHTML = isKombucha ? `${kombuchaBaseIngredientRows()}${recipeIngredientRowTemplate()}` : recipeIngredientRowTemplate();
+    packagingRows.innerHTML = isKombucha ? `${kombuchaBasePackagingRows()}${recipePackagingRowTemplate()}` : recipePackagingRowTemplate();
+  });
   form.querySelector("[name='productId']")?.addEventListener("change", (event) => {
     const product = byId("products", event.target.value);
     if (!product) return;
@@ -2559,10 +2639,10 @@ function bindRecipeBuilder() {
     form.querySelector("[name='retailPrice']").value = product.retailPrice || 0;
   });
   form.querySelector("[data-add-ingredient-row]").addEventListener("click", () => {
-    document.querySelector("#recipeIngredientRows").insertAdjacentHTML("beforeend", recipeIngredientRowTemplate());
+    ingredientRows.insertAdjacentHTML("beforeend", recipeIngredientRowTemplate());
   });
   form.querySelector("[data-add-packaging-row]").addEventListener("click", () => {
-    document.querySelector("#recipePackagingRows").insertAdjacentHTML("beforeend", recipePackagingRowTemplate());
+    packagingRows.insertAdjacentHTML("beforeend", recipePackagingRowTemplate());
   });
   form.addEventListener("click", (event) => {
     const removeButton = event.target.closest("[data-remove-builder-row]");
@@ -2598,6 +2678,7 @@ function bindRecipeBuilder() {
     const recipe = {
       id: id("rec"),
       productId: data.productId || "",
+      recipeType: data.isKombucha === "yes" ? "kombucha" : "outro",
       flavor: data.flavor,
       version: data.version,
       status: "ativa",
@@ -2614,7 +2695,8 @@ function bindRecipeBuilder() {
     };
     state.recipes.push(recipe);
     activeRecipeId = recipe.id;
-    addAudit("Receita criada", `${recipe.flavor} ${recipe.version} com ${ingredients.length} ingredientes e ${packaging.length} materiais.`);
+    const pendingCostNames = ingredients.map((line) => byId("ingredients", line.ingredientId)).filter(ingredientNeedsCost).map((ingredient) => ingredient.name);
+    addAudit("Receita criada", `${recipe.flavor} ${recipe.version} com ${ingredients.length} ingredientes e ${packaging.length} materiais${pendingCostNames.length ? `. Custos pendentes: ${pendingCostNames.join(", ")}` : "."}`);
     closeModal();
     setModule("costs");
   });
@@ -2732,7 +2814,7 @@ const ingredientFields = [
   { name: "min", label: "Estoque mínimo", type: "number", min: 0, step: "0.01" },
   { name: "expires", label: "Vencimento", type: "date" },
   { name: "location", label: "Local" },
-  { name: "status", label: "Status", type: "select", options: ["ativo", "pausado", "inativo"] },
+  { name: "status", label: "Status", type: "select", options: ["ativo", "custo pendente", "pausado", "inativo"] },
 ];
 
 const packagingFields = [
@@ -2932,7 +3014,11 @@ function editRecipeForm(recipeId) {
             ingredient.category = row.category || ingredient.category || "outro";
             ingredient.supplier = row.supplier || ingredient.supplier || "";
             ingredient.purchaseUnit = row.purchaseUnit || ingredient.purchaseUnit || "g";
-            if (row.costPerUnit !== "") ingredient.costPerUnit = Number(row.costPerUnit || 0);
+            if (row.costPerUnit !== "") {
+              ingredient.costPerUnit = Number(row.costPerUnit || 0);
+              ingredient.needsCost = Number(row.costPerUnit || 0) <= 0;
+              ingredient.status = Number(row.costPerUnit || 0) > 0 ? "ativo" : "custo pendente";
+            }
             if (row.stock !== "") ingredient.stock = Number(row.stock || 0);
             if (row.min !== "") ingredient.min = Number(row.min || 0);
           } else if (row.name) {
@@ -3361,7 +3447,15 @@ function handleAction(action) {
   const dynamicMap = {
     "edit-product": (itemId) => editRecordForm("products", itemId, "Editar produto", productFields),
     "delete-product": (itemId) => deleteRecord("products", itemId),
-    "edit-ingredient": (itemId) => editRecordForm("ingredients", itemId, "Editar ingrediente", ingredientFields),
+    "edit-ingredient": (itemId) => editRecordForm("ingredients", itemId, "Editar ingrediente", ingredientFields, (record) => {
+      if (Number(record.costPerUnit || 0) > 0) {
+        record.needsCost = false;
+        if (record.status === "custo pendente") record.status = "ativo";
+      } else if (ingredientNeedsCost(record)) {
+        record.needsCost = true;
+        record.status = "custo pendente";
+      }
+    }),
     "delete-ingredient": (itemId) => deleteRecord("ingredients", itemId),
     "edit-packaging": (itemId) => editRecordForm("packaging", itemId, "Editar material", packagingFields),
     "delete-packaging": (itemId) => deleteRecord("packaging", itemId),
@@ -3476,7 +3570,7 @@ function handleAction(action) {
       render();
     },
     "export-products": () => exportCSV("kombu-produtos-ean", [["EAN-13", "Item", "Sabor", "Tamanho ml", "Descricao", "Varejo", "Atacado", "Custo base"], ...state.products.map((p) => [p.ean, p.item, p.flavor, p.sizeMl, p.description, p.retailPrice, p.wholesalePrice, p.baselineCost])]),
-    "export-ingredients": () => exportCSV("kombu-ingredientes", [["Nome", "Categoria", "Fornecedor", "Estoque", "Unidade", "Custo"], ...state.ingredients.map((i) => [i.name, i.category, i.supplier, i.stock, i.purchaseUnit, i.costPerUnit])]),
+    "export-ingredients": () => exportCSV("kombu-ingredientes", [["Nome", "Categoria", "Fornecedor", "Estoque", "Unidade", "Custo", "Status"], ...state.ingredients.map((i) => [i.name, i.category, i.supplier, i.stock, i.purchaseUnit, i.costPerUnit, ingredientNeedsCost(i) ? "custo pendente" : i.status])]),
     "export-purchases": () => exportCSV("kombu-compras", [["Data", "Fornecedor", "Item", "Pacotes", "Conteúdo pacote", "Unidade pacote", "Entra estoque", "Unidade estoque", "Total", "Custo unitário", "Método", "Comprador"], ...state.purchases.map((p) => [p.date, p.supplier, p.item, p.packageCount || "", p.packageSize || "", p.packageUnit || "", p.qty, p.unit, p.total, p.costPerUnit || "", p.method, p.buyer])]),
     "export-sales": () => exportCSV("kombu-saidas-vendas", [["Data", "Tipo", "Cliente/destino", "Preço", "Sabor", "Lote", "Qtd", "Preço unitário", "Receita", "Desconto", "Entrega", "Observação"], ...state.sales.map((s) => [s.date, s.movementType || "venda", s.customerName || s.partner, s.priceType || s.channel, s.flavor, s.batchCode, s.qty, s.unitPrice, saleRevenue(s), s.discount, s.delivery, s.note || ""])]),
     "export-leads": () => exportCSV("kombu-leads-crm", [["Criado em", "Tipo", "Status", "Nome", "Negócio", "Tipo negócio", "Local", "WhatsApp", "Instagram", "Mensagem"], ...state.leads.map((lead) => [lead.createdAt, lead.type, lead.status, lead.name, lead.business, lead.businessType, lead.location, lead.whatsapp, lead.instagram, lead.message])]),
