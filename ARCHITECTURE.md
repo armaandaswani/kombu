@@ -7,7 +7,11 @@ This folder contains a static operational prototype built from the Stitch base:
 - `assets/kombu.css`: shared visual system based on the Amazonian Vitality Stitch palette.
 - `assets/public.js`: public flavor cards, partner locator, forms and flavor detail views.
 - `assets/admin.js`: local operational data, cost calculations, admin modules and CSV export.
-- `api/lead.js`: Vercel serverless notification endpoint for new leads.
+- `api/lead.js`: Vercel serverless endpoint for new leads, Supabase persistence and Resend notifications.
+- `api/state.js`: authenticated admin state sync endpoint backed by Supabase.
+- `api/public-state.js`: sanitized public CMS/partners endpoint for the public site.
+- `api/media/upload.js`: authenticated CMS image upload endpoint backed by Supabase Storage.
+- `api/cron/payment-reminders.js`: daily payment reminder email job for delivered unpaid orders.
 
 ## Product Shape
 
@@ -95,9 +99,9 @@ Each production batch must store a snapshot of recipe version, ingredient costs,
 
 ## Security Direction
 
-For production, Supabase is recommended because this site needs real authentication, shared database state and image/file storage. The current static password gate is only a prototype barrier.
+For production, Supabase is required because this site needs shared database state and image/file storage. The current static password gate remains only as a local fallback; production API access uses a server-side login cookie.
 
-- Supabase Auth for `/admin`.
+- Server-side password login for `/admin` API routes now; Supabase Auth later for named users.
 - Role-based permissions with row-level security.
 - Supabase Storage for product images, invoices and receipts.
 - Audit log for edits and deletions.
@@ -106,15 +110,16 @@ For production, Supabase is recommended because this site needs real authenticat
 
 ## Lead Notifications
 
-The public reseller and contact forms save leads into the admin CRM prototype and call `/api/lead`.
+The public reseller and contact forms call `/api/lead`.
 
 On Vercel, email delivery uses Resend:
 
 - `RESEND_API_KEY`: required to send.
 - `LEAD_NOTIFY_EMAIL`: optional recipient override. Default is `armaandaswani@icloud.com`.
 - `LEAD_FROM_EMAIL`: optional sender address. For production, this should be a verified sender/domain in Resend.
+- `CRON_SECRET`: protects the scheduled reminder endpoint.
 
-The endpoint returns `emailSent: false` when `RESEND_API_KEY` is missing, so local/static previews keep working while the CRM still receives the lead in browser storage.
+The endpoint returns `emailSent: false` when `RESEND_API_KEY` is missing, so local/static previews keep working. With Supabase configured, leads persist into the admin state even if email is temporarily unavailable.
 
 ## SEO Plan
 
@@ -171,11 +176,11 @@ Admin CTAs:
 
 ## Next Production Steps
 
-1. Create a Supabase project.
-2. Replace localStorage data with Supabase Postgres tables.
-3. Add Supabase Auth and role permissions.
-4. Add real file upload for invoices, receipts and product media through Supabase Storage.
-5. Persist leads, partners and CMS globally instead of browser-only localStorage.
-6. Add Excel import/export using a server-side library.
-7. Capture batch cost snapshots at creation.
+1. Create a Supabase project and run `supabase/schema.sql`.
+2. Add the Vercel env vars listed in `SETUP.md`.
+3. Redeploy Vercel and log into `/admin` once to seed the cloud state.
+4. Verify lead form email delivery through Resend.
+5. Verify CMS image upload into Supabase Storage.
+6. Move from JSONB state sync to normalized tables once daily operations stabilize.
+7. Add Supabase Auth and named role permissions.
 8. Add analytics events and ad pixels after consent strategy is defined.

@@ -399,6 +399,10 @@ let globalSearch = "";
 let activeRecipeId = state.recipes[0]?.id || "";
 let currentRole = "Owner / Admin";
 let currentStockView = "kombuchas";
+let cloudSyncReady = false;
+let cloudSyncEnabled = false;
+let cloudSaveTimer = null;
+let lastCloudSaveAt = "";
 
 (state.purchases || []).forEach(syncPurchaseExpense);
 (state.orders || []).forEach(syncOrderIntegrations);
@@ -424,19 +428,51 @@ function lockAdmin() {
   document.querySelector("#adminPassword")?.focus();
 }
 
+async function authenticateAdmin(password) {
+  try {
+    const response = await fetch("/api/auth/login", {
+      method: "POST",
+      credentials: "same-origin",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ password }),
+    });
+    if (response.ok) return { ok: true, backend: true };
+    if (response.status === 401) return { ok: false, backend: true };
+  } catch {
+    // Local static previews do not serve Vercel API routes.
+  }
+  return { ok: password === ADMIN_PASSWORD, backend: false };
+}
+
+async function startAuthenticatedSession() {
+  unlockAdmin();
+  render();
+  await syncFromCloud();
+  render();
+}
+
+async function logoutAdmin() {
+  try {
+    await fetch("/api/auth/logout", { method: "POST", credentials: "same-origin" });
+  } catch {
+    // Static preview fallback.
+  }
+  lockAdmin();
+}
+
 function bindAuth() {
   const loginForm = document.querySelector("#loginForm");
   const passwordInput = document.querySelector("#adminPassword");
   const loginError = document.querySelector("#loginError");
   const togglePassword = document.querySelector("#togglePassword");
-  loginForm?.addEventListener("submit", (event) => {
+  loginForm?.addEventListener("submit", async (event) => {
     event.preventDefault();
-    if (passwordInput.value === ADMIN_PASSWORD) {
+    const auth = await authenticateAdmin(passwordInput.value);
+    if (auth.ok) {
       sessionStorage.setItem("kombuAdminAuthenticated", "true");
       passwordInput.value = "";
       loginError?.classList.add("hidden");
-      unlockAdmin();
-      render();
+      await startAuthenticatedSession();
       return;
     }
     loginError?.classList.remove("hidden");
@@ -448,7 +484,7 @@ function bindAuth() {
     togglePassword.setAttribute("aria-label", isPassword ? "Ocultar senha" : "Mostrar senha");
     togglePassword.querySelector(".material-symbols-outlined").textContent = isPassword ? "visibility_off" : "visibility";
   });
-  document.querySelector("#logoutButton")?.addEventListener("click", lockAdmin);
+  document.querySelector("#logoutButton")?.addEventListener("click", logoutAdmin);
 }
 
 const brl = (value) =>
@@ -580,6 +616,64 @@ function loadState() {
 
 function saveState() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  scheduleCloudSave();
+}
+
+async function pushStateToCloud() {
+  if (!cloudSyncReady || !isAuthenticated()) return;
+  try {
+    const response = await fetch("/api/state", {
+      method: "PUT",
+      credentials: "same-origin",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ state }),
+    });
+    if (response.ok || response.status === 202) {
+      cloudSyncEnabled = true;
+      lastCloudSaveAt = new Date().toISOString();
+    }
+  } catch {
+    cloudSyncEnabled = false;
+  }
+}
+
+function scheduleCloudSave() {
+  if (!cloudSyncReady || !isAuthenticated()) return;
+  window.clearTimeout(cloudSaveTimer);
+  cloudSaveTimer = window.setTimeout(pushStateToCloud, 800);
+}
+
+async function syncFromCloud() {
+  try {
+    const response = await fetch("/api/state", { credentials: "same-origin" });
+    if (!response.ok) {
+      cloudSyncReady = false;
+      cloudSyncEnabled = false;
+      return false;
+    }
+    const payload = await response.json();
+    if (payload.configured === false) {
+      cloudSyncReady = false;
+      cloudSyncEnabled = false;
+      return false;
+    }
+    cloudSyncReady = true;
+    cloudSyncEnabled = true;
+    if (payload.exists && payload.state) {
+      state = normalizeState(payload.state);
+      (state.purchases || []).forEach(syncPurchaseExpense);
+      (state.orders || []).forEach(syncOrderIntegrations);
+      activeRecipeId = state.recipes.find((recipe) => recipe.id === activeRecipeId)?.id || state.recipes[0]?.id || "";
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    } else {
+      await pushStateToCloud();
+    }
+    return true;
+  } catch {
+    cloudSyncReady = false;
+    cloudSyncEnabled = false;
+    return false;
+  }
 }
 
 function addAudit(action, detail = "") {
@@ -4556,6 +4650,28 @@ function setCmsPreview(key, url) {
   if (preview && url) preview.src = url;
 }
 
+async function uploadCmsImageToCloud(kind, index, fileName, dataUrl) {
+  try {
+    const target = kind === "flavor" ? state.cms.flavors[Number(index)] : state.cms.images[Number(index)];
+    const response = await fetch("/api/media/upload", {
+      method: "POST",
+      credentials: "same-origin",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        kind,
+        key: target?.slug || target?.key || String(index),
+        fileName,
+        dataUrl,
+      }),
+    });
+    if (!response.ok) return null;
+    const payload = await response.json();
+    return payload.url || null;
+  } catch {
+    return null;
+  }
+}
+
 async function handleCmsImageUpload(kind, index, file) {
   if (!file) return;
   try {
@@ -4564,14 +4680,17 @@ async function handleCmsImageUpload(kind, index, file) {
     const urlField = kind === "flavor" ? "imageUrl" : "url";
     const recommended = target.recommended || FLAVOR_IMAGE_RECOMMENDED;
     const resized = await resizeImageFile(file, recommended);
-    target[urlField] = resized.dataUrl;
+    const cloudUrl = await uploadCmsImageToCloud(kind, index, file.name, resized.dataUrl);
+    const finalUrl = cloudUrl || resized.dataUrl;
+    target[urlField] = finalUrl;
     target.uploadedName = file.name;
     target.sourceSize = resized.sourceSize;
     target.resizedSize = resized.resizedSize;
+    target.storage = cloudUrl ? "supabase" : "local";
     saveState();
-    setCmsPreview(`${kind}-${index}`, resized.dataUrl);
+    setCmsPreview(`${kind}-${index}`, finalUrl);
     const urlInput = document.querySelector(kind === "flavor" ? `[data-cms-flavor="${index}"][data-field="imageUrl"]` : `[data-cms-image="${index}"][data-field="url"]`);
-    if (urlInput) urlInput.value = resized.dataUrl;
+    if (urlInput) urlInput.value = finalUrl;
   } catch (error) {
     window.alert("Não consegui processar essa imagem. Tente PNG, JPG, WebP ou uma imagem menor.");
     console.error(error);
@@ -4831,11 +4950,10 @@ document.querySelector("#roleSelector").addEventListener("change", (event) => {
   render();
 });
 
-function initializeAdmin() {
+async function initializeAdmin() {
   bindAuth();
   if (isAuthenticated()) {
-    unlockAdmin();
-    render();
+    await startAuthenticatedSession();
   } else {
     lockAdmin();
   }

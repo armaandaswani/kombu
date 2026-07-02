@@ -5,6 +5,7 @@ const ADMIN_EMAIL = "armaandaswani@icloud.com";
 const OFFICIAL_MAP_ID = "1Zn4OECfeuJkhDkCj6noQKZDeLgOUbn8";
 const OFFICIAL_MAP_URL = `https://www.google.com/maps/d/viewer?mid=${OFFICIAL_MAP_ID}`;
 const FLAVOR_CATEGORIES = ["Frutados", "Cítricos", "Florais", "Herbais", "Especiados"];
+let publicCloudState = null;
 
 const DEFAULT_PUBLIC_IMAGES = {
   heroBottle:
@@ -194,12 +195,27 @@ const escapeHtml = (value) =>
 
 const formatList = (items) => items.map((item) => `<span class="tag">${escapeHtml(item)}</span>`).join("");
 
-function readAdminState() {
+function readLocalAdminState() {
   try {
     const stored = localStorage.getItem(ADMIN_STORAGE_KEY) || LEGACY_ADMIN_STORAGE_KEYS.map((key) => localStorage.getItem(key)).find(Boolean);
     return stored ? JSON.parse(stored) : {};
   } catch {
     return {};
+  }
+}
+
+function readAdminState() {
+  return publicCloudState || readLocalAdminState();
+}
+
+async function loadPublicCloudState() {
+  try {
+    const response = await fetch("/api/public-state", { credentials: "same-origin" });
+    if (!response.ok) return;
+    const payload = await response.json();
+    if (payload.state) publicCloudState = payload.state;
+  } catch {
+    publicCloudState = null;
   }
 }
 
@@ -572,7 +588,7 @@ function normalizeLead(data, type) {
 }
 
 function syncLeadToAdminCrm(lead) {
-  const state = readAdminState();
+  const state = readLocalAdminState();
   const leads = Array.isArray(state.leads) ? state.leads : [];
   if (!leads.some((item) => item.id === lead.id)) leads.unshift(lead);
   state.leads = leads.slice(0, 200);
@@ -604,7 +620,8 @@ function handleHash() {
   }
 }
 
-function bootPublicSite() {
+async function bootPublicSite() {
+  await loadPublicCloudState();
   const currentYear = document.querySelector("#currentYear");
   if (currentYear) currentYear.textContent = new Date().getFullYear();
   applyPublicCms();

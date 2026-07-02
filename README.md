@@ -31,20 +31,33 @@ This is currently a static site with no build step. The root `index.html` can be
 - `/` -> `index.html`
 - `/admin` -> `admin.html`
 
-For lead email notifications, configure these Vercel environment variables:
+For production setup, follow [SETUP.md](/Users/armaandaswani/Desktop/Kombucha/Kombu New Site/SETUP.md).
+
+Required services:
+
+- Supabase: shared admin data, public CMS state and CMS image storage.
+- Resend: lead notifications and payment reminders.
+- Vercel: hosting, API routes and daily cron.
+
+Configure these Vercel environment variables:
 
 - `RESEND_API_KEY`: required for production email delivery.
 - `LEAD_NOTIFY_EMAIL`: optional, defaults to `armaandaswani@icloud.com`.
 - `LEAD_FROM_EMAIL`: optional sender identity, but production should use a verified Resend sender/domain.
+- `SUPABASE_URL`: Supabase project URL.
+- `SUPABASE_SERVICE_ROLE_KEY`: server-only Supabase service role key.
+- `ADMIN_PORTAL_PASSWORD`: admin password, currently `Rssb2010`.
+- `ADMIN_SESSION_SECRET`: long secret used to sign the admin cookie.
+- `CRON_SECRET`: secret used by the scheduled payment reminder route.
 
 ## Notes
 
-The admin is protected by a temporary front-end password gate for prototype review. This is not production security because static front-end code can be inspected.
+The admin still has a static password fallback for local preview. In production, API routes use `/api/auth/login` and an httpOnly session cookie.
 
-For production on Vercel, use Supabase or an equivalent backend for:
+For production on Vercel, Supabase is now the expected backend for:
 
-- Supabase Auth for real admin login.
-- Postgres tables for products/EANs, ingredients, recipes, batches, stock, sales, leads, expenses, partners and CMS.
+- Shared admin state across devices.
+- Public CMS/partner data for the live website.
 - Supabase Storage for public product images and invoice/receipt uploads.
-- Row-level security and role permissions.
+- Future Supabase Auth and role permissions.
 - Server-side cost snapshots for historical batch accuracy.

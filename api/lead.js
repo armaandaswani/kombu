@@ -1,43 +1,10 @@
-const ADMIN_EMAIL = "armaandaswani@icloud.com";
-
-function escapeHtml(value = "") {
-  return String(value)
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll("\"", "&quot;")
-    .replaceAll("'", "&#039;");
-}
-
-function normalizeBody(body) {
-  if (!body) return {};
-  if (typeof body === "string") {
-    try {
-      return JSON.parse(body);
-    } catch {
-      return {};
-    }
-  }
-  return body;
-}
-
-function normalizeLead(payload) {
-  const body = normalizeBody(payload);
-  const lead = body.lead || body;
-  return {
-    type: lead.type || "contato",
-    status: lead.status || "novo",
-    name: lead.name || lead.nome || "",
-    business: lead.business || lead.negocio || "",
-    businessType: lead.businessType || lead.tipo || "",
-    location: lead.location || lead.bairro || "",
-    whatsapp: lead.whatsapp || "",
-    instagram: lead.instagram || "",
-    message: lead.message || lead.mensagem || "",
-    source: lead.source || "site-publico",
-    createdAt: lead.createdAt || new Date().toISOString(),
-  };
-}
+const {
+  ADMIN_EMAIL,
+  appendLeadToState,
+  escapeHtml,
+  normalizeLead,
+  sendEmail,
+} = require("./_lib/kombu-backend");
 
 function leadSubject(lead) {
   const prefix = lead.type === "revenda" ? "Novo lead de revenda" : "Novo contato";
@@ -114,50 +81,47 @@ module.exports = async function handler(req, res) {
     return res.status(400).json({ ok: false, error: "missing_lead_data" });
   }
 
-  const apiKey = process.env.RESEND_API_KEY;
   const to = process.env.LEAD_NOTIFY_EMAIL || ADMIN_EMAIL;
   const from = process.env.LEAD_FROM_EMAIL || "Kombú Leads <onboarding@resend.dev>";
+  const persistence = await appendLeadToState(lead).catch((error) => ({
+    ok: false,
+    reason: error.code || error.message,
+  }));
 
-  if (!apiKey) {
+  if (!process.env.RESEND_API_KEY) {
     return res.status(202).json({
       ok: true,
       emailSent: false,
       reason: "missing_resend_api_key",
+      persisted: Boolean(persistence.ok),
       to,
     });
   }
 
   try {
-    const response = await fetch("https://api.resend.com/emails", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        from,
-        to: [to],
-        subject: leadSubject(lead),
-        html: leadHtml(lead),
-        text: leadText(lead),
-      }),
+    const email = await sendEmail({
+      from,
+      to,
+      subject: leadSubject(lead),
+      html: leadHtml(lead),
+      text: leadText(lead),
     });
-
-    const result = await response.json().catch(() => ({}));
-    if (!response.ok) {
-      return res.status(response.status).json({
+    if (!email.ok) {
+      return res.status(email.status || 502).json({
         ok: false,
         emailSent: false,
         error: "resend_error",
-        detail: result,
+        persisted: Boolean(persistence.ok),
+        detail: email.detail || email.reason,
       });
     }
 
-    return res.status(200).json({ ok: true, emailSent: true, to, id: result.id });
+    return res.status(200).json({ ok: true, emailSent: true, persisted: Boolean(persistence.ok), to, id: email.id });
   } catch (error) {
     return res.status(500).json({
       ok: false,
       emailSent: false,
+      persisted: Boolean(persistence.ok),
       error: "notification_failed",
       detail: error.message,
     });
