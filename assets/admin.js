@@ -54,6 +54,7 @@ const COST_INGREDIENT_SEED = [
 const PACKAGING_SEED = [
   { id: "pkg-bottle-500", name: "Garrafa 500ml", type: "bottle", productId: "", supplier: "Base de custos Kombú", unit: "un", costEach: 0.84, stock: 0, min: 0, location: "" },
   { id: "pkg-label-500", name: "Rótulo 500ml", type: "label", productId: "", supplier: "Base de custos Kombú", unit: "un", costEach: 0.85, stock: 0, min: 0, location: "" },
+  { id: "pkg-datador", name: "Datador por garrafa", type: "material", productId: "", supplier: "Base de custos Kombú", unit: "un", costEach: 0, stock: 0, min: 0, location: "" },
 ];
 
 const KOMBUCHA_BASE_INGREDIENTS = [
@@ -479,6 +480,13 @@ function escapeHtml(value) {
     .replaceAll("'", "&#039;");
 }
 
+function normalizeText(value) {
+  return String(value ?? "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
+}
+
 function inferPackagingType(item = {}) {
   const name = String(item.name || "").toLowerCase();
   if (item.type) return item.type;
@@ -505,6 +513,9 @@ function normalizeCmsFlavors(savedFlavors = []) {
 
 function ensureProductLabelInventory(data) {
   const genericLabelCost = Number(data.packaging.find((item) => item.id === "pkg-label-500")?.costEach || 0.85);
+  if (!data.packaging.some((item) => item.id === "pkg-datador")) {
+    data.packaging.push({ id: "pkg-datador", name: "Datador por garrafa", type: "material", productId: "", supplier: "Base de custos Kombú", unit: "un", costEach: 0, stock: 0, min: 0, location: "" });
+  }
   data.products.forEach((product) => {
     const labelId = labelPackagingIdForProduct(product);
     if (!data.packaging.some((item) => item.id === labelId)) data.packaging.push(labelPackagingForProduct(product, genericLabelCost));
@@ -519,6 +530,9 @@ function ensureProductLabelInventory(data) {
       packaging[genericIndex] = { ...packaging[genericIndex], itemId: labelId };
     } else if (!packaging.some((line) => line.itemId === labelId)) {
       packaging.push({ itemId: labelId, qty: 1 });
+    }
+    if (!packaging.some((line) => line.itemId === "pkg-datador")) {
+      packaging.push({ itemId: "pkg-datador", qty: 1 });
     }
     recipe.packaging = packaging;
   });
@@ -590,7 +604,65 @@ function productForBatch(batch) {
 }
 
 function ingredientForPurchase(purchase) {
-  return byId("ingredients", purchase?.ingredientId) || state.ingredients.find((item) => item.name === purchase?.item);
+  return byId("ingredients", purchase?.ingredientId) || state.ingredients.find((item) => normalizeText(item.name) === normalizeText(purchase?.item));
+}
+
+function purchaseStockKey(collection, itemId) {
+  return `${collection}:${itemId}`;
+}
+
+function parsePurchaseStockKey(value = "") {
+  const [collection, itemId] = String(value).split(":");
+  return { collection, itemId };
+}
+
+function stockItemFromKey(value = "") {
+  const { collection, itemId } = parsePurchaseStockKey(value);
+  if (collection === "ingredients") return { collection, item: byId("ingredients", itemId) };
+  if (collection === "packaging") return { collection, item: byId("packaging", itemId) };
+  return { collection, item: null };
+}
+
+function stockItemForPurchase(purchase) {
+  if (!purchase) return null;
+  if (purchase.stockCollection && purchase.stockItemId) {
+    const target = stockItemFromKey(purchaseStockKey(purchase.stockCollection, purchase.stockItemId));
+    if (target.item) return target;
+  }
+  if (purchase.packagingId) {
+    const material = byId("packaging", purchase.packagingId);
+    if (material) return { collection: "packaging", item: material };
+  }
+  const ingredient = ingredientForPurchase(purchase);
+  if (ingredient) return { collection: "ingredients", item: ingredient };
+  const material = state.packaging.find((item) => normalizeText(item.name) === normalizeText(purchase.item));
+  if (material) return { collection: "packaging", item: material };
+  return null;
+}
+
+function stockUnitFor(collection, item, fallback = "g") {
+  if (collection === "packaging") return item?.unit || fallback || "un";
+  return item?.purchaseUnit || fallback || "g";
+}
+
+function purchaseStockOptions(selected = "", { includeNew = true } = {}) {
+  const ingredients = state.ingredients
+    .map((item) => `<option value="${purchaseStockKey("ingredients", item.id)}" ${selected === purchaseStockKey("ingredients", item.id) ? "selected" : ""}>${escapeHtml(item.name)} (${escapeHtml(item.purchaseUnit || "g")})</option>`)
+    .join("");
+  const materials = state.packaging
+    .map((item) => `<option value="${purchaseStockKey("packaging", item.id)}" ${selected === purchaseStockKey("packaging", item.id) ? "selected" : ""}>${escapeHtml(item.name)} (${escapeHtml(item.unit || "un")})</option>`)
+    .join("");
+  const newOptions = includeNew
+    ? `<optgroup label="Novo item">
+        <option value="new:ingredients" ${selected === "new:ingredients" ? "selected" : ""}>+ Novo ingrediente</option>
+        <option value="new:packaging" ${selected === "new:packaging" ? "selected" : ""}>+ Novo material / outro item</option>
+      </optgroup>`
+    : "";
+  return `
+    <optgroup label="Ingredientes">${ingredients}</optgroup>
+    <optgroup label="Embalagens, rótulos e materiais">${materials}</optgroup>
+    ${newOptions}
+  `;
 }
 
 function productLabel(product) {
@@ -2073,7 +2145,7 @@ function renderAuditRows(limit) {
 
 function matchesSearch(item) {
   if (!globalSearch) return true;
-  return JSON.stringify(item).toLowerCase().includes(globalSearch.toLowerCase());
+  return normalizeText(JSON.stringify(item)).includes(normalizeText(globalSearch));
 }
 
 function render() {
@@ -2357,15 +2429,11 @@ function newIngredientForm() {
 }
 
 function newPurchaseForm() {
-  if (!state.ingredients.length) {
-    openModal(
-      "Cadastre um ingrediente primeiro",
-      "Compras",
-      `<p class="empty-note">Para registrar uma compra e atualizar estoque, primeiro crie um ingrediente. Você também pode criar ingredientes automaticamente ao criar uma receita.</p>
-       <button class="btn btn-primary" type="button" data-action="new-ingredient"><span class="material-symbols-outlined" aria-hidden="true">add</span>Novo ingrediente</button>`,
-    );
-    return;
-  }
+  const defaultKey = state.ingredients[0]
+    ? purchaseStockKey("ingredients", state.ingredients[0].id)
+    : state.packaging[0]
+      ? purchaseStockKey("packaging", state.packaging[0].id)
+      : "new:ingredients";
   openModal(
     "Registrar compra",
     "Compras",
@@ -2373,8 +2441,11 @@ function newPurchaseForm() {
       <form id="purchaseForm">
         <div class="input-grid">
           <label class="field"><span>Data</span><input name="date" type="date" value="${todayIso()}" required></label>
-          <label class="field"><span>Item</span><select name="ingredientId">${state.ingredients.map((item) => `<option value="${item.id}">${item.name}</option>`).join("")}</select></label>
+          <label class="field"><span>Item de estoque</span><select name="stockKey">${purchaseStockOptions(defaultKey)}</select></label>
           <label class="field"><span>Fornecedor</span><input name="supplier" value="${state.suppliers[0]?.name || ""}" required></label>
+          <label class="field" data-new-purchase-field><span>Nome do novo item</span><input name="newItemName" placeholder="Ex: lavanda, datador, caixa"></label>
+          <label class="field" data-new-purchase-field><span>Categoria / tipo</span><input name="newCategory" placeholder="fruta, chá, embalagem..."></label>
+          <label class="field" data-new-purchase-field><span>Unidade de estoque</span><select name="newPurchaseUnit">${unitOptions("g")}</select></label>
           <label class="field"><span>Pacotes / unidades compradas</span><input name="packageCount" type="number" min="0" step="1" value="1" required></label>
           <label class="field"><span>Conteúdo de cada pacote</span><input name="packageSize" type="number" min="0" step="0.001" required placeholder="Ex: 200"></label>
           <label class="field"><span>Unidade do pacote</span><select name="packageUnit">${unitOptions("g")}</select></label>
@@ -2393,52 +2464,120 @@ function newPurchaseForm() {
   );
   const form = document.querySelector("#purchaseForm");
   const preview = document.querySelector("#purchasePreview");
+  const updateNewFields = ({ suggestUnit = false } = {}) => {
+    const isNewItem = form.elements.stockKey.value.startsWith("new:");
+    form.querySelectorAll("[data-new-purchase-field]").forEach((field) => {
+      field.hidden = !isNewItem;
+    });
+    if (isNewItem && suggestUnit) {
+      const newType = parsePurchaseStockKey(form.elements.stockKey.value).itemId;
+      form.elements.newPurchaseUnit.value = newType === "packaging" ? "un" : "g";
+    }
+  };
   const purchaseCalc = () => {
-    const ingredient = byId("ingredients", form.elements.ingredientId.value);
+    const stockKey = form.elements.stockKey.value;
+    const isNewItem = stockKey.startsWith("new:");
+    const target = isNewItem ? { collection: parsePurchaseStockKey(stockKey).itemId, item: null } : stockItemFromKey(stockKey);
     const packageCount = Number(form.elements.packageCount.value || 0);
     const packageSize = Number(form.elements.packageSize.value || 0);
     const packageUnit = form.elements.packageUnit.value;
+    const stockUnit = isNewItem ? form.elements.newPurchaseUnit.value : stockUnitFor(target.collection, target.item, packageUnit);
     const total = Number(form.elements.total.value || 0);
-    const qty = purchaseQuantityInStockUnit({ packageCount, packageSize, packageUnit }, ingredient?.purchaseUnit || packageUnit);
+    const qty = purchaseQuantityInStockUnit({ packageCount, packageSize, packageUnit }, stockUnit);
     const costPerUnit = total / Math.max(qty, 0.000001);
+    const itemName = isNewItem ? form.elements.newItemName.value || "Novo item" : target.item?.name || "Item";
     preview.innerHTML = `
       <small>Total que entra no estoque</small>
-      <strong>${number(qty, 3)} ${ingredient?.purchaseUnit || packageUnit}</strong>
-      <span>Custo calculado: ${brl(costPerUnit)} por ${ingredient?.purchaseUnit || packageUnit}</span>
+      <strong>${number(qty, 3)} ${stockUnit}</strong>
+      <span>${itemName}: ${brl(costPerUnit)} por ${stockUnit}</span>
     `;
-    return { ingredient, packageCount, packageSize, packageUnit, qty, total, costPerUnit };
+    return { target, isNewItem, packageCount, packageSize, packageUnit, stockUnit, qty, total, costPerUnit };
   };
   form.addEventListener("input", purchaseCalc);
   form.addEventListener("change", purchaseCalc);
+  form.elements.stockKey.addEventListener("change", () => updateNewFields({ suggestUnit: true }));
+  updateNewFields();
   purchaseCalc();
   form.addEventListener("submit", (event) => {
     event.preventDefault();
     const data = Object.fromEntries(new FormData(form).entries());
-    const { ingredient, packageCount, packageSize, packageUnit, qty, total, costPerUnit } = purchaseCalc();
-    if (!ingredient || !qty || !total) {
+    const { target, isNewItem, packageCount, packageSize, packageUnit, stockUnit, qty, total, costPerUnit } = purchaseCalc();
+    if (isNewItem && !data.newItemName.trim()) {
+      window.alert("Informe o nome do novo item.");
+      return;
+    }
+    if (!qty || !total) {
       window.alert("Informe item, quantidade comprada e total pago.");
       return;
     }
-    ingredient.stock = Number(ingredient.stock || 0) + qty;
-    ingredient.costPerUnit = costPerUnit;
-    ingredient.supplier = data.supplier || ingredient.supplier;
+    let collection = target.collection;
+    let stockItem = target.item;
+    if (isNewItem && collection === "ingredients") {
+      stockItem = findOrCreateIngredient({
+        name: data.newItemName,
+        category: data.newCategory || "outro",
+        supplier: data.supplier,
+        purchaseUnit: stockUnit,
+        packageCount,
+        packageSize,
+        packageUnit,
+        packageTotal: total,
+        costPerUnit: "",
+        stock: 0,
+        min: 0,
+      });
+    }
+    if (isNewItem && collection === "packaging") {
+      const materialType = ["bottle", "label", "box", "material"].includes(data.newCategory) ? data.newCategory : "material";
+      stockItem = findOrCreatePackaging({
+        name: data.newItemName,
+        type: materialType,
+        supplier: data.supplier,
+        unit: stockUnit,
+        costEach: costPerUnit,
+        stock: 0,
+        min: 0,
+      });
+    }
+    if (!stockItem) {
+      window.alert("Escolha um item válido.");
+      return;
+    }
+    stockItem.stock = Number(stockItem.stock || 0) + qty;
+    stockItem.supplier = data.supplier || stockItem.supplier;
+    stockItem.packageCount = packageCount;
+    stockItem.packageSize = packageSize;
+    stockItem.packageUnit = packageUnit;
+    stockItem.packageTotal = total;
+    stockItem.needsCost = false;
+    stockItem.status = "ativo";
+    if (collection === "packaging") {
+      stockItem.unit = stockUnit;
+      stockItem.costEach = costPerUnit;
+    } else {
+      stockItem.purchaseUnit = stockUnit;
+      stockItem.costPerUnit = costPerUnit;
+    }
     state.purchases.unshift({
       id: id("pur"),
       date: data.date,
       supplier: data.supplier,
-      item: ingredient.name,
-      ingredientId: ingredient.id,
+      item: stockItem.name,
+      ingredientId: collection === "ingredients" ? stockItem.id : "",
+      packagingId: collection === "packaging" ? stockItem.id : "",
+      stockCollection: collection,
+      stockItemId: stockItem.id,
       packageCount,
       packageSize,
       packageUnit,
       qty,
-      unit: ingredient.purchaseUnit,
+      unit: stockUnit,
       total,
       costPerUnit,
       method: data.method,
       buyer: data.buyer,
     });
-    addAudit("Compra registrada", `${ingredient.name}: ${number(qty, 3)} ${ingredient.purchaseUnit} por ${brl(total)} (${brl(costPerUnit)}/${ingredient.purchaseUnit})`);
+    addAudit("Compra registrada", `${stockItem.name}: ${number(qty, 3)} ${stockUnit} por ${brl(total)} (${brl(costPerUnit)}/${stockUnit})`);
     closeModal();
     render();
   });
@@ -2611,21 +2750,20 @@ function ingredientSelectOptions(selected = "__new__") {
   ].join("");
 }
 
+function packagingSelectOptions(selected = "__new__") {
+  return [
+    `<option value="__new__" ${selected === "__new__" ? "selected" : ""}>Novo material</option>`,
+    ...state.packaging.map((item) => `<option value="${item.id}" ${selected === item.id ? "selected" : ""}>${escapeHtml(item.name)} (${escapeHtml(item.unit || "un")})</option>`),
+  ].join("");
+}
+
 function recipeIngredientPreset(line = {}) {
-  const ingredient = byId("ingredients", line.ingredientId) || state.ingredients.find((item) => item.name.toLowerCase() === String(line.name || "").toLowerCase());
+  const ingredient = byId("ingredients", line.ingredientId) || state.ingredients.find((item) => normalizeText(item.name) === normalizeText(line.name));
   return {
     ingredientId: ingredient?.id || line.ingredientId || "__new__",
     name: ingredient?.name || line.name || "",
     category: ingredient?.category || line.category || "",
-    supplier: ingredient?.supplier || line.supplier || "",
     purchaseUnit: ingredient?.purchaseUnit || line.purchaseUnit || "g",
-    costPerUnit: ingredient?.costPerUnit ?? line.costPerUnit ?? "",
-    stock: ingredient?.stock ?? line.stock ?? "",
-    min: ingredient?.min ?? line.min ?? "",
-    packageCount: line.packageCount ?? ingredient?.packageCount ?? (ingredient?.packageGram ? 1 : ""),
-    packageSize: line.packageSize ?? ingredient?.packageSize ?? ingredient?.packageGram ?? "",
-    packageUnit: line.packageUnit ?? ingredient?.packageUnit ?? (ingredient?.packageGram ? "g" : "g"),
-    packageTotal: line.packageTotal ?? ingredient?.packageTotal ?? ingredient?.packageCost ?? "",
     usageQty: line.usageQty ?? "",
     usageUnit: line.usageUnit || "g",
     base: line.base || false,
@@ -2635,22 +2773,12 @@ function recipeIngredientPreset(line = {}) {
 function recipeIngredientRowTemplate(line = {}) {
   const preset = recipeIngredientPreset(line);
   return `
-    <div class="builder-row recipe-ingredient-row" ${preset.base ? "data-kombucha-base-row" : ""}>
-      <label class="field"><span>Ingrediente cadastrado</span><select data-field="ingredientId">${ingredientSelectOptions(preset.ingredientId)}</select></label>
-      <label class="field"><span>Ingrediente</span><input data-field="name" value="${escapeHtml(preset.name)}" placeholder="Ex: gengibre"></label>
-      <label class="field"><span>Categoria</span><input data-field="category" value="${escapeHtml(preset.category)}" placeholder="fruta, chá, especiaria..."></label>
-      <label class="field"><span>Fornecedor</span><input data-field="supplier" value="${escapeHtml(preset.supplier)}"></label>
-      <label class="field"><span>Un. estoque</span><select data-field="purchaseUnit">${unitOptions(preset.purchaseUnit)}</select></label>
-      <label class="field"><span>Pacotes comprados</span><input data-field="packageCount" type="number" min="0" step="1" value="${preset.packageCount}" placeholder="1"></label>
-      <label class="field"><span>Conteúdo por pacote</span><input data-field="packageSize" type="number" min="0" step="0.001" value="${preset.packageSize}" placeholder="100"></label>
-      <label class="field"><span>Un. do pacote</span><select data-field="packageUnit">${unitOptions(preset.packageUnit)}</select></label>
-      <label class="field"><span>Total pago</span><input data-field="packageTotal" type="number" min="0" step="0.01" value="${preset.packageTotal}" placeholder="40"></label>
-      <label class="field"><span>Custo calculado</span><input data-field="costPerUnit" type="number" min="0" step="0.000001" value="${inputNumber(preset.costPerUnit)}" placeholder="automático" readonly></label>
-      <label class="field"><span>Estoque inicial</span><input data-field="stock" type="number" min="0" step="0.001" value="${preset.stock}" placeholder="auto"></label>
-      <label class="field"><span>Estoque mínimo</span><input data-field="min" type="number" min="0" step="0.001" value="${preset.min}" placeholder="0"></label>
-      <label class="field"><span>Qtd. usada na receita</span><input data-field="usageQty" type="number" min="0" step="0.001" value="${preset.usageQty}"></label>
-      <label class="field"><span>Un. uso</span><select data-field="usageUnit">${unitOptions(preset.usageUnit)}</select></label>
-      <div class="calculated-note" data-ingredient-cost-preview>Preencha quantidade comprada e total pago para calcular o custo.</div>
+    <div class="builder-row recipe-ingredient-row simple-recipe-row" ${preset.base ? "data-kombucha-base-row" : ""}>
+      <label class="field"><span>Ingrediente</span><select data-field="ingredientId">${ingredientSelectOptions(preset.ingredientId)}</select></label>
+      <label class="field" data-new-ingredient-field><span>Novo ingrediente</span><input data-field="name" value="${preset.ingredientId === "__new__" ? escapeHtml(preset.name) : ""}" placeholder="Use só se for novo"></label>
+      <label class="field" data-new-ingredient-field><span>Categoria</span><input data-field="category" value="${preset.ingredientId === "__new__" ? escapeHtml(preset.category) : ""}" placeholder="fruta, chá, flor..."></label>
+      <label class="field"><span>Qtd. usada</span><input data-field="usageQty" type="number" min="0" step="0.001" value="${preset.usageQty}"></label>
+      <label class="field"><span>Un.</span><select data-field="usageUnit">${unitOptions(preset.usageUnit)}</select></label>
       <button class="icon-btn" type="button" data-remove-builder-row aria-label="Remover ingrediente">
         <span class="material-symbols-outlined" aria-hidden="true">delete</span>
       </button>
@@ -2663,14 +2791,11 @@ function kombuchaBaseIngredientRows() {
 }
 
 function recipePackagingPreset(line = {}) {
-  const material = state.packaging.find((item) => item.name.toLowerCase() === String(line.name || "").toLowerCase());
+  const material = byId("packaging", line.itemId) || state.packaging.find((item) => normalizeText(item.name) === normalizeText(line.name));
   return {
+    itemId: material?.id || line.itemId || "__new__",
     name: material?.name || line.name || "",
     type: material?.type || line.type || "material",
-    supplier: material?.supplier || line.supplier || "",
-    costEach: material?.costEach ?? line.costEach ?? "",
-    stock: material?.stock ?? line.stock ?? "",
-    min: material?.min ?? line.min ?? "",
     qtyPerBottle: line.qtyPerBottle ?? "",
     base: line.base || false,
   };
@@ -2679,13 +2804,10 @@ function recipePackagingPreset(line = {}) {
 function recipePackagingRowTemplate(line = {}) {
   const preset = recipePackagingPreset(line);
   return `
-    <div class="builder-row recipe-packaging-row" ${preset.base ? "data-kombucha-base-row" : ""}>
-      <label class="field"><span>Embalagem/material</span><input data-field="name" value="${escapeHtml(preset.name)}" placeholder="Ex: garrafa 500ml"></label>
-      <label class="field"><span>Tipo</span><select data-field="type"><option value="bottle" ${preset.type === "bottle" ? "selected" : ""}>Garrafa/tampa</option><option value="label" ${preset.type === "label" ? "selected" : ""}>Rótulo</option><option value="box" ${preset.type === "box" ? "selected" : ""}>Caixa</option><option value="material" ${preset.type === "material" ? "selected" : ""}>Outro</option></select></label>
-      <label class="field"><span>Fornecedor</span><input data-field="supplier" value="${escapeHtml(preset.supplier)}"></label>
-      <label class="field"><span>Custo por unidade</span><input data-field="costEach" type="number" min="0" step="0.01" value="${preset.costEach}" placeholder="0"></label>
-      <label class="field"><span>Estoque inicial</span><input data-field="stock" type="number" min="0" step="1" value="${preset.stock}" placeholder="0"></label>
-      <label class="field"><span>Estoque mínimo</span><input data-field="min" type="number" min="0" step="1" value="${preset.min}" placeholder="0"></label>
+    <div class="builder-row recipe-packaging-row simple-packaging-row" ${preset.base ? "data-kombucha-base-row" : ""}>
+      <label class="field"><span>Material</span><select data-field="itemId">${packagingSelectOptions(preset.itemId)}</select></label>
+      <label class="field" data-new-packaging-field><span>Novo material</span><input data-field="name" value="${preset.itemId === "__new__" ? escapeHtml(preset.name) : ""}" placeholder="Use só se for novo"></label>
+      <label class="field" data-new-packaging-field><span>Tipo</span><select data-field="type"><option value="bottle" ${preset.type === "bottle" ? "selected" : ""}>Garrafa/tampa</option><option value="label" ${preset.type === "label" ? "selected" : ""}>Rótulo</option><option value="box" ${preset.type === "box" ? "selected" : ""}>Caixa</option><option value="material" ${preset.type === "material" ? "selected" : ""}>Outro</option></select></label>
       <label class="field"><span>Qtd. por garrafa</span><input data-field="qtyPerBottle" type="number" min="0" step="0.001" value="${preset.qtyPerBottle}"></label>
       <button class="icon-btn" type="button" data-remove-builder-row aria-label="Remover embalagem">
         <span class="material-symbols-outlined" aria-hidden="true">delete</span>
@@ -2698,6 +2820,7 @@ function kombuchaBasePackagingRows() {
   return [
     { name: "Garrafa 500ml", type: "bottle", qtyPerBottle: 1 },
     { name: "Rótulo 500ml", type: "label", qtyPerBottle: 1 },
+    { name: "Datador por garrafa", type: "material", qtyPerBottle: 1 },
   ].map((line) => recipePackagingRowTemplate({ ...line, base: true })).join("");
 }
 
@@ -2751,8 +2874,8 @@ function fillIngredientRowFromExisting(row, ingredientId) {
     updateIngredientPurchasePreview(row);
     return;
   }
-  setRowField(row, "name", ingredient.name);
-  setRowField(row, "category", ingredient.category || "");
+  setRowField(row, "name", "");
+  setRowField(row, "category", "");
   setRowField(row, "supplier", ingredient.supplier || "");
   setRowField(row, "purchaseUnit", ingredient.purchaseUnit || "g");
   setRowField(row, "packageCount", ingredient.packageCount || (ingredient.packageGram ? 1 : ""));
@@ -2769,15 +2892,38 @@ function refreshIngredientBuilderRows(container = document) {
   container.querySelectorAll(".recipe-ingredient-row, .recipe-edit-ingredient-row").forEach(updateIngredientPurchasePreview);
 }
 
+function refreshCompactBuilderRows(container = document) {
+  container.querySelectorAll(".recipe-ingredient-row, .recipe-edit-ingredient-row").forEach((row) => {
+    const isNew = row.querySelector('[data-field="ingredientId"]')?.value === "__new__";
+    row.querySelectorAll("[data-new-ingredient-field]").forEach((field) => {
+      field.hidden = !isNew;
+    });
+  });
+  container.querySelectorAll(".recipe-packaging-row, .recipe-edit-packaging-row").forEach((row) => {
+    const isNew = row.querySelector('[data-field="itemId"]')?.value === "__new__";
+    row.querySelectorAll("[data-new-packaging-field]").forEach((field) => {
+      field.hidden = !isNew;
+    });
+  });
+}
+
 function bindIngredientBuilderRows(form) {
   form.addEventListener("change", (event) => {
     const row = event.target.closest(".recipe-ingredient-row, .recipe-edit-ingredient-row");
-    if (!row || !event.target.dataset.field) return;
-    if (event.target.dataset.field === "ingredientId") {
+    const packagingRow = event.target.closest(".recipe-packaging-row, .recipe-edit-packaging-row");
+    if (row && event.target.dataset.field === "ingredientId") {
       fillIngredientRowFromExisting(row, event.target.value);
+      refreshCompactBuilderRows(form);
       return;
     }
-    if (["purchaseUnit", "packageCount", "packageSize", "packageUnit", "packageTotal"].includes(event.target.dataset.field)) {
+    if (packagingRow && event.target.dataset.field === "itemId") {
+      if (event.target.value !== "__new__") {
+        setRowField(packagingRow, "name", "");
+      }
+      refreshCompactBuilderRows(form);
+      return;
+    }
+    if (row && ["purchaseUnit", "packageCount", "packageSize", "packageUnit", "packageTotal"].includes(event.target.dataset.field)) {
       updateIngredientPurchasePreview(row);
     }
   });
@@ -2789,11 +2935,12 @@ function bindIngredientBuilderRows(form) {
     }
   });
   refreshIngredientBuilderRows(form);
+  refreshCompactBuilderRows(form);
 }
 
 function findOrCreateIngredient(data) {
-  const normalizedName = data.name.toLowerCase();
-  let ingredient = state.ingredients.find((item) => item.name.toLowerCase() === normalizedName);
+  const normalizedName = normalizeText(data.name);
+  let ingredient = state.ingredients.find((item) => normalizeText(item.name) === normalizedName);
   const costCalc = ingredientPackageCost(data, data.purchaseUnit || ingredient?.purchaseUnit || "g");
   const costWasProvided = costCalc.hasPurchaseCost || String(data.costPerUnit ?? "").trim() !== "";
   const costValue = costCalc.hasPurchaseCost ? costCalc.costPerUnit : Number(data.costPerUnit || 0);
@@ -2835,8 +2982,8 @@ function findOrCreateIngredient(data) {
 }
 
 function findOrCreatePackaging(data) {
-  const normalizedName = data.name.toLowerCase();
-  let material = state.packaging.find((item) => item.name.toLowerCase() === normalizedName);
+  const normalizedName = normalizeText(data.name);
+  let material = state.packaging.find((item) => normalizeText(item.name) === normalizedName);
   if (!material) {
     material = {
       id: id("pkg"),
@@ -2892,14 +3039,16 @@ function newRecipeForm() {
           <div class="table-toolbar">
             <div>
               <h3>Ingredientes da receita</h3>
-              <p>Quando for Kombucha, chá e açúcar entram automaticamente. Ingrediente novo sem custo ficará como custo pendente.</p>
+              <p>Escolha o ingrediente e a quantidade usada. Preços e compras ficam na aba Ingredientes/Compras.</p>
             </div>
-            <button class="btn btn-outline" type="button" data-add-ingredient-row>
-              <span class="material-symbols-outlined" aria-hidden="true">add</span>
-              Ingrediente
-            </button>
           </div>
           <div id="recipeIngredientRows">${kombuchaBaseIngredientRows()}${recipeIngredientRowTemplate()}</div>
+          <div class="builder-bottom-actions">
+            <button class="btn btn-outline" type="button" data-add-ingredient-row>
+              <span class="material-symbols-outlined" aria-hidden="true">add</span>
+              Adicionar ingrediente
+            </button>
+          </div>
         </div>
 
         <div class="builder-section">
@@ -2908,13 +3057,20 @@ function newRecipeForm() {
               <h3>Embalagens e materiais</h3>
               <p>Garrafa, tampa, rótulo, caixa, lacre ou qualquer material por garrafa.</p>
             </div>
-            <button class="btn btn-outline" type="button" data-add-packaging-row>
-              <span class="material-symbols-outlined" aria-hidden="true">add</span>
-              Material
-            </button>
           </div>
           <div id="recipePackagingRows">${kombuchaBasePackagingRows()}${recipePackagingRowTemplate()}</div>
+          <div class="builder-bottom-actions">
+            <button class="btn btn-outline" type="button" data-add-packaging-row>
+              <span class="material-symbols-outlined" aria-hidden="true">add</span>
+              Adicionar material
+            </button>
+          </div>
         </div>
+
+        <label class="check-row field-full">
+          <input name="editPricesAfterSave" type="checkbox">
+          <span>Editar preços dos ingredientes depois de salvar</span>
+        </label>
 
         <button class="btn btn-primary" type="submit">
           <span class="material-symbols-outlined" aria-hidden="true">calculate</span>
@@ -2964,14 +3120,17 @@ function bindRecipeBuilder() {
       .map(readBuilderRow)
       .filter((row) => (row.ingredientId !== "__new__" || row.name) && Number(row.usageQty) > 0)
       .map((row) => {
-        const ingredient = row.ingredientId && row.ingredientId !== "__new__" ? applyIngredientPackageCost(byId("ingredients", row.ingredientId), row) : findOrCreateIngredient(row);
+        const ingredient = row.ingredientId && row.ingredientId !== "__new__"
+          ? byId("ingredients", row.ingredientId)
+          : findOrCreateIngredient({
+              name: row.name,
+              category: row.category || "outro",
+              purchaseUnit: row.usageUnit || "g",
+              costPerUnit: "",
+              stock: 0,
+              min: 0,
+            });
         if (!ingredient) return null;
-        if (row.name && row.ingredientId !== "__new__") ingredient.name = row.name;
-        if (ingredient && row.category) ingredient.category = row.category;
-        if (ingredient && row.supplier) ingredient.supplier = row.supplier;
-        if (ingredient && row.purchaseUnit) ingredient.purchaseUnit = row.purchaseUnit;
-        if (ingredient && row.stock !== "") ingredient.stock = Number(row.stock || 0);
-        if (ingredient && row.min !== "") ingredient.min = Number(row.min || 0);
         return {
           ingredientId: ingredient.id,
           qty: Number(row.usageQty),
@@ -2981,14 +3140,25 @@ function bindRecipeBuilder() {
       .filter(Boolean);
     const packaging = Array.from(form.querySelectorAll(".recipe-packaging-row"))
       .map(readBuilderRow)
-      .filter((row) => row.name && Number(row.qtyPerBottle) > 0)
+      .filter((row) => (row.itemId !== "__new__" || row.name) && Number(row.qtyPerBottle) > 0)
       .map((row) => {
-        const material = findOrCreatePackaging(row);
+        const material = row.itemId && row.itemId !== "__new__"
+          ? byId("packaging", row.itemId)
+          : findOrCreatePackaging({
+              name: row.name,
+              type: row.type || "material",
+              unit: "un",
+              costEach: 0,
+              stock: 0,
+              min: 0,
+            });
+        if (!material) return null;
         return {
           itemId: material.id,
           qty: Number(row.qtyPerBottle),
         };
-      });
+      })
+      .filter(Boolean);
     const recipe = {
       id: id("rec"),
       productId: data.productId || "",
@@ -3012,7 +3182,7 @@ function bindRecipeBuilder() {
     const pendingCostNames = ingredients.map((line) => byId("ingredients", line.ingredientId)).filter(ingredientNeedsCost).map((ingredient) => ingredient.name);
     addAudit("Receita criada", `${recipe.flavor} ${recipe.version} com ${ingredients.length} ingredientes e ${packaging.length} materiais${pendingCostNames.length ? `. Custos pendentes: ${pendingCostNames.join(", ")}` : "."}`);
     closeModal();
-    setModule("costs");
+    setModule(data.editPricesAfterSave === "on" ? "ingredients" : "costs");
   });
 }
 
@@ -3098,8 +3268,8 @@ function deletePurchase(recordId) {
   const purchase = byId("purchases", recordId);
   if (!purchase) return;
   if (!window.confirm(`Excluir compra de "${purchase.item}"? O estoque correspondente será ajustado quando possível.`)) return;
-  const ingredient = ingredientForPurchase(purchase);
-  if (ingredient) ingredient.stock = Math.max(0, Number(ingredient.stock || 0) - Number(purchase.qty || 0));
+  const target = stockItemForPurchase(purchase);
+  if (target?.item) target.item.stock = Math.max(0, Number(target.item.stock || 0) - Number(purchase.qty || 0));
   state.purchases = state.purchases.filter((item) => item.id !== recordId);
   addAudit("Compra excluída", purchase.item);
   render();
@@ -3183,28 +3353,13 @@ const expenseFields = [
 function recipeIngredientEditRow(line = {}) {
   const ingredient = byId("ingredients", line.ingredientId) || {};
   const selectedId = line.ingredientId || "__new__";
-  const purchaseUnit = ingredient.purchaseUnit || "g";
-  const packageCount = ingredient.packageCount || (ingredient.packageGram ? 1 : "");
-  const packageSize = ingredient.packageSize || ingredient.packageGram || "";
-  const packageUnit = ingredient.packageUnit || (ingredient.packageGram ? "g" : purchaseUnit);
-  const packageTotal = ingredient.packageTotal || ingredient.packageCost || "";
   return `
-    <div class="builder-row recipe-edit-ingredient-row">
-      <label class="field"><span>Ingrediente cadastrado</span><select data-field="ingredientId">${ingredientSelectOptions(selectedId)}</select></label>
-      <label class="field"><span>Nome / novo ingrediente</span><input data-field="name" value="${escapeHtml(ingredient.name || "")}" placeholder="Preencha se for novo ou para renomear"></label>
-      <label class="field"><span>Categoria</span><input data-field="category" value="${escapeHtml(ingredient.category || "")}" placeholder="fruta, chá, flor..."></label>
-      <label class="field"><span>Fornecedor</span><input data-field="supplier" value="${escapeHtml(ingredient.supplier || "")}"></label>
-      <label class="field"><span>Un. estoque</span><select data-field="purchaseUnit">${unitOptions(purchaseUnit)}</select></label>
-      <label class="field"><span>Pacotes comprados</span><input data-field="packageCount" type="number" min="0" step="1" value="${packageCount}" placeholder="1"></label>
-      <label class="field"><span>Conteúdo por pacote</span><input data-field="packageSize" type="number" min="0" step="0.001" value="${packageSize}" placeholder="100"></label>
-      <label class="field"><span>Un. do pacote</span><select data-field="packageUnit">${unitOptions(packageUnit)}</select></label>
-      <label class="field"><span>Total pago</span><input data-field="packageTotal" type="number" min="0" step="0.01" value="${packageTotal}" placeholder="40"></label>
-      <label class="field"><span>Custo calculado</span><input data-field="costPerUnit" type="number" min="0" step="0.000001" value="${inputNumber(ingredient.costPerUnit || 0)}" readonly></label>
-      <label class="field"><span>Estoque atual</span><input data-field="stock" type="number" step="0.001" value="${ingredient.stock ?? ""}"></label>
-      <label class="field"><span>Estoque mínimo</span><input data-field="min" type="number" step="0.001" value="${ingredient.min ?? ""}"></label>
+    <div class="builder-row recipe-edit-ingredient-row simple-recipe-row">
+      <label class="field"><span>Ingrediente</span><select data-field="ingredientId">${ingredientSelectOptions(selectedId)}</select></label>
+      <label class="field" data-new-ingredient-field><span>Novo ingrediente</span><input data-field="name" value="${selectedId === "__new__" ? escapeHtml(ingredient.name || line.name || "") : ""}" placeholder="Use só se for novo"></label>
+      <label class="field" data-new-ingredient-field><span>Categoria</span><input data-field="category" value="${selectedId === "__new__" ? escapeHtml(ingredient.category || line.category || "") : ""}" placeholder="fruta, chá, flor..."></label>
       <label class="field"><span>Qtd. usada</span><input data-field="qty" type="number" min="0" step="0.001" value="${line.qty ?? 0}"></label>
-      <label class="field"><span>Un. de uso</span><select data-field="unit">${unitOptions(line.unit || "g")}</select></label>
-      <div class="calculated-note" data-ingredient-cost-preview>Preencha quantidade comprada e total pago para calcular o custo.</div>
+      <label class="field"><span>Un.</span><select data-field="unit">${unitOptions(line.unit || "g")}</select></label>
       <button class="icon-btn" type="button" data-remove-builder-row aria-label="Remover ingrediente">
         <span class="material-symbols-outlined" aria-hidden="true">delete</span>
       </button>
@@ -3215,18 +3370,11 @@ function recipeIngredientEditRow(line = {}) {
 function recipePackagingEditRow(line = {}) {
   const material = byId("packaging", line.itemId) || {};
   const selectedId = line.itemId || state.packaging[0]?.id || "__new__";
-  const productOptions = [{ value: "", label: "Genérico" }, ...state.products.map((product) => ({ value: product.id, label: productLabel(product) }))];
   return `
-    <div class="builder-row recipe-edit-packaging-row">
-      <label class="field"><span>Material</span><select data-field="itemId"><option value="__new__" ${selectedId === "__new__" ? "selected" : ""}>Criar novo material</option>${state.packaging.map((item) => `<option value="${item.id}" ${selectedId === item.id ? "selected" : ""}>${escapeHtml(item.name)} (${inferPackagingType(item)})</option>`).join("")}</select></label>
-      <label class="field"><span>Nome / novo material</span><input data-field="name" value="${escapeHtml(material.name || "")}" placeholder="Garrafa, rótulo, tampa..."></label>
-      <label class="field"><span>Tipo</span><select data-field="type"><option value="bottle" ${inferPackagingType(material) === "bottle" ? "selected" : ""}>Garrafa/tampa</option><option value="label" ${inferPackagingType(material) === "label" ? "selected" : ""}>Rótulo</option><option value="box" ${inferPackagingType(material) === "box" ? "selected" : ""}>Caixa</option><option value="material" ${inferPackagingType(material) === "material" ? "selected" : ""}>Outro</option></select></label>
-      <label class="field"><span>Sabor/produto</span><select data-field="productId">${productOptions.map((option) => `<option value="${option.value}" ${String(option.value) === String(material.productId || "") ? "selected" : ""}>${escapeHtml(option.label)}</option>`).join("")}</select></label>
-      <label class="field"><span>Fornecedor</span><input data-field="supplier" value="${escapeHtml(material.supplier || "")}"></label>
-      <label class="field"><span>Un. estoque</span><select data-field="unit">${unitOptions(material.unit || "un")}</select></label>
-      <label class="field"><span>Custo unitário</span><input data-field="costEach" type="number" min="0" step="0.01" value="${material.costEach ?? ""}"></label>
-      <label class="field"><span>Estoque atual</span><input data-field="stock" type="number" step="1" value="${material.stock ?? ""}"></label>
-      <label class="field"><span>Estoque mínimo</span><input data-field="min" type="number" step="1" value="${material.min ?? ""}"></label>
+    <div class="builder-row recipe-edit-packaging-row simple-packaging-row">
+      <label class="field"><span>Material</span><select data-field="itemId">${packagingSelectOptions(selectedId)}</select></label>
+      <label class="field" data-new-packaging-field><span>Novo material</span><input data-field="name" value="${selectedId === "__new__" ? escapeHtml(material.name || line.name || "") : ""}" placeholder="Use só se for novo"></label>
+      <label class="field" data-new-packaging-field><span>Tipo</span><select data-field="type"><option value="bottle" ${inferPackagingType(material) === "bottle" ? "selected" : ""}>Garrafa/tampa</option><option value="label" ${inferPackagingType(material) === "label" ? "selected" : ""}>Rótulo</option><option value="box" ${inferPackagingType(material) === "box" ? "selected" : ""}>Caixa</option><option value="material" ${inferPackagingType(material) === "material" ? "selected" : ""}>Outro</option></select></label>
       <label class="field"><span>Qtd. por garrafa</span><input data-field="qty" type="number" min="0" step="0.001" value="${line.qty ?? 1}"></label>
       <button class="icon-btn" type="button" data-remove-builder-row aria-label="Remover material">
         <span class="material-symbols-outlined" aria-hidden="true">delete</span>
@@ -3262,14 +3410,16 @@ function editRecipeForm(recipeId) {
           <div class="table-toolbar">
             <div>
               <h3>Ingredientes usados</h3>
-              <p>Edite as quantidades desta receita diretamente aqui.</p>
+              <p>Escolha somente o ingrediente e a quantidade usada. Custo e estoque são editados em Ingredientes/Compras.</p>
             </div>
-            <button class="btn btn-outline" type="button" data-add-edit-ingredient>
-              <span class="material-symbols-outlined" aria-hidden="true">add</span>
-              Ingrediente
-            </button>
           </div>
           <div id="recipeEditIngredientRows">${(recipe.ingredients?.length ? recipe.ingredients : [{}]).map(recipeIngredientEditRow).join("")}</div>
+          <div class="builder-bottom-actions">
+            <button class="btn btn-outline" type="button" data-add-edit-ingredient>
+              <span class="material-symbols-outlined" aria-hidden="true">add</span>
+              Adicionar ingrediente
+            </button>
+          </div>
         </div>
 
         <div class="builder-section">
@@ -3278,13 +3428,20 @@ function editRecipeForm(recipeId) {
               <h3>Embalagens e rótulos</h3>
               <p>Inclua garrafa, rótulo do sabor, tampa, caixa ou qualquer material consumido.</p>
             </div>
-            <button class="btn btn-outline" type="button" data-add-edit-packaging>
-              <span class="material-symbols-outlined" aria-hidden="true">add</span>
-              Material
-            </button>
           </div>
           <div id="recipeEditPackagingRows">${(recipe.packaging?.length ? recipe.packaging : [{}]).map(recipePackagingEditRow).join("")}</div>
+          <div class="builder-bottom-actions">
+            <button class="btn btn-outline" type="button" data-add-edit-packaging>
+              <span class="material-symbols-outlined" aria-hidden="true">add</span>
+              Adicionar material
+            </button>
+          </div>
         </div>
+
+        <label class="check-row field-full">
+          <input name="editPricesAfterSave" type="checkbox">
+          <span>Editar preços dos ingredientes depois de salvar</span>
+        </label>
 
         <button class="btn btn-primary" type="submit">
           <span class="material-symbols-outlined" aria-hidden="true">save</span>
@@ -3337,27 +3494,14 @@ function editRecipeForm(recipeId) {
         .filter((row) => row.ingredientId && Number(row.qty) > 0)
         .map((row) => {
           let ingredient = row.ingredientId === "__new__" ? null : byId("ingredients", row.ingredientId);
-          if (ingredient) {
-            if (row.name) ingredient.name = row.name;
-            ingredient.category = row.category || ingredient.category || "outro";
-            ingredient.supplier = row.supplier || ingredient.supplier || "";
-            ingredient.purchaseUnit = row.purchaseUnit || ingredient.purchaseUnit || "g";
-            applyIngredientPackageCost(ingredient, row);
-            if (row.stock !== "") ingredient.stock = Number(row.stock || 0);
-            if (row.min !== "") ingredient.min = Number(row.min || 0);
-          } else if (row.name) {
+          if (!ingredient && row.name) {
             ingredient = findOrCreateIngredient({
               name: row.name,
               category: row.category || "outro",
-              supplier: row.supplier || "",
-              purchaseUnit: row.purchaseUnit || "g",
-              costPerUnit: row.costPerUnit || 0,
-              packageCount: row.packageCount || "",
-              packageSize: row.packageSize || "",
-              packageUnit: row.packageUnit || row.purchaseUnit || "g",
-              packageTotal: row.packageTotal || "",
-              stock: row.stock || 0,
-              min: row.min || 0,
+              purchaseUnit: row.unit || "g",
+              costPerUnit: "",
+              stock: 0,
+              min: 0,
             });
           }
           if (!ingredient) return null;
@@ -3366,28 +3510,17 @@ function editRecipeForm(recipeId) {
         .filter(Boolean),
       packaging: Array.from(form.querySelectorAll(".recipe-edit-packaging-row"))
         .map(readBuilderRow)
-        .filter((row) => row.itemId && Number(row.qty) > 0)
+        .filter((row) => (row.itemId !== "__new__" || row.name) && Number(row.qty) > 0)
         .map((row) => {
           let material = row.itemId === "__new__" ? null : byId("packaging", row.itemId);
-          if (material) {
-            if (row.name) material.name = row.name;
-            material.type = row.type || material.type || inferPackagingType(material);
-            material.productId = row.productId || "";
-            material.supplier = row.supplier || material.supplier || "";
-            material.unit = row.unit || material.unit || "un";
-            if (row.costEach !== "") material.costEach = Number(row.costEach || 0);
-            if (row.stock !== "") material.stock = Number(row.stock || 0);
-            if (row.min !== "") material.min = Number(row.min || 0);
-          } else if (row.name) {
+          if (!material && row.name) {
             material = findOrCreatePackaging({
               name: row.name,
               type: row.type || "material",
-              productId: row.productId || "",
-              supplier: row.supplier || "",
-              unit: row.unit || "un",
-              costEach: row.costEach || 0,
-              stock: row.stock || 0,
-              min: row.min || 0,
+              unit: "un",
+              costEach: 0,
+              stock: 0,
+              min: 0,
             });
           }
           if (!material) return null;
@@ -3398,7 +3531,8 @@ function editRecipeForm(recipeId) {
     activeRecipeId = recipe.id;
     addAudit("Receita atualizada", recipeLabel(recipe));
     closeModal();
-    render();
+    if (data.editPricesAfterSave === "on") setModule("ingredients");
+    else render();
   });
 }
 
@@ -3651,13 +3785,26 @@ function editPurchaseForm(purchaseId) {
     purchase.packageSize = Number(purchase.qty || 0);
     purchase.packageUnit = purchase.unit || "g";
   }
-  if (purchase && !purchase.ingredientId) purchase.ingredientId = ingredientForPurchase(purchase)?.id || "";
-  const previousIngredientId = purchase?.ingredientId;
+  const currentTarget = stockItemForPurchase(purchase);
+  if (purchase && currentTarget?.item) {
+    purchase.stockKey = purchaseStockKey(currentTarget.collection, currentTarget.item.id);
+    purchase.stockCollection = currentTarget.collection;
+    purchase.stockItemId = currentTarget.item.id;
+  }
+  const previousTarget = currentTarget ? { collection: currentTarget.collection, itemId: currentTarget.item.id } : null;
   const previousQty = Number(purchase?.qty || 0);
   const purchaseFields = [
     { name: "date", label: "Data", type: "date", required: true },
     { name: "supplier", label: "Fornecedor" },
-    { name: "ingredientId", label: "Item", type: "select", options: state.ingredients.map((ingredient) => ({ value: ingredient.id, label: `${ingredient.name} (${ingredient.purchaseUnit})` })) },
+    {
+      name: "stockKey",
+      label: "Item de estoque",
+      type: "select",
+      options: [
+        ...state.ingredients.map((ingredient) => ({ value: purchaseStockKey("ingredients", ingredient.id), label: `${ingredient.name} (${ingredient.purchaseUnit})` })),
+        ...state.packaging.map((material) => ({ value: purchaseStockKey("packaging", material.id), label: `${material.name} (${material.unit || "un"})` })),
+      ],
+    },
     { name: "packageCount", label: "Pacotes / unidades", type: "number", min: 0, step: "1" },
     { name: "packageSize", label: "Conteúdo por pacote", type: "number", min: 0, step: "0.001" },
     { name: "packageUnit", label: "Unidade do pacote", type: "select", options: ["kg", "g", "l", "ml", "un"] },
@@ -3666,19 +3813,35 @@ function editPurchaseForm(purchaseId) {
     { name: "buyer", label: "Comprador" },
   ];
   editRecordForm("purchases", purchaseId, "Editar compra", purchaseFields, (record) => {
-    const previousIngredient = byId("ingredients", previousIngredientId);
-    const nextIngredient = byId("ingredients", record.ingredientId);
-    const nextQty = purchaseQuantityInStockUnit(record, nextIngredient?.purchaseUnit || record.packageUnit || record.unit);
-    if (previousIngredient) previousIngredient.stock = Math.max(0, Number(previousIngredient.stock || 0) - previousQty);
-    if (nextIngredient) {
-      nextIngredient.stock = Number(nextIngredient.stock || 0) + nextQty;
-      nextIngredient.costPerUnit = Number(record.total || 0) / Math.max(nextQty, 0.000001);
-      nextIngredient.supplier = record.supplier || nextIngredient.supplier;
+    const previousItem = previousTarget ? stockItemFromKey(purchaseStockKey(previousTarget.collection, previousTarget.itemId)) : null;
+    const nextTarget = stockItemFromKey(record.stockKey);
+    const unit = stockUnitFor(nextTarget.collection, nextTarget.item, record.packageUnit || record.unit);
+    const nextQty = purchaseQuantityInStockUnit(record, unit);
+    const nextCost = Number(record.total || 0) / Math.max(nextQty, 0.000001);
+    if (previousItem?.item) previousItem.item.stock = Math.max(0, Number(previousItem.item.stock || 0) - previousQty);
+    if (nextTarget.item) {
+      nextTarget.item.stock = Number(nextTarget.item.stock || 0) + nextQty;
+      nextTarget.item.supplier = record.supplier || nextTarget.item.supplier;
+      nextTarget.item.packageCount = Number(record.packageCount || 0);
+      nextTarget.item.packageSize = Number(record.packageSize || 0);
+      nextTarget.item.packageUnit = record.packageUnit;
+      nextTarget.item.packageTotal = Number(record.total || 0);
+      if (nextTarget.collection === "packaging") {
+        nextTarget.item.unit = unit;
+        nextTarget.item.costEach = nextCost;
+      } else {
+        nextTarget.item.purchaseUnit = unit;
+        nextTarget.item.costPerUnit = nextCost;
+      }
     }
-    record.item = nextIngredient?.name || record.item;
+    record.item = nextTarget.item?.name || record.item;
     record.qty = nextQty;
-    record.unit = nextIngredient?.purchaseUnit || record.unit || record.packageUnit;
-    record.costPerUnit = Number(record.total || 0) / Math.max(nextQty, 0.000001);
+    record.unit = unit;
+    record.costPerUnit = nextCost;
+    record.stockCollection = nextTarget.collection;
+    record.stockItemId = nextTarget.item?.id || "";
+    record.ingredientId = nextTarget.collection === "ingredients" ? nextTarget.item?.id || "" : "";
+    record.packagingId = nextTarget.collection === "packaging" ? nextTarget.item?.id || "" : "";
   });
 }
 
