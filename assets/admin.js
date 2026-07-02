@@ -428,6 +428,16 @@ function lockAdmin() {
   document.querySelector("#adminPassword")?.focus();
 }
 
+function stripSensitiveUrlParams() {
+  const url = new URL(window.location.href);
+  const sensitive = ["password", "adminPassword", "senha"];
+  const hadSensitiveParam = sensitive.some((key) => url.searchParams.has(key));
+  if (!hadSensitiveParam) return;
+  sensitive.forEach((key) => url.searchParams.delete(key));
+  const nextUrl = `${url.pathname}${url.search}${url.hash}`;
+  window.history.replaceState({}, document.title, nextUrl || url.pathname);
+}
+
 async function authenticateAdmin(password) {
   try {
     const response = await fetch("/api/auth/login", {
@@ -4951,6 +4961,7 @@ document.querySelector("#roleSelector").addEventListener("change", (event) => {
 });
 
 async function initializeAdmin() {
+  stripSensitiveUrlParams();
   bindAuth();
   if (isAuthenticated()) {
     await startAuthenticatedSession();

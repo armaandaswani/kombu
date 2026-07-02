@@ -37,19 +37,19 @@ Temporary sender fallback works with `onboarding@resend.dev`, but a verified Kom
 
 ## Vercel Environment Variables
 
-Add these in Vercel Project Settings -> Environment Variables:
+Add these in Vercel Project Settings -> Environment Variables. Do not paste `KEY=value` into one field. Put the key name in `Key` and the matching value in `Value`.
 
-```bash
-ADMIN_PORTAL_PASSWORD=Rssb2010
-ADMIN_SESSION_SECRET=<long random secret>
-SUPABASE_URL=<supabase project url>
-SUPABASE_SERVICE_ROLE_KEY=<supabase service role key>
-SUPABASE_PUBLIC_MEDIA_BUCKET=public-media
-RESEND_API_KEY=<resend api key>
-LEAD_NOTIFY_EMAIL=armaandaswani@icloud.com
-LEAD_FROM_EMAIL=Kombu <leads@your-verified-domain.com>
-CRON_SECRET=<long random secret>
-```
+| Key | Value |
+| --- | --- |
+| `ADMIN_PORTAL_PASSWORD` | `Rssb2010` |
+| `ADMIN_SESSION_SECRET` | A long random secret, for example from `openssl rand -base64 48` |
+| `SUPABASE_URL` | Your Supabase project URL, like `https://abcxyz.supabase.co` |
+| `SUPABASE_SERVICE_ROLE_KEY` | Supabase service role key, not the anon/public key |
+| `SUPABASE_PUBLIC_MEDIA_BUCKET` | `public-media` |
+| `RESEND_API_KEY` | Your Resend API key, usually starts with `re_` |
+| `LEAD_NOTIFY_EMAIL` | `armaandaswani@icloud.com` |
+| `LEAD_FROM_EMAIL` | A verified Resend sender, for example `Kombu <leads@kombukombucha.com.br>` |
+| `CRON_SECRET` | A second long random secret, for example from `openssl rand -base64 48` |
 
 After setting variables, redeploy on Vercel.
 

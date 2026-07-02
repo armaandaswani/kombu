@@ -22,6 +22,9 @@ function readBody(req) {
       try {
         resolve(JSON.parse(raw));
       } catch {
+        if (String(req.headers["content-type"] || "").includes("application/x-www-form-urlencoded")) {
+          return resolve(Object.fromEntries(new URLSearchParams(raw)));
+        }
         resolve({});
       }
     });

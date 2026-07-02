@@ -17,5 +17,10 @@ module.exports = async function handler(req, res) {
     iat: Date.now(),
     exp: Date.now() + 1000 * 60 * 60 * 12,
   });
+  if (String(req.headers.accept || "").includes("text/html")) {
+    res.statusCode = 303;
+    res.setHeader("Location", "/admin");
+    return res.end();
+  }
   return json(res, 200, { ok: true });
 };
