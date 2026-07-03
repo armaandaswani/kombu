@@ -4,6 +4,8 @@ const LEGACY_ADMIN_STORAGE_KEYS = ["kombuAdminStateV2"];
 const ADMIN_EMAIL = "armaandaswani@icloud.com";
 const OFFICIAL_MAP_ID = "1Zn4OECfeuJkhDkCj6noQKZDeLgOUbn8";
 const OFFICIAL_MAP_URL = `https://www.google.com/maps/d/viewer?mid=${OFFICIAL_MAP_ID}`;
+const KOMBU_WHATSAPP = "5592992097165";
+const BUY_MESSAGE = "Olá! Quero comprar Kombú. Pode me enviar os sabores disponíveis e a melhor forma de retirada/entrega?";
 const FLAVOR_CATEGORIES = ["Frutados", "Cítricos", "Florais", "Herbais", "Especiados"];
 let publicCloudState = null;
 
@@ -199,6 +201,10 @@ const escapeHtml = (value) =>
 
 const formatList = (items) => items.map((item) => `<span class="tag">${escapeHtml(item)}</span>`).join("");
 
+function whatsappUrl(message = BUY_MESSAGE) {
+  return `https://api.whatsapp.com/send?phone=${KOMBU_WHATSAPP}&text=${encodeURIComponent(message)}`;
+}
+
 function readLocalAdminState() {
   try {
     const stored = localStorage.getItem(ADMIN_STORAGE_KEY) || LEGACY_ADMIN_STORAGE_KEYS.map((key) => localStorage.getItem(key)).find(Boolean);
@@ -348,6 +354,9 @@ function applyPublicCms() {
   }
   const mapFrame = document.querySelector("#officialMapFrame");
   if (mapFrame) mapFrame.src = getOfficialMapEmbedUrl();
+  document.querySelectorAll("[data-buy-whatsapp]").forEach((link) => {
+    link.href = whatsappUrl();
+  });
 }
 
 function renderBenefits() {
@@ -384,9 +393,9 @@ function renderFlavors(filter = "todos") {
                 <span class="material-symbols-outlined" aria-hidden="true">visibility</span>
                 Detalhes
               </button>
-              <a class="btn btn-outline" href="${getOfficialMapUrl()}" target="_blank" rel="noreferrer">
-                <span class="material-symbols-outlined" aria-hidden="true">location_on</span>
-                Onde encontrar
+              <a class="btn btn-outline" href="${whatsappUrl(`Olá! Quero comprar Kombú sabor ${flavor.name}. Está disponível?`)}" target="_blank" rel="noreferrer">
+                <span class="material-symbols-outlined" aria-hidden="true">chat</span>
+                Comprar
               </a>
             </div>
           </div>
@@ -428,9 +437,9 @@ function openFlavor(slug) {
         <h3 style="margin-top: 18px">Perfil do sabor</h3>
         <p>${escapeHtml(flavor.angle)}</p>
         <div class="hero-actions">
-          <a class="btn btn-primary" href="${getOfficialMapUrl()}" target="_blank" rel="noreferrer">
-            <span class="material-symbols-outlined" aria-hidden="true">near_me</span>
-            Onde encontrar
+          <a class="btn btn-primary" href="${whatsappUrl(`Olá! Quero comprar Kombú sabor ${flavor.name}. Está disponível?`)}" target="_blank" rel="noreferrer">
+            <span class="material-symbols-outlined" aria-hidden="true">chat</span>
+            Comprar este sabor
           </a>
           <a class="btn btn-outline" href="#revenda">
             <span class="material-symbols-outlined" aria-hidden="true">storefront</span>
@@ -462,6 +471,8 @@ function neighborhoods() {
 }
 
 function renderPartnerFilters() {
+  const visiblePartners = getPublicPartners();
+  document.querySelector(".locator-toolbar")?.classList.toggle("is-hidden", visiblePartners.length === 0);
   document.querySelector("#typeFilters").innerHTML = partnerTypes()
     .map(
       (type, index) =>
@@ -490,6 +501,8 @@ function filteredPartners() {
 
 function renderPartners() {
   const visible = filteredPartners();
+  const hasPartners = getPublicPartners().length > 0;
+  document.querySelector(".locator-layout")?.classList.toggle("no-partners", !hasPartners);
   const pins = document.querySelector("#mapPins");
   if (pins) pins.innerHTML = visible
     .map(
@@ -530,14 +543,18 @@ function renderPartners() {
         )
         .join("")
     : `
-      <article class="partner-card">
-        <span class="eyebrow">Mapa oficial</span>
-        <h3>Veja onde comprar Kombú</h3>
-        <p>Use o mapa oficial para encontrar pontos de venda e rotas da Kombú.</p>
+      <article class="partner-card partner-card-cta">
+        <span class="eyebrow">Compra direta</span>
+        <h3>Quer comprar Kombú hoje?</h3>
+        <p>Os parceiros ainda não foram cadastrados no localizador. Fale com a Kombú pelo WhatsApp para saber sabores disponíveis, retirada e entrega.</p>
         <div class="partner-actions">
-          <a class="btn btn-primary" href="${getOfficialMapUrl()}" target="_blank" rel="noreferrer">
-            <span class="material-symbols-outlined" aria-hidden="true">map</span>
-            Abrir mapa
+          <a class="btn btn-primary" href="${whatsappUrl()}" target="_blank" rel="noreferrer">
+            <span class="material-symbols-outlined" aria-hidden="true">chat</span>
+            Comprar agora
+          </a>
+          <a class="btn btn-outline" href="#sabores">
+            <span class="material-symbols-outlined" aria-hidden="true">local_bar</span>
+            Ver sabores
           </a>
         </div>
       </article>

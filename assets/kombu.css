@@ -361,6 +361,7 @@ textarea:focus-visible {
   border: 1px solid rgba(45, 75, 40, 0.18);
   border-radius: var(--radius-sm);
   background: rgba(255, 255, 255, 0.72);
+  min-width: 0;
   padding: 12px;
 }
 
@@ -464,6 +465,7 @@ textarea:focus-visible {
 
 .feature-card,
 .benefit-card {
+  min-width: 0;
   padding: 22px;
 }
 
@@ -503,6 +505,10 @@ textarea:focus-visible {
   justify-content: space-between;
   gap: 12px;
   margin-bottom: 22px;
+}
+
+.locator-toolbar.is-hidden {
+  display: none !important;
 }
 
 .segmented {
@@ -664,6 +670,15 @@ textarea:focus-visible {
   align-items: start;
 }
 
+.locator-layout.no-partners {
+  grid-template-columns: minmax(0, 760px);
+  justify-content: center;
+}
+
+.locator-layout.no-partners .map-panel {
+  display: none;
+}
+
 .map-panel {
   position: relative;
   min-height: 560px;
@@ -711,6 +726,13 @@ textarea:focus-visible {
 
 .partner-card {
   padding: 18px;
+}
+
+.partner-card-cta {
+  background:
+    linear-gradient(145deg, rgba(217, 249, 157, 0.42), rgba(255, 255, 255, 0.96) 48%, rgba(245, 205, 195, 0.24)),
+    #fff;
+  padding: 26px;
 }
 
 .partner-card h3 {
@@ -770,6 +792,40 @@ textarea:focus-visible {
   color: #304236;
   max-width: 590px;
   font-size: 1rem;
+}
+
+.reseller-proof-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  max-width: 620px;
+  margin: 18px 0 18px;
+}
+
+.reseller-proof-grid article {
+  display: grid;
+  gap: 5px;
+  border: 1px solid rgba(45, 75, 40, 0.14);
+  border-radius: var(--radius-sm);
+  background: rgba(255, 255, 255, 0.72);
+  padding: 13px;
+}
+
+.reseller-proof-grid .material-symbols-outlined {
+  color: var(--green);
+  font-size: 22px;
+}
+
+.reseller-proof-grid strong {
+  color: var(--ink);
+  line-height: 1.15;
+}
+
+.reseller-proof-grid span:last-child {
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 700;
+  line-height: 1.35;
 }
 
 .reseller-points {
@@ -3057,5 +3113,248 @@ textarea:focus-visible {
   body:not(.admin-body) #resellerForm button[type="submit"] {
     min-height: 42px;
     margin-top: 2px;
+  }
+}
+
+@media (max-width: 760px) {
+  body:not(.admin-body) .container {
+    width: min(100% - 28px, var(--container));
+  }
+
+  body:not(.admin-body) .section {
+    padding: 44px 0;
+  }
+
+  body:not(.admin-body) .section-tight {
+    padding: 36px 0;
+  }
+
+  body:not(.admin-body) .section-head {
+    gap: 11px;
+    margin-bottom: 18px;
+  }
+
+  body:not(.admin-body) .section-head p,
+  body:not(.admin-body) .lead {
+    font-size: 0.96rem;
+    line-height: 1.55;
+  }
+
+  body:not(.admin-body) .hero {
+    padding: 34px 0 28px;
+  }
+
+  body:not(.admin-body) .hero-grid {
+    gap: 22px;
+  }
+
+  body:not(.admin-body) .hero-copy .lead {
+    margin-bottom: 18px;
+  }
+
+  body:not(.admin-body) .hero-actions {
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 16px;
+  }
+
+  body:not(.admin-body) .hero-actions .btn:first-child {
+    grid-column: auto;
+  }
+
+  body:not(.admin-body) .hero-actions .btn-outline {
+    display: none;
+  }
+
+  body:not(.admin-body) .hero-actions .btn {
+    min-width: 0;
+    min-height: 46px;
+    padding: 10px;
+    font-size: 0.78rem;
+    white-space: normal;
+    text-align: center;
+  }
+
+  body:not(.admin-body) .hero-proof,
+  body:not(.admin-body) .feature-grid,
+  body:not(.admin-body) .benefit-grid {
+    min-width: 0;
+  }
+
+  body:not(.admin-body) .proof-pill,
+  body:not(.admin-body) .feature-card,
+  body:not(.admin-body) .benefit-card,
+  body:not(.admin-body) .reseller-proof-grid article {
+    min-width: 0;
+    overflow: hidden;
+  }
+
+  body:not(.admin-body) .proof-pill span,
+  body:not(.admin-body) .feature-card h3,
+  body:not(.admin-body) .benefit-card h3,
+  body:not(.admin-body) .reseller-proof-grid strong,
+  body:not(.admin-body) .reseller-proof-grid span:last-child {
+    overflow-wrap: anywhere;
+  }
+
+  body:not(.admin-body) .hero-media {
+    min-height: 305px;
+  }
+
+  body:not(.admin-body) .bottle-stage img {
+    max-height: 286px;
+  }
+
+  body:not(.admin-body) .feature-grid {
+    gap: 10px;
+  }
+
+  body:not(.admin-body) .feature-card,
+  body:not(.admin-body) .benefit-card {
+    padding: 12px 9px;
+  }
+
+  body:not(.admin-body) .benefit-grid {
+    gap: 10px;
+  }
+
+  body:not(.admin-body) .flavor-toolbar,
+  body:not(.admin-body) .locator-toolbar {
+    gap: 12px;
+    margin-bottom: 18px;
+  }
+
+  body:not(.admin-body) .flavor-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
+  }
+
+  body:not(.admin-body) .flavor-card {
+    min-height: 182px;
+  }
+
+  body:not(.admin-body) .flavor-card-media {
+    min-height: 96px;
+    padding: 10px 6px 0;
+  }
+
+  body:not(.admin-body) .flavor-card-media img {
+    max-height: 92px;
+  }
+
+  body:not(.admin-body) .flavor-card-body {
+    gap: 5px;
+    padding: 9px;
+  }
+
+  body:not(.admin-body) .flavor-card h3 {
+    font-size: clamp(0.8rem, 3.1vw, 0.94rem);
+    line-height: 1.1;
+  }
+
+  body:not(.admin-body) .locator-layout.no-partners {
+    grid-template-columns: 1fr;
+  }
+
+  body:not(.admin-body) .partner-card-cta {
+    padding: 18px;
+  }
+
+  body:not(.admin-body) .partner-card-cta h3 {
+    font-size: 1.18rem;
+  }
+
+  body:not(.admin-body) .partner-actions .btn {
+    flex: 1 1 100%;
+  }
+
+  body:not(.admin-body) .revenda-section .revenda-grid {
+    gap: 18px;
+  }
+
+  body:not(.admin-body) .reseller-copy h2 {
+    font-size: clamp(1.52rem, 6.6vw, 2rem);
+  }
+
+  body:not(.admin-body) .reseller-proof-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 9px;
+    margin: 16px 0;
+  }
+
+  body:not(.admin-body) .reseller-proof-grid article {
+    padding: 11px;
+  }
+
+  body:not(.admin-body) .reseller-proof-grid strong {
+    font-size: 0.84rem;
+  }
+
+  body:not(.admin-body) .reseller-proof-grid span:last-child {
+    font-size: 0.7rem;
+    line-height: 1.3;
+  }
+
+  body:not(.admin-body) .reseller-points {
+    display: none;
+  }
+
+  body:not(.admin-body) .reseller-cta {
+    min-height: 46px;
+  }
+
+  body:not(.admin-body) .form-panel,
+  body:not(.admin-body) .story-panel {
+    padding: 18px;
+  }
+
+  body:not(.admin-body) #resellerForm {
+    padding-bottom: 18px;
+  }
+
+  body:not(.admin-body) #resellerForm .input-grid {
+    gap: 10px;
+  }
+
+  body:not(.admin-body) #resellerForm .field {
+    gap: 5px;
+  }
+
+  body:not(.admin-body) #resellerForm .field input,
+  body:not(.admin-body) #resellerForm .field select,
+  body:not(.admin-body) #resellerForm .field textarea {
+    min-height: 44px;
+    padding: 9px 10px;
+  }
+
+  body:not(.admin-body) #resellerForm .field textarea {
+    min-height: 68px;
+  }
+
+  body:not(.admin-body) #resellerForm button[type="submit"] {
+    min-height: 46px;
+    margin-top: 4px;
+  }
+}
+
+@media (max-width: 380px) {
+  body:not(.admin-body) .flavor-grid {
+    gap: 8px;
+  }
+
+  body:not(.admin-body) .flavor-card {
+    min-height: 172px;
+  }
+
+  body:not(.admin-body) .flavor-card-media {
+    min-height: 88px;
+  }
+
+  body:not(.admin-body) .flavor-card-media img {
+    max-height: 84px;
+  }
+
+  body:not(.admin-body) .flavor-card-body {
+    padding: 8px 6px;
   }
 }

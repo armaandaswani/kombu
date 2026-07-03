@@ -30,7 +30,7 @@
       href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&family=Playfair+Display:wght@600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="assets/kombu.css?v=20260703a" />
+    <link rel="stylesheet" href="assets/kombu.css?v=20260703f" />
     <script type="application/ld+json">
       {
         "@context": "https://schema.org",
@@ -73,9 +73,9 @@
             <span class="material-symbols-outlined" aria-hidden="true">handshake</span>
             Revenda
           </a>
-          <a class="btn btn-primary" href="https://www.google.com/maps/d/viewer?mid=1Zn4OECfeuJkhDkCj6noQKZDeLgOUbn8" target="_blank" rel="noreferrer">
-            <span class="material-symbols-outlined" aria-hidden="true">location_on</span>
-            Onde Encontrar
+          <a class="btn btn-primary" data-buy-whatsapp href="https://api.whatsapp.com/send?phone=5592992097165" target="_blank" rel="noreferrer">
+            <span class="material-symbols-outlined" aria-hidden="true">shopping_bag</span>
+            Comprar
           </a>
           <button class="icon-btn mobile-menu-button" id="menuToggle" aria-label="Abrir menu" type="button">
             <span class="material-symbols-outlined" aria-hidden="true">menu</span>
@@ -105,13 +105,13 @@
                 <span class="material-symbols-outlined" aria-hidden="true">local_bar</span>
                 Conhecer sabores
               </a>
-              <a class="btn btn-lime" href="https://www.google.com/maps/d/viewer?mid=1Zn4OECfeuJkhDkCj6noQKZDeLgOUbn8" target="_blank" rel="noreferrer">
-                <span class="material-symbols-outlined" aria-hidden="true">near_me</span>
-                Onde encontrar
-              </a>
-              <a class="btn btn-outline" href="https://api.whatsapp.com/send?phone=5592992097165" target="_blank" rel="noreferrer">
+              <a class="btn btn-lime" data-buy-whatsapp href="https://api.whatsapp.com/send?phone=5592992097165" target="_blank" rel="noreferrer">
                 <span class="material-symbols-outlined" aria-hidden="true">chat</span>
-                WhatsApp
+                Comprar agora
+              </a>
+              <a class="btn btn-outline" href="#onde-encontrar">
+                <span class="material-symbols-outlined" aria-hidden="true">location_on</span>
+                Onde encontrar
               </a>
             </div>
             <div class="hero-proof" aria-label="Destaques Kombú">
@@ -287,7 +287,7 @@
               <h2 id="onde-title">Encontre Kombú perto de você.</h2>
             </div>
             <p>
-              Use o mapa oficial para encontrar pontos de venda e rotas.
+              Quando houver parceiros cadastrados, eles aparecem aqui. Enquanto isso, fale com a Kombú para saber disponibilidade e retirada.
             </p>
           </div>
           <div class="locator-toolbar">
@@ -319,11 +319,33 @@
               <span class="material-symbols-outlined" aria-hidden="true">handshake</span>
               Revenda Kombú
             </span>
-            <h2 id="revenda-title">Revenda Kombú no seu negócio.</h2>
+            <h2 id="revenda-title">Coloque Kombú na geladeira do seu negócio.</h2>
             <p class="lead">
-              Para cafés, empórios, restaurantes, academias, mercados e lojas que querem oferecer
-              uma kombucha artesanal premium feita em Manaus.
+              Para cafés, empórios, restaurantes, academias, mercados e lojas que querem vender
+              uma opção saudável, premium e feita em Manaus sem parecer mais do mesmo.
             </p>
+            <div class="reseller-proof-grid" aria-label="Vantagens para revendedores">
+              <article>
+                <span class="material-symbols-outlined" aria-hidden="true">local_bar</span>
+                <strong>Linha variada</strong>
+                <span>sabores frutados, cítricos, florais e herbais</span>
+              </article>
+              <article>
+                <span class="material-symbols-outlined" aria-hidden="true">verified</span>
+                <strong>Produto premium</strong>
+                <span>ingredientes reais e apresentação de gôndola</span>
+              </article>
+              <article>
+                <span class="material-symbols-outlined" aria-hidden="true">payments</span>
+                <strong>Venda com história</strong>
+                <span>produto local com origem, processo e ingredientes claros</span>
+              </article>
+              <article>
+                <span class="material-symbols-outlined" aria-hidden="true">local_shipping</span>
+                <strong>Operação próxima</strong>
+                <span>marca local com relacionamento direto</span>
+              </article>
+            </div>
             <ul class="reseller-points">
               <li>Produto artesanal, naturalmente gaseificado.</li>
               <li>Sabores feitos com ingredientes reais.</li>
@@ -331,14 +353,14 @@
             </ul>
             <a class="btn btn-lime reseller-cta" href="#resellerForm">
               <span class="material-symbols-outlined" aria-hidden="true">send</span>
-              Quero revender
+              Quero receber condições
             </a>
           </div>
           <form class="form-panel" id="resellerForm">
             <div class="form-intro">
               <span class="eyebrow">Parceria comercial</span>
-              <h3>Fale com a Kombú.</h3>
-              <p>Preencha os dados e retornaremos com as condições de revenda.</p>
+              <h3>Receba valores, sabores e reposição.</h3>
+              <p>Conte o perfil do seu ponto e a Kombú retorna com as condições de revenda.</p>
             </div>
             <div class="input-grid">
               <label class="field">
@@ -441,9 +463,9 @@
                 <span class="material-symbols-outlined" aria-hidden="true">local_bar</span>
                 Conhecer sabores
               </a>
-              <a class="btn btn-lime" href="https://www.google.com/maps/d/viewer?mid=1Zn4OECfeuJkhDkCj6noQKZDeLgOUbn8" target="_blank" rel="noreferrer">
-                <span class="material-symbols-outlined" aria-hidden="true">near_me</span>
-                Onde encontrar
+              <a class="btn btn-lime" data-buy-whatsapp href="https://api.whatsapp.com/send?phone=5592992097165" target="_blank" rel="noreferrer">
+                <span class="material-symbols-outlined" aria-hidden="true">chat</span>
+                Comprar agora
               </a>
               <a class="btn btn-outline" href="#revenda">
                 <span class="material-symbols-outlined" aria-hidden="true">storefront</span>
@@ -505,7 +527,7 @@
         <div>
           <h4>Navegação</h4>
           <p><a href="#sabores">Sabores</a></p>
-          <p><a href="https://www.google.com/maps/d/viewer?mid=1Zn4OECfeuJkhDkCj6noQKZDeLgOUbn8" target="_blank" rel="noreferrer">Onde Encontrar</a></p>
+          <p><a href="#onde-encontrar">Onde Encontrar</a></p>
           <p><a href="#revenda">Revenda</a></p>
         </div>
         <div>
@@ -531,8 +553,8 @@
         <span class="material-symbols-outlined" aria-hidden="true">local_bar</span>
         Sabores
       </a>
-      <a href="https://www.google.com/maps/d/viewer?mid=1Zn4OECfeuJkhDkCj6noQKZDeLgOUbn8" target="_blank" rel="noreferrer">
-        <span class="material-symbols-outlined" aria-hidden="true">near_me</span>
+      <a data-buy-whatsapp href="https://api.whatsapp.com/send?phone=5592992097165" target="_blank" rel="noreferrer">
+        <span class="material-symbols-outlined" aria-hidden="true">chat</span>
         Comprar
       </a>
       <a href="#revenda">
@@ -556,6 +578,6 @@
       </div>
     </div>
 
-    <script src="assets/public.js?v=20260703a"></script>
+    <script src="assets/public.js?v=20260703f"></script>
   </body>
 </html>
