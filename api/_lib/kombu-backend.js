@@ -75,6 +75,39 @@ function hasSupabase() {
   return Boolean(config.url && config.serviceRoleKey);
 }
 
+function backendErrorPayload(error) {
+  const status = Number(error?.status || 500);
+  const detail = error?.detail;
+  const supabaseCode = detail?.code || detail?.error || "";
+  const detailText = typeof detail === "string" ? detail : detail?.message || detail?.hint || supabaseCode || "";
+  let code = error?.code || error?.message || "server_error";
+  let hint = "Verifique as variaveis de ambiente da Vercel e o setup do Supabase.";
+
+  if (code === "missing_supabase_env") {
+    hint = "Configure SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY na Vercel.";
+  } else if (code === "fetch failed" || /fetch failed/i.test(String(error?.message || ""))) {
+    code = "supabase_connection_failed";
+    hint = "Nao foi possivel conectar ao Supabase. Confira se SUPABASE_URL e a Project URL correta.";
+  } else if (status === 401 || status === 403) {
+    code = "supabase_credentials_invalid";
+    hint = "Confira se SUPABASE_SERVICE_ROLE_KEY e a chave service_role secreta, nao a anon/public key.";
+  } else if (status === 404 || supabaseCode === "PGRST205" || supabaseCode === "42P01" || /app_state/i.test(detailText)) {
+    code = "supabase_schema_missing";
+    hint = "O Supabase esta conectado, mas a tabela app_state ainda nao existe. Rode o arquivo supabase/schema.sql no SQL Editor do Supabase.";
+  } else if (code === "supabase_request_failed") {
+    hint = "O Supabase respondeu erro. Confira SUPABASE_URL, SERVICE_ROLE_KEY e se o schema SQL foi executado.";
+  }
+
+  return {
+    ok: false,
+    configured: hasSupabase(),
+    error: code,
+    supabaseStatus: status,
+    detail: detailText || undefined,
+    hint,
+  };
+}
+
 async function supabaseFetch(path, options = {}) {
   const config = supabaseConfig();
   if (!config.url || !config.serviceRoleKey) {
@@ -289,6 +322,7 @@ module.exports = {
   getAppState,
   getStateRow,
   hasSupabase,
+  backendErrorPayload,
   json,
   normalizeLead,
   readBody,

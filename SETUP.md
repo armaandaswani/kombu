@@ -53,6 +53,16 @@ Add these in Vercel Project Settings -> Environment Variables. Do not paste `KEY
 
 After setting variables, redeploy on Vercel.
 
+## Sync Diagnosis
+
+If desktop and mobile do not show the same admin/CMS data, open
+`/api/public-state` on the production domain.
+
+- Expected healthy response: `ok:true`, `configured:true`.
+- If it returns `supabase_schema_missing`, run `supabase/schema.sql` in the Supabase SQL Editor.
+- If it returns `supabase_credentials_invalid`, replace the Vercel key with the Supabase `service_role` secret key, not the public anon key.
+- If it returns `missing_supabase_env`, add `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` in Vercel and redeploy.
+
 ## What Becomes Real After This
 
 - Admin data syncs across devices through `/api/state`.

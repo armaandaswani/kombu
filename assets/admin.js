@@ -666,8 +666,10 @@ async function pushStateToCloud() {
       cloudSyncEnabled = false;
       cloudSyncLastError = "Sessão expirada. Entre novamente para salvar na nuvem.";
     } else {
+      const payload = await readJsonSafe(response);
       cloudSyncEnabled = false;
-      cloudSyncLastError = "A API não aceitou o salvamento na nuvem.";
+      cloudSyncConfigured = payload.configured === true;
+      cloudSyncLastError = syncErrorMessage(payload, "A API não aceitou o salvamento na nuvem.");
     }
   } catch {
     cloudSyncEnabled = false;
@@ -681,6 +683,34 @@ function scheduleCloudSave() {
   cloudSaveTimer = window.setTimeout(pushStateToCloud, 800);
 }
 
+async function readJsonSafe(response) {
+  try {
+    return await response.json();
+  } catch {
+    return {};
+  }
+}
+
+function syncErrorMessage(payload = {}, fallback = "API de sincronização indisponível.") {
+  if (payload.hint) return payload.hint;
+  if (payload.error === "missing_supabase_env" || payload.reason === "missing_supabase_env") {
+    return "SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY ainda não estão configurados na Vercel.";
+  }
+  if (payload.error === "supabase_schema_missing") {
+    return "Supabase conectado, mas falta criar a tabela app_state. Rode supabase/schema.sql no SQL Editor do Supabase.";
+  }
+  if (payload.error === "supabase_credentials_invalid") {
+    return "A chave do Supabase parece incorreta. Use a service_role secret key, não a anon/public key.";
+  }
+  if (payload.error === "supabase_connection_failed") {
+    return "Não foi possível conectar ao Supabase. Confira se SUPABASE_URL é a Project URL correta.";
+  }
+  if (payload.error === "supabase_request_failed") {
+    return "Supabase respondeu erro. Confira a URL, a service_role key e se o schema SQL foi executado.";
+  }
+  return fallback;
+}
+
 async function syncFromCloud() {
   try {
     const response = await fetch("/api/state", { credentials: "same-origin" });
@@ -691,17 +721,19 @@ async function syncFromCloud() {
       return "unauthorized";
     }
     if (!response.ok) {
+      const payload = await readJsonSafe(response);
       cloudSyncReady = false;
       cloudSyncEnabled = false;
-      cloudSyncLastError = "API de sincronização indisponível.";
+      cloudSyncConfigured = payload.configured === true;
+      cloudSyncLastError = syncErrorMessage(payload, "API de sincronização indisponível.");
       return false;
     }
-    const payload = await response.json();
+    const payload = await readJsonSafe(response);
     if (payload.configured === false) {
       cloudSyncReady = false;
       cloudSyncEnabled = false;
       cloudSyncConfigured = false;
-      cloudSyncLastError = "Supabase ainda não está configurado na Vercel.";
+      cloudSyncLastError = syncErrorMessage(payload, "Supabase ainda não está configurado na Vercel.");
       return false;
     }
     cloudSyncReady = true;
