@@ -488,6 +488,19 @@ async function logoutAdmin() {
   lockAdmin();
 }
 
+async function restoreServerSession() {
+  try {
+    const response = await fetch("/api/auth/session", { credentials: "same-origin" });
+    if (!response.ok) return false;
+    const payload = await readJsonSafe(response);
+    if (payload.role) currentRole = payload.role;
+    sessionStorage.setItem("kombuAdminAuthenticated", "true");
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 function bindAuth() {
   const loginForm = document.querySelector("#loginForm");
   const passwordInput = document.querySelector("#adminPassword");
@@ -5083,7 +5096,7 @@ document.querySelector("#roleSelector").addEventListener("change", (event) => {
 async function initializeAdmin() {
   stripSensitiveUrlParams();
   bindAuth();
-  if (isAuthenticated()) {
+  if (isAuthenticated() || await restoreServerSession()) {
     await startAuthenticatedSession();
   } else {
     lockAdmin();
