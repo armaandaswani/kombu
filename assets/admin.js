@@ -406,9 +406,29 @@ let cloudSyncLastError = "";
 let cloudSaveTimer = null;
 let lastCloudSaveAt = "";
 
-(state.purchases || []).forEach(syncPurchaseExpense);
-(state.orders || []).forEach(syncOrderIntegrations);
-saveState();
+function runStartupIntegrations() {
+  try {
+    (state.purchases || []).forEach((purchase) => {
+      try {
+        syncPurchaseExpense(purchase);
+      } catch (error) {
+        console.error("Falha ao sincronizar compra no boot do admin", error);
+      }
+    });
+    (state.orders || []).forEach((order) => {
+      try {
+        syncOrderIntegrations(order);
+      } catch (error) {
+        console.error("Falha ao sincronizar pedido no boot do admin", error);
+      }
+    });
+    saveState();
+  } catch (error) {
+    console.error("Falha ao preparar estado inicial do admin", error);
+  }
+}
+
+runStartupIntegrations();
 
 function isAuthenticated() {
   return sessionStorage.getItem("kombuAdminAuthenticated") === "true";
@@ -464,19 +484,37 @@ async function authenticateAdmin(password) {
 
 async function startAuthenticatedSession() {
   unlockAdmin();
-  render();
-  const result = await syncFromCloud();
-  if (result === "unauthorized" && !isLocalPreview()) {
-    sessionStorage.removeItem("kombuAdminAuthenticated");
-    lockAdmin();
-    const loginError = document.querySelector("#loginError");
-    if (loginError) {
-      loginError.textContent = "Sessão expirada ou API de login indisponível. Entre novamente.";
-      loginError.classList.remove("hidden");
+  try {
+    render();
+    const result = await syncFromCloud();
+    if (result === "unauthorized" && !isLocalPreview()) {
+      sessionStorage.removeItem("kombuAdminAuthenticated");
+      lockAdmin();
+      const loginError = document.querySelector("#loginError");
+      if (loginError) {
+        loginError.textContent = "Sessão expirada ou API de login indisponível. Entre novamente.";
+        loginError.classList.remove("hidden");
+      }
+      return;
     }
-    return;
+    render();
+  } catch (error) {
+    console.error("Falha ao abrir painel admin", error);
+    unlockAdmin();
+    const content = document.querySelector("#adminContent");
+    if (content) {
+      content.innerHTML = `
+        ${cloudSyncNotice()}
+        <div class="notice notice-danger">
+          <span class="material-symbols-outlined" aria-hidden="true">error</span>
+          <div>
+            <strong>O login foi aceito, mas o painel encontrou um erro ao carregar.</strong>
+            <p>Recarregue a página. Se persistir, envie o erro do console para corrigirmos o módulo específico sem bloquear o acesso.</p>
+          </div>
+        </div>
+      `;
+    }
   }
-  render();
 }
 
 async function logoutAdmin() {
@@ -506,29 +544,44 @@ function bindAuth() {
   const passwordInput = document.querySelector("#adminPassword");
   const loginError = document.querySelector("#loginError");
   const togglePassword = document.querySelector("#togglePassword");
+  if (!loginForm || !passwordInput) return;
   loginForm?.addEventListener("submit", async (event) => {
     event.preventDefault();
-    const auth = await authenticateAdmin(passwordInput.value);
-    if (auth.ok) {
-      sessionStorage.setItem("kombuAdminAuthenticated", "true");
-      passwordInput.value = "";
-      loginError?.classList.add("hidden");
-      await startAuthenticatedSession();
-      return;
+    loginError?.classList.add("hidden");
+    try {
+      const auth = await authenticateAdmin(passwordInput.value);
+      if (auth.ok) {
+        sessionStorage.setItem("kombuAdminAuthenticated", "true");
+        await startAuthenticatedSession();
+        passwordInput.value = "";
+        return;
+      }
+      if (auth.error === "backend_unavailable") {
+        loginError.textContent = "API de login indisponível. Confira o deploy/variáveis da Vercel.";
+      } else {
+        loginError.textContent = "Senha incorreta.";
+      }
+      loginError?.classList.remove("hidden");
+      passwordInput.select();
+    } catch (error) {
+      console.error("Falha no login admin", error);
+      if (loginError) {
+        loginError.textContent = "Não consegui concluir o login. Recarregue a página e tente novamente.";
+        loginError.classList.remove("hidden");
+      }
+      passwordInput.focus();
     }
-    loginError?.classList.remove("hidden");
-    passwordInput.select();
   });
   togglePassword?.addEventListener("click", (event) => {
     event.preventDefault();
-    if (!passwordInput) return;
     const selectionStart = passwordInput.selectionStart;
     const selectionEnd = passwordInput.selectionEnd;
     const shouldShow = passwordInput.type === "password";
     passwordInput.type = shouldShow ? "text" : "password";
     togglePassword.setAttribute("aria-label", shouldShow ? "Ocultar senha" : "Mostrar senha");
     togglePassword.setAttribute("aria-pressed", shouldShow ? "true" : "false");
-    togglePassword.querySelector(".material-symbols-outlined").textContent = shouldShow ? "visibility_off" : "visibility";
+    const icon = togglePassword.querySelector(".material-symbols-outlined");
+    if (icon) icon.textContent = shouldShow ? "visibility_off" : "visibility";
     passwordInput.focus({ preventScroll: true });
     if (selectionStart != null && selectionEnd != null) passwordInput.setSelectionRange(selectionStart, selectionEnd);
   });
@@ -656,14 +709,20 @@ function normalizeState(savedState) {
 
 function loadState() {
   try {
-    return normalizeState(JSON.parse(localStorage.getItem(STORAGE_KEY)));
-  } catch {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    return normalizeState(saved ? JSON.parse(saved) : null);
+  } catch (error) {
+    console.error("Falha ao carregar estado local do admin; usando base inicial.", error);
     return clone(defaultState);
   }
 }
 
 function saveState() {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  } catch (error) {
+    console.error("Falha ao salvar estado local do admin.", error);
+  }
   if (!cloudSyncReady) cloudSyncEnabled = false;
   scheduleCloudSave();
 }
@@ -762,10 +821,9 @@ async function syncFromCloud() {
     cloudSyncLastError = "";
     if (payload.exists && payload.state) {
       state = normalizeState(payload.state);
-      (state.purchases || []).forEach(syncPurchaseExpense);
-      (state.orders || []).forEach(syncOrderIntegrations);
+      runStartupIntegrations();
       activeRecipeId = state.recipes.find((recipe) => recipe.id === activeRecipeId)?.id || state.recipes[0]?.id || "";
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      saveState();
     } else {
       await pushStateToCloud();
     }
@@ -5062,7 +5120,7 @@ function handleAction(action) {
   actionMap[action]?.();
 }
 
-document.querySelector("#adminNav").addEventListener("click", (event) => {
+document.querySelector("#adminNav")?.addEventListener("click", (event) => {
   const button = event.target.closest("[data-module]");
   if (button) setModule(button.dataset.module);
 });
@@ -5071,35 +5129,46 @@ document.querySelector("#mobileModuleSelector")?.addEventListener("change", (eve
   setModule(event.target.value);
 });
 
-document.querySelector("#adminContent").addEventListener("click", (event) => {
+document.querySelector("#adminContent")?.addEventListener("click", (event) => {
   const button = event.target.closest("[data-action]");
   if (button && !button.disabled) handleAction(button.dataset.action);
 });
 
-document.querySelector("#quickSaleButton").addEventListener("click", newSaleForm);
-document.querySelector("#closeAdminModal").addEventListener("click", closeModal);
-document.querySelector("#adminModal").addEventListener("click", (event) => {
+document.querySelector("#quickSaleButton")?.addEventListener("click", newSaleForm);
+document.querySelector("#closeAdminModal")?.addEventListener("click", closeModal);
+document.querySelector("#adminModal")?.addEventListener("click", (event) => {
   if (event.target.id === "adminModal") closeModal();
   const button = event.target.closest("[data-action]");
   if (button && !button.disabled) handleAction(button.dataset.action);
 });
-document.querySelector("#globalSearch").addEventListener("input", (event) => {
+document.querySelector("#globalSearch")?.addEventListener("input", (event) => {
   globalSearch = event.target.value.trim();
   render();
 });
-document.querySelector("#roleSelector").addEventListener("change", (event) => {
+document.querySelector("#roleSelector")?.addEventListener("change", (event) => {
   currentRole = event.target.value;
   addAudit("Perfil de acesso alterado", currentRole);
   render();
 });
 
 async function initializeAdmin() {
-  stripSensitiveUrlParams();
-  bindAuth();
-  if (isAuthenticated() || await restoreServerSession()) {
-    await startAuthenticatedSession();
-  } else {
+  try {
+    stripSensitiveUrlParams();
+    bindAuth();
+    if (isAuthenticated() || await restoreServerSession()) {
+      await startAuthenticatedSession();
+    } else {
+      lockAdmin();
+    }
+  } catch (error) {
+    console.error("Falha ao inicializar admin", error);
+    bindAuth();
     lockAdmin();
+    const loginError = document.querySelector("#loginError");
+    if (loginError) {
+      loginError.textContent = "O painel encontrou um erro ao iniciar. Recarregue a página e tente novamente.";
+      loginError.classList.remove("hidden");
+    }
   }
 }
 
