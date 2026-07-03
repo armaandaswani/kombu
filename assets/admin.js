@@ -401,6 +401,8 @@ let currentRole = "Owner / Admin";
 let currentStockView = "kombuchas";
 let cloudSyncReady = false;
 let cloudSyncEnabled = false;
+let cloudSyncConfigured = false;
+let cloudSyncLastError = "";
 let cloudSaveTimer = null;
 let lastCloudSaveAt = "";
 
@@ -428,6 +430,10 @@ function lockAdmin() {
   document.querySelector("#adminPassword")?.focus();
 }
 
+function isLocalPreview() {
+  return ["localhost", "127.0.0.1", ""].includes(window.location.hostname);
+}
+
 function stripSensitiveUrlParams() {
   const url = new URL(window.location.href);
   const sensitive = ["password", "adminPassword", "senha"];
@@ -448,8 +454,10 @@ async function authenticateAdmin(password) {
     });
     if (response.ok) return { ok: true, backend: true };
     if (response.status === 401) return { ok: false, backend: true };
+    if (!isLocalPreview()) return { ok: false, backend: true, error: "backend_unavailable" };
   } catch {
     // Local static previews do not serve Vercel API routes.
+    if (!isLocalPreview()) return { ok: false, backend: true, error: "backend_unavailable" };
   }
   return { ok: password === ADMIN_PASSWORD, backend: false };
 }
@@ -457,7 +465,17 @@ async function authenticateAdmin(password) {
 async function startAuthenticatedSession() {
   unlockAdmin();
   render();
-  await syncFromCloud();
+  const result = await syncFromCloud();
+  if (result === "unauthorized" && !isLocalPreview()) {
+    sessionStorage.removeItem("kombuAdminAuthenticated");
+    lockAdmin();
+    const loginError = document.querySelector("#loginError");
+    if (loginError) {
+      loginError.textContent = "Sessão expirada ou API de login indisponível. Entre novamente.";
+      loginError.classList.remove("hidden");
+    }
+    return;
+  }
   render();
 }
 
@@ -626,6 +644,7 @@ function loadState() {
 
 function saveState() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  if (!cloudSyncReady) cloudSyncEnabled = false;
   scheduleCloudSave();
 }
 
@@ -640,10 +659,19 @@ async function pushStateToCloud() {
     });
     if (response.ok || response.status === 202) {
       cloudSyncEnabled = true;
+      cloudSyncConfigured = true;
+      cloudSyncLastError = "";
       lastCloudSaveAt = new Date().toISOString();
+    } else if (response.status === 401) {
+      cloudSyncEnabled = false;
+      cloudSyncLastError = "Sessão expirada. Entre novamente para salvar na nuvem.";
+    } else {
+      cloudSyncEnabled = false;
+      cloudSyncLastError = "A API não aceitou o salvamento na nuvem.";
     }
   } catch {
     cloudSyncEnabled = false;
+    cloudSyncLastError = "Não foi possível conectar ao backend de sincronização.";
   }
 }
 
@@ -656,19 +684,30 @@ function scheduleCloudSave() {
 async function syncFromCloud() {
   try {
     const response = await fetch("/api/state", { credentials: "same-origin" });
+    if (response.status === 401) {
+      cloudSyncReady = false;
+      cloudSyncEnabled = false;
+      cloudSyncLastError = "Sessão expirada.";
+      return "unauthorized";
+    }
     if (!response.ok) {
       cloudSyncReady = false;
       cloudSyncEnabled = false;
+      cloudSyncLastError = "API de sincronização indisponível.";
       return false;
     }
     const payload = await response.json();
     if (payload.configured === false) {
       cloudSyncReady = false;
       cloudSyncEnabled = false;
+      cloudSyncConfigured = false;
+      cloudSyncLastError = "Supabase ainda não está configurado na Vercel.";
       return false;
     }
     cloudSyncReady = true;
     cloudSyncEnabled = true;
+    cloudSyncConfigured = true;
+    cloudSyncLastError = "";
     if (payload.exists && payload.state) {
       state = normalizeState(payload.state);
       (state.purchases || []).forEach(syncPurchaseExpense);
@@ -682,6 +721,7 @@ async function syncFromCloud() {
   } catch {
     cloudSyncReady = false;
     cloudSyncEnabled = false;
+    cloudSyncLastError = "Não foi possível conectar ao backend de sincronização.";
     return false;
   }
 }
@@ -1394,6 +1434,46 @@ function pageHead(title, description, actions = "") {
       <div class="admin-actions">${actions}</div>
     </div>
     ${roleAlert}
+  `;
+}
+
+function cloudSyncNotice() {
+  if (!isAuthenticated()) return "";
+  const local = isLocalPreview();
+  const savedAt = lastCloudSaveAt ? new Date(lastCloudSaveAt).toLocaleString("pt-BR") : "";
+  if (cloudSyncEnabled && cloudSyncConfigured) {
+    return `
+      <section class="cloud-sync-notice good" aria-live="polite">
+        <span class="material-symbols-outlined" aria-hidden="true">cloud_done</span>
+        <div>
+          <strong>Sincronizacao na nuvem ativa.</strong>
+          <p>Alteracoes salvas aqui aparecem no site publico, no desktop e no celular.${savedAt ? ` Ultimo salvamento: ${savedAt}.` : ""}</p>
+        </div>
+      </section>
+    `;
+  }
+  if (local) {
+    return `
+      <section class="cloud-sync-notice warn" aria-live="polite">
+        <span class="material-symbols-outlined" aria-hidden="true">developer_mode</span>
+        <div>
+          <strong>Preview local.</strong>
+          <p>Este navegador usa dados locais para teste. O site publicado precisa do Supabase configurado para sincronizar entre dispositivos.</p>
+        </div>
+      </section>
+    `;
+  }
+  return `
+    <section class="cloud-sync-notice bad" aria-live="assertive">
+      <span class="material-symbols-outlined" aria-hidden="true">cloud_off</span>
+      <div>
+        <strong>As alteracoes nao estao publicando para todos os dispositivos.</strong>
+        <p>${escapeHtml(cloudSyncLastError || "Configure SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY na Vercel para desktop e celular usarem a mesma base.")}</p>
+      </div>
+      <button class="btn btn-outline" type="button" data-action="sync-cloud">
+        <span class="material-symbols-outlined" aria-hidden="true">sync</span>Testar nuvem
+      </button>
+    </section>
   `;
 }
 
@@ -2493,7 +2573,7 @@ function renderCMS() {
       </form>
       <article class="admin-card">
         <h3>Como publicar alterações</h3>
-        <p class="lead" style="font-size:1rem">As alterações ficam salvas neste navegador. Para que imagens e textos mudem para todos os visitantes, precisamos ligar o site a um backend, como Supabase.</p>
+        <p class="lead" style="font-size:1rem">${cloudSyncEnabled && cloudSyncConfigured ? "Salvar CMS publica imagens, textos, sabores e parceiros na base da nuvem, visivel em qualquer dispositivo apos o deploy/cache atualizar." : "No momento isto ainda nao esta publicando de forma global. Configure Supabase na Vercel para que celular, desktop e site publico leiam a mesma informacao."}</p>
       </article>
     </section>
     <section class="admin-card" style="margin-top:16px">
@@ -2599,7 +2679,7 @@ function render() {
     cms: renderCMS,
     schema: renderSchema,
   }[currentModule];
-  document.querySelector("#adminContent").innerHTML = view();
+  document.querySelector("#adminContent").innerHTML = `${cloudSyncNotice()}${view()}`;
   bindModuleEvents();
   enhanceSelectSearch(document.querySelector("#adminContent"));
 }
@@ -4884,6 +4964,7 @@ function handleAction(action) {
       ]),
     "new-recipe": newRecipeForm,
     "new-cms-flavor": newCmsFlavorForm,
+    "sync-cloud": () => syncFromCloud().then(render),
     "go-costs": () => setModule("costs"),
     "save-costs": () => {
       addAudit("Simulação de custos salva", byId("recipes", activeRecipeId)?.flavor);

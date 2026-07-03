@@ -65,4 +65,4 @@ After setting variables, redeploy on Vercel.
 
 The admin now supports server-side login through `/api/auth/login`, which sets an httpOnly cookie for API routes.
 
-The visible static password gate remains as a fallback for local preview. For production-grade staff accounts, the next step is Supabase Auth with role-based permissions.
+The visible password gate falls back to the static password only in local preview. In production, login goes through the Vercel API and the admin data only syncs across devices after Supabase is configured.

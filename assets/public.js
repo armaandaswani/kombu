@@ -7,6 +7,10 @@ const OFFICIAL_MAP_URL = `https://www.google.com/maps/d/viewer?mid=${OFFICIAL_MA
 const FLAVOR_CATEGORIES = ["Frutados", "Cítricos", "Florais", "Herbais", "Especiados"];
 let publicCloudState = null;
 
+function isLocalPreview() {
+  return ["localhost", "127.0.0.1", ""].includes(window.location.hostname);
+}
+
 const DEFAULT_PUBLIC_IMAGES = {
   heroBottle:
     "https://static.wixstatic.com/media/716adf_5b0b2489ee914e53b15b4a590915d974~mv2.png/v1/crop/x_6,y_0,w_1068,h_1920/fill/w_760,h_1367,al_c,q_90,usm_0.66_1.00_0.01,enc_auto/4_edited.png",
@@ -205,7 +209,8 @@ function readLocalAdminState() {
 }
 
 function readAdminState() {
-  return publicCloudState || readLocalAdminState();
+  if (publicCloudState) return publicCloudState;
+  return isLocalPreview() ? readLocalAdminState() : {};
 }
 
 async function loadPublicCloudState() {
