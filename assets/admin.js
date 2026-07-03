@@ -506,11 +506,18 @@ function bindAuth() {
     loginError?.classList.remove("hidden");
     passwordInput.select();
   });
-  togglePassword?.addEventListener("click", () => {
-    const isPassword = passwordInput.type === "password";
-    passwordInput.type = isPassword ? "text" : "password";
-    togglePassword.setAttribute("aria-label", isPassword ? "Ocultar senha" : "Mostrar senha");
-    togglePassword.querySelector(".material-symbols-outlined").textContent = isPassword ? "visibility_off" : "visibility";
+  togglePassword?.addEventListener("click", (event) => {
+    event.preventDefault();
+    if (!passwordInput) return;
+    const selectionStart = passwordInput.selectionStart;
+    const selectionEnd = passwordInput.selectionEnd;
+    const shouldShow = passwordInput.type === "password";
+    passwordInput.type = shouldShow ? "text" : "password";
+    togglePassword.setAttribute("aria-label", shouldShow ? "Ocultar senha" : "Mostrar senha");
+    togglePassword.setAttribute("aria-pressed", shouldShow ? "true" : "false");
+    togglePassword.querySelector(".material-symbols-outlined").textContent = shouldShow ? "visibility_off" : "visibility";
+    passwordInput.focus({ preventScroll: true });
+    if (selectionStart != null && selectionEnd != null) passwordInput.setSelectionRange(selectionStart, selectionEnd);
   });
   document.querySelector("#logoutButton")?.addEventListener("click", logoutAdmin);
 }

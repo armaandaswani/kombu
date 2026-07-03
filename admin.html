@@ -15,7 +15,7 @@
       rel="stylesheet"
     />
     <link rel="icon" href="favicon.svg" type="image/svg+xml" />
-    <link rel="stylesheet" href="assets/kombu.css?v=20260703a" />
+    <link rel="stylesheet" href="assets/kombu.css?v=20260703b" />
   </head>
   <body class="admin-body">
     <section class="admin-login" id="loginScreen" aria-labelledby="loginTitle">
@@ -35,15 +35,15 @@
           <h1 id="loginTitle">Entre com a senha do admin.</h1>
           <p>Este painel controla custos, receitas, estoque, vendas, CMS e dados operacionais da Kombú.</p>
         </div>
-        <label class="field">
-          <span>Senha</span>
+        <div class="field">
+          <label for="adminPassword">Senha</label>
           <div class="password-field">
             <input id="adminPassword" name="password" type="password" autocomplete="current-password" required />
-            <button class="icon-btn" id="togglePassword" type="button" aria-label="Mostrar senha">
+            <button class="icon-btn" id="togglePassword" type="button" aria-label="Mostrar senha" aria-controls="adminPassword" aria-pressed="false">
               <span class="material-symbols-outlined" aria-hidden="true">visibility</span>
             </button>
           </div>
-        </label>
+        </div>
         <button class="btn btn-primary" type="submit">
           <span class="material-symbols-outlined" aria-hidden="true">login</span>
           Entrar no portal
@@ -206,6 +206,6 @@
       </div>
     </div>
 
-    <script src="assets/admin.js?v=20260703a"></script>
+    <script src="assets/admin.js?v=20260703b"></script>
   </body>
 </html>
