@@ -1298,13 +1298,15 @@ function orderItemAllocations(item = {}) {
       batchCode: String(allocation.batchCode || "").trim(),
       qty: Number(allocation.qty || 0),
       date: allocation.date || "",
+      manual: allocation.manual === true,
+      note: allocation.note || "",
     }))
     .filter((allocation) => allocation.batchCode && allocation.qty > 0);
   if (clean.length) return clean;
   const legacyCode = String(item.batchCode || "").trim();
   const legacyQty = Math.max(Number(item.reservedQty || 0), Number(item.producedQty || 0));
   if (legacyCode && !legacyCode.includes(",") && legacyQty > 0) {
-    return [{ batchCode: legacyCode, qty: legacyQty, date: item.readyDate || "" }];
+    return [{ batchCode: legacyCode, qty: legacyQty, date: item.readyDate || "", manual: false, note: "" }];
   }
   return [];
 }
@@ -1326,6 +1328,18 @@ function orderItemAllocationLabel(item = {}) {
   return allocations.length
     ? allocations.map((allocation) => `${number(allocation.qty)}x ${escapeHtml(allocation.batchCode)}`).join(" | ")
     : "Ainda sem lote reservado";
+}
+
+function orderItemSelectionKey(order, index) {
+  return `${order.id}::${index}`;
+}
+
+function findOrderItemBySelection(value = "") {
+  const [orderId, indexRaw] = String(value).split("::");
+  const order = byId("orders", orderId);
+  const index = Number(indexRaw);
+  const item = orderItems(order)[index];
+  return { order, item, index };
 }
 
 function nextOrderCode(dateIso = todayIso()) {
@@ -1377,7 +1391,7 @@ function orderReceivableValue(order) {
   return order?.status === "entregue" && orderReceivableStatus(order) !== "pago" ? orderTotal(order) : 0;
 }
 
-function orderItemRemainingQty(item) {
+function orderItemRemainingQty(item = {}) {
   return Math.max(0, Number(item.qty || 0) - orderItemReservedQty(item));
 }
 
@@ -1399,7 +1413,7 @@ function batchReservationRows(code) {
       orderItems(order).flatMap((item) =>
         orderItemAllocations(item)
           .filter((allocation) => allocation.batchCode === code)
-          .map((allocation) => ({ order, item, qty: Number(allocation.qty || 0) })),
+          .map((allocation) => ({ order, item, allocation, qty: Number(allocation.qty || 0), manual: allocation.manual === true })),
       ),
     )
     .filter((row) => row.qty > 0);
@@ -1414,6 +1428,87 @@ function batchReservationText(code) {
       return `${number(row.qty)}x ${escapeHtml(row.order.code)} - ${escapeHtml(client)}`;
     })
     .join("<br>");
+}
+
+function batchSaleRows(code) {
+  return (state.sales || [])
+    .filter((sale) => sale.batchCode === code && Number(sale.qty || 0) !== 0)
+    .sort((a, b) => String(b.date || "").localeCompare(String(a.date || "")))
+    .map((sale) => {
+      const qty = Number(sale.qty || 0);
+      const movement = qty < 0 ? "devolução" : sale.movementType || "venda";
+      return {
+        sale,
+        qty,
+        movement,
+        customer: sale.customerName || sale.partner || sale.orderCode || "Destino não informado",
+      };
+    });
+}
+
+function batchAvailableStock(code) {
+  return finishedStockRows().find((row) => row.code === code)?.stock || 0;
+}
+
+function batchMatchesOrderItem(batch, item = {}) {
+  if (!batch || !item) return false;
+  const recipe = byId("recipes", batch.recipeId);
+  const productId = batch.productId || recipe?.productId || "";
+  if (productId && item.productId === productId) return true;
+  return normalizeText(item.flavor || item.productName) === normalizeText(batch.flavor);
+}
+
+function reservationOptionsForBatch(batch) {
+  if (!batch) return [];
+  return (state.orders || [])
+    .filter(isOpenOrder)
+    .sort((a, b) =>
+      String(a.neededBy || a.estimatedReadyDate || a.orderDate || a.createdAt || "").localeCompare(
+        String(b.neededBy || b.estimatedReadyDate || b.orderDate || b.createdAt || ""),
+      ),
+    )
+    .flatMap((order) =>
+      orderItems(order)
+        .map((item, index) => ({ order, item, index, need: orderItemRemainingQty(item) }))
+        .filter((row) => row.need > 0 && batchMatchesOrderItem(batch, row.item)),
+    );
+}
+
+function refreshOrderReservationStatus(order) {
+  if (!order) return;
+  const items = orderItems(order);
+  let anyReserved = false;
+  let allReserved = items.length > 0;
+  items.forEach((item) => {
+    const reserved = orderItemReservedQty(item);
+    const qty = Number(item.qty || 0);
+    const allocations = orderItemAllocations(item);
+    const batchCodes = orderItemBatchCodes(item);
+    item.allocations = allocations;
+    item.reservedQty = qty ? Math.min(qty, reserved) : reserved;
+    item.producedQty = item.reservedQty;
+    item.batchCode = batchCodes.join(", ");
+    item.readyDate = allocations.at(-1)?.date || item.readyDate || "";
+    item.productionStatus = item.reservedQty >= qty && qty > 0 ? "reservado" : item.reservedQty > 0 ? "em produção" : "pendente";
+    anyReserved = anyReserved || item.reservedQty > 0;
+    allReserved = allReserved && item.reservedQty >= qty;
+  });
+  if (!isOpenOrder(order)) return;
+  if (allReserved) order.status = "pronto";
+  else if (anyReserved) order.status = "em produção";
+  else if (!["recebido", "confirmado"].includes(order.status)) order.status = "confirmado";
+}
+
+function reserveBatchForOrderItem(batchCode, order, item, qty, note = "", manual = true) {
+  const amount = Number(qty || 0);
+  if (!order || !item || amount <= 0) return 0;
+  const allocations = orderItemAllocations(item);
+  const existing = allocations.find((allocation) => allocation.batchCode === batchCode && allocation.manual === manual && normalizeText(allocation.note) === normalizeText(note));
+  if (existing) existing.qty = Number(existing.qty || 0) + amount;
+  else allocations.push({ batchCode, qty: amount, date: todayIso(), manual, note });
+  item.allocations = allocations;
+  refreshOrderReservationStatus(order);
+  return amount;
 }
 
 function orderProductionRows() {
@@ -1603,18 +1698,10 @@ function allocateBatchToOrders(batch) {
       const need = orderItemRemainingQty(item);
       if (!need) return;
       const allocated = Math.min(need, available);
-      item.allocations = [...orderItemAllocations(item), { batchCode: batch.code, qty: allocated, date: batch.date }];
-      const reserved = orderItemReservedQty(item);
-      item.reservedQty = reserved;
-      item.producedQty = reserved;
-      item.batchCode = orderItemBatchCodes(item).join(", ");
-      item.productionStatus = reserved >= Number(item.qty || 0) ? "reservado" : "em produção";
-      item.readyDate = batch.date;
+      item.allocations = [...orderItemAllocations(item), { batchCode: batch.code, qty: allocated, date: batch.date, manual: false, note: "" }];
+      refreshOrderReservationStatus(order);
       available -= allocated;
     });
-    const allReady = orderItems(order).length && orderItems(order).every((item) => orderItemReservedQty(item) >= Number(item.qty || 0));
-    if (allReady && !["pronto", "entregue"].includes(order.status)) order.status = "pronto";
-    else if (!["pronto", "entregue"].includes(order.status) && orderItems(order).some((item) => orderItemReservedQty(item) > 0)) order.status = "em produção";
   });
   return Math.max(0, Number(batch.actual || 0) - soldFromBatch(batch.code) - alreadyReserved - available);
 }
@@ -1622,14 +1709,16 @@ function allocateBatchToOrders(batch) {
 function resetOpenOrderReservations() {
   (state.orders || []).filter(isOpenOrder).forEach((order) => {
     orderItems(order).forEach((item) => {
-      item.allocations = [];
-      item.reservedQty = 0;
-      item.producedQty = 0;
-      item.batchCode = "";
-      item.readyDate = "";
-      if (["em produção", "produzido", "reservado", "pronto"].includes(item.productionStatus)) item.productionStatus = "pendente";
+      const manualAllocations = orderItemAllocations(item).filter((allocation) => allocation.manual);
+      item.allocations = manualAllocations;
+      const manualReserved = manualAllocations.reduce((sum, allocation) => sum + Number(allocation.qty || 0), 0);
+      item.reservedQty = Math.min(Number(item.qty || manualReserved || 0), manualReserved);
+      item.producedQty = item.reservedQty;
+      item.batchCode = orderItemBatchCodes(item).join(", ");
+      item.readyDate = manualAllocations.at(-1)?.date || "";
+      item.productionStatus = item.reservedQty > 0 ? (item.reservedQty >= Number(item.qty || 0) ? "reservado" : "em produção") : "pendente";
     });
-    if (!["recebido", "confirmado"].includes(order.status)) order.status = "confirmado";
+    refreshOrderReservationStatus(order);
   });
 }
 
@@ -2329,6 +2418,73 @@ function renderBatches() {
   `;
 }
 
+function stockFlowChip(label, detail, tone = "") {
+  return `<span class="stock-flow-chip ${tone}"><strong>${label}</strong><small>${detail}</small></span>`;
+}
+
+function stockBatchCard(row) {
+  const reservations = batchReservationRows(row.code);
+  const sales = batchSaleRows(row.code);
+  const stockValue = row.stock * row.cost.batchCostPerBottle;
+  const reservationList = reservations.length
+    ? reservations
+        .map((reservation) => {
+          const client = reservation.order.businessName || reservation.order.customerName || "Cliente";
+          const mode = reservation.manual ? "manual" : "auto";
+          return stockFlowChip(`${number(reservation.qty)} reservada(s)`, `${reservation.order.code} - ${escapeHtml(client)} | ${mode}`, reservation.manual ? "is-manual" : "");
+        })
+        .join("")
+    : `<p class="mini-empty">Nada reservado neste lote.</p>`;
+  const salesList = sales.length
+    ? sales
+        .slice(0, 5)
+        .map((rowSale) => {
+          const qtyLabel = rowSale.qty < 0 ? `+${number(Math.abs(rowSale.qty))}` : number(rowSale.qty);
+          return stockFlowChip(`${qtyLabel} ${escapeHtml(rowSale.movement)}`, `${escapeHtml(rowSale.customer)} | ${rowSale.sale.date || "-"}`, rowSale.qty < 0 ? "is-return" : "");
+        })
+        .join("")
+    : `<p class="mini-empty">Nenhuma saída registrada.</p>`;
+  return `
+    <article class="stock-batch-card">
+      <div class="stock-card-head">
+        <div>
+          <span class="eyebrow">Lote ${escapeHtml(row.code)}</span>
+          <strong>${escapeHtml(row.flavor || row.product?.flavor || "Kombucha")}</strong>
+          <small>${escapeHtml(row.product ? productLabel(row.product) : "Produto sem vínculo")}</small>
+        </div>
+        <span class="status ${statusClass(row.stock)}">${row.stock > 0 ? "disponível" : "sem saldo"}</span>
+      </div>
+      <div class="stock-stat-grid">
+        <div class="stock-stat is-available"><span>Disponível</span><strong>${number(row.stock)}</strong></div>
+        <div class="stock-stat"><span>Reservado</span><strong>${number(row.reserved)}</strong></div>
+        <div class="stock-stat"><span>Saídas</span><strong>${number(row.sold)}</strong></div>
+        <div class="stock-stat"><span>Produzido</span><strong>${number(row.actual)}</strong></div>
+      </div>
+      <div class="stock-card-meta">
+        <span>Ideal ${row.idealSellBy || "-"}</span>
+        <span>Vender até ${row.sellBy || "-"}</span>
+        <span>Validade ${row.expiry || "-"}</span>
+        <span>Valor livre ${brl(stockValue)}</span>
+      </div>
+      <div class="stock-flow-grid">
+        <div class="stock-flow-box">
+          <h4>Reservado para</h4>
+          <div class="stock-flow-list">${reservationList}</div>
+        </div>
+        <div class="stock-flow-box">
+          <h4>Saídas e vendas</h4>
+          <div class="stock-flow-list">${salesList}</div>
+        </div>
+      </div>
+      <div class="stock-card-actions">
+        ${actionButton(`reserve-stock:${row.code}`, "Reservar", "assignment_turned_in", "btn-outline")}
+        ${actionButton(`stock-sale:${row.code}`, "Venda/saída", "point_of_sale", "btn-outline")}
+        ${actionButton(`reverse-stock:${row.code}`, "Devolução", "undo", "btn-outline")}
+      </div>
+    </article>
+  `;
+}
+
 function renderStock() {
   const viewButtons = [
     ["kombuchas", "Kombuchas"],
@@ -2353,39 +2509,40 @@ function renderStock() {
         </tr>
       `;
     });
+  const stockRows = finishedStockRows().filter((row) => matchesSearch(row) || matchesSearch(row.product || {}));
+  const stockAlerts = `
+    <article class="admin-card stock-alert-card">
+      <h3>Alertas de estoque</h3>
+      <div class="stack-list">
+        ${[...lowStockIngredients(), ...lowStockPackaging()]
+          .map((item) => `<div class="stock-row"><strong>${item.name}</strong><span>Atual ${number(item.stock, 2)} | mínimo ${number(item.min, 2)}</span></div>`)
+          .join("") || `<div class="empty-note">Sem alertas de mínimo.</div>`}
+      </div>
+    </article>
+  `;
   const inventoryViews = {
-    kombuchas: () =>
-      table(
-        [
-          { label: "Sabor / lote" },
-          { label: "Produzido", num: true },
-          { label: "Saídas", num: true },
-          { label: "Reservado", num: true },
-          { label: "Reservado para" },
-          { label: "Saldo", num: true },
-          { label: "Ideal até" },
-          { label: "Vender até" },
-          { label: "Validade" },
-          { label: "Valor em estoque", num: true },
-        ],
-        finishedStockRows().map(
-          (row) => `
-            <tr>
-              <td><strong>${row.flavor}</strong><br><span>${row.product ? productLabel(row.product) : row.code}</span></td>
-              <td class="num">${number(row.actual)}</td>
-              <td class="num">${number(row.sold)}</td>
-              <td class="num">${number(row.reserved)}</td>
-              <td>${batchReservationText(row.code)}</td>
-              <td class="num"><strong>${number(row.stock)}</strong></td>
-              <td>${row.idealSellBy || "-"}</td>
-              <td>${row.sellBy || "-"}</td>
-              <td>${row.expiry}</td>
-              <td class="num">${brl(row.stock * row.cost.batchCostPerBottle)}</td>
-            </tr>
-          `,
-        ),
-        1200,
-      ),
+    kombuchas: () => {
+      const totalProduced = stockRows.reduce((sum, row) => sum + Number(row.actual || 0), 0);
+      const totalAvailable = stockRows.reduce((sum, row) => sum + Number(row.stock || 0), 0);
+      const totalReserved = stockRows.reduce((sum, row) => sum + Number(row.reserved || 0), 0);
+      const totalSold = stockRows.reduce((sum, row) => sum + Number(row.sold || 0), 0);
+      return `
+        <section class="stock-kombucha-layout">
+          <div class="stock-summary-grid">
+            <article class="metric-card admin-card"><small>Disponível</small><strong>${number(totalAvailable)}</strong><span>Garrafas livres para venda</span></article>
+            <article class="metric-card admin-card"><small>Reservado</small><strong>${number(totalReserved)}</strong><span>Separado para pedidos</span></article>
+            <article class="metric-card admin-card"><small>Saídas</small><strong>${number(totalSold)}</strong><span>Vendas, perdas e consumo</span></article>
+            <article class="metric-card admin-card"><small>Produzido</small><strong>${number(totalProduced)}</strong><span>Total aprovado em lotes</span></article>
+          </div>
+          <div class="stock-main-grid">
+            <section class="stock-batch-list">
+              ${stockRows.length ? stockRows.map(stockBatchCard).join("") : `<article class="admin-card"><p class="empty-note">Nenhum lote aprovado ainda.</p></article>`}
+            </section>
+            ${stockAlerts}
+          </div>
+        </section>
+      `;
+    },
     ingredients: () =>
       table(
         [
@@ -2436,19 +2593,19 @@ function renderStock() {
         materialRows(state.packaging.filter((item) => inferPackagingType(item) === "bottle")),
       ),
   };
+  if (currentStockView === "kombuchas") {
+    return `
+      ${pageHead("Estoque", "Controle saldos livres, reservas por cliente, vendas e devoluções por lote.", actionButton("stock-adjustment", "Ajuste com motivo", "tune"))}
+      <div class="module-tabs">${viewButtons}</div>
+      ${inventoryViews.kombuchas()}
+    `;
+  }
   return `
     ${pageHead("Estoque", "Escolha o tipo de estoque para ver saldos sem poluição visual.", actionButton("stock-adjustment", "Ajuste com motivo", "tune"))}
     <div class="module-tabs">${viewButtons}</div>
     <section class="admin-grid">
       ${inventoryViews[currentStockView]?.() || inventoryViews.kombuchas()}
-      <article class="admin-card">
-        <h3>Alertas de estoque</h3>
-        <div class="stack-list">
-          ${[...lowStockIngredients(), ...lowStockPackaging()]
-            .map((item) => `<div class="stock-row"><strong>${item.name}</strong><span>Atual ${number(item.stock, 2)} | mínimo ${number(item.min, 2)}</span></div>`)
-            .join("") || `<div class="empty-note">Sem alertas de mínimo.</div>`}
-        </div>
-      </article>
+      ${stockAlerts}
     </section>
   `;
 }
@@ -2562,6 +2719,64 @@ function renderSales() {
   `;
 }
 
+function orderCard(order) {
+  const items = orderItems(order);
+  const due = orderPaymentDueDate(order);
+  const receivableStatus = orderReceivableStatus(order);
+  const itemRows = items.length
+    ? items
+        .map((item) => {
+          const reserved = orderItemReservedQty(item);
+          const qty = Number(item.qty || 0);
+          const missing = Math.max(0, qty - reserved);
+          const percent = qty ? Math.min(100, (reserved / qty) * 100) : 0;
+          const batches = orderItemBatchCodes(item).join(", ");
+          return `
+            <div class="order-mini-row">
+              <div class="order-mini-main">
+                <strong>${escapeHtml(orderProductText(item))}</strong>
+                <span>${number(reserved)}/${number(qty)} reservado${batches ? ` | lote ${escapeHtml(batches)}` : ""}</span>
+                <i><b style="width:${percent}%"></b></i>
+              </div>
+              <div class="order-mini-count ${missing ? "is-missing" : "is-ready"}">
+                <strong>${missing ? `${number(missing)} faltando` : "completo"}</strong>
+                <span>${escapeHtml(item.productionStatus || "pendente")}</span>
+              </div>
+            </div>
+          `;
+        })
+        .join("")
+    : `<p class="mini-empty">Pedido sem itens.</p>`;
+  return `
+    <article class="order-card">
+      <div class="order-card-head">
+        <div>
+          <span class="eyebrow">Pedido ${escapeHtml(order.orderDate || "-")}</span>
+          <strong>${escapeHtml(order.code || "Pedido")}</strong>
+          <small>${escapeHtml(order.customerName || "Cliente sem nome")} ${order.businessName ? `| ${escapeHtml(order.businessName)}` : ""}</small>
+        </div>
+        <div class="order-card-side">
+          ${orderStatusBadge(order.status)}
+          <strong>${brl(orderTotal(order))}</strong>
+        </div>
+      </div>
+      <div class="order-meta-grid">
+        <span><b>Tipo</b>${escapeHtml(orderClientTypeLabel(order.clientType))}</span>
+        <span><b>Quantidade</b>${number(orderQuantity(order))} garrafas</span>
+        <span><b>Previsão</b>${order.estimatedReadyDate || "-"}<small>${escapeHtml(orderDateNote(order))}</small></span>
+        <span><b>Entrega</b>${order.deliveredAt || "pendente"}<small>${due ? `Receber até ${due}` : "Sem cobrança aberta"}</small></span>
+        <span><b>Pagamento</b>${order.status === "entregue" ? receivableStatus : "ainda não entregue"}</span>
+      </div>
+      <div class="order-mini-list">
+        ${itemRows}
+      </div>
+      <div class="order-card-actions">
+        ${rowActions([tableAction(`edit-order:${order.id}`, "Editar pedido"), tableAction(`delete-order:${order.id}`, "Excluir pedido", "delete", "danger")])}
+      </div>
+    </article>
+  `;
+}
+
 function renderOrders() {
   const orders = state.orders || [];
   const filteredOrders = orders.filter((order) => matchesSearch(order));
@@ -2570,36 +2785,6 @@ function renderOrders() {
   const dueSoon = openOrders.filter((order) => {
     const days = daysUntil(order.estimatedReadyDate);
     return days != null && days <= 7;
-  });
-  const rows = filteredOrders.map((order) => {
-    const items = orderItems(order);
-    const itemSummary = items.length
-      ? items
-          .slice(0, 3)
-          .map((item) => {
-            const ready = orderItemReservedQty(item);
-            const batches = orderItemBatchCodes(item).join(", ");
-            return `${number(item.qty)}x ${escapeHtml(orderProductText(item))} <span class="inline-muted">${number(ready)}/${number(item.qty)} ${escapeHtml(item.productionStatus || "pendente")}${batches ? ` | ${escapeHtml(batches)}` : ""}</span>${item.note ? ` (${escapeHtml(item.note)})` : ""}`;
-          })
-          .join("<br>")
-      : "Sem itens";
-    const extra = items.length > 3 ? `<br><span>+${items.length - 3} item(ns)</span>` : "";
-    const receivableStatus = orderReceivableStatus(order);
-    const due = orderPaymentDueDate(order);
-    return `
-      <tr>
-        <td><strong>${escapeHtml(order.code || "Pedido")}</strong><br><span>${order.orderDate || "-"}</span></td>
-        <td><strong>${escapeHtml(order.customerName || "Cliente sem nome")}</strong><br><span>${escapeHtml(order.businessName || order.whatsapp || "")}</span><br><span>${escapeHtml(orderClientTypeLabel(order.clientType))}</span></td>
-        <td>${itemSummary}${extra}</td>
-        <td class="num">${number(orderQuantity(order))}</td>
-        <td>${orderStatusBadge(order.status)}</td>
-        <td>${order.estimatedReadyDate || "-"}<br><span>${escapeHtml(orderDateNote(order))}</span></td>
-        <td>${order.deliveredAt || "-"}<br><span>${due ? `Receber até ${due}` : "Entrega pendente"}</span></td>
-        <td>${order.status === "entregue" ? `<span class="status ${statusClass(receivableStatus, "general")}">${receivableStatus}</span>` : "-"}</td>
-        <td class="num"><strong>${brl(orderTotal(order))}</strong></td>
-        <td>${rowActions([tableAction(`edit-order:${order.id}`, "Editar pedido"), tableAction(`delete-order:${order.id}`, "Excluir pedido", "delete", "danger")])}</td>
-      </tr>
-    `;
   });
   return `
     ${pageHead(
@@ -2620,21 +2805,9 @@ function renderOrders() {
         ${orderProductionRows().length ? orderProductionRows().map((row) => `<div class="production-chip"><strong>${escapeHtml(row.flavor)}</strong><span>${number(row.missing)} faltando</span><small>${number(row.reserved)} reservado de ${number(row.ordered)} | ${row.nextDue || "sem data"}</small></div>`).join("") : `<p class="empty-note">Sem produção pendente para pedidos abertos.</p>`}
       </div>
     </section>
-    ${table(
-      [
-        { label: "Pedido / data" },
-        { label: "Cliente" },
-        { label: "Itens" },
-        { label: "Qtd.", num: true },
-        { label: "Status" },
-        { label: "Previsão" },
-        { label: "Entrega / cobrança" },
-        { label: "Pagamento" },
-        { label: "Valor", num: true },
-        { label: "Ações" },
-      ],
-      rows,
-    )}
+    <section class="order-list">
+      ${filteredOrders.length ? filteredOrders.map(orderCard).join("") : `<article class="admin-card"><p class="empty-note">Nenhum pedido ainda. Use “Novo pedido” para começar.</p></article>`}
+    </section>
   `;
 }
 
@@ -3542,8 +3715,128 @@ function newPurchaseForm() {
   });
 }
 
-function newSaleForm() {
-  const stockRows = finishedStockRows().filter((row) => row.stock > 0);
+function reserveStockForm(batchCode) {
+  const batch = state.batches.find((item) => item.code === batchCode);
+  const product = productForBatch(batch);
+  const available = batchAvailableStock(batchCode);
+  const options = reservationOptionsForBatch(batch);
+  openModal(
+    "Reservar lote para pedido",
+    "Estoque",
+    `
+      <form id="reserveStockForm">
+        <div class="result-card field-full">
+          <small>Lote</small>
+          <strong>${escapeHtml(batchCode)} - ${escapeHtml(product ? product.flavor : batch?.flavor || "Kombucha")}</strong>
+          <span>Disponível agora: ${number(available)} garrafa(s)</span>
+        </div>
+        ${
+          options.length
+            ? `<div class="input-grid">
+                <label class="field field-full"><span>Pedido / sabor</span><select name="orderItemKey">${options.map((option) => `<option value="${orderItemSelectionKey(option.order, option.index)}">${escapeHtml(option.order.code)} - ${escapeHtml(option.order.businessName || option.order.customerName || "Cliente")} | ${escapeHtml(orderProductText(option.item))} | falta ${number(option.need)}</option>`).join("")}</select></label>
+                <label class="field"><span>Quantidade para reservar</span><input name="qty" type="number" min="1" max="${available}" value="${Math.min(available, options[0]?.need || 1)}" required></label>
+                <label class="field field-full"><span>Observação</span><input name="note" placeholder="Ex: reservado manualmente para retirada de sexta"></label>
+              </div>
+              <button class="btn btn-primary" type="submit">Reservar para pedido</button>`
+            : `<p class="empty-note">Não há pedido aberto desse sabor precisando de reserva. Crie ou ajuste um pedido primeiro.</p>`
+        }
+      </form>
+    `,
+  );
+  const form = document.querySelector("#reserveStockForm");
+  if (!form || !options.length) return;
+  form.addEventListener("submit", (event) => {
+    event.preventDefault();
+    const data = Object.fromEntries(new FormData(event.target).entries());
+    const qty = Number(data.qty || 0);
+    const currentAvailable = batchAvailableStock(batchCode);
+    const selection = findOrderItemBySelection(data.orderItemKey);
+    if (!selection.order || !selection.item) {
+      window.alert("Pedido não encontrado. Atualize a página e tente novamente.");
+      return;
+    }
+    const need = orderItemRemainingQty(selection.item);
+    if (qty <= 0 || qty > currentAvailable) {
+      window.alert(`Estoque insuficiente neste lote. Disponível: ${number(currentAvailable)} garrafa(s).`);
+      return;
+    }
+    if (qty > need) {
+      window.alert(`Esse item precisa de ${number(need)} garrafa(s). Ajuste a quantidade para não reservar a mais.`);
+      return;
+    }
+    reserveBatchForOrderItem(batchCode, selection.order, selection.item, qty, data.note || "", true);
+    addAudit("Reserva manual", `${number(qty)} garrafa(s) do lote ${batchCode} para ${selection.order.code}`);
+    closeModal();
+    render();
+  });
+}
+
+function reverseStockForm(batchCode) {
+  const batch = state.batches.find((item) => item.code === batchCode);
+  const soldQty = Math.max(0, soldFromBatch(batchCode));
+  const saleOptions = batchSaleRows(batchCode)
+    .filter((row) => row.qty > 0)
+    .map((row) => `<option value="${row.sale.id}">${escapeHtml(row.customer)} | ${number(row.qty)} un | ${row.sale.date || "-"}</option>`)
+    .join("");
+  openModal(
+    "Logística reversa",
+    "Estoque",
+    `
+      <form id="reverseStockForm">
+        <div class="result-card field-full">
+          <small>Lote</small>
+          <strong>${escapeHtml(batchCode)} - ${escapeHtml(batch?.flavor || "Kombucha")}</strong>
+          <span>Saídas líquidas neste lote: ${number(soldQty)} garrafa(s)</span>
+        </div>
+        <div class="input-grid">
+          <label class="field field-full"><span>Venda/saída de referência</span><select name="saleId"><option value="">Sem referência específica</option>${saleOptions}</select></label>
+          <label class="field"><span>Data de retorno</span><input name="date" type="date" value="${todayIso()}" required></label>
+          <label class="field"><span>Quantidade que voltou</span><input name="qty" type="number" min="1" max="${Math.max(1, soldQty)}" value="1" required></label>
+          <label class="field"><span>Cliente / origem</span><input name="customerName" list="customerOptionsReverse" placeholder="Quem devolveu ou de onde voltou"></label>
+          <datalist id="customerOptionsReverse">${[...new Set(batchSaleRows(batchCode).map((row) => row.customer).filter(Boolean))].map((name) => `<option value="${escapeHtml(name)}"></option>`).join("")}</datalist>
+          <label class="field field-full"><span>Motivo</span><input name="note" placeholder="Ex: devolução, troca, erro de separação"></label>
+        </div>
+        <button class="btn btn-primary" type="submit">Registrar retorno ao estoque</button>
+      </form>
+    `,
+  );
+  const form = document.querySelector("#reverseStockForm");
+  form.addEventListener("submit", (event) => {
+    event.preventDefault();
+    const data = Object.fromEntries(new FormData(event.target).entries());
+    const reference = byId("sales", data.saleId);
+    const qty = Number(data.qty || 0);
+    if (qty <= 0 || qty > Math.max(1, soldQty)) {
+      window.alert(`Quantidade inválida. Saídas líquidas neste lote: ${number(soldQty)}.`);
+      return;
+    }
+    state.sales.unshift({
+      id: id("sale"),
+      date: data.date,
+      partner: data.customerName || reference?.customerName || reference?.partner || "Logística reversa",
+      customerName: data.customerName || reference?.customerName || reference?.partner || "Logística reversa",
+      channel: "devolução",
+      movementType: "devolucao",
+      priceType: "devolucao",
+      flavor: batch?.flavor || "",
+      productId: reference?.productId || productForBatch(batch)?.id || "",
+      batchCode,
+      qty: -qty,
+      unitPrice: 0,
+      discount: 0,
+      delivery: 0,
+      note: data.note || "Retorno ao estoque",
+      referenceSaleId: data.saleId || "",
+    });
+    addAudit("Logística reversa", `${number(qty)} garrafa(s) retornaram ao lote ${batchCode}`);
+    closeModal();
+    render();
+  });
+}
+
+function newSaleForm(batchCode = "") {
+  const allStockRows = finishedStockRows().filter((row) => row.stock > 0);
+  const stockRows = batchCode ? allStockRows.filter((row) => row.code === batchCode) : allStockRows;
   if (!stockRows.length) {
     openModal(
       "Sem estoque disponível",
@@ -3554,7 +3847,7 @@ function newSaleForm() {
     return;
   }
   openModal(
-    "Nova saída",
+    batchCode ? "Saída deste lote" : "Nova saída",
     "Vendas",
     `
       <form id="saleForm">
@@ -5322,6 +5615,9 @@ function handleAction(action) {
     "delete-batch": deleteBatch,
     "edit-sale": editSaleForm,
     "delete-sale": (itemId) => deleteRecord("sales", itemId),
+    "reserve-stock": reserveStockForm,
+    "stock-sale": newSaleForm,
+    "reverse-stock": reverseStockForm,
     "edit-order": orderForm,
     "delete-order": deleteOrder,
     "edit-purchase": editPurchaseForm,
