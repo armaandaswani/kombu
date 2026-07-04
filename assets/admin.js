@@ -912,6 +912,17 @@ function stockUnitFor(collection, item, fallback = "g") {
   return item?.purchaseUnit || fallback || "g";
 }
 
+function stockCollectionItems(collection) {
+  if (collection === "packaging") return state.packaging;
+  return state.ingredients;
+}
+
+function stockItemByName(collection, name = "") {
+  const normalized = normalizeText(name);
+  if (!normalized) return null;
+  return stockCollectionItems(collection).find((item) => normalizeText(item.name) === normalized) || null;
+}
+
 function purchaseStockOptions(selected = "", { includeNew = true } = {}) {
   const ingredients = state.ingredients
     .map((item) => `<option value="${purchaseStockKey("ingredients", item.id)}" ${selected === purchaseStockKey("ingredients", item.id) ? "selected" : ""}>${escapeHtml(item.name)} (${escapeHtml(item.purchaseUnit || "g")})</option>`)
@@ -3051,11 +3062,6 @@ function newIngredientForm() {
 }
 
 function newPurchaseForm() {
-  const defaultKey = state.ingredients[0]
-    ? purchaseStockKey("ingredients", state.ingredients[0].id)
-    : state.packaging[0]
-      ? purchaseStockKey("packaging", state.packaging[0].id)
-      : "new:ingredients";
   openModal(
     "Registrar compra",
     "Compras",
@@ -3064,14 +3070,16 @@ function newPurchaseForm() {
         <div class="input-grid">
           <label class="field"><span>Data</span><input name="date" type="date" value="${todayIso()}" required></label>
           <label class="field"><span>Tipo de compra</span><select name="kind"><option value="stock">Entra no estoque/custo</option><option value="operational">Despesa operacional</option></select></label>
-          <label class="field"><span>Item de estoque</span><select name="stockKey">${purchaseStockOptions(defaultKey)}</select></label>
+          <label class="field" data-purchase-mode-field><span>O que deseja fazer?</span><select name="itemMode"><option value="new" selected>Cadastrar novo item</option><option value="existing">Atualizar item existente</option></select></label>
+          <label class="field" data-existing-purchase-field><span>Item existente</span><select name="stockKey"><option value="">Selecione para atualizar...</option>${purchaseStockOptions("", { includeNew: false })}</select></label>
           <label class="field"><span>Fornecedor</span><input name="supplier" value="${state.suppliers[0]?.name || ""}" required></label>
-          <label class="field" data-new-purchase-field><span>Nome do novo item</span><input name="newItemName" placeholder="Ex: lavanda, datador, caixa"></label>
-          <label class="field" data-new-purchase-field><span>Categoria / tipo</span><input name="newCategory" placeholder="fruta, chá, embalagem..."></label>
-          <label class="field" data-new-purchase-field><span>Unidade de estoque</span><select name="newPurchaseUnit">${unitOptions("g")}</select></label>
-          <label class="field"><span>Pacotes / unidades compradas</span><input name="packageCount" type="number" min="0" step="1" value="1" required></label>
-          <label class="field"><span>Conteúdo de cada pacote</span><input name="packageSize" type="number" min="0" step="0.001" required placeholder="Ex: 200"></label>
-          <label class="field"><span>Unidade do pacote</span><select name="packageUnit">${unitOptions("g")}</select></label>
+          <label class="field" data-new-purchase-field data-new-item-type><span>Tipo do novo item</span><select name="newItemCollection"><option value="ingredients" selected>Ingrediente</option><option value="packaging">Material / embalagem / outro</option></select></label>
+          <label class="field" data-new-purchase-field><span data-new-description-label>Nome do novo item</span><input name="newItemName" placeholder="Ex: flor jasmim, lavanda, datador, caixa"></label>
+          <label class="field" data-new-purchase-field data-new-stock-field><span>Categoria / tipo</span><input name="newCategory" placeholder="fruta, chá, embalagem..."></label>
+          <label class="field" data-new-purchase-field data-new-stock-field><span>Unidade de estoque</span><select name="newPurchaseUnit">${unitOptions("g")}</select></label>
+          <label class="field" data-stock-quantity-field><span>Pacotes / unidades compradas</span><input name="packageCount" type="number" min="0" step="1" value="1" required></label>
+          <label class="field" data-stock-quantity-field><span>Conteúdo de cada pacote</span><input name="packageSize" type="number" min="0" step="0.001" required placeholder="Ex: 200"></label>
+          <label class="field" data-stock-quantity-field><span>Unidade do pacote</span><select name="packageUnit">${unitOptions("g")}</select></label>
           <label class="field"><span>Total pago</span><input name="total" type="number" step="0.01" required></label>
           <label class="field"><span>Método</span><select name="method"><option>Pix</option><option>Boleto</option><option>Cartão</option><option>Dinheiro</option></select></label>
           <label class="field"><span>Quem comprou</span><input name="buyer" value="Owner / Admin"></label>
@@ -3089,60 +3097,108 @@ function newPurchaseForm() {
   const preview = document.querySelector("#purchasePreview");
   const updateNewFields = ({ suggestUnit = false } = {}) => {
     const isOperational = form.elements.kind.value === "operational";
-    const isNewItem = isOperational || form.elements.stockKey.value.startsWith("new:");
-    form.elements.stockKey.closest(".field").hidden = isOperational;
+    const isNewMode = form.elements.itemMode.value === "new";
+    const existingField = form.elements.stockKey.closest(".field");
+    const modeField = form.elements.itemMode.closest(".field");
+    const descriptionLabel = form.querySelector("[data-new-description-label]");
+    modeField.hidden = isOperational;
+    existingField.hidden = isOperational || isNewMode;
+    form.elements.stockKey.required = !isOperational && !isNewMode;
+    form.elements.newItemName.required = isOperational || isNewMode;
     form.elements.packageCount.required = !isOperational;
     form.elements.packageSize.required = !isOperational;
     form.querySelectorAll("[data-new-purchase-field]").forEach((field) => {
-      field.hidden = !isNewItem;
+      field.hidden = !isOperational && !isNewMode;
     });
-    if (isNewItem && suggestUnit) {
-      const newType = parsePurchaseStockKey(form.elements.stockKey.value).itemId;
-      form.elements.newPurchaseUnit.value = newType === "packaging" ? "un" : "g";
+    form.querySelectorAll("[data-new-item-type]").forEach((field) => {
+      field.hidden = isOperational || !isNewMode;
+    });
+    form.querySelectorAll("[data-new-stock-field]").forEach((field) => {
+      field.hidden = isOperational || !isNewMode;
+    });
+    form.querySelectorAll("[data-stock-quantity-field]").forEach((field) => {
+      field.hidden = isOperational;
+    });
+    if (descriptionLabel) descriptionLabel.textContent = isOperational ? "Descrição da despesa" : "Nome do novo item";
+    if (isNewMode && suggestUnit) {
+      form.elements.newPurchaseUnit.value = form.elements.newItemCollection.value === "packaging" ? "un" : "g";
     }
   };
   const purchaseCalc = () => {
     const isOperational = form.elements.kind.value === "operational";
-    const stockKey = form.elements.stockKey.value;
-    const isNewItem = isOperational || stockKey.startsWith("new:");
-    const target = isNewItem ? { collection: parsePurchaseStockKey(stockKey).itemId, item: null } : stockItemFromKey(stockKey);
+    const isExistingMode = !isOperational && form.elements.itemMode.value === "existing";
+    const newName = form.elements.newItemName.value.trim();
+    const collection = isExistingMode ? parsePurchaseStockKey(form.elements.stockKey.value).collection : form.elements.newItemCollection.value;
+    const matchingExisting = !isOperational && !isExistingMode ? stockItemByName(collection, newName) : null;
+    const target = isExistingMode
+      ? stockItemFromKey(form.elements.stockKey.value)
+      : { collection, item: matchingExisting };
+    const isNewItem = !isOperational && !isExistingMode && !matchingExisting;
     const packageCount = Number(form.elements.packageCount.value || 0);
     const packageSize = Number(form.elements.packageSize.value || 0);
     const packageUnit = form.elements.packageUnit.value;
-    const stockUnit = isNewItem ? form.elements.newPurchaseUnit.value : stockUnitFor(target.collection, target.item, packageUnit);
+    const stockUnit = isExistingMode || matchingExisting ? stockUnitFor(target.collection, target.item, packageUnit) : form.elements.newPurchaseUnit.value;
     const total = Number(form.elements.total.value || 0);
     const qty = purchaseQuantityInStockUnit({ packageCount, packageSize, packageUnit }, stockUnit);
     const costPerUnit = total / Math.max(qty, 0.000001);
-    const itemName = isNewItem ? form.elements.newItemName.value || "Novo item" : target.item?.name || "Item";
+    const itemName = isOperational ? newName || "Despesa operacional" : target.item?.name || newName || "Novo item";
     if (isOperational) {
       preview.innerHTML = `
         <small>Despesa operacional</small>
         <strong>${brl(total)}</strong>
         <span>${itemName}: entra em Despesas e não altera estoque/custo da garrafa.</span>
       `;
-      return { target, isNewItem, isOperational, packageCount, packageSize, packageUnit, stockUnit, qty: 0, total, costPerUnit: 0 };
+      return { target, isNewItem: false, isOperational, isExistingMode: false, packageCount, packageSize, packageUnit, stockUnit, qty: 0, total, costPerUnit: 0 };
     }
+    const modeText = isExistingMode
+      ? target.item
+        ? `Atualizando item existente: ${target.item.name}.`
+        : "Escolha o item existente que será atualizado."
+      : matchingExisting
+        ? `Já existe "${matchingExisting.name}". A compra atualizará este item, não criará duplicado.`
+        : `Novo ${collection === "packaging" ? "material" : "ingrediente"}: ${newName || "digite o nome do item"}.`;
     preview.innerHTML = `
       <small>Total que entra no estoque</small>
       <strong>${number(qty, 3)} ${stockUnit}</strong>
-      <span>${itemName}: ${brl(costPerUnit)} por ${stockUnit}</span>
+      <span>${modeText} ${brl(costPerUnit)} por ${stockUnit}</span>
     `;
-    return { target, isNewItem, packageCount, packageSize, packageUnit, stockUnit, qty, total, costPerUnit };
+    return { target, isNewItem, isOperational, isExistingMode, packageCount, packageSize, packageUnit, stockUnit, qty, total, costPerUnit };
   };
+  form.elements.newItemName.addEventListener("input", () => {
+    if (form.elements.kind.value !== "operational" && form.elements.itemMode.value !== "new") {
+      form.elements.itemMode.value = "new";
+      updateNewFields({ suggestUnit: true });
+    }
+    purchaseCalc();
+  });
   form.addEventListener("input", purchaseCalc);
   form.addEventListener("change", () => {
     updateNewFields();
     purchaseCalc();
   });
-  form.elements.stockKey.addEventListener("change", () => updateNewFields({ suggestUnit: true }));
-  updateNewFields();
+  form.elements.itemMode.addEventListener("change", () => {
+    if (form.elements.itemMode.value === "existing") form.elements.newItemName.value = "";
+    updateNewFields({ suggestUnit: true });
+    purchaseCalc();
+  });
+  form.elements.stockKey.addEventListener("change", () => {
+    if (form.elements.stockKey.value) form.elements.itemMode.value = "existing";
+    updateNewFields();
+    purchaseCalc();
+  });
+  form.elements.newItemCollection.addEventListener("change", () => updateNewFields({ suggestUnit: true }));
+  updateNewFields({ suggestUnit: true });
   purchaseCalc();
   form.addEventListener("submit", (event) => {
     event.preventDefault();
     const data = Object.fromEntries(new FormData(form).entries());
-    const { target, isNewItem, isOperational, packageCount, packageSize, packageUnit, stockUnit, qty, total, costPerUnit } = purchaseCalc();
-    if (isNewItem && !data.newItemName.trim()) {
+    const { target, isNewItem, isOperational, isExistingMode, packageCount, packageSize, packageUnit, stockUnit, qty, total, costPerUnit } = purchaseCalc();
+    if ((isNewItem || isOperational) && !data.newItemName.trim()) {
       window.alert("Informe o nome do novo item.");
+      return;
+    }
+    if (isExistingMode && !target.item) {
+      window.alert("Escolha o item existente que será atualizado.");
       return;
     }
     if ((!qty && !isOperational) || !total) {
@@ -3177,7 +3233,7 @@ function newPurchaseForm() {
     }
     let collection = target.collection;
     let stockItem = target.item;
-    if (isNewItem && collection === "ingredients") {
+    if (!stockItem && isNewItem && collection === "ingredients") {
       stockItem = findOrCreateIngredient({
         name: data.newItemName,
         category: data.newCategory || "outro",
@@ -3192,7 +3248,7 @@ function newPurchaseForm() {
         min: 0,
       });
     }
-    if (isNewItem && collection === "packaging") {
+    if (!stockItem && isNewItem && collection === "packaging") {
       const materialType = ["bottle", "label", "box", "material"].includes(data.newCategory) ? data.newCategory : "material";
       stockItem = findOrCreatePackaging({
         name: data.newItemName,
