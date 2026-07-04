@@ -1339,6 +1339,10 @@ textarea:focus-visible {
   gap: 14px;
 }
 
+.metric-grid.compact {
+  grid-template-columns: repeat(auto-fit, minmax(min(180px, 100%), 1fr));
+}
+
 .admin-card {
   padding: 18px;
 }
@@ -1721,6 +1725,19 @@ textarea:focus-visible {
   margin-top: 4px;
   font-size: 1.55rem;
   line-height: 1.1;
+}
+
+.reservation-note {
+  min-height: 76px;
+}
+
+.reservation-note span {
+  display: block;
+  margin-top: 4px;
+  color: var(--ink-soft);
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1.35;
 }
 
 .module-tabs {

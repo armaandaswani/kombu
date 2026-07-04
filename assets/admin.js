@@ -13,20 +13,23 @@ const ORDER_CLIENT_TYPES = [
 ];
 const PAYMENT_STATUSES = ["aberto", "aguardando pagamento", "pago", "atrasado", "cancelado"];
 const RECURRING_RETAIL_PRICE = 20;
+const GLOBAL_RETAIL_PRICE = 22;
+const GLOBAL_WHOLESALE_PRICE = 15;
+const GLOBAL_PRICE_VERSION = "2026-07-04-22-15";
 
 const PRODUCT_CATALOG_SEED = [
-  { id: "prod-kmb001", ean: "7890528600010", item: "KMB001", flavor: "Maracujá", sizeMl: 500, description: "Kombucha Premium de 500ml - Sabor Maracujá", wholesalePrice: 13, retailPrice: 18.5, baselineCost: 3.29, status: "ativo", visible: true },
-  { id: "prod-kmb002", ean: "7890528600027", item: "KMB002", flavor: "Frutas Vermelhas", sizeMl: 500, description: "Kombucha Premium de 500ml - Sabor Frutas Vermelhas (Morango, Mirtilo, Oxicoco)", wholesalePrice: 13, retailPrice: 18.5, baselineCost: 4.74, status: "ativo", visible: true },
-  { id: "prod-kmb003", ean: "7890528600034", item: "KMB003", flavor: "Hibisco com Anis Estrelado", sizeMl: 500, description: "Kombucha Premium de 500ml - Sabor Hibisco c/Anis Estrelado", wholesalePrice: 13, retailPrice: 18.5, baselineCost: 2.29, status: "ativo", visible: true },
-  { id: "prod-kmb004", ean: "7890528600041", item: "KMB004", flavor: "Mirtilo c/Flor Borboleta Azul", sizeMl: 500, description: "Kombucha Premium de 500ml - Sabor Mirtilo c/Flor Borboleta Azul", wholesalePrice: 13, retailPrice: 18.5, baselineCost: 4.47, status: "ativo", visible: true },
-  { id: "prod-kmb005", ean: "7890528600058", item: "KMB005", flavor: "Maçã c/Canela", sizeMl: 500, description: "Kombucha Premium de 500ml - Sabor Maçã c/Canela", wholesalePrice: 13, retailPrice: 18.5, baselineCost: 2.9, status: "ativo", visible: true },
-  { id: "prod-kmb006", ean: "7890528600065", item: "KMB006", flavor: "Pêra c/Alecrim", sizeMl: 500, description: "Kombucha Premium de 500ml - Sabor Pêra c/Alecrim", wholesalePrice: 13, retailPrice: 18.5, baselineCost: 2.77, status: "ativo", visible: true },
-  { id: "prod-kmb007", ean: "7890528600072", item: "KMB007", flavor: "Imunidade", sizeMl: 500, description: "Kombucha Premium de 500ml - Sabor Imunidade (Limão, Gengibre, Cúrcuma)", wholesalePrice: 13, retailPrice: 18.5, baselineCost: 2.63, status: "ativo", visible: true },
-  { id: "prod-kmb008", ean: "7890528600447", item: "KMB008", flavor: "Rosas & Cardamomo", sizeMl: 500, description: "Kombucha Premium de 500ml - Sabor Rosas & Cardamomo", wholesalePrice: 13, retailPrice: 18.5, baselineCost: 2.44, status: "ativo", visible: true },
-  { id: "prod-kmb009", ean: "7890528600812", item: "KMB009", flavor: "Lavanda & Limão", sizeMl: 500, description: "Kombucha Premium de 500ml - Sabor Lavanda & Limão", wholesalePrice: 13, retailPrice: 18.5, baselineCost: 0, status: "planejado", visible: false },
-  { id: "prod-kmb010", ean: "7890528601222", item: "KMB010", flavor: "Manga & Jasmim", sizeMl: 500, description: "Kombucha Premium de 500ml - Sabor Manga & Jasmim", wholesalePrice: 13, retailPrice: 18.5, baselineCost: 0, status: "planejado", visible: false },
-  { id: "prod-kmb011", ean: "7890528601420", item: "KMB011", flavor: "Goiaba", sizeMl: 500, description: "Kombucha Premium de 500ml - Sabor Goiaba", wholesalePrice: 13, retailPrice: 18.5, baselineCost: 0, status: "planejado", visible: false },
-  { id: "prod-kmb012", ean: "7890528601314", item: "KMB012", flavor: "Uva", sizeMl: 500, description: "Kombucha Premium de 500ml - Sabor Uva", wholesalePrice: 13, retailPrice: 18.5, baselineCost: 0, status: "planejado", visible: false },
+  { id: "prod-kmb001", ean: "7890528600010", item: "KMB001", flavor: "Maracujá", sizeMl: 500, description: "Kombucha Premium de 500ml - Sabor Maracujá", wholesalePrice: GLOBAL_WHOLESALE_PRICE, retailPrice: GLOBAL_RETAIL_PRICE, baselineCost: 3.29, status: "ativo", visible: true },
+  { id: "prod-kmb002", ean: "7890528600027", item: "KMB002", flavor: "Frutas Vermelhas", sizeMl: 500, description: "Kombucha Premium de 500ml - Sabor Frutas Vermelhas (Morango, Mirtilo, Oxicoco)", wholesalePrice: GLOBAL_WHOLESALE_PRICE, retailPrice: GLOBAL_RETAIL_PRICE, baselineCost: 4.74, status: "ativo", visible: true },
+  { id: "prod-kmb003", ean: "7890528600034", item: "KMB003", flavor: "Hibisco com Anis Estrelado", sizeMl: 500, description: "Kombucha Premium de 500ml - Sabor Hibisco c/Anis Estrelado", wholesalePrice: GLOBAL_WHOLESALE_PRICE, retailPrice: GLOBAL_RETAIL_PRICE, baselineCost: 2.29, status: "ativo", visible: true },
+  { id: "prod-kmb004", ean: "7890528600041", item: "KMB004", flavor: "Mirtilo c/Flor Borboleta Azul", sizeMl: 500, description: "Kombucha Premium de 500ml - Sabor Mirtilo c/Flor Borboleta Azul", wholesalePrice: GLOBAL_WHOLESALE_PRICE, retailPrice: GLOBAL_RETAIL_PRICE, baselineCost: 4.47, status: "ativo", visible: true },
+  { id: "prod-kmb005", ean: "7890528600058", item: "KMB005", flavor: "Maçã c/Canela", sizeMl: 500, description: "Kombucha Premium de 500ml - Sabor Maçã c/Canela", wholesalePrice: GLOBAL_WHOLESALE_PRICE, retailPrice: GLOBAL_RETAIL_PRICE, baselineCost: 2.9, status: "ativo", visible: true },
+  { id: "prod-kmb006", ean: "7890528600065", item: "KMB006", flavor: "Pêra c/Alecrim", sizeMl: 500, description: "Kombucha Premium de 500ml - Sabor Pêra c/Alecrim", wholesalePrice: GLOBAL_WHOLESALE_PRICE, retailPrice: GLOBAL_RETAIL_PRICE, baselineCost: 2.77, status: "ativo", visible: true },
+  { id: "prod-kmb007", ean: "7890528600072", item: "KMB007", flavor: "Imunidade", sizeMl: 500, description: "Kombucha Premium de 500ml - Sabor Imunidade (Limão, Gengibre, Cúrcuma)", wholesalePrice: GLOBAL_WHOLESALE_PRICE, retailPrice: GLOBAL_RETAIL_PRICE, baselineCost: 2.63, status: "ativo", visible: true },
+  { id: "prod-kmb008", ean: "7890528600447", item: "KMB008", flavor: "Rosas & Cardamomo", sizeMl: 500, description: "Kombucha Premium de 500ml - Sabor Rosas & Cardamomo", wholesalePrice: GLOBAL_WHOLESALE_PRICE, retailPrice: GLOBAL_RETAIL_PRICE, baselineCost: 2.44, status: "ativo", visible: true },
+  { id: "prod-kmb009", ean: "7890528600812", item: "KMB009", flavor: "Lavanda & Limão", sizeMl: 500, description: "Kombucha Premium de 500ml - Sabor Lavanda & Limão", wholesalePrice: GLOBAL_WHOLESALE_PRICE, retailPrice: GLOBAL_RETAIL_PRICE, baselineCost: 0, status: "planejado", visible: false },
+  { id: "prod-kmb010", ean: "7890528601222", item: "KMB010", flavor: "Manga & Jasmim", sizeMl: 500, description: "Kombucha Premium de 500ml - Sabor Manga & Jasmim", wholesalePrice: GLOBAL_WHOLESALE_PRICE, retailPrice: GLOBAL_RETAIL_PRICE, baselineCost: 0, status: "planejado", visible: false },
+  { id: "prod-kmb011", ean: "7890528601420", item: "KMB011", flavor: "Goiaba", sizeMl: 500, description: "Kombucha Premium de 500ml - Sabor Goiaba", wholesalePrice: GLOBAL_WHOLESALE_PRICE, retailPrice: GLOBAL_RETAIL_PRICE, baselineCost: 0, status: "planejado", visible: false },
+  { id: "prod-kmb012", ean: "7890528601314", item: "KMB012", flavor: "Uva", sizeMl: 500, description: "Kombucha Premium de 500ml - Sabor Uva", wholesalePrice: GLOBAL_WHOLESALE_PRICE, retailPrice: GLOBAL_RETAIL_PRICE, baselineCost: 0, status: "planejado", visible: false },
 ];
 
 const COST_INGREDIENT_SEED = [
@@ -382,13 +385,18 @@ const defaultState = {
       name: "Base de custos dos prints",
       labelCost500: 0.85,
       bottleCost500: 0.84,
-      retailPrice500: 18.5,
-      wholesalePrice500: 13,
+      retailPrice500: GLOBAL_RETAIL_PRICE,
+      wholesalePrice500: GLOBAL_WHOLESALE_PRICE,
     },
   ],
   notifications: {
     adminEmail: ADMIN_NOTIFICATION_EMAIL,
     provider: "resend",
+  },
+  settings: {
+    globalRetailPrice: GLOBAL_RETAIL_PRICE,
+    globalWholesalePrice: GLOBAL_WHOLESALE_PRICE,
+    priceVersion: GLOBAL_PRICE_VERSION,
   },
   audit: [],
 };
@@ -422,6 +430,7 @@ function runStartupIntegrations() {
         console.error("Falha ao sincronizar pedido no boot do admin", error);
       }
     });
+    reconcileOrderReservations();
     saveState();
   } catch (error) {
     console.error("Falha ao preparar estado inicial do admin", error);
@@ -704,11 +713,29 @@ function normalizeState(savedState) {
     flavors: normalizeCmsFlavors(saved.cms?.flavors || base.cms.flavors),
   };
   merged.notifications = { ...base.notifications, ...(saved.notifications || {}) };
+  merged.settings = { ...base.settings, ...(saved.settings || {}) };
   ["products", "ingredients", "packaging", "suppliers", "partners", "recipes", "batches", "sales", "orders", "leads", "purchases", "expenses", "costSources", "audit"].forEach((key) => {
     merged[key] = Array.isArray(saved[key]) ? saved[key] : base[key];
   });
   merged.packaging = merged.packaging.map((item) => ({ ...item, type: inferPackagingType(item), productId: item.productId || "" }));
   ensureProductLabelInventory(merged);
+  if (merged.settings.priceVersion !== GLOBAL_PRICE_VERSION) {
+    merged.products.forEach((product) => {
+      product.retailPrice = GLOBAL_RETAIL_PRICE;
+      product.wholesalePrice = GLOBAL_WHOLESALE_PRICE;
+    });
+    merged.recipes.forEach((recipe) => {
+      recipe.retailPrice = GLOBAL_RETAIL_PRICE;
+      recipe.wholesalePrice = GLOBAL_WHOLESALE_PRICE;
+    });
+    merged.costSources.forEach((source) => {
+      source.retailPrice500 = GLOBAL_RETAIL_PRICE;
+      source.wholesalePrice500 = GLOBAL_WHOLESALE_PRICE;
+    });
+    merged.settings.globalRetailPrice = GLOBAL_RETAIL_PRICE;
+    merged.settings.globalWholesalePrice = GLOBAL_WHOLESALE_PRICE;
+    merged.settings.priceVersion = GLOBAL_PRICE_VERSION;
+  }
   return merged;
 }
 
@@ -977,7 +1004,7 @@ function orderClientTypeLabel(value) {
 
 function priceForOrderClientType(product, clientType) {
   const type = ORDER_CLIENT_TYPES.find((item) => item.value === clientType) || ORDER_CLIENT_TYPES[0];
-  if (type.price === "wholesale") return productWholesalePrice(product) || 15;
+  if (type.price === "wholesale") return productWholesalePrice(product) || state.settings.globalWholesalePrice || GLOBAL_WHOLESALE_PRICE;
   if (type.price === "recurringRetail") return RECURRING_RETAIL_PRICE;
   return productRetailPrice(product) || productWholesalePrice(product) || 0;
 }
@@ -1265,6 +1292,42 @@ function isOpenOrder(order) {
   return !["entregue", "cancelado"].includes(order?.status);
 }
 
+function orderItemAllocations(item = {}) {
+  const clean = (Array.isArray(item.allocations) ? item.allocations : [])
+    .map((allocation) => ({
+      batchCode: String(allocation.batchCode || "").trim(),
+      qty: Number(allocation.qty || 0),
+      date: allocation.date || "",
+    }))
+    .filter((allocation) => allocation.batchCode && allocation.qty > 0);
+  if (clean.length) return clean;
+  const legacyCode = String(item.batchCode || "").trim();
+  const legacyQty = Math.max(Number(item.reservedQty || 0), Number(item.producedQty || 0));
+  if (legacyCode && !legacyCode.includes(",") && legacyQty > 0) {
+    return [{ batchCode: legacyCode, qty: legacyQty, date: item.readyDate || "" }];
+  }
+  return [];
+}
+
+function orderItemReservedQty(item = {}) {
+  const allocated = orderItemAllocations(item).reduce((sum, allocation) => sum + Number(allocation.qty || 0), 0);
+  const legacy = Math.max(Number(item.reservedQty || 0), Number(item.producedQty || 0));
+  const total = Math.max(allocated, legacy);
+  const qty = Number(item.qty || 0);
+  return qty ? Math.min(qty, total) : total;
+}
+
+function orderItemBatchCodes(item = {}) {
+  return [...new Set(orderItemAllocations(item).map((allocation) => allocation.batchCode).filter(Boolean))];
+}
+
+function orderItemAllocationLabel(item = {}) {
+  const allocations = orderItemAllocations(item);
+  return allocations.length
+    ? allocations.map((allocation) => `${number(allocation.qty)}x ${escapeHtml(allocation.batchCode)}`).join(" | ")
+    : "Ainda sem lote reservado";
+}
+
 function nextOrderCode(dateIso = todayIso()) {
   const compactDate = String(dateIso || todayIso()).slice(2).replaceAll("-", "");
   const prefix = `PED-${compactDate}`;
@@ -1315,15 +1378,42 @@ function orderReceivableValue(order) {
 }
 
 function orderItemRemainingQty(item) {
-  return Math.max(0, Number(item.qty || 0) - Math.max(Number(item.reservedQty || 0), Number(item.producedQty || 0)));
+  return Math.max(0, Number(item.qty || 0) - orderItemReservedQty(item));
 }
 
 function reservedFromBatch(code) {
   return (state.orders || [])
-    .filter((order) => !["entregue", "cancelado"].includes(order.status))
+    .filter(isOpenOrder)
     .flatMap((order) => orderItems(order))
-    .filter((item) => item.batchCode === code)
-    .reduce((sum, item) => sum + Number(item.reservedQty || item.producedQty || 0), 0);
+    .reduce((sum, item) => {
+      return sum + orderItemAllocations(item)
+        .filter((allocation) => allocation.batchCode === code)
+        .reduce((allocationSum, allocation) => allocationSum + Number(allocation.qty || 0), 0);
+    }, 0);
+}
+
+function batchReservationRows(code) {
+  return (state.orders || [])
+    .filter(isOpenOrder)
+    .flatMap((order) =>
+      orderItems(order).flatMap((item) =>
+        orderItemAllocations(item)
+          .filter((allocation) => allocation.batchCode === code)
+          .map((allocation) => ({ order, item, qty: Number(allocation.qty || 0) })),
+      ),
+    )
+    .filter((row) => row.qty > 0);
+}
+
+function batchReservationText(code) {
+  const rows = batchReservationRows(code);
+  if (!rows.length) return "-";
+  return rows
+    .map((row) => {
+      const client = row.order.businessName || row.order.customerName || "Cliente";
+      return `${number(row.qty)}x ${escapeHtml(row.order.code)} - ${escapeHtml(client)}`;
+    })
+    .join("<br>");
 }
 
 function orderProductionRows() {
@@ -1344,8 +1434,9 @@ function orderProductionRows() {
           orders: [],
         };
         current.ordered += Number(item.qty || 0);
-        current.reserved += Number(item.reservedQty || 0);
-        current.produced += Number(item.producedQty || 0);
+        const reserved = orderItemReservedQty(item);
+        current.reserved += reserved;
+        current.produced += reserved;
         current.missing += orderItemRemainingQty(item);
         const due = item.readyDate || order.estimatedReadyDate || order.neededBy || "";
         if (due && (!current.nextDue || due < current.nextDue)) current.nextDue = due;
@@ -1439,6 +1530,26 @@ function syncOrderSales(order) {
   if (order.status !== "entregue") return;
   orderItems(order).forEach((item) => {
     if (Number(item.qty || 0) <= 0) return;
+    const allocations = orderItemAllocations(item);
+    if (allocations.length) {
+      const allocatedQty = allocations.reduce((sum, allocation) => sum + Number(allocation.qty || 0), 0);
+      allocations.forEach((allocation) => {
+        state.sales.unshift({
+          id: id("sale"),
+          ...salePayloadFromOrderItem(order, { ...item, qty: allocation.qty, batchCode: allocation.batchCode }),
+          orderItemKey: `${item.key || item.productId || item.flavor}-${allocation.batchCode}`,
+        });
+      });
+      const remainingQty = Math.max(0, Number(item.qty || 0) - allocatedQty);
+      if (remainingQty > 0) {
+        state.sales.unshift({
+          id: id("sale"),
+          ...salePayloadFromOrderItem(order, { ...item, qty: remainingQty, batchCode: "" }),
+          orderItemKey: `${item.key || item.productId || item.flavor}-sem-lote`,
+        });
+      }
+      return;
+    }
     state.sales.unshift({ id: id("sale"), ...salePayloadFromOrderItem(order, item) });
   });
 }
@@ -1472,12 +1583,17 @@ function syncPurchaseExpense(purchase) {
 
 function allocateBatchToOrders(batch) {
   if (!batch || !Number(batch.actual || 0)) return 0;
-  let available = Number(batch.actual || 0);
+  const alreadyReserved = reservedFromBatch(batch.code);
+  let available = Math.max(0, Number(batch.actual || 0) - soldFromBatch(batch.code) - alreadyReserved);
   const recipe = byId("recipes", batch.recipeId);
   const productId = batch.productId || recipe?.productId || "";
   const openOrders = (state.orders || [])
-    .filter((order) => !["entregue", "cancelado"].includes(order.status))
-    .sort((a, b) => String(a.neededBy || a.estimatedReadyDate || a.orderDate).localeCompare(String(b.neededBy || b.estimatedReadyDate || b.orderDate)));
+    .filter(isOpenOrder)
+    .sort((a, b) =>
+      String(a.neededBy || a.estimatedReadyDate || a.orderDate || a.createdAt || "").localeCompare(
+        String(b.neededBy || b.estimatedReadyDate || b.orderDate || b.createdAt || ""),
+      ),
+    );
   openOrders.forEach((order) => {
     orderItems(order).forEach((item) => {
       if (!available) return;
@@ -1487,18 +1603,50 @@ function allocateBatchToOrders(batch) {
       const need = orderItemRemainingQty(item);
       if (!need) return;
       const allocated = Math.min(need, available);
-      item.reservedQty = Number(item.reservedQty || 0) + allocated;
-      item.producedQty = Number(item.producedQty || 0) + allocated;
-      item.batchCode = batch.code;
-      item.productionStatus = Number(item.reservedQty || 0) >= Number(item.qty || 0) ? "reservado" : "produzido";
+      item.allocations = [...orderItemAllocations(item), { batchCode: batch.code, qty: allocated, date: batch.date }];
+      const reserved = orderItemReservedQty(item);
+      item.reservedQty = reserved;
+      item.producedQty = reserved;
+      item.batchCode = orderItemBatchCodes(item).join(", ");
+      item.productionStatus = reserved >= Number(item.qty || 0) ? "reservado" : "em produção";
       item.readyDate = batch.date;
       available -= allocated;
     });
-    const allReady = orderItems(order).length && orderItems(order).every((item) => Number(item.reservedQty || 0) >= Number(item.qty || 0));
+    const allReady = orderItems(order).length && orderItems(order).every((item) => orderItemReservedQty(item) >= Number(item.qty || 0));
     if (allReady && !["pronto", "entregue"].includes(order.status)) order.status = "pronto";
-    else if (!["pronto", "entregue"].includes(order.status) && orderItems(order).some((item) => Number(item.producedQty || 0) > 0)) order.status = "em produção";
+    else if (!["pronto", "entregue"].includes(order.status) && orderItems(order).some((item) => orderItemReservedQty(item) > 0)) order.status = "em produção";
   });
-  return Number(batch.actual || 0) - available;
+  return Math.max(0, Number(batch.actual || 0) - soldFromBatch(batch.code) - alreadyReserved - available);
+}
+
+function resetOpenOrderReservations() {
+  (state.orders || []).filter(isOpenOrder).forEach((order) => {
+    orderItems(order).forEach((item) => {
+      item.allocations = [];
+      item.reservedQty = 0;
+      item.producedQty = 0;
+      item.batchCode = "";
+      item.readyDate = "";
+      if (["em produção", "produzido", "reservado", "pronto"].includes(item.productionStatus)) item.productionStatus = "pendente";
+    });
+    if (!["recebido", "confirmado"].includes(order.status)) order.status = "confirmado";
+  });
+}
+
+function reconcileOrderReservations() {
+  resetOpenOrderReservations();
+  const byBatch = {};
+  (state.batches || [])
+    .filter(shouldConsumeBatch)
+    .sort((a, b) => String(a.date || "").localeCompare(String(b.date || "")) || String(a.code || "").localeCompare(String(b.code || "")))
+    .forEach((batch) => {
+      const reserved = allocateBatchToOrders(batch);
+      if (reserved > 0) byBatch[batch.code] = reserved;
+    });
+  return {
+    byBatch,
+    total: Object.values(byBatch).reduce((sum, qty) => sum + Number(qty || 0), 0),
+  };
 }
 
 function monthlySalesRows(limit = 6) {
@@ -1885,6 +2033,8 @@ function renderSuppliers() {
 }
 
 function renderProducts() {
+  const currentRetail = commonProductPrice("retailPrice", state.settings.globalRetailPrice || GLOBAL_RETAIL_PRICE);
+  const currentWholesale = commonProductPrice("wholesalePrice", state.settings.globalWholesalePrice || GLOBAL_WHOLESALE_PRICE);
   const rows = state.products
     .filter((item) => matchesSearch(item))
     .map((product) => {
@@ -1918,6 +2068,19 @@ function renderProducts() {
       ${metric("Com receita vinculada", number(state.products.filter((product) => recipeForProduct(product)).length), "Calculam custo automaticamente", "calculate")}
       ${metric("Ativos públicos", number(state.products.filter((product) => product.visible).length), "Controle de visibilidade", "visibility")}
       ${metric("Custo médio calculado", brl(state.products.reduce((sum, product) => sum + productDisplayCost(product), 0) / Math.max(1, state.products.length)), "Média do catálogo", "price_check")}
+    </section>
+    <section class="admin-card">
+      <div class="table-toolbar">
+        <div>
+          <h3>Preço global das kombuchas</h3>
+          <p>Use este controle para alterar varejo e atacado de todos os sabores de uma vez.</p>
+        </div>
+        ${actionButton("global-prices", "Alterar preços", "price_change", "btn-outline")}
+      </div>
+      <div class="metric-grid compact">
+        ${metric("Varejo atual", brl(currentRetail), "Aplicado como referência dos pedidos de varejo", "sell")}
+        ${metric("Atacado atual", brl(currentWholesale), "Aplicado para parceiros novos e recorrentes", "storefront")}
+      </div>
     </section>
     ${table(
       [
@@ -2198,6 +2361,7 @@ function renderStock() {
           { label: "Produzido", num: true },
           { label: "Saídas", num: true },
           { label: "Reservado", num: true },
+          { label: "Reservado para" },
           { label: "Saldo", num: true },
           { label: "Ideal até" },
           { label: "Vender até" },
@@ -2211,6 +2375,7 @@ function renderStock() {
               <td class="num">${number(row.actual)}</td>
               <td class="num">${number(row.sold)}</td>
               <td class="num">${number(row.reserved)}</td>
+              <td>${batchReservationText(row.code)}</td>
               <td class="num"><strong>${number(row.stock)}</strong></td>
               <td>${row.idealSellBy || "-"}</td>
               <td>${row.sellBy || "-"}</td>
@@ -2219,6 +2384,7 @@ function renderStock() {
             </tr>
           `,
         ),
+        1200,
       ),
     ingredients: () =>
       table(
@@ -2411,8 +2577,9 @@ function renderOrders() {
       ? items
           .slice(0, 3)
           .map((item) => {
-            const ready = Number(item.reservedQty || 0) || Number(item.producedQty || 0);
-            return `${number(item.qty)}x ${escapeHtml(orderProductText(item))} <span class="inline-muted">${number(ready)}/${number(item.qty)} ${escapeHtml(item.productionStatus || "pendente")}</span>${item.note ? ` (${escapeHtml(item.note)})` : ""}`;
+            const ready = orderItemReservedQty(item);
+            const batches = orderItemBatchCodes(item).join(", ");
+            return `${number(item.qty)}x ${escapeHtml(orderProductText(item))} <span class="inline-muted">${number(ready)}/${number(item.qty)} ${escapeHtml(item.productionStatus || "pendente")}${batches ? ` | ${escapeHtml(batches)}` : ""}</span>${item.note ? ` (${escapeHtml(item.note)})` : ""}`;
           })
           .join("<br>")
       : "Sem itens";
@@ -2881,8 +3048,8 @@ function syncRecipePricesForProducts(products, prices) {
 }
 
 function globalPriceForm() {
-  const retailDefault = commonProductPrice("retailPrice", 18.5).toFixed(2);
-  const wholesaleDefault = commonProductPrice("wholesalePrice", 13).toFixed(2);
+  const retailDefault = commonProductPrice("retailPrice", state.settings.globalRetailPrice || GLOBAL_RETAIL_PRICE).toFixed(2);
+  const wholesaleDefault = commonProductPrice("wholesalePrice", state.settings.globalWholesalePrice || GLOBAL_WHOLESALE_PRICE).toFixed(2);
   const searchLabel = globalSearch ? `Busca atual (${productsForPriceScope("search").length})` : "Busca atual";
   openModal(
     "Preço global",
@@ -2947,6 +3114,9 @@ function globalPriceForm() {
       if (hasRetail) product.retailPrice = retailPrice;
       if (hasWholesale) product.wholesalePrice = wholesalePrice;
     });
+    if (hasRetail) state.settings.globalRetailPrice = retailPrice;
+    if (hasWholesale) state.settings.globalWholesalePrice = wholesalePrice;
+    state.settings.priceVersion = GLOBAL_PRICE_VERSION;
     const recipeCount = data.get("syncRecipes") === "on" ? syncRecipePricesForProducts(products, { hasRetail, hasWholesale, retailPrice, wholesalePrice }) : 0;
     const changed = [hasRetail ? `varejo ${brl(retailPrice)}` : "", hasWholesale ? `atacado ${brl(wholesalePrice)}` : ""].filter(Boolean).join(" | ");
     addAudit("Preço global atualizado", `${products.length} produtos | ${changed}${recipeCount ? ` | ${recipeCount} receitas` : ""}`);
@@ -2956,8 +3126,8 @@ function globalPriceForm() {
 }
 
 function newProductForm() {
-  const retailDefault = commonProductPrice("retailPrice", 18.5).toFixed(2);
-  const wholesaleDefault = commonProductPrice("wholesalePrice", 13).toFixed(2);
+  const retailDefault = commonProductPrice("retailPrice", state.settings.globalRetailPrice || GLOBAL_RETAIL_PRICE).toFixed(2);
+  const wholesaleDefault = commonProductPrice("wholesalePrice", state.settings.globalWholesalePrice || GLOBAL_WHOLESALE_PRICE).toFixed(2);
   openModal(
     "Novo produto",
     "Produtos / EAN",
@@ -3523,7 +3693,8 @@ function newBatchForm() {
     };
     state.batches.unshift(batch);
     applyBatchInventory(recipe, bottles, -1);
-    const reserved = allocateBatchToOrders(batch);
+    const reservationReport = reconcileOrderReservations();
+    const reserved = reservationReport.byBatch[batch.code] || 0;
     addAudit("Lote criado", `${data.code}: ${number(bottles)} garrafas de ${recipe?.flavor || "receita"}; ${number(reserved)} reservadas para pedidos.`);
     closeModal();
     render();
@@ -4076,6 +4247,7 @@ function deleteOrder(recordId) {
   if (!window.confirm(`Excluir pedido "${order.code}"? Vendas automáticas vinculadas a ele também serão removidas.`)) return;
   state.orders = state.orders.filter((item) => item.id !== recordId);
   state.sales = state.sales.filter((sale) => sale.orderId !== recordId);
+  reconcileOrderReservations();
   addAudit("Pedido excluído", order.code);
   render();
 }
@@ -4377,6 +4549,7 @@ function editBatchForm(batchId) {
       batch.inventoryAdjusted = false;
       batch.inventoryQty = 0;
     }
+    reconcileOrderReservations();
   });
 }
 
@@ -4387,6 +4560,7 @@ function deleteBatch(batchId) {
   const recipe = byId("recipes", batch.recipeId);
   if (batch.inventoryAdjusted && recipe) applyBatchInventory(recipe, Number(batch.inventoryQty || batch.actual || 0), 1);
   state.batches = state.batches.filter((item) => item.id !== batchId);
+  reconcileOrderReservations();
   addAudit("Lote excluído", batch.code);
   render();
 }
@@ -4426,6 +4600,7 @@ function orderItemRowTemplate(item = {}, clientType = "novo_cliente") {
   const selectedProduct = byId("products", selectedProductId) || state.products[0];
   const defaultPrice = item.unitPrice ?? priceForOrderClientType(selectedProduct, clientType);
   const status = item.productionStatus || "pendente";
+  const allocationsJson = JSON.stringify(orderItemAllocations(item));
   return `
     <div class="builder-row order-item-row">
       <label class="field"><span>Produto / sabor</span><select data-field="productId">${state.products.map((product) => `<option value="${product.id}" ${selectedProductId === product.id ? "selected" : ""}>${escapeHtml(productLabel(product))}</option>`).join("")}</select></label>
@@ -4435,8 +4610,13 @@ function orderItemRowTemplate(item = {}, clientType = "novo_cliente") {
       <label class="field"><span>Qtd. reservada</span><input data-field="reservedQty" type="number" min="0" step="1" value="${item.reservedQty || 0}"></label>
       <label class="field"><span>Pronto em</span><input data-field="readyDate" type="date" value="${item.readyDate || ""}"></label>
       <label class="field"><span>Obs. do item</span><input data-field="note" value="${escapeHtml(item.note || "")}" placeholder="Ex: caixa, entrega, condição..."></label>
+      <div class="result-card reservation-note">
+        <small>Reserva automática</small>
+        <span>${orderItemAllocationLabel(item)}</span>
+      </div>
       <input type="hidden" data-field="batchCode" value="${escapeHtml(item.batchCode || "")}">
       <input type="hidden" data-field="producedQty" value="${Number(item.producedQty || 0)}">
+      <input type="hidden" data-field="allocations" value="${escapeHtml(allocationsJson)}">
       <input type="hidden" data-field="key" value="${escapeHtml(item.key || id("oi"))}">
       <button class="icon-btn" type="button" data-remove-builder-row aria-label="Remover item">
         <span class="material-symbols-outlined" aria-hidden="true">delete</span>
@@ -4449,6 +4629,21 @@ function readOrderItemRow(row) {
   const data = readBuilderRow(row);
   const product = byId("products", data.productId);
   if (!product || Number(data.qty || 0) <= 0) return null;
+  let allocations = [];
+  try {
+    allocations = JSON.parse(data.allocations || "[]");
+  } catch {
+    allocations = [];
+  }
+  allocations = allocations
+    .map((allocation) => ({
+      batchCode: String(allocation.batchCode || "").trim(),
+      qty: Number(allocation.qty || 0),
+      date: allocation.date || "",
+    }))
+    .filter((allocation) => allocation.batchCode && allocation.qty > 0);
+  const allocatedQty = allocations.reduce((sum, allocation) => sum + Number(allocation.qty || 0), 0);
+  const reservedQty = Math.min(Number(data.qty || 0), Math.max(Number(data.reservedQty || 0), allocatedQty));
   return {
     productId: product.id,
     productName: productLabel(product),
@@ -4457,10 +4652,11 @@ function readOrderItemRow(row) {
     qty: Number(data.qty || 0),
     unitPrice: Number(data.unitPrice || 0),
     productionStatus: data.productionStatus || "pendente",
-    producedQty: Number(data.producedQty || 0),
-    reservedQty: Math.min(Number(data.reservedQty || 0), Number(data.qty || 0)),
+    producedQty: reservedQty,
+    reservedQty,
     readyDate: data.readyDate || "",
-    batchCode: data.batchCode || "",
+    batchCode: allocations.length ? allocations.map((allocation) => allocation.batchCode).join(", ") : data.batchCode || "",
+    allocations,
     note: data.note || "",
   };
 }
@@ -4620,11 +4816,13 @@ function orderForm(orderId) {
     if (existing) {
       Object.assign(existing, payload);
       syncOrderIntegrations(existing);
+      reconcileOrderReservations();
       addAudit("Pedido atualizado", `${payload.code}: ${payload.customerName}`);
     } else {
       const order = { id: id("ord"), createdAt: new Date().toISOString(), ...payload };
       syncOrderIntegrations(order);
       state.orders.unshift(order);
+      reconcileOrderReservations();
       addAudit("Pedido criado", `${payload.code}: ${payload.customerName} | ${number(totalQty)} garrafas`);
     }
     closeModal();
@@ -5230,7 +5428,7 @@ function handleAction(action) {
     "export-ingredients": () => exportCSV("kombu-ingredientes", [["Nome", "Categoria", "Fornecedor", "Estoque", "Unidade", "Custo", "Status"], ...state.ingredients.map((i) => [i.name, i.category, i.supplier, i.stock, i.purchaseUnit, i.costPerUnit, ingredientNeedsCost(i) ? "custo pendente" : i.status])]),
     "export-purchases": () => exportCSV("kombu-compras", [["Data", "Fornecedor", "Item", "Pacotes", "Conteúdo pacote", "Unidade pacote", "Entra estoque", "Unidade estoque", "Total", "Custo unitário", "Método", "Comprador"], ...state.purchases.map((p) => [p.date, p.supplier, p.item, p.packageCount || "", p.packageSize || "", p.packageUnit || "", p.qty, p.unit, p.total, p.costPerUnit || "", p.method, p.buyer])]),
     "export-sales": () => exportCSV("kombu-saidas-vendas", [["Data", "Tipo", "Cliente/destino", "Preço", "Sabor", "Lote", "Qtd", "Preço unitário", "Receita", "Desconto", "Entrega", "Observação"], ...state.sales.map((s) => [s.date, s.movementType || "venda", s.customerName || s.partner, s.priceType || s.channel, s.flavor, s.batchCode, s.qty, s.unitPrice, saleRevenue(s), s.discount, s.delivery, s.note || ""])]),
-    "export-orders": () => exportCSV("kombu-pedidos", [["Código", "Data", "Tipo cliente", "Status", "Cliente", "Negócio", "WhatsApp", "Previsão pronto", "Entrega", "Receber até", "Pagamento", "Precisa até", "Qtd", "Valor", "Itens", "Observações"], ...(state.orders || []).map((order) => [order.code, order.orderDate, orderClientTypeLabel(order.clientType), order.status, order.customerName, order.businessName, order.whatsapp, order.estimatedReadyDate, order.deliveredAt || "", orderPaymentDueDate(order), orderReceivableStatus(order), order.neededBy, orderQuantity(order), orderTotal(order), orderItems(order).map((item) => `${item.qty}x ${orderProductText(item)} | ${item.productionStatus || "pendente"} | reservado ${item.reservedQty || 0} @ ${brl(item.unitPrice)}`).join("; "), order.notes || ""])]),
+    "export-orders": () => exportCSV("kombu-pedidos", [["Código", "Data", "Tipo cliente", "Status", "Cliente", "Negócio", "WhatsApp", "Previsão pronto", "Entrega", "Receber até", "Pagamento", "Precisa até", "Qtd", "Valor", "Itens", "Observações"], ...(state.orders || []).map((order) => [order.code, order.orderDate, orderClientTypeLabel(order.clientType), order.status, order.customerName, order.businessName, order.whatsapp, order.estimatedReadyDate, order.deliveredAt || "", orderPaymentDueDate(order), orderReceivableStatus(order), order.neededBy, orderQuantity(order), orderTotal(order), orderItems(order).map((item) => `${item.qty}x ${orderProductText(item)} | ${item.productionStatus || "pendente"} | reservado ${orderItemReservedQty(item)} | lotes ${orderItemBatchCodes(item).join(" + ") || "-"} @ ${brl(item.unitPrice)}`).join("; "), order.notes || ""])]),
     "export-leads": () => exportCSV("kombu-leads-crm", [["Criado em", "Tipo", "Status", "Nome", "Negócio", "Tipo negócio", "Local", "WhatsApp", "Instagram", "Mensagem"], ...state.leads.map((lead) => [lead.createdAt, lead.type, lead.status, lead.name, lead.business, lead.businessType, lead.location, lead.whatsapp, lead.instagram, lead.message])]),
     "export-reports": () => exportCSV("kombu-relatorio", [["Métrica", "Valor"], ["Receita", totals().salesRevenue], ["COGS", totals().cogs], ["Lucro bruto", totals().grossProfit], ["Despesas", totals().expenses], ["Líquido", totals().net], ["Pedidos em aberto", totals().openOrderValue], ["A receber", totals().receivable], ["Produção faltante", totals().productionMissing]]),
     "export-costs": () => {
