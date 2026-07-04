@@ -1966,6 +1966,10 @@ textarea:focus-visible {
   display: none !important;
 }
 
+[hidden] {
+  display: none !important;
+}
+
 @media (max-width: 1320px) {
   .nav-links {
     display: none;
