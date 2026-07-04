@@ -601,6 +601,11 @@ function inputNumber(value, digits = 6) {
   return Number(parsed.toFixed(digits)).toString();
 }
 
+function setInputNumber(input, value, digits = 6) {
+  if (!input) return;
+  input.value = Number(value || 0) > 0 ? inputNumber(value, digits) : "";
+}
+
 const pct = (value) => `${number(value, 1)}%`;
 const id = (prefix) => `${prefix}-${Math.random().toString(36).slice(2, 9)}`;
 const todayIso = () => new Date().toISOString().slice(0, 10);
@@ -999,8 +1004,11 @@ function convertedAmount(qty, fromUnit, toUnit) {
 }
 
 function purchaseQuantityInStockUnit({ packageCount, packageSize, packageUnit }, stockUnit) {
-  const rawTotal = Number(packageCount || 0) * Number(packageSize || 0);
-  return convertedAmount(rawTotal, packageUnit, stockUnit);
+  const count = Number(packageCount || 0);
+  const size = Number(packageSize || 0) || (stockUnit === "un" && count ? 1 : 0);
+  const unit = packageUnit || stockUnit || "g";
+  const rawTotal = count * size;
+  return convertedAmount(rawTotal, unit, stockUnit);
 }
 
 function ingredientPackageCost(data = {}, stockUnit = "g") {
@@ -3077,10 +3085,11 @@ function newPurchaseForm() {
           <label class="field" data-new-purchase-field><span data-new-description-label>Nome do novo item</span><input name="newItemName" placeholder="Ex: flor jasmim, lavanda, datador, caixa"></label>
           <label class="field" data-new-purchase-field data-new-stock-field><span>Categoria / tipo</span><input name="newCategory" placeholder="fruta, chá, embalagem..."></label>
           <label class="field" data-new-purchase-field data-new-stock-field><span>Unidade de estoque</span><select name="newPurchaseUnit">${unitOptions("g")}</select></label>
-          <label class="field" data-stock-quantity-field><span>Pacotes / unidades compradas</span><input name="packageCount" type="number" min="0" step="1" value="1" required></label>
-          <label class="field" data-stock-quantity-field><span>Conteúdo de cada pacote</span><input name="packageSize" type="number" min="0" step="0.001" required placeholder="Ex: 200"></label>
-          <label class="field" data-stock-quantity-field><span>Unidade do pacote</span><select name="packageUnit">${unitOptions("g")}</select></label>
+          <label class="field" data-stock-quantity-field><span data-package-count-label>Pacotes / unidades compradas</span><input name="packageCount" type="number" min="0" step="1" value="1" required></label>
+          <label class="field" data-stock-quantity-field data-package-size-field><span>Conteúdo de cada pacote</span><input name="packageSize" type="number" min="0" step="0.001" required placeholder="Ex: 200"></label>
+          <label class="field" data-stock-quantity-field data-package-unit-field><span>Unidade do pacote</span><select name="packageUnit">${unitOptions("g")}</select></label>
           <label class="field"><span>Total pago</span><input name="total" type="number" step="0.01" required></label>
+          <label class="field" data-stock-cost-field><span data-unit-cost-label>Custo por unidade</span><input name="unitCost" type="number" min="0" step="0.000001" placeholder="Preenche o total automaticamente"></label>
           <label class="field"><span>Método</span><select name="method"><option>Pix</option><option>Boleto</option><option>Cartão</option><option>Dinheiro</option></select></label>
           <label class="field"><span>Quem comprou</span><input name="buyer" value="Owner / Admin"></label>
           <div class="result-card field-full" id="purchasePreview">
@@ -3095,18 +3104,36 @@ function newPurchaseForm() {
   );
   const form = document.querySelector("#purchaseForm");
   const preview = document.querySelector("#purchasePreview");
+  let purchaseCostSource = "total";
+  const currentPurchaseStockUnit = () => {
+    if (form.elements.kind.value === "operational") return "";
+    if (form.elements.itemMode.value === "existing") {
+      const target = stockItemFromKey(form.elements.stockKey.value);
+      return stockUnitFor(target.collection, target.item, form.elements.packageUnit.value);
+    }
+    const matchingExisting = stockItemByName(form.elements.newItemCollection.value, form.elements.newItemName.value.trim());
+    return matchingExisting ? stockUnitFor(form.elements.newItemCollection.value, matchingExisting, form.elements.packageUnit.value) : form.elements.newPurchaseUnit.value;
+  };
   const updateNewFields = ({ suggestUnit = false } = {}) => {
     const isOperational = form.elements.kind.value === "operational";
     const isNewMode = form.elements.itemMode.value === "new";
+    if (isNewMode && suggestUnit) {
+      form.elements.newPurchaseUnit.value = form.elements.newItemCollection.value === "packaging" ? "un" : "g";
+      form.elements.packageUnit.value = form.elements.newPurchaseUnit.value;
+    }
+    const stockUnit = currentPurchaseStockUnit();
+    const buysLooseUnits = stockUnit === "un";
     const existingField = form.elements.stockKey.closest(".field");
     const modeField = form.elements.itemMode.closest(".field");
     const descriptionLabel = form.querySelector("[data-new-description-label]");
+    const countLabel = form.querySelector("[data-package-count-label]");
+    const unitCostLabel = form.querySelector("[data-unit-cost-label]");
     modeField.hidden = isOperational;
     existingField.hidden = isOperational || isNewMode;
     form.elements.stockKey.required = !isOperational && !isNewMode;
     form.elements.newItemName.required = isOperational || isNewMode;
     form.elements.packageCount.required = !isOperational;
-    form.elements.packageSize.required = !isOperational;
+    form.elements.packageSize.required = !isOperational && !buysLooseUnits;
     form.querySelectorAll("[data-new-purchase-field]").forEach((field) => {
       field.hidden = !isOperational && !isNewMode;
     });
@@ -3119,10 +3146,42 @@ function newPurchaseForm() {
     form.querySelectorAll("[data-stock-quantity-field]").forEach((field) => {
       field.hidden = isOperational;
     });
-    if (descriptionLabel) descriptionLabel.textContent = isOperational ? "Descrição da despesa" : "Nome do novo item";
-    if (isNewMode && suggestUnit) {
-      form.elements.newPurchaseUnit.value = form.elements.newItemCollection.value === "packaging" ? "un" : "g";
+    form.querySelectorAll("[data-stock-cost-field]").forEach((field) => {
+      field.hidden = isOperational;
+    });
+    form.querySelectorAll("[data-package-size-field], [data-package-unit-field]").forEach((field) => {
+      field.hidden = isOperational || buysLooseUnits;
+    });
+    if (buysLooseUnits) {
+      form.elements.packageSize.value = "";
+      form.elements.packageUnit.value = "un";
     }
+    if (descriptionLabel) descriptionLabel.textContent = isOperational ? "Descrição da despesa" : "Nome do novo item";
+    if (countLabel) countLabel.textContent = buysLooseUnits ? "Unidades compradas" : "Pacotes / unidades compradas";
+    if (unitCostLabel) unitCostLabel.textContent = stockUnit ? `Custo por ${stockUnit}` : "Custo por unidade";
+  };
+  const syncPurchaseMoneyFields = (qty) => {
+    const totalInput = form.elements.total;
+    const unitCostInput = form.elements.unitCost;
+    const hasTotal = String(totalInput.value || "").trim() !== "";
+    const hasUnitCost = String(unitCostInput.value || "").trim() !== "";
+    if (!qty) {
+      if (purchaseCostSource === "total" && !hasTotal) unitCostInput.value = "";
+      if (purchaseCostSource === "unitCost" && !hasUnitCost) totalInput.value = "";
+      return { total: Number(totalInput.value || 0), costPerUnit: Number(unitCostInput.value || 0) };
+    }
+    if (purchaseCostSource === "unitCost") {
+      const costPerUnit = Number(unitCostInput.value || 0);
+      const total = costPerUnit * qty;
+      if (hasUnitCost) setInputNumber(totalInput, total, 2);
+      if (!hasUnitCost) totalInput.value = "";
+      return { total: Number(totalInput.value || 0), costPerUnit };
+    }
+    const total = Number(totalInput.value || 0);
+    const costPerUnit = total / qty;
+    if (hasTotal) setInputNumber(unitCostInput, costPerUnit, 6);
+    if (!hasTotal) unitCostInput.value = "";
+    return { total, costPerUnit: Number(unitCostInput.value || 0) };
   };
   const purchaseCalc = () => {
     const isOperational = form.elements.kind.value === "operational";
@@ -3135,12 +3194,11 @@ function newPurchaseForm() {
       : { collection, item: matchingExisting };
     const isNewItem = !isOperational && !isExistingMode && !matchingExisting;
     const packageCount = Number(form.elements.packageCount.value || 0);
-    const packageSize = Number(form.elements.packageSize.value || 0);
-    const packageUnit = form.elements.packageUnit.value;
+    const packageUnit = form.elements.packageUnit.value || form.elements.newPurchaseUnit.value || "g";
     const stockUnit = isExistingMode || matchingExisting ? stockUnitFor(target.collection, target.item, packageUnit) : form.elements.newPurchaseUnit.value;
-    const total = Number(form.elements.total.value || 0);
+    const packageSize = Number(form.elements.packageSize.value || 0) || (stockUnit === "un" && packageCount ? 1 : 0);
     const qty = purchaseQuantityInStockUnit({ packageCount, packageSize, packageUnit }, stockUnit);
-    const costPerUnit = total / Math.max(qty, 0.000001);
+    const { total, costPerUnit } = isOperational ? { total: Number(form.elements.total.value || 0), costPerUnit: 0 } : syncPurchaseMoneyFields(qty);
     const itemName = isOperational ? newName || "Despesa operacional" : target.item?.name || newName || "Novo item";
     if (isOperational) {
       preview.innerHTML = `
@@ -3160,7 +3218,7 @@ function newPurchaseForm() {
     preview.innerHTML = `
       <small>Total que entra no estoque</small>
       <strong>${number(qty, 3)} ${stockUnit}</strong>
-      <span>${modeText} ${brl(costPerUnit)} por ${stockUnit}</span>
+      <span>${modeText} ${brl(costPerUnit)} por ${stockUnit} | total ${brl(total)}</span>
     `;
     return { target, isNewItem, isOperational, isExistingMode, packageCount, packageSize, packageUnit, stockUnit, qty, total, costPerUnit };
   };
@@ -3171,7 +3229,11 @@ function newPurchaseForm() {
     }
     purchaseCalc();
   });
-  form.addEventListener("input", purchaseCalc);
+  form.addEventListener("input", (event) => {
+    if (event.target.name === "unitCost") purchaseCostSource = "unitCost";
+    if (event.target.name === "total") purchaseCostSource = "total";
+    purchaseCalc();
+  });
   form.addEventListener("change", () => {
     updateNewFields();
     purchaseCalc();
@@ -3183,6 +3245,9 @@ function newPurchaseForm() {
   });
   form.elements.stockKey.addEventListener("change", () => {
     if (form.elements.stockKey.value) form.elements.itemMode.value = "existing";
+    const target = stockItemFromKey(form.elements.stockKey.value);
+    const unit = stockUnitFor(target.collection, target.item, form.elements.packageUnit.value);
+    if (unit) form.elements.packageUnit.value = unit;
     updateNewFields();
     purchaseCalc();
   });
