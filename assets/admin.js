@@ -1002,6 +1002,24 @@ function orderClientTypeLabel(value) {
   return ORDER_CLIENT_TYPES.find((type) => type.value === value)?.label || "Novo cliente";
 }
 
+function partnerOptionLabel(partner = {}) {
+  return [partner.name, partner.neighborhood || partner.city, partner.whatsapp].filter(Boolean).join(" - ");
+}
+
+function selectedPartnerForOrder(order = {}) {
+  if (order.partnerId) {
+    const partner = byId("partners", order.partnerId);
+    if (partner) return partner;
+  }
+  const business = normalizeText(order.businessName || order.customerName || "");
+  const whatsapp = normalizeText(order.whatsapp || "");
+  return (
+    state.partners.find((partner) => whatsapp && normalizeText(partner.whatsapp || "") === whatsapp) ||
+    state.partners.find((partner) => business && normalizeText(partner.name || "") === business) ||
+    null
+  );
+}
+
 function priceForOrderClientType(product, clientType) {
   const type = ORDER_CLIENT_TYPES.find((item) => item.value === clientType) || ORDER_CLIENT_TYPES[0];
   if (type.price === "wholesale") return productWholesalePrice(product) || state.settings.globalWholesalePrice || GLOBAL_WHOLESALE_PRICE;
@@ -3102,7 +3120,7 @@ function matchesSearch(item) {
 function enhanceSelectSearch(container = document) {
   if (!container) return;
   container.querySelectorAll("select").forEach((select) => {
-    if (select.dataset.searchEnhanced === "true" || select.options.length < 8) return;
+    if (select.dataset.searchEnhanced === "true" || (select.options.length < 8 && select.dataset.forceSearch !== "true")) return;
     select.dataset.searchEnhanced = "true";
     const wrapper = document.createElement("div");
     wrapper.className = "select-search-wrap";
@@ -4933,6 +4951,8 @@ function readOrderItemRow(row) {
       batchCode: String(allocation.batchCode || "").trim(),
       qty: Number(allocation.qty || 0),
       date: allocation.date || "",
+      manual: allocation.manual === true,
+      note: allocation.note || "",
     }))
     .filter((allocation) => allocation.batchCode && allocation.qty > 0);
   const allocatedQty = allocations.reduce((sum, allocation) => sum + Number(allocation.qty || 0), 0);
@@ -4971,6 +4991,27 @@ function updateOrderPreview(form) {
 
 function bindOrderForm(form) {
   const rows = form.querySelector("#orderItemsRows");
+  const partnerField = form.querySelector("[data-recurring-partner-field]");
+  const partnerSelect = form.elements.partnerId;
+  const applyPartnerVisibility = () => {
+    const isRecurringPartner = form.elements.clientType?.value === "parceiro_recorrente";
+    if (partnerField) partnerField.hidden = !isRecurringPartner;
+    if (partnerSelect) {
+      partnerSelect.required = isRecurringPartner && state.partners.length > 0;
+      if (!isRecurringPartner) partnerSelect.value = "";
+    }
+  };
+  const applySelectedPartner = () => {
+    const partner = byId("partners", partnerSelect?.value);
+    if (!partner) return;
+    form.elements.customerName.value = partner.name || form.elements.customerName.value;
+    form.elements.businessName.value = partner.name || form.elements.businessName.value;
+    form.elements.whatsapp.value = partner.whatsapp || form.elements.whatsapp.value;
+    if (form.elements.instagram) form.elements.instagram.value = partner.instagram || "";
+    if (form.elements.neighborhood) form.elements.neighborhood.value = partner.neighborhood || "";
+    if (form.elements.city) form.elements.city.value = partner.city || "Manaus";
+    if (!form.elements.source.value) form.elements.source.value = "Parceiro cadastrado";
+  };
   const applyClientPricing = (row) => {
     const product = byId("products", row.querySelector('[data-field="productId"]')?.value);
     setRowField(row, "unitPrice", priceForOrderClientType(product, form.elements.clientType?.value || "novo_cliente"));
@@ -4994,8 +5035,11 @@ function bindOrderForm(form) {
       applyClientPricing(row);
     }
     if (event.target.name === "clientType") {
+      applyPartnerVisibility();
+      if (event.target.value === "parceiro_recorrente") applySelectedPartner();
       rows.querySelectorAll(".order-item-row").forEach(applyClientPricing);
     }
+    if (event.target.name === "partnerId") applySelectedPartner();
     if (event.target.name === "status" && event.target.value === "entregue" && !form.elements.deliveredAt.value) {
       form.elements.deliveredAt.value = todayIso();
       form.elements.paymentDueDate.value = addDaysIso(todayIso(), 15);
@@ -5009,6 +5053,7 @@ function bindOrderForm(form) {
   rows.querySelectorAll(".order-item-row").forEach((row) => {
     if (!Number(row.querySelector('[data-field="unitPrice"]')?.value || 0)) applyClientPricing(row);
   });
+  applyPartnerVisibility();
   updateOrderPreview(form);
 }
 
@@ -5028,6 +5073,13 @@ function orderForm(orderId) {
   const deliveredAt = existing?.deliveredAt || "";
   const paymentDueDate = existing?.paymentDueDate || (deliveredAt ? addDaysIso(deliveredAt, 15) : "");
   const clientType = existing?.clientType || "novo_cliente";
+  const selectedPartner = selectedPartnerForOrder(existing || {});
+  const selectedPartnerId = existing?.partnerId || selectedPartner?.id || "";
+  const partnerOptions = state.partners.length
+    ? `<option value="">Escolha um parceiro cadastrado</option>${state.partners
+        .map((partner) => `<option value="${partner.id}" ${selectedPartnerId === partner.id ? "selected" : ""}>${escapeHtml(partnerOptionLabel(partner))}</option>`)
+        .join("")}`
+    : `<option value="">Nenhum parceiro cadastrado ainda</option>`;
   openModal(
     existing ? "Editar pedido" : "Novo pedido",
     "Pedidos",
@@ -5038,6 +5090,7 @@ function orderForm(orderId) {
           <label class="field"><span>Data do pedido</span><input name="orderDate" type="date" value="${orderDate}" required></label>
           <label class="field"><span>Status</span><select name="status" class="admin-select">${ORDER_STATUSES.map((status) => `<option value="${status}" ${existing?.status === status ? "selected" : ""}>${status}</option>`).join("")}</select></label>
           <label class="field"><span>Tipo de cliente</span><select name="clientType" class="admin-select">${ORDER_CLIENT_TYPES.map((type) => `<option value="${type.value}" ${clientType === type.value ? "selected" : ""}>${type.label}</option>`).join("")}</select></label>
+          <label class="field field-full" data-recurring-partner-field><span>Parceiro cadastrado</span><select name="partnerId" class="admin-select" data-force-search="true" ${state.partners.length ? "" : "disabled"}>${partnerOptions}</select></label>
           <label class="field"><span>Previsão de pronto</span><input name="estimatedReadyDate" type="date" value="${readyDate}"></label>
           <label class="field"><span>Data de entrega</span><input name="deliveredAt" type="date" value="${deliveredAt}"></label>
           <label class="field"><span>Receber até</span><input name="paymentDueDate" type="date" value="${paymentDueDate}"></label>
@@ -5048,6 +5101,9 @@ function orderForm(orderId) {
           <label class="field"><span>Cliente precisa até</span><input name="neededBy" type="date" value="${existing?.neededBy || ""}"></label>
           <label class="field"><span>Origem</span><input name="source" value="${escapeHtml(existing?.source || "")}" placeholder="WhatsApp, feira, revendedor..."></label>
           <label class="field field-full"><span>Observações do pedido</span><textarea name="notes" placeholder="Condição comercial, entrega, prioridade, cobrança...">${escapeHtml(existing?.notes || "")}</textarea></label>
+          <input type="hidden" name="instagram" value="${escapeHtml(existing?.instagram || selectedPartner?.instagram || "")}">
+          <input type="hidden" name="neighborhood" value="${escapeHtml(existing?.neighborhood || selectedPartner?.neighborhood || "")}">
+          <input type="hidden" name="city" value="${escapeHtml(existing?.city || selectedPartner?.city || "Manaus")}">
           <div class="result-card field-full" id="orderPreview"></div>
         </div>
 
@@ -5096,9 +5152,13 @@ function orderForm(orderId) {
       neededBy: data.neededBy,
       status: data.status,
       clientType: data.clientType || "novo_cliente",
+      partnerId: data.partnerId || "",
       customerName: data.customerName,
       businessName: data.businessName,
       whatsapp: data.whatsapp,
+      instagram: data.instagram,
+      neighborhood: data.neighborhood,
+      city: data.city || "Manaus",
       source: data.source,
       notes: data.notes,
       items,
