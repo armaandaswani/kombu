@@ -1,4 +1,5 @@
 const STORAGE_KEY = "kombuAdminStateV3";
+const LOCALE_KEY = "kombuAdminLocale";
 const ADMIN_PASSWORD = "Rssb2010";
 const ADMIN_NOTIFICATION_EMAIL = "armaandaswani@icloud.com";
 const FLAVOR_CATEGORIES = ["Frutados", "Cítricos", "Florais", "Herbais", "Especiados"];
@@ -16,6 +17,162 @@ const RECURRING_RETAIL_PRICE = 20;
 const GLOBAL_RETAIL_PRICE = 22;
 const GLOBAL_WHOLESALE_PRICE = 15;
 const GLOBAL_PRICE_VERSION = "2026-07-04-22-15";
+
+const ADMIN_I18N = {
+  en: {
+    "Acesso protegido": "Protected access",
+    "Acesso validado no servidor. A senha nunca deve aparecer na URL; use apenas este campo para entrar.": "Access is validated on the server. The password should never appear in the URL; use only this field to sign in.",
+    "Ações": "Actions",
+    "Admin": "Admin",
+    "Arquitetura": "Architecture",
+    "Atualizar item existente": "Update existing item",
+    "Atenção necessária": "Needs attention",
+    "A receber": "Receivable",
+    "Busca": "Search",
+    "Buscar EAN, lotes, ingredientes, pedidos, clientes ou vendas...": "Search barcode, batches, ingredients, orders, customers or sales...",
+    "Cadastrar novo item": "Add new item",
+    "Cliente varejo recorrente": "Recurring retail customer",
+    "Cobranças próximas": "Upcoming collections",
+    "Compras": "Purchases",
+    "Controle operacional e financeiro da Kombú: produção, estoque, custo por garrafa, vendas e alertas.": "Operational and financial control for Kombú: production, inventory, bottle cost, sales and alerts.",
+    "Custo": "Cost",
+    "Custos": "Costs",
+    "Dashboard": "Dashboard",
+    "Data": "Date",
+    "Despesas": "Expenses",
+    "Disponível": "Available",
+    "Embalagens": "Packaging",
+    "Entrar no portal": "Enter portal",
+    "Entre com a senha do admin.": "Enter the admin password.",
+    "Este painel controla custos, receitas, estoque, vendas, CMS e dados operacionais da Kombú.": "This panel controls costs, recipes, inventory, sales, CMS and operational data for Kombú.",
+    "Estoque": "Stock",
+    "Estoque geral por sabor": "Total stock by flavor",
+    "Estoque por sabor": "Stock by flavor",
+    "Fornecedor": "Supplier",
+    "Fornecedores": "Suppliers",
+    "Garrafas": "Bottles",
+    "Ingredientes": "Ingredients",
+    "Item existente": "Existing item",
+    "Lead CRM": "CRM leads",
+    "Leads CRM": "CRM leads",
+    "Novo cliente": "New customer",
+    "Novo lote": "New batch",
+    "Novo parceiro": "New partner",
+    "Novo pedido": "New order",
+    "Nenhum alerta crítico no momento.": "No critical alerts right now.",
+    "Nenhum registro ainda. Use os botões acima para começar.": "No records yet. Use the buttons above to start.",
+    "Owner / Admin": "Owner / Admin",
+    "Parceiro recorrente": "Recurring partner",
+    "Parceiros": "Partners",
+    "Painel Operacional": "Operations Panel",
+    "Portal interno": "Internal portal",
+    "Produtos": "Products",
+    "Produção": "Production",
+    "Produção faltante": "Missing production",
+    "Produção puxada por pedidos": "Production pulled by orders",
+    "Quantidade": "Quantity",
+    "Receitas": "Recipes",
+    "Receita do período": "Period revenue",
+    "Registrar compra": "Register purchase",
+    "Relatórios": "Reports",
+    "Reservado": "Reserved",
+    "Rótulos": "Labels",
+    "Sair": "Log out",
+    "Senha": "Password",
+    "Senha incorreta.": "Incorrect password.",
+    "Site público": "Public site",
+    "Sincronizacao na nuvem ativa.": "Cloud sync active.",
+    "Alteracoes salvas aqui aparecem no site publico, no desktop e no celular.": "Changes saved here appear on the public site, desktop and phone.",
+    "Ultimo salvamento": "Last save",
+    "Leitura rápida para ver o que existe agora, sem abrir lote por lote.": "Quick view of what exists now, without opening each batch.",
+    "Nenhum sabor encontrado.": "No flavor found.",
+    "Resumo simples por sabor, reservas por cliente e lotes disponíveis.": "Simple view by flavor, customer reservations and available batches.",
+    "disponíveis": "available",
+    "reservadas": "reserved",
+    "disp.": "avail.",
+    "Vendas": "Sales",
+    "Visão Geral": "Overview",
+  },
+};
+
+const MODULE_LABELS = {
+  dashboard: "Dashboard",
+  products: "Produtos",
+  ingredients: "Ingredientes",
+  purchases: "Compras",
+  suppliers: "Fornecedores",
+  recipes: "Receitas",
+  costs: "Custos",
+  batches: "Produção",
+  stock: "Estoque",
+  packaging: "Embalagens",
+  sales: "Vendas",
+  orders: "Pedidos",
+  leads: "Leads CRM",
+  partners: "Parceiros",
+  expenses: "Despesas",
+  reports: "Relatórios",
+  cms: "CMS",
+  schema: "Arquitetura",
+};
+
+function tr(value) {
+  const text = String(value ?? "");
+  if (currentLocale !== "en") return text;
+  return ADMIN_I18N.en[text] || text;
+}
+
+function setInlineLabel(element, label) {
+  if (!element) return;
+  const icon = element.querySelector(".material-symbols-outlined");
+  element.textContent = "";
+  if (icon) element.append(icon);
+  element.append(document.createTextNode(` ${tr(label)}`));
+}
+
+function applyLocaleToShell() {
+  document.documentElement.lang = currentLocale === "en" ? "en" : "pt-BR";
+  document.querySelectorAll("[data-locale]").forEach((button) => {
+    button.classList.toggle("is-active", button.dataset.locale === currentLocale);
+    button.setAttribute("aria-pressed", button.dataset.locale === currentLocale ? "true" : "false");
+  });
+  const loginScreen = document.querySelector("#loginScreen");
+  if (loginScreen) {
+    const brandLabel = loginScreen.querySelector(".brand-name span");
+    if (brandLabel) brandLabel.textContent = tr("Acesso protegido");
+    setInlineLabel(loginScreen.querySelector(".eyebrow"), "Portal interno");
+    const title = loginScreen.querySelector("#loginTitle");
+    if (title) title.textContent = tr("Entre com a senha do admin.");
+    const copy = loginScreen.querySelector("#loginTitle + p");
+    if (copy) copy.textContent = tr("Este painel controla custos, receitas, estoque, vendas, CMS e dados operacionais da Kombú.");
+    const label = loginScreen.querySelector("label[for='adminPassword']");
+    if (label) label.textContent = tr("Senha");
+    setInlineLabel(loginScreen.querySelector("#loginForm .btn-primary"), "Entrar no portal");
+    const error = loginScreen.querySelector("#loginError");
+    if (error && error.textContent.trim() === "Senha incorreta.") error.textContent = tr("Senha incorreta.");
+    const note = loginScreen.querySelector(".login-note");
+    if (note) note.textContent = tr("Acesso validado no servidor. A senha nunca deve aparecer na URL; use apenas este campo para entrar.");
+  }
+  const sidebarLabel = document.querySelector(".admin-sidebar .brand-name span");
+  if (sidebarLabel) sidebarLabel.textContent = tr("Painel Operacional");
+  document.querySelectorAll("#adminNav [data-module]").forEach((button) => {
+    const label = MODULE_LABELS[button.dataset.module] || button.dataset.module;
+    const translated = tr(label);
+    const labelNode = button.querySelector(".label");
+    if (labelNode) labelNode.textContent = translated;
+    button.title = translated;
+  });
+  const mobileSelect = document.querySelector("#mobileModuleSelector");
+  if (mobileSelect) {
+    Array.from(mobileSelect.options).forEach((option) => {
+      option.textContent = tr(MODULE_LABELS[option.value] || option.textContent);
+    });
+  }
+  const search = document.querySelector("#globalSearch");
+  if (search) search.placeholder = tr("Buscar EAN, lotes, ingredientes, pedidos, clientes ou vendas...");
+  setInlineLabel(document.querySelector("#logoutButton"), "Sair");
+  setInlineLabel(document.querySelector(".admin-user a.btn-outline"), "Site público");
+}
 
 const PRODUCT_CATALOG_SEED = [
   { id: "prod-kmb001", ean: "7890528600010", item: "KMB001", flavor: "Maracujá", sizeMl: 500, description: "Kombucha Premium de 500ml - Sabor Maracujá", wholesalePrice: GLOBAL_WHOLESALE_PRICE, retailPrice: GLOBAL_RETAIL_PRICE, baselineCost: 3.29, status: "ativo", visible: true },
@@ -407,6 +564,7 @@ let globalSearch = "";
 let activeRecipeId = state.recipes[0]?.id || "";
 let currentRole = "Owner / Admin";
 let currentStockView = "kombuchas";
+let currentLocale = localStorage.getItem(LOCALE_KEY) || "pt";
 let cloudSyncReady = false;
 let cloudSyncEnabled = false;
 let cloudSyncConfigured = false;
@@ -1812,8 +1970,8 @@ function pageHead(title, description, actions = "") {
   return `
     <div class="admin-page-head">
       <div>
-        <h1>${title}</h1>
-        <p>${description}</p>
+        <h1>${tr(title)}</h1>
+        <p>${tr(description)}</p>
       </div>
       <div class="admin-actions">${actions}</div>
     </div>
@@ -1830,8 +1988,8 @@ function cloudSyncNotice() {
       <section class="cloud-sync-notice good" aria-live="polite">
         <span class="material-symbols-outlined" aria-hidden="true">cloud_done</span>
         <div>
-          <strong>Sincronizacao na nuvem ativa.</strong>
-          <p>Alteracoes salvas aqui aparecem no site publico, no desktop e no celular.${savedAt ? ` Ultimo salvamento: ${savedAt}.` : ""}</p>
+          <strong>${tr("Sincronizacao na nuvem ativa.")}</strong>
+          <p>${tr("Alteracoes salvas aqui aparecem no site publico, no desktop e no celular.")}${savedAt ? ` ${tr("Ultimo salvamento")}: ${savedAt}.` : ""}</p>
         </div>
       </section>
     `;
@@ -1864,7 +2022,7 @@ function cloudSyncNotice() {
 function actionButton(action, label, icon, variant = "btn-primary", module = currentModule) {
   const disabled = canWrite(module) ? "" : "disabled aria-disabled=\"true\"";
   return `<button class="btn ${variant}" type="button" data-action="${action}" ${disabled}>
-    <span class="material-symbols-outlined" aria-hidden="true">${icon}</span>${label}
+    <span class="material-symbols-outlined" aria-hidden="true">${icon}</span>${tr(label)}
   </button>`;
 }
 
@@ -1884,9 +2042,9 @@ function rowActions(actions) {
 function metric(label, value, note, icon = "monitoring") {
   return `
     <article class="admin-card metric-card">
-      <small><span class="material-symbols-outlined" aria-hidden="true">${icon}</span> ${label}</small>
+      <small><span class="material-symbols-outlined" aria-hidden="true">${icon}</span> ${tr(label)}</small>
       <strong>${value}</strong>
-      <span>${note}</span>
+      <span>${tr(note)}</span>
     </article>
   `;
 }
@@ -1920,7 +2078,7 @@ function renderDashboard() {
     ${pageHead(
       "Visão Geral",
       "Controle operacional e financeiro da Kombú: produção, estoque, custo por garrafa, vendas e alertas.",
-      `${actionButton("new-order", "Novo pedido", "assignment", "btn-outline")} ${actionButton("new-batch", "Novo lote", "science", "btn-outline")} ${actionButton("new-purchase", "Registrar compra", "shopping_bag", "btn-outline")} ${actionButton("new-sale", "Nova saída", "receipt_long")}`,
+      `${actionButton("new-order", "Novo pedido", "assignment", "btn-outline")} ${actionButton("new-batch", "Novo lote", "science", "btn-outline")} ${actionButton("new-purchase", "Registrar compra", "shopping_bag", "btn-outline")}`,
     )}
     <section class="metric-grid">
       ${metric("Garrafas em estoque", number(total.finishedStock), "Prontas para venda por lote", "water_bottle")}
@@ -1998,7 +2156,7 @@ function tableRowsWithLabels(headers, rows) {
   return rows.map((row) => {
     let index = 0;
     return row.replace(/<td(\s[^>]*)?>/g, (match, attrs = "") => {
-      const header = headers[index]?.label || "";
+      const header = tr(headers[index]?.label || "");
       index += 1;
       return `<td data-label="${escapeHtml(header)}"${attrs}>`;
     });
@@ -2008,12 +2166,12 @@ function tableRowsWithLabels(headers, rows) {
 function table(headers, rows) {
   const bodyRows = rows.length
     ? tableRowsWithLabels(headers, rows).join("")
-    : `<tr><td colspan="${headers.length}"><p class="empty-note">Nenhum registro ainda. Use os botões acima para começar.</p></td></tr>`;
+    : `<tr><td colspan="${headers.length}"><p class="empty-note">${tr("Nenhum registro ainda. Use os botões acima para começar.")}</p></td></tr>`;
   return `
     <article class="admin-card table-card">
       <div class="table-scroll" role="region" aria-label="Tabela responsiva">
         <table class="data-table">
-          <thead><tr>${headers.map((header) => `<th class="${header.num ? "num" : ""}">${header.label}</th>`).join("")}</tr></thead>
+          <thead><tr>${headers.map((header) => `<th class="${header.num ? "num" : ""}">${tr(header.label)}</th>`).join("")}</tr></thead>
           <tbody>${bodyRows}</tbody>
         </table>
       </div>
@@ -2440,10 +2598,101 @@ function stockFlowChip(label, detail, tone = "") {
   return `<span class="stock-flow-chip ${tone}"><strong>${label}</strong><small>${detail}</small></span>`;
 }
 
+function stockByFlavorRows() {
+  const batches = finishedStockRows();
+  const usedBatchCodes = new Set();
+  const productRows = state.products.map((product) => {
+    const matching = batches.filter((row) => {
+      const sameProduct = row.product?.id === product.id || row.productId === product.id;
+      const sameFlavor = normalizeText(row.flavor || row.product?.flavor) === normalizeText(product.flavor);
+      if (sameProduct || sameFlavor) usedBatchCodes.add(row.code);
+      return sameProduct || sameFlavor;
+    });
+    return {
+      key: product.id,
+      item: product.item || "",
+      flavor: product.flavor || product.item || "Kombucha",
+      product,
+      available: matching.reduce((sum, row) => sum + Number(row.stock || 0), 0),
+      reserved: matching.reduce((sum, row) => sum + Number(row.reserved || 0), 0),
+      sold: matching.reduce((sum, row) => sum + Number(row.sold || 0), 0),
+      produced: matching.reduce((sum, row) => sum + Number(row.actual || 0), 0),
+      batches: matching.length,
+    };
+  });
+  const extraRows = batches
+    .filter((row) => !usedBatchCodes.has(row.code))
+    .map((row) => ({
+      key: row.code,
+      item: row.product?.item || row.code,
+      flavor: row.flavor || row.product?.flavor || "Kombucha",
+      product: row.product || null,
+      available: Number(row.stock || 0),
+      reserved: Number(row.reserved || 0),
+      sold: Number(row.sold || 0),
+      produced: Number(row.actual || 0),
+      batches: 1,
+    }));
+  return [...productRows, ...extraRows].sort((a, b) => {
+    const itemCompare = String(a.item || "").localeCompare(String(b.item || ""), "pt-BR", { numeric: true });
+    return itemCompare || String(a.flavor).localeCompare(String(b.flavor), "pt-BR");
+  });
+}
+
+function stockFlavorOverview() {
+  const rows = stockByFlavorRows().filter((row) => {
+    if (!globalSearch) return true;
+    const haystack = normalizeText(`${row.item} ${row.flavor} ${row.product?.description || ""}`);
+    return haystack.includes(normalizeText(globalSearch));
+  });
+  const totalAvailable = rows.reduce((sum, row) => sum + Number(row.available || 0), 0);
+  const totalReserved = rows.reduce((sum, row) => sum + Number(row.reserved || 0), 0);
+  const maxQty = Math.max(1, ...rows.map((row) => Number(row.available || 0) + Number(row.reserved || 0)));
+  return `
+    <article class="admin-card stock-overview-card">
+      <div class="stock-overview-head">
+        <div>
+          <h3>${tr("Estoque geral por sabor")}</h3>
+          <p>${tr("Leitura rápida para ver o que existe agora, sem abrir lote por lote.")}</p>
+        </div>
+        <div class="stock-overview-total">
+          <strong>${number(totalAvailable)}</strong>
+          <span>${tr("disponíveis")}</span>
+          ${totalReserved ? `<small>${number(totalReserved)} ${tr("reservadas")}</small>` : ""}
+        </div>
+      </div>
+      <div class="stock-overview-list">
+        ${
+          rows.length
+            ? rows
+                .map((row) => {
+                  const width = Math.max(3, ((Number(row.available || 0) + Number(row.reserved || 0)) / maxQty) * 100);
+                  const isEmpty = Number(row.available || 0) <= 0 && Number(row.reserved || 0) <= 0;
+                  return `
+                    <div class="stock-overview-row ${isEmpty ? "is-empty" : ""}">
+                      <div class="stock-overview-name">
+                        <strong>${escapeHtml(row.flavor)}</strong>
+                        <span>${escapeHtml(row.item || "Sem código")}${row.reserved ? ` | ${number(row.reserved)} ${tr("reservadas")}` : ""}</span>
+                      </div>
+                      <div class="stock-overview-qty">
+                        <strong>${number(row.available)}</strong>
+                        <span>${tr("disp.")}</span>
+                      </div>
+                      <div class="stock-overview-bar" aria-hidden="true"><i style="width:${width}%"></i></div>
+                    </div>
+                  `;
+                })
+                .join("")
+            : `<p class="empty-note">${tr("Nenhum sabor encontrado.")}</p>`
+        }
+      </div>
+    </article>
+  `;
+}
+
 function stockBatchCard(row) {
   const reservations = batchReservationRows(row.code);
   const sales = batchSaleRows(row.code);
-  const stockValue = row.stock * row.cost.batchCostPerBottle;
   const reservationList = reservations.length
     ? reservations
         .map((reservation) => {
@@ -2482,7 +2731,6 @@ function stockBatchCard(row) {
         <span>Ideal ${row.idealSellBy || "-"}</span>
         <span>Vender até ${row.sellBy || "-"}</span>
         <span>Validade ${row.expiry || "-"}</span>
-        <span>Valor livre ${brl(stockValue)}</span>
       </div>
       <div class="stock-flow-grid">
         <div class="stock-flow-box">
@@ -2540,18 +2788,9 @@ function renderStock() {
   `;
   const inventoryViews = {
     kombuchas: () => {
-      const totalProduced = stockRows.reduce((sum, row) => sum + Number(row.actual || 0), 0);
-      const totalAvailable = stockRows.reduce((sum, row) => sum + Number(row.stock || 0), 0);
-      const totalReserved = stockRows.reduce((sum, row) => sum + Number(row.reserved || 0), 0);
-      const totalSold = stockRows.reduce((sum, row) => sum + Number(row.sold || 0), 0);
       return `
         <section class="stock-kombucha-layout">
-          <div class="stock-summary-grid">
-            <article class="metric-card admin-card"><small>Disponível</small><strong>${number(totalAvailable)}</strong><span>Garrafas livres para venda</span></article>
-            <article class="metric-card admin-card"><small>Reservado</small><strong>${number(totalReserved)}</strong><span>Separado para pedidos</span></article>
-            <article class="metric-card admin-card"><small>Saídas</small><strong>${number(totalSold)}</strong><span>Vendas, perdas e consumo</span></article>
-            <article class="metric-card admin-card"><small>Produzido</small><strong>${number(totalProduced)}</strong><span>Total aprovado em lotes</span></article>
-          </div>
+          ${stockFlavorOverview()}
           <div class="stock-main-grid">
             <section class="stock-batch-list">
               ${stockRows.length ? stockRows.map(stockBatchCard).join("") : `<article class="admin-card"><p class="empty-note">Nenhum lote aprovado ainda.</p></article>`}
@@ -2613,7 +2852,7 @@ function renderStock() {
   };
   if (currentStockView === "kombuchas") {
     return `
-      ${pageHead("Estoque", "Controle saldos livres, reservas por cliente, vendas e devoluções por lote.", actionButton("stock-adjustment", "Ajuste com motivo", "tune"))}
+      ${pageHead("Estoque", "Resumo simples por sabor, reservas por cliente e lotes disponíveis.", actionButton("stock-adjustment", "Ajuste com motivo", "tune"))}
       <div class="module-tabs">${viewButtons}</div>
       ${inventoryViews.kombuchas()}
     `;
@@ -2621,10 +2860,7 @@ function renderStock() {
   return `
     ${pageHead("Estoque", "Escolha o tipo de estoque para ver saldos sem poluição visual.", actionButton("stock-adjustment", "Ajuste com motivo", "tune"))}
     <div class="module-tabs">${viewButtons}</div>
-    <section class="admin-grid">
-      ${inventoryViews[currentStockView]?.() || inventoryViews.kombuchas()}
-      ${stockAlerts}
-    </section>
+    ${inventoryViews[currentStockView]?.() || inventoryViews.kombuchas()}
   `;
 }
 
@@ -3167,6 +3403,7 @@ function render() {
     schema: renderSchema,
   }[currentModule];
   document.querySelector("#adminContent").innerHTML = `${cloudSyncNotice()}${view()}`;
+  applyLocaleToShell();
   bindModuleEvents();
   enhanceSelectSearch(document.querySelector("#adminContent"));
 }
@@ -3180,10 +3417,11 @@ function setModule(module) {
 }
 
 function openModal(title, eyebrow, body) {
-  document.querySelector("#adminModalTitle").textContent = title;
-  document.querySelector("#adminModalEyebrow").textContent = eyebrow;
+  document.querySelector("#adminModalTitle").textContent = tr(title);
+  document.querySelector("#adminModalEyebrow").textContent = tr(eyebrow);
   document.querySelector("#adminModalBody").innerHTML = body;
   document.querySelector("#adminModal").classList.add("is-open");
+  applyLocaleToShell();
   enhanceSelectSearch(document.querySelector("#adminModalBody"));
 }
 
@@ -3439,8 +3677,8 @@ function newPurchaseForm() {
         <div class="input-grid">
           <label class="field"><span>Data</span><input name="date" type="date" value="${todayIso()}" required></label>
           <label class="field"><span>Tipo de compra</span><select name="kind"><option value="stock">Entra no estoque/custo</option><option value="operational">Despesa operacional</option></select></label>
-          <label class="field" data-purchase-mode-field><span>O que deseja fazer?</span><select name="itemMode"><option value="new" selected>Cadastrar novo item</option><option value="existing">Atualizar item existente</option></select></label>
-          <label class="field" data-existing-purchase-field><span>Item existente</span><select name="stockKey"><option value="">Selecione para atualizar...</option>${purchaseStockOptions("", { includeNew: false })}</select></label>
+          <label class="field" data-purchase-mode-field><span>O que deseja fazer?</span><select name="itemMode"><option value="existing" selected>Atualizar item existente</option><option value="new">Cadastrar novo item</option></select></label>
+          <label class="field" data-existing-purchase-field><span>Item existente</span><select name="stockKey" data-force-search="true"><option value="">Selecione para atualizar...</option>${purchaseStockOptions("", { includeNew: false })}</select></label>
           <label class="field"><span>Fornecedor</span><input name="supplier" value="${state.suppliers[0]?.name || ""}" required></label>
           <label class="field" data-new-purchase-field data-new-item-type><span>Tipo do novo item</span><select name="newItemCollection"><option value="ingredients" selected>Ingrediente</option><option value="packaging">Material / embalagem / outro</option></select></label>
           <label class="field" data-new-purchase-field><span data-new-description-label>Nome do novo item</span><input name="newItemName" placeholder="Ex: flor jasmim, lavanda, datador, caixa"></label>
@@ -3520,6 +3758,10 @@ function newPurchaseForm() {
     if (descriptionLabel) descriptionLabel.textContent = isOperational ? "Descrição da despesa" : "Nome do novo item";
     if (countLabel) countLabel.textContent = buysLooseUnits ? "Unidades compradas" : "Pacotes / unidades compradas";
     if (unitCostLabel) unitCostLabel.textContent = stockUnit ? `Custo por ${stockUnit}` : "Custo por unidade";
+    if (!isOperational && !isNewMode) {
+      form.elements.newItemName.value = "";
+      form.elements.newCategory.value = "";
+    }
   };
   const syncPurchaseMoneyFields = (qty) => {
     const totalInput = form.elements.total;
@@ -5809,7 +6051,14 @@ document.querySelector("#adminContent")?.addEventListener("click", (event) => {
   if (button && !button.disabled) handleAction(button.dataset.action);
 });
 
-document.querySelector("#quickSaleButton")?.addEventListener("click", newSaleForm);
+document.querySelectorAll("[data-locale]")?.forEach((button) => {
+  button.addEventListener("click", () => {
+    currentLocale = button.dataset.locale || "pt";
+    localStorage.setItem(LOCALE_KEY, currentLocale);
+    applyLocaleToShell();
+    if (isAuthenticated()) render();
+  });
+});
 document.querySelector("#closeAdminModal")?.addEventListener("click", closeModal);
 document.querySelector("#adminModal")?.addEventListener("click", (event) => {
   if (event.target.id === "adminModal") closeModal();
@@ -5829,6 +6078,7 @@ document.querySelector("#roleSelector")?.addEventListener("change", (event) => {
 async function initializeAdmin() {
   try {
     stripSensitiveUrlParams();
+    applyLocaleToShell();
     bindAuth();
     if (isAuthenticated() || await restoreServerSession()) {
       await startAuthenticatedSession();

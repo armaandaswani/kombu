@@ -15,7 +15,7 @@
       rel="stylesheet"
     />
     <link rel="icon" href="favicon.svg" type="image/svg+xml" />
-    <link rel="stylesheet" href="assets/kombu.css?v=20260705a" />
+    <link rel="stylesheet" href="assets/kombu.css?v=20260705b" />
   </head>
   <body class="admin-body">
     <section class="admin-login" id="loginScreen" aria-labelledby="loginTitle">
@@ -62,10 +62,6 @@
             <span>Painel Operacional</span>
           </span>
         </a>
-        <button class="btn btn-primary quick-action" id="quickSaleButton" type="button">
-          <span class="material-symbols-outlined" aria-hidden="true">add</span>
-          <span>Nova Venda</span>
-        </button>
         <nav class="admin-nav" id="adminNav">
           <button class="is-active" type="button" data-module="dashboard" title="Dashboard">
             <span class="material-symbols-outlined" aria-hidden="true">dashboard</span>
@@ -169,6 +165,10 @@
             <input id="globalSearch" type="search" placeholder="Buscar EAN, lotes, ingredientes, pedidos, clientes ou vendas..." />
           </label>
           <div class="admin-user">
+            <div class="language-toggle" aria-label="Idioma do painel">
+              <button class="is-active" type="button" data-locale="pt">PT</button>
+              <button type="button" data-locale="en">EN</button>
+            </div>
             <select class="role-pill" id="roleSelector" aria-label="Perfil de acesso">
               <option value="Owner / Admin">Owner / Admin</option>
               <option value="Produção">Produção</option>
@@ -206,6 +206,6 @@
       </div>
     </div>
 
-    <script src="assets/admin.js?v=20260705a"></script>
+    <script src="assets/admin.js?v=20260705b"></script>
   </body>
 </html>
