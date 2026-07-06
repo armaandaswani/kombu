@@ -74,6 +74,7 @@ const ADMIN_I18N = {
     "Receitas": "Recipes",
     "Receita do período": "Period revenue",
     "Registrar compra": "Register purchase",
+    "Registrar venda": "Register sale",
     "Relatórios": "Reports",
     "Reservado": "Reserved",
     "Rótulos": "Labels",
@@ -91,6 +92,7 @@ const ADMIN_I18N = {
     "reservadas": "reserved",
     "disp.": "avail.",
     "Vendas": "Sales",
+    "Venda rápida": "Quick sale",
     "Visão Geral": "Overview",
   },
 };
@@ -2049,16 +2051,46 @@ function metric(label, value, note, icon = "monitoring") {
   `;
 }
 
+function dashboardStockChart() {
+  const rows = stockByFlavorRows()
+    .sort((a, b) => (b.available + b.reserved) - (a.available + a.reserved) || a.flavor.localeCompare(b.flavor))
+    .slice(0, 12);
+  const max = Math.max(1, ...rows.map((row) => row.available + row.reserved));
+  if (!rows.length) {
+    return `<p class="empty-note">Crie lotes aprovados para visualizar estoque por sabor.</p>`;
+  }
+  return `
+    <div class="dashboard-stock-list">
+      ${rows
+        .map((row) => {
+          const availableWidth = Math.min(100, (row.available / max) * 100);
+          const reservedWidth = Math.min(100, (row.reserved / max) * 100);
+          return `
+            <div class="dashboard-stock-row ${row.available + row.reserved <= 0 ? "is-empty" : ""}">
+              <div class="dashboard-stock-head">
+                <strong>${escapeHtml(row.flavor)}</strong>
+                <span>${number(row.available)} disp.${row.reserved ? ` | ${number(row.reserved)} res.` : ""}</span>
+              </div>
+              <div class="dashboard-stock-track" aria-label="${escapeHtml(row.flavor)}: ${number(row.available)} disponível, ${number(row.reserved)} reservado">
+                <i class="is-available" style="width:${availableWidth}%"></i>
+                <i class="is-reserved" style="width:${reservedWidth}%"></i>
+              </div>
+            </div>
+          `;
+        })
+        .join("")}
+      <div class="dashboard-stock-legend">
+        <span><i class="is-available"></i> Disponível</span>
+        <span><i class="is-reserved"></i> Reservado</span>
+      </div>
+    </div>
+  `;
+}
+
 function renderDashboard() {
   const total = totals();
   const productionRows = orderProductionRows();
   const receivableRows = paymentReminderRows();
-  const flavorRows = Object.entries(
-    finishedStockRows().reduce((acc, row) => {
-      acc[row.flavor] = (acc[row.flavor] || 0) + row.stock;
-      return acc;
-    }, {}),
-  ).sort((a, b) => b[1] - a[1]);
   const partnerRows = Object.entries(
     state.sales
       .filter((sale) => !sale.movementType || sale.movementType === "venda")
@@ -2068,17 +2100,11 @@ function renderDashboard() {
         return acc;
       }, {}),
   ).sort((a, b) => b[1] - a[1]);
-  const shortFlavor = (flavor) =>
-    ({
-      "Frutas Vermelhas": "Frutas",
-      "Imunidade": "Imun.",
-      "Maracujá": "Maracujá",
-    })[flavor] || flavor.slice(0, 8);
   return `
     ${pageHead(
       "Visão Geral",
       "Controle operacional e financeiro da Kombú: produção, estoque, custo por garrafa, vendas e alertas.",
-      `${actionButton("new-order", "Novo pedido", "assignment", "btn-outline")} ${actionButton("new-batch", "Novo lote", "science", "btn-outline")} ${actionButton("new-purchase", "Registrar compra", "shopping_bag", "btn-outline")}`,
+      `${actionButton("quick-sale", "Venda rápida", "point_of_sale")} ${actionButton("new-order", "Novo pedido", "assignment", "btn-outline")} ${actionButton("new-batch", "Novo lote", "science", "btn-outline")} ${actionButton("new-purchase", "Registrar compra", "shopping_bag", "btn-outline")}`,
     )}
     <section class="metric-grid">
       ${metric("Garrafas em estoque", number(total.finishedStock), "Prontas para venda por lote", "water_bottle")}
@@ -2106,14 +2132,12 @@ function renderDashboard() {
           ${missingCostIngredients().length || lowStockIngredients().length || lowStockPackaging().length || nearExpiryBatches().length ? "" : `<div class="empty-note">Nenhum alerta crítico no momento.</div>`}
         </div>
       </article>
-      <article class="admin-card chart-card">
-        <h3>Estoque por sabor</h3>
-        <div class="bar-chart">
-          ${flavorRows.length ? flavorRows
-            .slice(0, 6)
-            .map(([flavor, qty]) => `<div class="bar" title="${flavor}"><i style="height:${Math.max(8, Math.min(100, qty / 2.4))}%"></i><span>${shortFlavor(flavor)}</span></div>`)
-            .join("") : `<p class="empty-note">Crie lotes aprovados para visualizar estoque por sabor.</p>`}
+      <article class="admin-card dashboard-stock-card">
+        <div class="dashboard-card-head">
+          <h3>Estoque por sabor</h3>
+          <span>disponível / reservado</span>
         </div>
+        ${dashboardStockChart()}
       </article>
     </section>
     <section class="admin-grid">
@@ -4094,6 +4118,103 @@ function reverseStockForm(batchCode) {
   });
 }
 
+function quickSaleForm() {
+  const stockRows = finishedStockRows()
+    .filter((row) => row.stock > 0)
+    .sort((a, b) => (a.flavor || "").localeCompare(b.flavor || "") || a.code.localeCompare(b.code));
+  if (!stockRows.length) {
+    openModal(
+      "Sem estoque disponível",
+      "Vendas",
+      `<p class="empty-note">Não há garrafas livres para venda agora. Registre um lote aprovado ou confira se o estoque está reservado para pedidos.</p>
+       <button class="btn btn-primary" type="button" data-action="new-batch"><span class="material-symbols-outlined" aria-hidden="true">science</span>Criar lote</button>`,
+    );
+    return;
+  }
+  openModal(
+    "Venda rápida",
+    "Dashboard",
+    `
+      <form id="quickSaleForm">
+        <div class="input-grid">
+          <label class="field field-full"><span>Cliente</span><input name="customerName" list="quickCustomerOptions" value="Balcão" required></label>
+          <datalist id="quickCustomerOptions">${[...new Set([...state.partners.map((item) => item.name), ...state.sales.map((sale) => sale.customerName || sale.partner).filter(Boolean)])].map((name) => `<option value="${escapeHtml(name)}"></option>`).join("")}</datalist>
+          <label class="field field-full"><span>Lote / sabor</span><select name="batchCode">${stockRows.map((row) => `<option value="${row.code}" data-retail="${productRetailPrice(row.product)}" data-wholesale="${productWholesalePrice(row.product)}" data-stock="${row.stock}">${escapeHtml(row.flavor)} - ${escapeHtml(row.code)} (${number(row.stock)} disp.)</option>`).join("")}</select></label>
+          <label class="field"><span>Quantidade</span><input name="qty" type="number" min="1" step="1" value="1" required></label>
+          <label class="field"><span>Preço</span><select name="priceType"><option value="varejo">Varejo</option><option value="atacado">Atacado</option><option value="custom">Valor combinado</option><option value="gratis">Sem cobrança</option></select></label>
+          <label class="field"><span>Preço unitário</span><input name="unitPrice" type="number" step="0.01" required></label>
+          <label class="field"><span>Data</span><input name="date" type="date" value="${todayIso()}" required></label>
+          <div class="result-card field-full" id="quickSalePreview"></div>
+        </div>
+        <button class="btn btn-primary" type="submit">
+          <span class="material-symbols-outlined" aria-hidden="true">point_of_sale</span>
+          Registrar venda
+        </button>
+      </form>
+    `,
+  );
+  const form = document.querySelector("#quickSaleForm");
+  const preview = document.querySelector("#quickSalePreview");
+  const updateQuickSale = (forcePrice = false) => {
+    const option = form.elements.batchCode.selectedOptions[0];
+    const type = form.elements.priceType.value;
+    const qty = Number(form.elements.qty.value || 0);
+    const available = Number(option?.dataset.stock || 0);
+    if (type === "gratis") {
+      form.elements.unitPrice.value = 0;
+    } else if (forcePrice || !form.elements.unitPrice.value || type !== "custom") {
+      const price = type === "atacado" ? Number(option?.dataset.wholesale || 0) : Number(option?.dataset.retail || 0);
+      form.elements.unitPrice.value = price || 0;
+    }
+    const unit = Number(form.elements.unitPrice.value || 0);
+    preview.innerHTML = `
+      <small>Resumo</small>
+      <strong>${number(qty)} garrafa(s) | ${brl(qty * unit)}</strong>
+      <span>${number(available)} disponível(is) neste lote.</span>
+    `;
+  };
+  form.elements.batchCode.addEventListener("change", () => updateQuickSale(true));
+  form.elements.priceType.addEventListener("change", () => updateQuickSale(true));
+  form.elements.qty.addEventListener("input", () => updateQuickSale(false));
+  form.elements.unitPrice.addEventListener("input", () => {
+    form.elements.priceType.value = "custom";
+    updateQuickSale(false);
+  });
+  form.addEventListener("submit", (event) => {
+    event.preventDefault();
+    const data = Object.fromEntries(new FormData(form).entries());
+    const batch = state.batches.find((item) => item.code === data.batchCode);
+    const product = productForBatch(batch);
+    const qty = Number(data.qty || 0);
+    const available = finishedStockRows().find((row) => row.code === data.batchCode)?.stock || 0;
+    if (qty > available) {
+      window.alert(`Estoque insuficiente neste lote. Disponível: ${number(available)} garrafas.`);
+      return;
+    }
+    state.sales.unshift({
+      id: id("sale"),
+      date: data.date,
+      partner: data.customerName,
+      customerName: data.customerName,
+      channel: data.priceType,
+      movementType: data.priceType === "gratis" ? "presente" : "venda",
+      priceType: data.priceType,
+      flavor: batch?.flavor || "",
+      productId: product?.id || "",
+      batchCode: data.batchCode,
+      qty,
+      unitPrice: Number(data.unitPrice || 0),
+      discount: 0,
+      delivery: 0,
+      note: "Venda rápida pelo dashboard",
+    });
+    addAudit(data.priceType === "gratis" ? "Saída registrada" : "Venda registrada", `${number(qty)} garrafas do lote ${data.batchCode} para ${data.customerName}`);
+    closeModal();
+    render();
+  });
+  updateQuickSale(true);
+}
+
 function newSaleForm(batchCode = "") {
   const allStockRows = finishedStockRows().filter((row) => row.stock > 0);
   const stockRows = batchCode ? allStockRows.filter((row) => row.code === batchCode) : allStockRows;
@@ -5940,6 +6061,7 @@ function handleAction(action) {
     "import-cost-base": restoreCostBase,
     "new-ingredient": newIngredientForm,
     "new-purchase": newPurchaseForm,
+    "quick-sale": quickSaleForm,
     "new-sale": newSaleForm,
     "new-order": () => orderForm(),
     "new-batch": newBatchForm,

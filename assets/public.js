@@ -313,6 +313,12 @@ function getMapIdFromUrl(url) {
   return url.match(/[?&]mid=([^&]+)/)?.[1] || OFFICIAL_MAP_ID;
 }
 
+function getOfficialMapViewerUrl() {
+  const url = getOfficialMapUrl();
+  const mapId = getMapIdFromUrl(url);
+  return mapId ? `https://www.google.com/maps/d/viewer?mid=${encodeURIComponent(mapId)}` : url;
+}
+
 function getOfficialMapEmbedUrl() {
   return `https://www.google.com/maps/d/embed?mid=${encodeURIComponent(getMapIdFromUrl(getOfficialMapUrl()))}`;
 }
@@ -354,8 +360,10 @@ function applyPublicCms() {
   }
   const mapFrame = document.querySelector("#officialMapFrame");
   if (mapFrame) mapFrame.src = getOfficialMapEmbedUrl();
-  document.querySelectorAll("[data-buy-whatsapp]").forEach((link) => {
-    link.href = whatsappUrl();
+  document.querySelectorAll("[data-buy-map], [data-buy-whatsapp]").forEach((link) => {
+    link.href = getOfficialMapViewerUrl();
+    link.target = "_blank";
+    link.rel = "noreferrer";
   });
 }
 
@@ -393,8 +401,8 @@ function renderFlavors(filter = "todos") {
                 <span class="material-symbols-outlined" aria-hidden="true">visibility</span>
                 Detalhes
               </button>
-              <a class="btn btn-outline" href="${whatsappUrl(`Olá! Quero comprar Kombú sabor ${flavor.name}. Está disponível?`)}" target="_blank" rel="noreferrer">
-                <span class="material-symbols-outlined" aria-hidden="true">chat</span>
+              <a class="btn btn-outline" href="${escapeHtml(getOfficialMapViewerUrl())}" target="_blank" rel="noreferrer">
+                <span class="material-symbols-outlined" aria-hidden="true">map</span>
                 Comprar
               </a>
             </div>
@@ -437,8 +445,8 @@ function openFlavor(slug) {
         <h3 style="margin-top: 18px">Perfil do sabor</h3>
         <p>${escapeHtml(flavor.angle)}</p>
         <div class="hero-actions">
-          <a class="btn btn-primary" href="${whatsappUrl(`Olá! Quero comprar Kombú sabor ${flavor.name}. Está disponível?`)}" target="_blank" rel="noreferrer">
-            <span class="material-symbols-outlined" aria-hidden="true">chat</span>
+          <a class="btn btn-primary" href="${escapeHtml(getOfficialMapViewerUrl())}" target="_blank" rel="noreferrer">
+            <span class="material-symbols-outlined" aria-hidden="true">map</span>
             Comprar este sabor
           </a>
           <a class="btn btn-outline" href="#revenda">
@@ -544,13 +552,13 @@ function renderPartners() {
         .join("")
     : `
       <article class="partner-card partner-card-cta">
-        <span class="eyebrow">Compra direta</span>
+        <span class="eyebrow">Mapa oficial</span>
         <h3>Quer comprar Kombú hoje?</h3>
-        <p>Os parceiros ainda não foram cadastrados no localizador. Fale com a Kombú pelo WhatsApp para saber sabores disponíveis, retirada e entrega.</p>
+        <p>Abra o mapa oficial para ver os parceiros e pontos de venda cadastrados.</p>
         <div class="partner-actions">
-          <a class="btn btn-primary" href="${whatsappUrl()}" target="_blank" rel="noreferrer">
-            <span class="material-symbols-outlined" aria-hidden="true">chat</span>
-            Comprar agora
+          <a class="btn btn-primary" href="${escapeHtml(getOfficialMapViewerUrl())}" target="_blank" rel="noreferrer">
+            <span class="material-symbols-outlined" aria-hidden="true">map</span>
+            Abrir mapa
           </a>
           <a class="btn btn-outline" href="#sabores">
             <span class="material-symbols-outlined" aria-hidden="true">local_bar</span>

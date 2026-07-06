@@ -2074,6 +2074,112 @@ textarea:focus-visible {
   background: var(--plum);
 }
 
+.dashboard-stock-card {
+  min-height: 320px;
+}
+
+.dashboard-card-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 14px;
+}
+
+.dashboard-card-head h3 {
+  margin: 0;
+}
+
+.dashboard-card-head span {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.dashboard-stock-list {
+  display: grid;
+  gap: 12px;
+}
+
+.dashboard-stock-row {
+  display: grid;
+  gap: 7px;
+}
+
+.dashboard-stock-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  font-size: 14px;
+}
+
+.dashboard-stock-head strong {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dashboard-stock-head span {
+  color: var(--muted);
+  flex: 0 0 auto;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.dashboard-stock-track {
+  display: flex;
+  height: 12px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(42, 79, 39, 0.08);
+}
+
+.dashboard-stock-track i {
+  display: block;
+  min-width: 0;
+}
+
+.dashboard-stock-track .is-available,
+.dashboard-stock-legend .is-available {
+  background: var(--green);
+}
+
+.dashboard-stock-track .is-reserved,
+.dashboard-stock-legend .is-reserved {
+  background: var(--lime);
+}
+
+.dashboard-stock-row.is-empty .dashboard-stock-track::before {
+  width: 100%;
+  content: "";
+  background: rgba(42, 79, 39, 0.12);
+}
+
+.dashboard-stock-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding-top: 4px;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.dashboard-stock-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.dashboard-stock-legend i {
+  width: 18px;
+  height: 10px;
+  border-radius: 999px;
+}
+
 .donut {
   --value: 60deg;
   display: grid;
