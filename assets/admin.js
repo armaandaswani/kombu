@@ -1162,6 +1162,13 @@ function orderClientTypeLabel(value) {
   return ORDER_CLIENT_TYPES.find((type) => type.value === value)?.label || "Novo cliente";
 }
 
+function orderClientDisplayName(order = {}) {
+  const customer = String(order.customerName || "").trim();
+  const business = String(order.businessName || "").trim();
+  if (customer && business && normalizeText(customer) !== normalizeText(business)) return `${customer} (${business})`;
+  return customer || business || "Cliente sem nome";
+}
+
 function partnerOptionLabel(partner = {}) {
   return [partner.name, partner.neighborhood || partner.city, partner.whatsapp].filter(Boolean).join(" - ");
 }
@@ -1602,8 +1609,8 @@ function batchReservationText(code) {
   if (!rows.length) return "-";
   return rows
     .map((row) => {
-      const client = row.order.businessName || row.order.customerName || "Cliente";
-      return `${number(row.qty)}x ${escapeHtml(row.order.code)} - ${escapeHtml(client)}`;
+      const client = orderClientDisplayName(row.order);
+      return `${number(row.qty)}x ${escapeHtml(client)}`;
     })
     .join("<br>");
 }
@@ -1705,19 +1712,65 @@ function orderProductionRows() {
           missing: 0,
           nextDue: "",
           orders: [],
+          clients: [],
         };
-        current.ordered += Number(item.qty || 0);
+        const ordered = Number(item.qty || 0);
         const reserved = orderItemReservedQty(item);
+        const missing = orderItemRemainingQty(item);
+        current.ordered += ordered;
         current.reserved += reserved;
         current.produced += reserved;
-        current.missing += orderItemRemainingQty(item);
+        current.missing += missing;
         const due = item.readyDate || order.estimatedReadyDate || order.neededBy || "";
         if (due && (!current.nextDue || due < current.nextDue)) current.nextDue = due;
         current.orders.push(order.code);
+        current.clients.push({
+          name: orderClientDisplayName(order),
+          ordered,
+          reserved,
+          missing,
+          due,
+        });
         rows.set(key, current);
       });
     });
   return [...rows.values()].sort((a, b) => b.missing - a.missing || String(a.nextDue).localeCompare(String(b.nextDue)));
+}
+
+function productionClientRows(row) {
+  const grouped = new Map();
+  (row.clients || []).forEach((client) => {
+    const key = normalizeText(client.name);
+    const current = grouped.get(key) || { name: client.name, ordered: 0, reserved: 0, missing: 0, due: "" };
+    current.ordered += Number(client.ordered || 0);
+    current.reserved += Number(client.reserved || 0);
+    current.missing += Number(client.missing || 0);
+    if (client.due && (!current.due || client.due < current.due)) current.due = client.due;
+    grouped.set(key, current);
+  });
+  return [...grouped.values()].sort((a, b) => b.missing - a.missing || a.name.localeCompare(b.name));
+}
+
+function renderProductionClientList(row, limit = 4) {
+  const clients = productionClientRows(row);
+  if (!clients.length) return "";
+  const visible = clients.slice(0, limit);
+  const extra = clients.length - visible.length;
+  return `
+    <div class="production-client-list" aria-label="Clientes deste sabor">
+      ${visible
+        .map(
+          (client) => `
+            <span class="production-client-pill">
+              <strong>${escapeHtml(client.name)}</strong>
+              <small>${number(client.reserved)}/${number(client.ordered)} reservado${client.missing ? ` | ${number(client.missing)} falta` : ""}</small>
+            </span>
+          `,
+        )
+        .join("")}
+      ${extra > 0 ? `<span class="production-client-pill is-more"><strong>+${extra}</strong><small>cliente(s)</small></span>` : ""}
+    </div>
+  `;
 }
 
 function paymentReminderRows() {
@@ -2144,13 +2197,13 @@ function renderDashboard() {
       <article class="admin-card">
         <h3>Produção puxada por pedidos</h3>
         <div class="stack-list">
-          ${productionRows.length ? productionRows.slice(0, 6).map((row) => `<div class="report-row"><strong>${escapeHtml(row.flavor)}</strong><span>${number(row.missing)} faltando de ${number(row.ordered)} | próximo: ${row.nextDue || "-"}</span></div>`).join("") : `<p class="empty-note">Sem pedido aberto exigindo produção.</p>`}
+          ${productionRows.length ? productionRows.slice(0, 6).map((row) => `<div class="report-row"><strong>${escapeHtml(row.flavor)}</strong><span>${number(row.missing)} faltando de ${number(row.ordered)} | ${productionClientRows(row).slice(0, 2).map((client) => escapeHtml(client.name)).join(", ") || "sem cliente"}</span></div>`).join("") : `<p class="empty-note">Sem pedido aberto exigindo produção.</p>`}
         </div>
       </article>
       <article class="admin-card">
         <h3>Cobranças próximas</h3>
         <div class="stack-list">
-          ${receivableRows.length ? receivableRows.slice(0, 6).map(({ order, due, days, value }) => `<div class="report-row"><strong>${escapeHtml(order.customerName || order.code)}</strong><span>${brl(value)} | vence ${due || "-"}${days != null ? ` (${days < 0 ? `${Math.abs(days)} dias atrasado` : `${days} dias`})` : ""} | <a href="${paymentReminderMailto(order)}">preparar lembrete</a></span></div>`).join("") : `<p class="empty-note">Nenhuma cobrança em aberto por entrega.</p>`}
+          ${receivableRows.length ? receivableRows.slice(0, 6).map(({ order, due, days, value }) => `<div class="report-row"><strong>${escapeHtml(orderClientDisplayName(order))}</strong><span>${brl(value)} | vence ${due || "-"}${days != null ? ` (${days < 0 ? `${Math.abs(days)} dias atrasado` : `${days} dias`})` : ""} | <a href="${paymentReminderMailto(order)}">preparar lembrete</a></span></div>`).join("") : `<p class="empty-note">Nenhuma cobrança em aberto por entrega.</p>`}
         </div>
       </article>
     </section>
@@ -2594,7 +2647,7 @@ function renderBatches() {
     <section class="admin-card order-production-card">
       <h3>O que precisa ser produzido</h3>
       <div class="production-chip-grid">
-        ${productionRows.length ? productionRows.map((row) => `<div class="production-chip"><strong>${escapeHtml(row.flavor)}</strong><span>${number(row.missing)} faltando</span><small>${number(row.reserved)} reservado de ${number(row.ordered)} | pedido(s): ${escapeHtml([...new Set(row.orders)].slice(0, 3).join(", "))}</small></div>`).join("") : `<p class="empty-note">Nenhum pedido aberto exigindo produção.</p>`}
+        ${productionRows.length ? productionRows.map((row) => `<div class="production-chip"><strong>${escapeHtml(row.flavor)}</strong><span>${number(row.missing)} faltando</span><small>${number(row.reserved)} reservado de ${number(row.ordered)}</small>${renderProductionClientList(row)}</div>`).join("") : `<p class="empty-note">Nenhum pedido aberto exigindo produção.</p>`}
       </div>
     </section>
     ${table(
@@ -2720,9 +2773,8 @@ function stockBatchCard(row) {
   const reservationList = reservations.length
     ? reservations
         .map((reservation) => {
-          const client = reservation.order.businessName || reservation.order.customerName || "Cliente";
-          const mode = reservation.manual ? "manual" : "auto";
-          return stockFlowChip(`${number(reservation.qty)} reservada(s)`, `${reservation.order.code} - ${escapeHtml(client)} | ${mode}`, reservation.manual ? "is-manual" : "");
+          const client = orderClientDisplayName(reservation.order);
+          return stockFlowChip(`${number(reservation.qty)} reservada(s)`, escapeHtml(client), reservation.manual ? "is-manual" : "");
         })
         .join("")
     : `<p class="mini-empty">Nada reservado neste lote.</p>`;
@@ -3029,9 +3081,9 @@ function orderCard(order) {
     <article class="order-card">
       <div class="order-card-head">
         <div>
-          <span class="eyebrow">Pedido ${escapeHtml(order.orderDate || "-")}</span>
-          <strong>${escapeHtml(order.code || "Pedido")}</strong>
-          <small>${escapeHtml(order.customerName || "Cliente sem nome")} ${order.businessName ? `| ${escapeHtml(order.businessName)}` : ""}</small>
+          <span class="eyebrow">${escapeHtml(order.orderDate || "Pedido")}</span>
+          <strong>${escapeHtml(orderClientDisplayName(order))}</strong>
+          <small>${escapeHtml(orderClientTypeLabel(order.clientType))}${order.whatsapp ? ` | ${escapeHtml(order.whatsapp)}` : ""}</small>
         </div>
         <div class="order-card-side">
           ${orderStatusBadge(order.status)}
@@ -3080,7 +3132,7 @@ function renderOrders() {
     <section class="admin-card order-production-card">
       <h3>Fila de produção por sabor</h3>
       <div class="production-chip-grid">
-        ${orderProductionRows().length ? orderProductionRows().map((row) => `<div class="production-chip"><strong>${escapeHtml(row.flavor)}</strong><span>${number(row.missing)} faltando</span><small>${number(row.reserved)} reservado de ${number(row.ordered)} | ${row.nextDue || "sem data"}</small></div>`).join("") : `<p class="empty-note">Sem produção pendente para pedidos abertos.</p>`}
+        ${orderProductionRows().length ? orderProductionRows().map((row) => `<div class="production-chip"><strong>${escapeHtml(row.flavor)}</strong><span>${number(row.missing)} faltando</span><small>${number(row.reserved)} reservado de ${number(row.ordered)}${row.nextDue ? ` | pronto até ${row.nextDue}` : ""}</small>${renderProductionClientList(row)}</div>`).join("") : `<p class="empty-note">Sem produção pendente para pedidos abertos.</p>`}
       </div>
     </section>
     <section class="order-list">
@@ -4017,7 +4069,7 @@ function reserveStockForm(batchCode) {
         ${
           options.length
             ? `<div class="input-grid">
-                <label class="field field-full"><span>Pedido / sabor</span><select name="orderItemKey">${options.map((option) => `<option value="${orderItemSelectionKey(option.order, option.index)}">${escapeHtml(option.order.code)} - ${escapeHtml(option.order.businessName || option.order.customerName || "Cliente")} | ${escapeHtml(orderProductText(option.item))} | falta ${number(option.need)}</option>`).join("")}</select></label>
+                <label class="field field-full"><span>Cliente / sabor</span><select name="orderItemKey">${options.map((option) => `<option value="${orderItemSelectionKey(option.order, option.index)}">${escapeHtml(orderClientDisplayName(option.order))} | ${escapeHtml(orderProductText(option.item))} | falta ${number(option.need)}</option>`).join("")}</select></label>
                 <label class="field"><span>Quantidade para reservar</span><input name="qty" type="number" min="1" max="${available}" value="${Math.min(available, options[0]?.need || 1)}" required></label>
                 <label class="field field-full"><span>Observação</span><input name="note" placeholder="Ex: reservado manualmente para retirada de sexta"></label>
               </div>
@@ -4049,7 +4101,7 @@ function reserveStockForm(batchCode) {
       return;
     }
     reserveBatchForOrderItem(batchCode, selection.order, selection.item, qty, data.note || "", true);
-    addAudit("Reserva manual", `${number(qty)} garrafa(s) do lote ${batchCode} para ${selection.order.code}`);
+    addAudit("Reserva manual", `${number(qty)} garrafa(s) do lote ${batchCode} para ${orderClientDisplayName(selection.order)}`);
     closeModal();
     render();
   });
@@ -4918,11 +4970,11 @@ function deletePurchase(recordId) {
 function deleteOrder(recordId) {
   const order = byId("orders", recordId);
   if (!order) return;
-  if (!window.confirm(`Excluir pedido "${order.code}"? Vendas automáticas vinculadas a ele também serão removidas.`)) return;
+  if (!window.confirm(`Excluir pedido de ${orderClientDisplayName(order)}? Vendas automáticas vinculadas a ele também serão removidas.`)) return;
   state.orders = state.orders.filter((item) => item.id !== recordId);
   state.sales = state.sales.filter((sale) => sale.orderId !== recordId);
   reconcileOrderReservations();
-  addAudit("Pedido excluído", order.code);
+  addAudit("Pedido excluído", orderClientDisplayName(order));
   render();
 }
 

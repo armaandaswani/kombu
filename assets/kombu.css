@@ -1518,6 +1518,41 @@ textarea:focus-visible {
   font-weight: 700;
 }
 
+.production-client-list {
+  display: grid;
+  gap: 7px;
+  margin-top: 4px;
+}
+
+.production-client-pill {
+  display: grid;
+  gap: 1px;
+  min-width: 0;
+  border: 1px solid rgba(42, 79, 39, 0.12);
+  border-radius: 10px;
+  background: #fff;
+  padding: 8px 9px;
+}
+
+.production-client-pill strong {
+  color: var(--ink);
+  font-size: 14px;
+  line-height: 1.2;
+}
+
+.production-client-pill small {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.production-client-pill.is-more {
+  display: inline-grid;
+  justify-self: start;
+  min-width: 96px;
+  background: var(--soft-green);
+}
+
 .stock-kombucha-layout,
 .stock-batch-list,
 .order-list {
