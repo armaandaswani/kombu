@@ -1323,6 +1323,19 @@ function applyBatchInventory(recipe, bottles, direction) {
   });
 }
 
+function adjustBatchInventoryTo(batch, nextActual) {
+  const recipe = byId("recipes", batch?.recipeId);
+  if (!recipe) return { ok: false, message: "Este lote não tem receita vinculada para recalcular insumos." };
+  const previousInventoryQty = batch.inventoryAdjusted ? Number(batch.inventoryQty || batch.actual || 0) : 0;
+  const nextInventoryQty = shouldConsumeBatch({ ...batch, actual: nextActual }) ? Number(nextActual || 0) : 0;
+  const delta = nextInventoryQty - previousInventoryQty;
+  if (delta > 0) applyBatchInventory(recipe, delta, -1);
+  if (delta < 0) applyBatchInventory(recipe, Math.abs(delta), 1);
+  batch.inventoryAdjusted = nextInventoryQty > 0;
+  batch.inventoryQty = nextInventoryQty;
+  return { ok: true, delta };
+}
+
 function shouldConsumeBatch(batch) {
   return Number(batch?.actual || 0) > 0 && !["planejado", "bloqueado", "descartado"].includes(batch?.status);
 }
@@ -2819,6 +2832,7 @@ function stockBatchCard(row) {
         </div>
       </div>
       <div class="stock-card-actions">
+        ${actionButton(`correct-batch-qty:${row.id}`, "Corrigir quantidade", "edit_square", "btn-outline")}
         ${actionButton(`reserve-stock:${row.code}`, "Reservar", "assignment_turned_in", "btn-outline")}
         ${actionButton(`stock-sale:${row.code}`, "Venda/saída", "point_of_sale", "btn-outline")}
         ${actionButton(`reverse-stock:${row.code}`, "Devolução", "undo", "btn-outline")}
@@ -4104,6 +4118,79 @@ function reserveStockForm(batchCode) {
     addAudit("Reserva manual", `${number(qty)} garrafa(s) do lote ${batchCode} para ${orderClientDisplayName(selection.order)}`);
     closeModal();
     render();
+  });
+}
+
+function correctBatchQuantityForm(batchId) {
+  const batch = byId("batches", batchId);
+  if (!batch) return;
+  const row = finishedStockRows().find((item) => item.id === batchId || item.code === batch.code) || batch;
+  const recipe = byId("recipes", batch.recipeId);
+  const committed = Number(row.sold || 0) + Number(row.reserved || 0);
+  const currentActual = Number(batch.actual || 0);
+  const currentAvailable = Math.max(0, currentActual - committed);
+  openModal(
+    "Corrigir quantidade",
+    "Estoque",
+    `
+      <form id="correctBatchQtyForm">
+        <div class="input-grid">
+          <div class="result-card field-full">
+            <small>Lote</small>
+            <strong>${escapeHtml(batch.flavor || row.flavor || "Kombucha")}</strong>
+            <span>${escapeHtml(batch.code)} | ${number(row.reserved || 0)} reservada(s), ${number(row.sold || 0)} saída(s), ${number(currentAvailable)} disponível(is)</span>
+          </div>
+          <label class="field"><span>Quantidade produzida correta</span><input name="actual" type="number" min="${committed}" step="1" value="${currentActual}" required></label>
+          <label class="field field-full"><span>Motivo da correção</span><input name="reason" required placeholder="Ex: erro de contagem, quebra, garrafas encontradas..."></label>
+          <div class="result-card field-full" id="batchCorrectionPreview"></div>
+        </div>
+        <button class="btn btn-primary" type="submit">Salvar correção</button>
+      </form>
+    `,
+  );
+  const form = document.querySelector("#correctBatchQtyForm");
+  const preview = document.querySelector("#batchCorrectionPreview");
+  const updatePreview = () => {
+    const nextActual = Number(form.elements.actual.value || 0);
+    const delta = nextActual - currentActual;
+    const nextAvailable = nextActual - committed;
+    if (!recipe) {
+      preview.innerHTML = `<small>Atenção</small><strong>Receita não vinculada</strong><span>Sem receita, o sistema não consegue devolver ou baixar ingredientes automaticamente.</span>`;
+      return;
+    }
+    if (nextAvailable < 0) {
+      preview.innerHTML = `<small>Bloqueado</small><strong>Quantidade menor que reservas/saídas</strong><span>Libere reservas ou faça logística reversa antes de reduzir abaixo de ${number(committed)} garrafas.</span>`;
+      return;
+    }
+    const directionText = delta === 0 ? "Nenhuma mudança de insumos." : delta > 0 ? `Baixa adicional proporcional para ${number(delta)} garrafa(s).` : `Devolve insumos proporcionais de ${number(Math.abs(delta))} garrafa(s).`;
+    preview.innerHTML = `<small>Impacto automático</small><strong>${number(nextAvailable)} disponível(is) após a correção</strong><span>${directionText} Reservas de pedidos serão recalculadas.</span>`;
+  };
+  form.addEventListener("input", updatePreview);
+  updatePreview();
+  form.addEventListener("submit", (event) => {
+    event.preventDefault();
+    const data = Object.fromEntries(new FormData(form).entries());
+    const nextActual = Number(data.actual || 0);
+    if (nextActual < committed) {
+      window.alert(`Não dá para reduzir para ${number(nextActual)} porque ${number(committed)} já estão reservadas/vendidas. Libere reservas ou faça devolução primeiro.`);
+      return;
+    }
+    const inventoryResult = adjustBatchInventoryTo(batch, nextActual);
+    if (!inventoryResult.ok) {
+      window.alert(inventoryResult.message);
+      return;
+    }
+    batch.actual = nextActual;
+    if (!Number(batch.expected || 0)) batch.expected = nextActual;
+    batch.correctedAt = todayIso();
+    batch.correctionReason = data.reason;
+    const beforeReserved = Number(row.reserved || 0);
+    const reservationReport = reconcileOrderReservations();
+    const afterReserved = reservationReport.byBatch[batch.code] || 0;
+    addAudit("Quantidade do lote corrigida", `${batch.code}: ${number(currentActual)} -> ${number(nextActual)}. ${inventoryResult.delta < 0 ? "Insumos devolvidos" : inventoryResult.delta > 0 ? "Insumos baixados" : "Sem mudança de insumos"}. Motivo: ${data.reason}`);
+    closeModal();
+    render();
+    if (afterReserved > beforeReserved) window.alert(`${number(afterReserved)} garrafa(s) deste lote estão reservadas para pedidos após a correção.`);
   });
 }
 
@@ -6090,6 +6177,7 @@ function handleAction(action) {
     "delete-batch": deleteBatch,
     "edit-sale": editSaleForm,
     "delete-sale": (itemId) => deleteRecord("sales", itemId),
+    "correct-batch-qty": correctBatchQuantityForm,
     "reserve-stock": reserveStockForm,
     "stock-sale": newSaleForm,
     "reverse-stock": reverseStockForm,
