@@ -4300,12 +4300,12 @@ function quickSaleForm() {
     const qty = Number(form.elements.qty.value || 0);
     const available = Number(option?.dataset.stock || 0);
     if (type === "gratis") {
-      form.elements.unitPrice.value = 0;
-    } else if (forcePrice || !form.elements.unitPrice.value || type !== "custom") {
+      if (forcePrice) form.elements.unitPrice.value = "0";
+    } else if (forcePrice && type !== "custom") {
       const price = type === "atacado" ? Number(option?.dataset.wholesale || 0) : Number(option?.dataset.retail || 0);
-      form.elements.unitPrice.value = price || 0;
+      form.elements.unitPrice.value = Number.isFinite(price) ? String(price) : "0";
     }
-    const unit = Number(form.elements.unitPrice.value || 0);
+    const unit = form.elements.unitPrice.value === "" ? 0 : Number(form.elements.unitPrice.value || 0);
     preview.innerHTML = `
       <small>Resumo</small>
       <strong>${number(qty)} garrafa(s) | ${brl(qty * unit)}</strong>
@@ -4389,21 +4389,25 @@ function newSaleForm(batchCode = "") {
     `,
   );
   const saleForm = document.querySelector("#saleForm");
-  const updateSalePrice = () => {
+  const updateSalePrice = (forcePrice = false) => {
     const option = saleForm.elements.batchCode.selectedOptions[0];
     const movement = saleForm.elements.movementType.value;
     const type = saleForm.elements.priceType.value;
     if (movement !== "venda" || type === "gratis") {
-      saleForm.elements.unitPrice.value = 0;
-      saleForm.elements.discount.value = 0;
+      if (forcePrice) saleForm.elements.unitPrice.value = "0";
+      if (forcePrice) saleForm.elements.discount.value = "0";
       return;
     }
-    if (type === "varejo") saleForm.elements.unitPrice.value = Number(option?.dataset.retail || 0);
-    if (type === "atacado") saleForm.elements.unitPrice.value = Number(option?.dataset.wholesale || 0);
+    if (!forcePrice || type === "custom") return;
+    if (type === "varejo") saleForm.elements.unitPrice.value = String(Number(option?.dataset.retail || 0));
+    if (type === "atacado") saleForm.elements.unitPrice.value = String(Number(option?.dataset.wholesale || 0));
   };
-  saleForm.elements.batchCode.addEventListener("change", updateSalePrice);
-  saleForm.elements.priceType.addEventListener("change", updateSalePrice);
-  saleForm.elements.movementType.addEventListener("change", updateSalePrice);
+  saleForm.elements.batchCode.addEventListener("change", () => updateSalePrice(true));
+  saleForm.elements.priceType.addEventListener("change", () => updateSalePrice(true));
+  saleForm.elements.movementType.addEventListener("change", () => updateSalePrice(true));
+  saleForm.elements.unitPrice.addEventListener("input", () => {
+    if (saleForm.elements.movementType.value === "venda") saleForm.elements.priceType.value = "custom";
+  });
   saleForm.addEventListener("submit", (event) => {
     event.preventDefault();
     const data = Object.fromEntries(new FormData(event.target).entries());
@@ -4436,7 +4440,7 @@ function newSaleForm(batchCode = "") {
     closeModal();
     render();
   });
-  updateSalePrice();
+  updateSalePrice(true);
 }
 
 function newBatchForm() {
