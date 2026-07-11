@@ -70,6 +70,7 @@ const ADMIN_I18N = {
     "Produção": "Production",
     "Produção faltante": "Missing production",
     "Produção puxada por pedidos": "Production pulled by orders",
+    "Pronto por cliente": "Ready by customer",
     "Quantidade": "Quantity",
     "Receitas": "Recipes",
     "Receita do período": "Period revenue",
@@ -88,6 +89,8 @@ const ADMIN_I18N = {
     "Leitura rápida para ver o que existe agora, sem abrir lote por lote.": "Quick view of what exists now, without opening each batch.",
     "Nenhum sabor encontrado.": "No flavor found.",
     "Resumo simples por sabor, reservas por cliente e lotes disponíveis.": "Simple view by flavor, customer reservations and available batches.",
+    "Separado agora": "Separated now",
+    "Separado para entrega": "Separated for delivery",
     "disponíveis": "available",
     "reservadas": "reserved",
     "disp.": "avail.",
@@ -1552,9 +1555,20 @@ function orderProductText(item) {
   return product ? productLabel(product) : item.productName || item.flavor || "Produto não informado";
 }
 
+function orderFlavorText(item) {
+  const product = byId("products", item.productId);
+  return item.flavor || product?.flavor || item.productName || product?.title || "Kombucha";
+}
+
 function orderStatusBadge(status) {
   const current = ORDER_STATUSES.includes(status) ? status : "recebido";
   return `<span class="status ${statusClass(current, "general")}">${current}</span>`;
+}
+
+function shortDate(dateIso) {
+  const value = String(dateIso || "").slice(0, 10);
+  const match = value.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  return match ? `${match[3]}/${match[2]}` : value;
 }
 
 function daysUntil(dateIso) {
@@ -1783,6 +1797,102 @@ function renderProductionClientList(row, limit = 4) {
         .join("")}
       ${extra > 0 ? `<span class="production-client-pill is-more"><strong>+${extra}</strong><small>cliente(s)</small></span>` : ""}
     </div>
+  `;
+}
+
+function orderReadyRows() {
+  return (state.orders || [])
+    .filter(isOpenOrder)
+    .map((order) => {
+      const items = orderItems(order)
+        .map((item) => {
+          const qty = Number(item.qty || 0);
+          const ready = orderItemReservedQty(item);
+          return {
+            product: orderFlavorText(item),
+            qty,
+            ready,
+            missing: Math.max(0, qty - ready),
+          };
+        })
+        .filter((item) => item.qty > 0);
+      const qty = items.reduce((sum, item) => sum + item.qty, 0);
+      const ready = items.reduce((sum, item) => sum + item.ready, 0);
+      const missing = Math.max(0, qty - ready);
+      return {
+        order,
+        client: orderClientDisplayName(order),
+        date: order.orderDate || order.createdAt?.slice(0, 10) || "",
+        due: order.neededBy || order.estimatedReadyDate || "",
+        qty,
+        ready,
+        missing,
+        percent: qty ? Math.min(100, (ready / qty) * 100) : 0,
+        items,
+      };
+    })
+    .filter((row) => row.qty > 0)
+    .sort((a, b) => {
+      const status = (row) => (row.ready >= row.qty ? 0 : row.ready > 0 ? 1 : 2);
+      return status(a) - status(b) || String(a.due || "9999-99-99").localeCompare(String(b.due || "9999-99-99")) || a.client.localeCompare(b.client);
+    });
+}
+
+function orderReadyCard(row) {
+  const status = row.ready >= row.qty ? "completo" : row.ready > 0 ? "parcial" : "aguardando";
+  const readyItems = row.items.filter((item) => item.ready > 0);
+  const missingItems = row.items.filter((item) => item.missing > 0);
+  const visibleItems = (readyItems.length ? readyItems : missingItems).slice(0, 4);
+  const extra = (readyItems.length ? readyItems : missingItems).length - visibleItems.length;
+  return `
+    <article class="order-ready-card is-${status}">
+      <div class="order-ready-head">
+        <div>
+          <strong>${escapeHtml(row.client)}</strong>
+          <small>${row.date ? `Pedido ${escapeHtml(shortDate(row.date))}` : "Pedido aberto"}${row.due ? ` | precisa ${escapeHtml(shortDate(row.due))}` : ""}</small>
+        </div>
+        <span>${status}</span>
+      </div>
+      <div class="order-ready-total">
+        <strong>${number(row.ready)}/${number(row.qty)}</strong>
+        <span>${row.missing ? `${number(row.missing)} faltando` : "pronto para entregar"}</span>
+      </div>
+      <div class="order-ready-meter" aria-label="${number(row.ready)} de ${number(row.qty)} garrafas separadas">
+        <i style="width:${row.percent}%"></i>
+      </div>
+      <div class="order-ready-items">
+        ${
+          visibleItems.length
+            ? visibleItems
+                .map(
+                  (item) => `
+                    <div>
+                      <strong>${escapeHtml(item.product)}</strong>
+                      <span>${item.ready ? `${number(item.ready)} pronta(s) de ${number(item.qty)}` : `${number(item.missing)} faltando`}</span>
+                    </div>
+                  `,
+                )
+                .join("")
+            : `<p class="mini-empty">Sem itens neste pedido.</p>`
+        }
+        ${extra > 0 ? `<div class="order-ready-more">+${extra} sabor(es)</div>` : ""}
+      </div>
+    </article>
+  `;
+}
+
+function dashboardReadyOrders() {
+  const rows = orderReadyRows();
+  return `
+    <section class="admin-card dashboard-ready-card">
+      <div class="dashboard-card-head">
+        <h3>${tr("Pronto por cliente")}</h3>
+        <span>${tr("Separado para entrega")}</span>
+      </div>
+      <div class="order-ready-grid">
+        ${rows.length ? rows.slice(0, 6).map(orderReadyCard).join("") : `<p class="empty-note">Nenhum pedido aberto com garrafas para separar.</p>`}
+      </div>
+    </section>
   `;
 }
 
@@ -2172,6 +2282,7 @@ function renderDashboard() {
       "Controle operacional e financeiro da Kombú: produção, estoque, custo por garrafa, vendas e alertas.",
       `${actionButton("quick-sale", "Venda rápida", "point_of_sale")} ${actionButton("new-order", "Novo pedido", "assignment", "btn-outline")} ${actionButton("new-batch", "Novo lote", "science", "btn-outline")} ${actionButton("new-purchase", "Registrar compra", "shopping_bag", "btn-outline")}`,
     )}
+    ${dashboardReadyOrders()}
     <section class="metric-grid">
       ${metric("Garrafas em estoque", number(total.finishedStock), "Prontas para venda por lote", "water_bottle")}
       ${metric("Pedidos em aberto", number(total.openOrderQty), `${brl(total.openOrderValue)} em pipeline`, "assignment")}
