@@ -4,7 +4,8 @@ const ADMIN_PASSWORD = "Rssb2010";
 const ADMIN_NOTIFICATION_EMAIL = "armaandaswani@icloud.com";
 const FLAVOR_CATEGORIES = ["Frutados", "Cítricos", "Florais", "Herbais", "Especiados"];
 const FLAVOR_IMAGE_RECOMMENDED = "mín. 760 x 1368 px; ideal 1040 x 1872 px";
-const ORDER_STATUSES = ["recebido", "confirmado", "em produção", "pronto", "entregue", "cancelado"];
+const ORDER_STATUSES = ["recebido", "confirmado", "em produção", "produzido", "pronto", "entregue", "cancelado"];
+const ORDER_FLOW_STATUSES = ["recebido", "em produção", "produzido", "pronto", "entregue"];
 const ORDER_ITEM_STATUSES = ["pendente", "em produção", "produzido", "reservado", "entregue"];
 const ORDER_CLIENT_TYPES = [
   { value: "novo_cliente", label: "Novo cliente", price: "retail" },
@@ -2012,6 +2013,26 @@ function syncOrderIntegrations(order) {
   syncOrderSales(order);
 }
 
+function updateOrderStatus(payload = "") {
+  const [orderId, ...statusParts] = String(payload).split(":");
+  const status = statusParts.join(":");
+  const order = byId("orders", orderId);
+  if (!order || !ORDER_STATUSES.includes(status)) return;
+  order.status = status;
+  if (status === "entregue" && !order.deliveredAt) {
+    order.deliveredAt = todayIso();
+    order.paymentDueDate = order.paymentDueDate || addDaysIso(order.deliveredAt, 15);
+  }
+  if (status !== "entregue" && order.paymentStatus === "aguardando pagamento" && !order.deliveredAt) {
+    order.paymentStatus = "aberto";
+  }
+  order.updatedAt = new Date().toISOString();
+  syncOrderIntegrations(order);
+  addAudit("Status do pedido atualizado", `${orderClientDisplayName(order)}: ${status}`);
+  saveState();
+  render();
+}
+
 function syncPurchaseExpense(purchase) {
   if (!purchase || !Number(purchase.total || 0)) return;
   const existing = state.expenses.find((expense) => expense.purchaseId === purchase.id);
@@ -2348,7 +2369,7 @@ function renderDashboard() {
 
 function statusClass(value, type = "stock") {
   if (type === "stock") return value <= 0 ? "bad" : value <= 1 ? "warn" : "good";
-  if (["aprovado", "ativo", "ativa", "pago", "confirmado", "pronto", "entregue"].includes(value)) return "good";
+  if (["aprovado", "ativo", "ativa", "pago", "confirmado", "produzido", "pronto", "entregue"].includes(value)) return "good";
   if (["planejado", "bottled", "pendente", "custo pendente", "recebido", "em produção", "aberto", "aguardando pagamento"].includes(value)) return "warn";
   return "bad";
 }
@@ -2523,6 +2544,30 @@ function renderProducts() {
         </tr>
       `;
     });
+  const compactProducts = state.products
+    .filter((item) => matchesSearch(item))
+    .map(
+      (product) => `
+        <article class="product-compact-card">
+          <div>
+            <strong>${escapeHtml(product.flavor)}</strong>
+            <span>${escapeHtml(product.item || product.ean || "sem codigo")} | ${number(product.sizeMl)}ml</span>
+          </div>
+          <div class="product-compact-meta">
+            <span class="status ${statusClass(product.status, "general")}">${escapeHtml(product.status)}</span>
+            <small>${product.visible ? "publico" : "oculto"}</small>
+          </div>
+          <div class="product-compact-prices">
+            <span>Varejo ${brl(product.retailPrice)}</span>
+            <span>Atacado ${brl(product.wholesalePrice)}</span>
+          </div>
+          <div class="product-compact-actions">
+            ${rowActions([tableAction(`edit-product:${product.id}`, "Editar sabor"), tableAction(`delete-product:${product.id}`, "Excluir sabor", "delete", "danger")])}
+          </div>
+        </article>
+      `,
+    )
+    .join("");
   return `
     ${pageHead(
       "Produtos / EAN",
@@ -2547,6 +2592,15 @@ function renderProducts() {
         ${metric("Varejo atual", brl(currentRetail), "Aplicado como referência dos pedidos de varejo", "sell")}
         ${metric("Atacado atual", brl(currentWholesale), "Aplicado para parceiros novos e recorrentes", "storefront")}
       </div>
+    </section>
+    <section class="admin-card product-compact-panel">
+      <div class="table-toolbar">
+        <div>
+          <h3>Sabores</h3>
+          <p>Lista rápida para abrir, conferir disponibilidade e editar sem procurar na tabela.</p>
+        </div>
+      </div>
+      <div class="product-compact-list">${compactProducts || `<p class="empty-note">Nenhum sabor encontrado.</p>`}</div>
     </section>
     ${table(
       [
@@ -3232,6 +3286,71 @@ function orderCard(order) {
   `;
 }
 
+function orderFlowStatusButton(order, status) {
+  const current = order.status || "recebido";
+  return `
+    <button class="order-status-chip ${current === status ? "is-active" : ""}" type="button" data-action="order-status:${order.id}:${status}" ${current === status ? "aria-current=\"true\"" : ""}>
+      ${escapeHtml(status)}
+    </button>
+  `;
+}
+
+function orderCompactCard(order) {
+  const items = orderItems(order);
+  const qty = orderQuantity(order);
+  const reserved = items.reduce((sum, item) => sum + orderItemReservedQty(item), 0);
+  const missing = Math.max(0, qty - reserved);
+  const percent = qty ? Math.min(100, (reserved / qty) * 100) : 0;
+  const due = order.neededBy || order.estimatedReadyDate || "";
+  const itemRows = items.length
+    ? items
+        .map((item) => {
+          const itemQty = Number(item.qty || 0);
+          const itemReady = orderItemReservedQty(item);
+          const itemMissing = Math.max(0, itemQty - itemReady);
+          return `
+            <li>
+              <span>${escapeHtml(orderFlavorText(item))}</span>
+              <strong>${number(itemReady)}/${number(itemQty)}</strong>
+              <small>${itemMissing ? `${number(itemMissing)} faltando` : "ok"}</small>
+            </li>
+          `;
+        })
+        .join("")
+    : `<li><span>Sem itens</span><strong>-</strong><small>-</small></li>`;
+  return `
+    <details class="order-compact-card">
+      <summary>
+        <div class="order-compact-main">
+          <strong>${escapeHtml(orderClientDisplayName(order))}</strong>
+          <span>${number(reserved)}/${number(qty)} pronto${missing ? ` | ${number(missing)} faltando` : " | completo"}</span>
+        </div>
+        <div class="order-compact-side">
+          ${orderStatusBadge(order.status)}
+          <b>${due ? shortDate(due) : "sem prazo"}</b>
+        </div>
+      </summary>
+      <div class="order-compact-body">
+        <div class="order-compact-progress" aria-label="${number(reserved)} de ${number(qty)} garrafas separadas">
+          <i style="width:${percent}%"></i>
+        </div>
+        <div class="order-compact-facts">
+          <span><b>Prazo</b>${due ? escapeHtml(shortDate(due)) : "-"}</span>
+          <span><b>Valor</b>${brl(orderTotal(order))}</span>
+          <span><b>Qtd.</b>${number(qty)} garrafas</span>
+        </div>
+        <ul class="order-compact-items">${itemRows}</ul>
+        <div class="order-status-rail" aria-label="Alterar status do pedido">
+          ${ORDER_FLOW_STATUSES.map((status) => orderFlowStatusButton(order, status)).join("")}
+        </div>
+        <div class="order-compact-actions">
+          ${actionButton(`edit-order:${order.id}`, "Editar detalhes", "edit", "btn-outline")}
+        </div>
+      </div>
+    </details>
+  `;
+}
+
 function renderOrders() {
   const orders = state.orders || [];
   const filteredOrders = orders.filter((order) => matchesSearch(order));
@@ -3244,25 +3363,25 @@ function renderOrders() {
   return `
     ${pageHead(
       "Pedidos",
-      "Acompanhe encomendas grandes antes da venda: cliente, itens, status de produção, previsão de pronto e valor estimado.",
+      "Acompanhe pedidos por cliente e atualize status em poucos toques.",
       `${actionButton("new-order", "Novo pedido", "add")} ${actionButton("export-orders", "CSV", "download", "btn-outline")}`,
     )}
-    <section class="metric-grid">
+    <section class="order-list order-compact-list">
+      ${filteredOrders.length ? filteredOrders.map(orderCompactCard).join("") : `<article class="admin-card"><p class="empty-note">Nenhum pedido ainda. Use “Novo pedido” para começar.</p></article>`}
+    </section>
+    <section class="metric-grid order-metrics-compact">
       ${metric("Pedidos abertos", number(openOrders.length), `${number(openOrders.reduce((sum, order) => sum + orderQuantity(order), 0))} garrafas no pipeline`, "pending_actions")}
       ${metric("Em produção", number(inProduction.length), "Pedidos marcados como em produção", "factory")}
       ${metric("Atenção 7 dias", number(dueSoon.length), "Prontos, atrasados ou próximos da data", "event_upcoming")}
       ${metric("Valor em pedidos", brl(openOrders.reduce((sum, order) => sum + orderTotal(order), 0)), "Receita prevista em pipeline", "request_quote")}
       ${metric("A receber", brl(orders.reduce((sum, order) => sum + orderReceivableValue(order), 0)), "15 dias após entrega", "payments")}
     </section>
-    <section class="admin-card order-production-card">
-      <h3>Fila de produção por sabor</h3>
+    <details class="admin-card order-production-card order-secondary-panel">
+      <summary>Fila de produção por sabor</summary>
       <div class="production-chip-grid">
         ${orderProductionRows().length ? orderProductionRows().map((row) => `<div class="production-chip"><strong>${escapeHtml(row.flavor)}</strong><span>${number(row.missing)} faltando</span><small>${number(row.reserved)} reservado de ${number(row.ordered)}${row.nextDue ? ` | pronto até ${row.nextDue}` : ""}</small>${renderProductionClientList(row)}</div>`).join("") : `<p class="empty-note">Sem produção pendente para pedidos abertos.</p>`}
       </div>
-    </section>
-    <section class="order-list">
-      ${filteredOrders.length ? filteredOrders.map(orderCard).join("") : `<article class="admin-card"><p class="empty-note">Nenhum pedido ainda. Use “Novo pedido” para começar.</p></article>`}
-    </section>
+    </details>
   `;
 }
 
@@ -5702,27 +5821,36 @@ function orderForm(orderId) {
     "Pedidos",
     `
       <form id="orderForm">
-        <div class="input-grid">
-          <label class="field"><span>Código</span><input name="code" value="${escapeHtml(existing?.code || nextOrderCode(orderDate))}" required></label>
-          <label class="field"><span>Data do pedido</span><input name="orderDate" type="date" value="${orderDate}" required></label>
-          <label class="field"><span>Status</span><select name="status" class="admin-select">${ORDER_STATUSES.map((status) => `<option value="${status}" ${existing?.status === status ? "selected" : ""}>${status}</option>`).join("")}</select></label>
-          <label class="field"><span>Tipo de cliente</span><select name="clientType" class="admin-select">${ORDER_CLIENT_TYPES.map((type) => `<option value="${type.value}" ${clientType === type.value ? "selected" : ""}>${type.label}</option>`).join("")}</select></label>
-          <label class="field field-full" data-recurring-partner-field><span>Parceiro cadastrado</span><select name="partnerId" class="admin-select" data-force-search="true" ${state.partners.length ? "" : "disabled"}>${partnerOptions}</select></label>
-          <label class="field"><span>Previsão de pronto</span><input name="estimatedReadyDate" type="date" value="${readyDate}"></label>
-          <label class="field"><span>Data de entrega</span><input name="deliveredAt" type="date" value="${deliveredAt}"></label>
-          <label class="field"><span>Receber até</span><input name="paymentDueDate" type="date" value="${paymentDueDate}"></label>
-          <label class="field"><span>Status pagamento</span><select name="paymentStatus" class="admin-select">${PAYMENT_STATUSES.map((status) => `<option value="${status}" ${orderReceivableStatus(existing || {}) === status || existing?.paymentStatus === status ? "selected" : ""}>${status}</option>`).join("")}</select></label>
-          <label class="field"><span>Cliente</span><input name="customerName" value="${escapeHtml(existing?.customerName || "")}" required></label>
-          <label class="field"><span>Negócio / empresa</span><input name="businessName" value="${escapeHtml(existing?.businessName || "")}"></label>
-          <label class="field"><span>WhatsApp</span><input name="whatsapp" value="${escapeHtml(existing?.whatsapp || "")}"></label>
-          <label class="field"><span>Cliente precisa até</span><input name="neededBy" type="date" value="${existing?.neededBy || ""}"></label>
-          <label class="field"><span>Origem</span><input name="source" value="${escapeHtml(existing?.source || "")}" placeholder="WhatsApp, feira, revendedor..."></label>
-          <label class="field field-full"><span>Observações do pedido</span><textarea name="notes" placeholder="Condição comercial, entrega, prioridade, cobrança...">${escapeHtml(existing?.notes || "")}</textarea></label>
-          <input type="hidden" name="instagram" value="${escapeHtml(existing?.instagram || selectedPartner?.instagram || "")}">
-          <input type="hidden" name="neighborhood" value="${escapeHtml(existing?.neighborhood || selectedPartner?.neighborhood || "")}">
-          <input type="hidden" name="city" value="${escapeHtml(existing?.city || selectedPartner?.city || "Manaus")}">
-          <div class="result-card field-full" id="orderPreview"></div>
-        </div>
+        <details class="form-section" open>
+          <summary>Operação do pedido</summary>
+          <div class="input-grid">
+            <label class="field"><span>Cliente</span><input name="customerName" value="${escapeHtml(existing?.customerName || "")}" required></label>
+            <label class="field"><span>Negócio / empresa</span><input name="businessName" value="${escapeHtml(existing?.businessName || "")}"></label>
+            <label class="field"><span>Tipo de cliente</span><select name="clientType" class="admin-select">${ORDER_CLIENT_TYPES.map((type) => `<option value="${type.value}" ${clientType === type.value ? "selected" : ""}>${type.label}</option>`).join("")}</select></label>
+            <label class="field"><span>Status</span><select name="status" class="admin-select">${ORDER_STATUSES.map((status) => `<option value="${status}" ${existing?.status === status ? "selected" : ""}>${status}</option>`).join("")}</select></label>
+            <label class="field field-full" data-recurring-partner-field><span>Parceiro cadastrado</span><select name="partnerId" class="admin-select" data-force-search="true" ${state.partners.length ? "" : "disabled"}>${partnerOptions}</select></label>
+            <label class="field"><span>Previsão de pronto</span><input name="estimatedReadyDate" type="date" value="${readyDate}"></label>
+            <label class="field"><span>Cliente precisa até</span><input name="neededBy" type="date" value="${existing?.neededBy || ""}"></label>
+            <label class="field"><span>Data de entrega</span><input name="deliveredAt" type="date" value="${deliveredAt}"></label>
+            <div class="result-card field-full" id="orderPreview"></div>
+          </div>
+        </details>
+
+        <details class="form-section">
+          <summary>Detalhes e cobrança</summary>
+          <div class="input-grid">
+            <label class="field"><span>Código</span><input name="code" value="${escapeHtml(existing?.code || nextOrderCode(orderDate))}" required></label>
+            <label class="field"><span>Data do pedido</span><input name="orderDate" type="date" value="${orderDate}" required></label>
+            <label class="field"><span>Receber até</span><input name="paymentDueDate" type="date" value="${paymentDueDate}"></label>
+            <label class="field"><span>Status pagamento</span><select name="paymentStatus" class="admin-select">${PAYMENT_STATUSES.map((status) => `<option value="${status}" ${orderReceivableStatus(existing || {}) === status || existing?.paymentStatus === status ? "selected" : ""}>${status}</option>`).join("")}</select></label>
+            <label class="field"><span>WhatsApp</span><input name="whatsapp" value="${escapeHtml(existing?.whatsapp || "")}"></label>
+            <label class="field"><span>Origem</span><input name="source" value="${escapeHtml(existing?.source || "")}" placeholder="WhatsApp, feira, revendedor..."></label>
+            <label class="field field-full"><span>Observações do pedido</span><textarea name="notes" placeholder="Condição comercial, entrega, prioridade, cobrança...">${escapeHtml(existing?.notes || "")}</textarea></label>
+            <input type="hidden" name="instagram" value="${escapeHtml(existing?.instagram || selectedPartner?.instagram || "")}">
+            <input type="hidden" name="neighborhood" value="${escapeHtml(existing?.neighborhood || selectedPartner?.neighborhood || "")}">
+            <input type="hidden" name="city" value="${escapeHtml(existing?.city || selectedPartner?.city || "Manaus")}">
+          </div>
+        </details>
 
         <div class="builder-section">
           <div class="table-toolbar">
@@ -6297,6 +6425,7 @@ function handleAction(action) {
     "stock-sale": newSaleForm,
     "reverse-stock": reverseStockForm,
     "edit-order": orderForm,
+    "order-status": updateOrderStatus,
     "delete-order": deleteOrder,
     "edit-purchase": editPurchaseForm,
     "delete-purchase": deletePurchase,
