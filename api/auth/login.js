@@ -7,8 +7,12 @@ module.exports = async function handler(req, res) {
   }
 
   const configuredPassword = adminPassword();
-  if (!configuredPassword || !process.env.ADMIN_SESSION_SECRET) {
-    return json(res, 503, { ok: false, error: "admin_auth_not_configured" });
+  const missing = [
+    !configuredPassword ? "ADMIN_PORTAL_PASSWORD" : "",
+    !process.env.ADMIN_SESSION_SECRET ? "ADMIN_SESSION_SECRET" : "",
+  ].filter(Boolean);
+  if (missing.length) {
+    return json(res, 503, { ok: false, error: "admin_auth_not_configured", missing });
   }
   let body;
   try {

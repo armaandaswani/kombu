@@ -50,7 +50,7 @@ module.exports = async function handler(req, res) {
     res.setHeader("Allow", "GET");
     return json(res, 405, { ok: false, error: "method_not_allowed" });
   }
-  if (!process.env.CRON_SECRET) return json(res, 503, { ok: false, error: "cron_not_configured" });
+  if (!process.env.CRON_SECRET) return json(res, 503, { ok: false, error: "cron_not_configured", missing: ["CRON_SECRET"] });
   if (!authorized(req)) return json(res, 401, { ok: false, error: "invalid_cron_secret" });
 
   const state = (await getAppState()) || {};

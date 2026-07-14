@@ -38,6 +38,7 @@ async function run() {
   await login(req, res);
   assert.strictEqual(res.statusCode, 503);
   assert.strictEqual(jsonBody(res).error, "admin_auth_not_configured");
+  assert.deepStrictEqual(jsonBody(res).missing, ["ADMIN_PORTAL_PASSWORD", "ADMIN_SESSION_SECRET"]);
 
   process.env.ADMIN_PORTAL_PASSWORD = "test-password";
   req = { method: "POST", headers: { host: "kombukombucha.com.br" }, body: { password: "test-password" } };
@@ -45,6 +46,7 @@ async function run() {
   await login(req, res);
   assert.strictEqual(res.statusCode, 503, "login must fail closed without an independent session secret");
   assert.strictEqual(jsonBody(res).error, "admin_auth_not_configured");
+  assert.deepStrictEqual(jsonBody(res).missing, ["ADMIN_SESSION_SECRET"]);
 
   process.env.ADMIN_SESSION_SECRET = "a-long-test-session-secret";
   req = { method: "POST", headers: { host: "kombukombucha.com.br" }, body: { password: "wrong" } };
@@ -67,6 +69,7 @@ async function run() {
   await cron(req, res);
   assert.strictEqual(res.statusCode, 503);
   assert.strictEqual(jsonBody(res).error, "cron_not_configured");
+  assert.deepStrictEqual(jsonBody(res).missing, ["CRON_SECRET"]);
 
   process.env.CRON_SECRET = "cron-test-secret";
   req = { method: "GET", headers: { authorization: "Bearer wrong" } };
