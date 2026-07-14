@@ -104,6 +104,22 @@ Automated checks cover:
 
 The responsive sweep found no page-level horizontal overflow, clipped elements, unlabeled controls or runtime errors after remediation.
 
+## Production Verification
+
+The deployment created from commit `d11c568` is active on `kombukombucha.com.br`. The production smoke test confirmed:
+
+- The public and admin pages serve the current `20260714b` assets.
+- Supabase responds with `configured: true`, an existing `app_state` row and a current update timestamp.
+- Unauthenticated state access is rejected with HTTP 401.
+- Admin pages are not cached or indexed and include the expected security headers.
+
+Two Vercel runtime values still require operator action before those services are operational:
+
+- `ADMIN_SESSION_SECRET` is missing, so admin login correctly fails closed even though `ADMIN_PORTAL_PASSWORD` is present.
+- `CRON_SECRET` is missing, so the payment-reminder cron correctly fails closed and sends no email.
+
+Add non-empty cryptographically random values for those two variables to the Vercel Production environment and redeploy. No source-code change is required after that configuration step.
+
 ## Remaining Structural Risks
 
 ### High: Named users and real roles
