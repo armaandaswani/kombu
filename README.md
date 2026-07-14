@@ -1,15 +1,15 @@
 # Kombú Kombucha Website
 
-Modern public website and operational admin prototype for Kombú Kombucha da Amazônia.
+Modern public website and operational admin system for Kombú Kombucha da Amazônia.
 
 ## Pages
 
 - `index.html`: public institutional/catalog website in Brazilian Portuguese.
-- `admin.html`: internal operational dashboard prototype.
+- `admin.html`: internal operational dashboard.
 - `ARCHITECTURE.md`: backend, database, SEO and deployment direction.
 
 The admin includes a real product/EAN base from the provided Kombú spreadsheets, plus importable costing records for ingredients, packaging and 500ml recipes.
-The public lead forms write into the admin CRM prototype and call `/api/lead` for email notifications to `armaandaswani@icloud.com`.
+The public lead forms write into the admin CRM and call `/api/lead` for email notifications to `armaandaswani@icloud.com`.
 
 ## Local Preview
 
@@ -46,13 +46,13 @@ Configure these Vercel environment variables:
 - `LEAD_FROM_EMAIL`: optional sender identity, but production should use a verified Resend sender/domain.
 - `SUPABASE_URL`: Supabase project URL.
 - `SUPABASE_SERVICE_ROLE_KEY`: server-only Supabase service role key.
-- `ADMIN_PORTAL_PASSWORD`: admin password, currently `Rssb2010`.
+- `ADMIN_PORTAL_PASSWORD`: private admin password configured only in Vercel.
 - `ADMIN_SESSION_SECRET`: long secret used to sign the admin cookie.
 - `CRON_SECRET`: secret used by the scheduled payment reminder route.
 
 ## Notes
 
-The admin still has a static password fallback for local preview. In production, API routes use `/api/auth/login` and an httpOnly session cookie.
+The admin password is never shipped to the browser. Production login fails closed when `ADMIN_PORTAL_PASSWORD` is missing. A local static preview accepts any non-empty password because it cannot serve the Vercel authentication API; this behavior is limited to `localhost`, `127.0.0.1` and `file:` previews.
 
 For production on Vercel, Supabase is now the expected backend for:
 

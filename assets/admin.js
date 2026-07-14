@@ -1,6 +1,5 @@
 const STORAGE_KEY = "kombuAdminStateV3";
 const LOCALE_KEY = "kombuAdminLocale";
-const ADMIN_PASSWORD = "Rssb2010";
 const ADMIN_NOTIFICATION_EMAIL = "armaandaswani@icloud.com";
 const FLAVOR_CATEGORIES = ["Frutados", "Cítricos", "Florais", "Herbais", "Especiados"];
 const FLAVOR_IMAGE_RECOMMENDED = "mín. 760 x 1368 px; ideal 1040 x 1872 px";
@@ -577,6 +576,7 @@ let cloudSyncConfigured = false;
 let cloudSyncLastError = "";
 let cloudSaveTimer = null;
 let lastCloudSaveAt = "";
+let cloudStateUpdatedAt = "";
 
 function runStartupIntegrations() {
   try {
@@ -652,7 +652,7 @@ async function authenticateAdmin(password) {
     // Local static previews do not serve Vercel API routes.
     if (!isLocalPreview()) return { ok: false, backend: true, error: "backend_unavailable" };
   }
-  return { ok: password === ADMIN_PASSWORD, backend: false };
+  return { ok: isLocalPreview() && Boolean(password), backend: false };
 }
 
 async function startAuthenticatedSession() {
@@ -930,16 +930,24 @@ async function pushStateToCloud() {
       method: "PUT",
       credentials: "same-origin",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ state }),
+      body: JSON.stringify({ state, updatedAt: cloudStateUpdatedAt }),
     });
     if (response.ok || response.status === 202) {
+      const payload = await readJsonSafe(response);
       cloudSyncEnabled = true;
       cloudSyncConfigured = true;
       cloudSyncLastError = "";
-      lastCloudSaveAt = new Date().toISOString();
+      cloudStateUpdatedAt = payload.updatedAt || cloudStateUpdatedAt;
+      lastCloudSaveAt = cloudStateUpdatedAt || new Date().toISOString();
     } else if (response.status === 401) {
       cloudSyncEnabled = false;
       cloudSyncLastError = "Sessão expirada. Entre novamente para salvar na nuvem.";
+    } else if (response.status === 409) {
+      const payload = await readJsonSafe(response);
+      cloudSyncEnabled = false;
+      cloudSyncConfigured = true;
+      cloudSyncLastError = "Existem alterações mais recentes na nuvem. Recarregue o painel antes de continuar para não apagar dados de outro dispositivo.";
+      cloudStateUpdatedAt = payload.updatedAt || cloudStateUpdatedAt;
     } else {
       const payload = await readJsonSafe(response);
       cloudSyncEnabled = false;
@@ -1015,6 +1023,7 @@ async function syncFromCloud() {
     cloudSyncEnabled = true;
     cloudSyncConfigured = true;
     cloudSyncLastError = "";
+    cloudStateUpdatedAt = payload.updatedAt || "";
     if (payload.exists && payload.state) {
       state = normalizeState(payload.state);
       runStartupIntegrations();
@@ -1521,6 +1530,36 @@ function orderItemReservedQty(item = {}) {
   return qty ? Math.min(qty, total) : total;
 }
 
+function orderItemReservationTarget(item = {}) {
+  const ordered = Math.max(0, Number(item.qty || 0));
+  if (item.reservationTarget === "" || item.reservationTarget == null) return ordered;
+  const target = Number(item.reservationTarget);
+  if (!Number.isFinite(target)) return ordered;
+  return Math.max(0, Math.min(ordered, target));
+}
+
+function trimItemAllocationsTo(item, targetQty) {
+  const target = Math.max(0, Number(targetQty || 0));
+  const allocations = orderItemAllocations(item).map((allocation) => ({ ...allocation }));
+  let excess = Math.max(0, allocations.reduce((sum, allocation) => sum + Number(allocation.qty || 0), 0) - target);
+  const reductionOrder = allocations
+    .map((allocation, index) => ({ allocation, index }))
+    .sort((a, b) => Number(a.allocation.manual) - Number(b.allocation.manual) || b.index - a.index);
+  reductionOrder.forEach(({ allocation }) => {
+    if (!excess) return;
+    const reduction = Math.min(excess, Number(allocation.qty || 0));
+    allocation.qty = Number(allocation.qty || 0) - reduction;
+    excess -= reduction;
+  });
+  const remaining = allocations.filter((allocation) => Number(allocation.qty || 0) > 0);
+  const reserved = remaining.reduce((sum, allocation) => sum + Number(allocation.qty || 0), 0);
+  item.allocations = remaining;
+  item.batchCode = remaining.map((allocation) => allocation.batchCode).join(", ");
+  item.reservedQty = reserved;
+  item.producedQty = reserved;
+  return reserved;
+}
+
 function orderItemBatchCodes(item = {}) {
   return [...new Set(orderItemAllocations(item).map((allocation) => allocation.batchCode).filter(Boolean))];
 }
@@ -1605,7 +1644,7 @@ function orderReceivableValue(order) {
 }
 
 function orderItemRemainingQty(item = {}) {
-  return Math.max(0, Number(item.qty || 0) - orderItemReservedQty(item));
+  return Math.max(0, orderItemReservationTarget(item) - orderItemReservedQty(item));
 }
 
 function reservedFromBatch(code) {
@@ -1822,6 +1861,7 @@ function orderReadyRows() {
       const missing = Math.max(0, qty - ready);
       return {
         order,
+        partner: selectedPartnerForOrder(order),
         client: orderClientDisplayName(order),
         date: order.orderDate || order.createdAt?.slice(0, 10) || "",
         due: order.neededBy || order.estimatedReadyDate || "",
@@ -1877,6 +1917,10 @@ function orderReadyCard(row) {
             : `<p class="mini-empty">Sem itens neste pedido.</p>`
         }
         ${extra > 0 ? `<div class="order-ready-more">+${extra} sabor(es)</div>` : ""}
+      </div>
+      <div class="order-ready-actions">
+        ${actionButton(`adjust-order-reservation:${row.order.id}`, "Ajustar reserva", "tune", "btn-outline")}
+        ${row.partner ? actionButton(`dashboard-edit-partner:${row.partner.id}`, "Editar parceiro", "edit", "btn-outline") : ""}
       </div>
     </article>
   `;
@@ -2084,9 +2128,14 @@ function allocateBatchToOrders(batch) {
 function resetOpenOrderReservations() {
   (state.orders || []).filter(isOpenOrder).forEach((order) => {
     orderItems(order).forEach((item) => {
+      const target = orderItemReservationTarget(item);
       const manualAllocations = orderItemAllocations(item).filter((allocation) => allocation.manual);
       item.allocations = manualAllocations;
-      const manualReserved = manualAllocations.reduce((sum, allocation) => sum + Number(allocation.qty || 0), 0);
+      item.batchCode = "";
+      item.reservedQty = 0;
+      item.producedQty = 0;
+      trimItemAllocationsTo(item, target);
+      const manualReserved = orderItemAllocations(item).reduce((sum, allocation) => sum + Number(allocation.qty || 0), 0);
       item.reservedQty = Math.min(Number(item.qty || manualReserved || 0), manualReserved);
       item.producedQty = item.reservedQty;
       item.batchCode = orderItemBatchCodes(item).join(", ");
@@ -2691,9 +2740,9 @@ function renderCosts() {
         <tr>
           <td data-label="Grupo">Ingrediente</td>
           <td data-label="Insumo">${ingredient?.name || "Não encontrado"}</td>
-          <td data-label="Qtd."><input type="number" min="0" step="0.01" value="${line.qty}" data-cost-line="ingredients" data-index="${index}" data-field="qty"></td>
+          <td data-label="Qtd."><input type="number" min="0" step="0.01" value="${line.qty}" aria-label="Quantidade de ${escapeHtml(ingredient?.name || "ingrediente")}" data-cost-line="ingredients" data-index="${index}" data-field="qty"></td>
           <td data-label="Unidade">
-            <select data-cost-line="ingredients" data-index="${index}" data-field="unit">
+            <select aria-label="Unidade de ${escapeHtml(ingredient?.name || "ingrediente")}" data-cost-line="ingredients" data-index="${index}" data-field="unit">
               ${["g", "kg", "ml", "l", "un"].map((unit) => `<option ${line.unit === unit ? "selected" : ""}>${unit}</option>`).join("")}
             </select>
           </td>
@@ -2711,7 +2760,7 @@ function renderCosts() {
         <tr>
           <td data-label="Grupo">Embalagem</td>
           <td data-label="Insumo">${item?.name || "Não encontrado"}</td>
-          <td data-label="Qtd."><input type="number" min="0" step="0.001" value="${line.qty}" data-cost-line="packaging" data-index="${index}" data-field="qty"></td>
+          <td data-label="Qtd."><input type="number" min="0" step="0.001" value="${line.qty}" aria-label="Quantidade de ${escapeHtml(item?.name || "material")}" data-cost-line="packaging" data-index="${index}" data-field="qty"></td>
           <td data-label="Unidade">un/garrafa</td>
           <td data-label="Custo compra" class="num">${brl(item?.costEach || 0)}</td>
           <td data-label="Custo no lote" class="num">${brl(packagingLineCost(line, recipe.yieldBottles))}</td>
@@ -2731,26 +2780,26 @@ function renderCosts() {
         <div class="table-toolbar" style="padding:16px 16px 0">
           <label class="field" style="min-width:260px">
             <span>Receita ativa</span>
-            <select id="recipeSelector" class="admin-select">
+            <select id="recipeSelector" class="admin-select" aria-label="Receita ativa">
               ${state.recipes.map((item) => `<option value="${item.id}" ${item.id === recipe.id ? "selected" : ""}>${recipeLabel(item)}</option>`).join("")}
             </select>
           </label>
           <div class="admin-actions">
             <label class="field">
               <span>Rendimento</span>
-              <input class="admin-input" type="number" value="${recipe.yieldBottles}" data-recipe-field="yieldBottles" />
+              <input class="admin-input" type="number" value="${recipe.yieldBottles}" aria-label="Rendimento em garrafas" data-recipe-field="yieldBottles" />
             </label>
             <label class="field">
               <span>Perda %</span>
-              <input class="admin-input" type="number" value="${recipe.wastePct}" data-recipe-field="wastePct" />
+              <input class="admin-input" type="number" value="${recipe.wastePct}" aria-label="Percentual de perda" data-recipe-field="wastePct" />
             </label>
             <label class="field">
               <span>Atacado</span>
-              <input class="admin-input" type="number" step="0.01" value="${recipe.wholesalePrice}" data-recipe-field="wholesalePrice" />
+              <input class="admin-input" type="number" step="0.01" value="${recipe.wholesalePrice}" aria-label="Preço de atacado" data-recipe-field="wholesalePrice" />
             </label>
             <label class="field">
               <span>Varejo</span>
-              <input class="admin-input" type="number" step="0.01" value="${recipe.retailPrice}" data-recipe-field="retailPrice" />
+              <input class="admin-input" type="number" step="0.01" value="${recipe.retailPrice}" aria-label="Preço de varejo" data-recipe-field="retailPrice" />
             </label>
           </div>
         </div>
@@ -2772,9 +2821,9 @@ function renderCosts() {
               <tr class="subtotal-row"><td colspan="6">Subtotal ingredientes</td><td data-label="Total" class="num">${brl(cost.ingredientCost)}</td></tr>
               ${packagingRows}
               <tr class="subtotal-row"><td colspan="6">Subtotal embalagens</td><td data-label="Total" class="num">${brl(cost.packagingCost)}</td></tr>
-              <tr><td data-label="Grupo">Operação</td><td data-label="Insumo">Mão de obra por lote</td><td data-label="Qtd."><input type="number" value="${recipe.labor}" data-recipe-field="labor"></td><td data-label="Unidade">R$</td><td data-label="Custo compra"></td><td data-label="Custo no lote" class="num">${brl(recipe.labor)}</td><td data-label="Ações"></td></tr>
-              <tr><td data-label="Grupo">Operação</td><td data-label="Insumo">Água, energia e gás</td><td data-label="Qtd."><input type="number" value="${recipe.utilities}" data-recipe-field="utilities"></td><td data-label="Unidade">R$</td><td data-label="Custo compra"></td><td data-label="Custo no lote" class="num">${brl(recipe.utilities)}</td><td data-label="Ações"></td></tr>
-              <tr><td data-label="Grupo">Operação</td><td data-label="Insumo">Transporte, sanitização e outros</td><td data-label="Qtd."><input type="number" value="${recipe.other}" data-recipe-field="other"></td><td data-label="Unidade">R$</td><td data-label="Custo compra"></td><td data-label="Custo no lote" class="num">${brl(recipe.other)}</td><td data-label="Ações"></td></tr>
+              <tr><td data-label="Grupo">Operação</td><td data-label="Insumo">Mão de obra por lote</td><td data-label="Qtd."><input type="number" value="${recipe.labor}" aria-label="Custo de mão de obra por lote" data-recipe-field="labor"></td><td data-label="Unidade">R$</td><td data-label="Custo compra"></td><td data-label="Custo no lote" class="num">${brl(recipe.labor)}</td><td data-label="Ações"></td></tr>
+              <tr><td data-label="Grupo">Operação</td><td data-label="Insumo">Água, energia e gás</td><td data-label="Qtd."><input type="number" value="${recipe.utilities}" aria-label="Custo de água, energia e gás por lote" data-recipe-field="utilities"></td><td data-label="Unidade">R$</td><td data-label="Custo compra"></td><td data-label="Custo no lote" class="num">${brl(recipe.utilities)}</td><td data-label="Ações"></td></tr>
+              <tr><td data-label="Grupo">Operação</td><td data-label="Insumo">Transporte, sanitização e outros</td><td data-label="Qtd."><input type="number" value="${recipe.other}" aria-label="Outros custos por lote" data-recipe-field="other"></td><td data-label="Unidade">R$</td><td data-label="Custo compra"></td><td data-label="Custo no lote" class="num">${brl(recipe.other)}</td><td data-label="Ações"></td></tr>
               <tr class="subtotal-row"><td colspan="6">Custo direto com perda</td><td data-label="Total" class="num">${brl(cost.total)}</td></tr>
             </tbody>
           </table>
@@ -2999,6 +3048,7 @@ function stockBatchCard(row) {
       <div class="stock-card-actions">
         ${actionButton(`correct-batch-qty:${row.id}`, "Corrigir quantidade", "edit_square", "btn-outline")}
         ${actionButton(`reserve-stock:${row.code}`, "Reservar", "assignment_turned_in", "btn-outline")}
+        ${actionButton(`write-off-stock:${row.code}`, "Dar baixa", "remove_circle", "btn-outline")}
         ${actionButton(`stock-sale:${row.code}`, "Venda/saída", "point_of_sale", "btn-outline")}
         ${actionButton(`reverse-stock:${row.code}`, "Devolução", "undo", "btn-outline")}
       </div>
@@ -3736,6 +3786,20 @@ function setModule(module) {
   render();
 }
 
+function openPartnerEditorFromDashboard(partnerId) {
+  const partner = byId("partners", partnerId);
+  if (!partner) {
+    window.alert("Parceiro não encontrado. Atualize a página e tente novamente.");
+    return;
+  }
+  if (!canWrite("partners")) {
+    window.alert("O perfil selecionado não tem permissão para editar parceiros.");
+    return;
+  }
+  setModule("partners");
+  window.requestAnimationFrame(() => editRecordForm("partners", partnerId, "Editar parceiro", partnerFields));
+}
+
 function openModal(title, eyebrow, body) {
   document.querySelector("#adminModalTitle").textContent = tr(title);
   document.querySelector("#adminModalEyebrow").textContent = tr(eyebrow);
@@ -4346,6 +4410,165 @@ function reserveStockForm(batchCode) {
     }
     reserveBatchForOrderItem(batchCode, selection.order, selection.item, qty, data.note || "", true);
     addAudit("Reserva manual", `${number(qty)} garrafa(s) do lote ${batchCode} para ${orderClientDisplayName(selection.order)}`);
+    closeModal();
+    render();
+  });
+}
+
+function adjustOrderReservationForm(orderId) {
+  const order = byId("orders", orderId);
+  if (!order || !isOpenOrder(order)) return;
+  const items = orderItems(order).filter((item) => Number(item.qty || 0) > 0);
+  if (!items.length) {
+    window.alert("Este pedido não tem itens para ajustar.");
+    return;
+  }
+  openModal(
+    "Ajustar reserva",
+    "Pedidos",
+    `
+      <form id="adjustOrderReservationForm">
+        <div class="input-grid">
+          <div class="result-card field-full">
+            <small>Cliente</small>
+            <strong>${escapeHtml(orderClientDisplayName(order))}</strong>
+            <span>A reserva automática continuará ativa até a quantidade manual definida para cada sabor.</span>
+          </div>
+          <label class="field field-full"><span>Sabor</span><select name="itemIndex" class="admin-select" data-force-search="true">${items
+            .map((item) => {
+              const index = orderItems(order).indexOf(item);
+              return `<option value="${index}">${escapeHtml(orderFlavorText(item))} | ${number(orderItemReservedQty(item))} de ${number(item.qty || 0)} reservada(s)</option>`;
+            })
+            .join("")}</select></label>
+          <label class="field"><span>Quantidade que deve ficar reservada</span><input name="targetQty" type="number" min="0" step="1" required></label>
+          <label class="field field-full"><span>Motivo do ajuste</span><input name="reason" required maxlength="240" placeholder="Ex: liberar 1 garrafa para venda, avaria identificada..."></label>
+          <div class="result-card field-full" id="reservationAdjustmentPreview"></div>
+        </div>
+        <div class="modal-action-row">
+          <button class="btn btn-primary" type="submit">Salvar ajuste</button>
+          <button class="btn btn-outline" type="button" id="restoreAutomaticReservation">Voltar ao automático</button>
+        </div>
+      </form>
+    `,
+  );
+  const form = document.querySelector("#adjustOrderReservationForm");
+  const preview = document.querySelector("#reservationAdjustmentPreview");
+  const selectedItem = () => orderItems(order)[Number(form.elements.itemIndex.value)];
+  const updatePreview = (resetValue = false) => {
+    const item = selectedItem();
+    if (!item) return;
+    const current = orderItemReservedQty(item);
+    const ordered = Number(item.qty || 0);
+    if (resetValue) form.elements.targetQty.value = String(current);
+    form.elements.targetQty.max = String(ordered);
+    const target = Number(form.elements.targetQty.value || 0);
+    const delta = target - current;
+    preview.innerHTML = `<small>Impacto imediato</small><strong>${number(current)} reservada(s) agora -> meta ${number(target)}</strong><span>${delta < 0 ? `${number(Math.abs(delta))} garrafa(s) serão liberadas para o estoque disponível.` : delta > 0 ? `O sistema reservará até ${number(delta)} garrafa(s), somente se houver estoque disponível.` : "Nenhuma mudança de quantidade."}</span>`;
+  };
+  form.elements.itemIndex.addEventListener("change", () => updatePreview(true));
+  form.elements.targetQty.addEventListener("input", () => updatePreview(false));
+  updatePreview(true);
+  form.addEventListener("submit", (event) => {
+    event.preventDefault();
+    const item = selectedItem();
+    const target = Number(form.elements.targetQty.value);
+    const ordered = Number(item?.qty || 0);
+    const reason = String(form.elements.reason.value || "").trim();
+    if (!item || !Number.isInteger(target) || target < 0 || target > ordered) {
+      window.alert(`Informe uma quantidade entre 0 e ${number(ordered)}.`);
+      return;
+    }
+    if (!reason) {
+      window.alert("Informe o motivo do ajuste para manter o histórico confiável.");
+      return;
+    }
+    const before = orderItemReservedQty(item);
+    item.reservationTarget = target;
+    item.reservationOverride = { targetQty: target, previousQty: before, reason, updatedAt: new Date().toISOString(), updatedBy: currentRole };
+    trimItemAllocationsTo(item, target);
+    reconcileOrderReservations();
+    const after = orderItemReservedQty(item);
+    addAudit(
+      "Reserva ajustada manualmente",
+      `${orderClientDisplayName(order)} | ${orderFlavorText(item)}: ${number(before)} -> ${number(after)} reservada(s); meta ${number(target)}. Motivo: ${reason}`,
+    );
+    closeModal();
+    render();
+    if (after < target) window.alert(`A meta ficou em ${number(target)}, mas só há ${number(after)} reservada(s) agora. O restante será reservado automaticamente quando houver estoque.`);
+  });
+  document.querySelector("#restoreAutomaticReservation")?.addEventListener("click", () => {
+    const item = selectedItem();
+    if (!item) return;
+    const before = orderItemReservedQty(item);
+    const reason = String(form.elements.reason.value || "").trim();
+    if (!reason) {
+      window.alert("Informe o motivo antes de restaurar a reserva automática.");
+      return;
+    }
+    item.reservationTarget = null;
+    item.reservationOverride = null;
+    reconcileOrderReservations();
+    const after = orderItemReservedQty(item);
+    addAudit("Reserva automática restaurada", `${orderClientDisplayName(order)} | ${orderFlavorText(item)}: ${number(before)} -> ${number(after)}. Motivo: ${reason}`);
+    closeModal();
+    render();
+  });
+}
+
+function writeOffStockForm(batchCode) {
+  const batch = state.batches.find((item) => item.code === batchCode);
+  const product = productForBatch(batch);
+  const available = batchAvailableStock(batchCode);
+  if (!batch || available <= 0) {
+    window.alert("Este lote não tem garrafas disponíveis para baixa.");
+    return;
+  }
+  openModal(
+    "Dar baixa no estoque",
+    "Estoque",
+    `
+      <form id="writeOffStockForm">
+        <div class="input-grid">
+          <div class="result-card field-full">
+            <small>Lote</small>
+            <strong>${escapeHtml(product?.flavor || batch.flavor || "Kombucha")}</strong>
+            <span>${escapeHtml(batchCode)} | ${number(available)} garrafa(s) disponível(is). Reservas não serão consumidas.</span>
+          </div>
+          <label class="field"><span>Quantidade</span><input name="qty" type="number" min="1" max="${available}" step="1" value="1" required></label>
+          <label class="field"><span>Motivo</span><select name="reasonType"><option value="vencida">Vencida</option><option value="danificada">Danificada</option><option value="impropria">Imprópria para venda</option><option value="consumo">Consumo interno</option><option value="outro">Outro</option></select></label>
+          <label class="field field-full"><span>Detalhe</span><input name="note" maxlength="240" required placeholder="Descreva o ocorrido"></label>
+        </div>
+        <button class="btn btn-primary" type="submit">Confirmar baixa</button>
+      </form>
+    `,
+  );
+  document.querySelector("#writeOffStockForm")?.addEventListener("submit", (event) => {
+    event.preventDefault();
+    const data = Object.fromEntries(new FormData(event.target).entries());
+    const qty = Number(data.qty || 0);
+    const currentAvailable = batchAvailableStock(batchCode);
+    if (!Number.isInteger(qty) || qty <= 0 || qty > currentAvailable) {
+      window.alert(`Informe uma quantidade entre 1 e ${number(currentAvailable)}.`);
+      return;
+    }
+    state.sales.unshift({
+      id: id("sale"),
+      date: todayIso(),
+      partner: "Baixa de estoque",
+      customerName: "Baixa de estoque",
+      channel: "perda",
+      movementType: "perda",
+      priceType: "gratis",
+      flavor: batch.flavor || product?.flavor || "",
+      productId: product?.id || "",
+      batchCode,
+      qty,
+      unitPrice: 0,
+      discount: 0,
+      delivery: 0,
+      note: `${data.reasonType}: ${data.note}`,
+    });
+    addAudit("Baixa definitiva de estoque", `${batchCode}: ${number(qty)} garrafa(s). Motivo: ${data.reasonType}. ${data.note}`);
     closeModal();
     render();
   });
@@ -5648,13 +5871,13 @@ function orderItemRowTemplate(item = {}, clientType = "novo_cliente") {
   const defaultPrice = item.unitPrice ?? priceForOrderClientType(selectedProduct, clientType);
   const status = item.productionStatus || "pendente";
   const allocationsJson = JSON.stringify(orderItemAllocations(item));
+  const reservationOverrideJson = JSON.stringify(item.reservationOverride || null);
   return `
     <div class="builder-row order-item-row">
       <label class="field"><span>Produto / sabor</span><select data-field="productId">${state.products.map((product) => `<option value="${product.id}" ${selectedProductId === product.id ? "selected" : ""}>${escapeHtml(productLabel(product))}</option>`).join("")}</select></label>
       <label class="field"><span>Qtd. garrafas</span><input data-field="qty" type="number" min="1" step="1" value="${item.qty || 1}"></label>
       <label class="field"><span>Preço unitário</span><input data-field="unitPrice" type="number" min="0" step="0.01" value="${defaultPrice}"></label>
       <label class="field"><span>Status produção</span><select data-field="productionStatus">${ORDER_ITEM_STATUSES.map((option) => `<option value="${option}" ${status === option ? "selected" : ""}>${option}</option>`).join("")}</select></label>
-      <label class="field"><span>Qtd. reservada</span><input data-field="reservedQty" type="number" min="0" step="1" value="${item.reservedQty || 0}"></label>
       <label class="field"><span>Pronto em</span><input data-field="readyDate" type="date" value="${item.readyDate || ""}"></label>
       <label class="field"><span>Obs. do item</span><input data-field="note" value="${escapeHtml(item.note || "")}" placeholder="Ex: caixa, entrega, condição..."></label>
       <div class="result-card reservation-note">
@@ -5663,7 +5886,10 @@ function orderItemRowTemplate(item = {}, clientType = "novo_cliente") {
       </div>
       <input type="hidden" data-field="batchCode" value="${escapeHtml(item.batchCode || "")}">
       <input type="hidden" data-field="producedQty" value="${Number(item.producedQty || 0)}">
+      <input type="hidden" data-field="reservedQty" value="${Number(item.reservedQty || 0)}">
       <input type="hidden" data-field="allocations" value="${escapeHtml(allocationsJson)}">
+      <input type="hidden" data-field="reservationTarget" value="${item.reservationTarget == null ? "" : Number(item.reservationTarget)}">
+      <input type="hidden" data-field="reservationOverride" value="${escapeHtml(reservationOverrideJson)}">
       <input type="hidden" data-field="key" value="${escapeHtml(item.key || id("oi"))}">
       <button class="icon-btn" type="button" data-remove-builder-row aria-label="Remover item">
         <span class="material-symbols-outlined" aria-hidden="true">delete</span>
@@ -5693,6 +5919,13 @@ function readOrderItemRow(row) {
     .filter((allocation) => allocation.batchCode && allocation.qty > 0);
   const allocatedQty = allocations.reduce((sum, allocation) => sum + Number(allocation.qty || 0), 0);
   const reservedQty = Math.min(Number(data.qty || 0), Math.max(Number(data.reservedQty || 0), allocatedQty));
+  let reservationOverride = null;
+  try {
+    reservationOverride = JSON.parse(data.reservationOverride || "null");
+  } catch {
+    reservationOverride = null;
+  }
+  const reservationTarget = data.reservationTarget === "" ? null : Math.max(0, Math.min(Number(data.qty || 0), Number(data.reservationTarget || 0)));
   return {
     productId: product.id,
     productName: productLabel(product),
@@ -5706,6 +5939,8 @@ function readOrderItemRow(row) {
     readyDate: data.readyDate || "",
     batchCode: allocations.length ? allocations.map((allocation) => allocation.batchCode).join(", ") : data.batchCode || "",
     allocations,
+    reservationTarget,
+    reservationOverride,
     note: data.note || "",
   };
 }
@@ -6411,6 +6646,7 @@ function handleAction(action) {
     "edit-supplier": (itemId) => editRecordForm("suppliers", itemId, "Editar fornecedor", supplierFields),
     "delete-supplier": (itemId) => deleteRecord("suppliers", itemId),
     "edit-partner": (itemId) => editRecordForm("partners", itemId, "Editar parceiro", partnerFields),
+    "dashboard-edit-partner": openPartnerEditorFromDashboard,
     "delete-partner": (itemId) => deleteRecord("partners", itemId),
     "edit-expense": (itemId) => editRecordForm("expenses", itemId, "Editar despesa", expenseFields),
     "delete-expense": (itemId) => deleteRecord("expenses", itemId),
@@ -6422,6 +6658,8 @@ function handleAction(action) {
     "delete-sale": (itemId) => deleteRecord("sales", itemId),
     "correct-batch-qty": correctBatchQuantityForm,
     "reserve-stock": reserveStockForm,
+    "adjust-order-reservation": adjustOrderReservationForm,
+    "write-off-stock": writeOffStockForm,
     "stock-sale": newSaleForm,
     "reverse-stock": reverseStockForm,
     "edit-order": orderForm,

@@ -553,6 +553,10 @@ textarea:focus-visible {
     #fff;
 }
 
+.flavor-card-mobile-open {
+  display: none;
+}
+
 .flavor-card-media {
   position: relative;
   display: grid;
@@ -980,6 +984,11 @@ textarea:focus-visible {
 .footer a,
 .footer p {
   color: rgba(255, 255, 255, 0.76);
+  overflow-wrap: anywhere;
+}
+
+.footer-grid > div {
+  min-width: 0;
 }
 
 .footer h3,
@@ -2333,6 +2342,12 @@ textarea:focus-visible {
   padding: 20px 8px 0;
 }
 
+.bar-chart > .empty-note {
+  grid-column: 1 / -1;
+  align-self: center;
+  width: 100%;
+}
+
 .bar {
   display: grid;
   align-items: end;
@@ -2623,6 +2638,19 @@ textarea:focus-visible {
   text-align: left;
 }
 
+.order-ready-actions,
+.modal-action-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.order-ready-actions .btn {
+  flex: 1 1 150px;
+  min-width: 0;
+  justify-content: center;
+}
+
 .donut {
   --value: 60deg;
   display: grid;
@@ -2679,6 +2707,7 @@ textarea:focus-visible {
 .spreadsheet input,
 .spreadsheet select {
   width: 100%;
+  min-height: 40px;
   border: 0;
   background: transparent;
   color: var(--ink);
@@ -2735,6 +2764,22 @@ textarea:focus-visible {
   flex-wrap: wrap;
   gap: 8px;
   margin-bottom: 16px;
+}
+
+.module-tabs .segment {
+  min-height: 40px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: #fff;
+  color: var(--green);
+  padding: 8px 14px;
+  font-weight: 800;
+}
+
+.module-tabs .segment.is-active {
+  border-color: var(--green);
+  background: var(--green);
+  color: #fff;
 }
 
 .check-row {
@@ -3139,12 +3184,7 @@ textarea:focus-visible {
 
   .admin-body .data-table thead,
   .admin-body .spreadsheet thead {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    overflow: hidden;
-    clip: rect(0 0 0 0);
-    white-space: nowrap;
+    display: none;
   }
 
   .admin-body .data-table,
@@ -3223,6 +3263,7 @@ textarea:focus-visible {
 
   .admin-body .spreadsheet input,
   .admin-body .spreadsheet select {
+    min-height: 44px;
     border: 1px solid var(--line);
     border-radius: 8px;
     background: #fff;
@@ -3237,6 +3278,12 @@ textarea:focus-visible {
 
   .container {
     width: min(100% - 28px, var(--container));
+  }
+
+  .brand,
+  .language-toggle button,
+  .module-tabs .segment {
+    min-height: 44px;
   }
 
   .section {
@@ -3386,6 +3433,7 @@ textarea:focus-visible {
 
   .stock-card-actions .btn,
   .order-card-actions .btn,
+  .order-ready-actions .btn,
   .stock-card-actions .btn-outline {
     width: 100%;
     justify-content: center;
@@ -3872,12 +3920,23 @@ textarea:focus-visible {
 
   body:not(.admin-body) .flavor-card {
     min-height: 166px;
+  }
+
+  body:not(.admin-body) .flavor-card-mobile-open {
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    display: block;
+    width: 100%;
+    min-height: 100%;
+    border: 0;
+    background: transparent;
     cursor: pointer;
   }
 
-  body:not(.admin-body) .flavor-card:focus-visible {
+  body:not(.admin-body) .flavor-card-mobile-open:focus-visible {
     outline: 3px solid rgba(70, 103, 43, 0.28);
-    outline-offset: 2px;
+    outline-offset: -3px;
   }
 
   body:not(.admin-body) .flavor-card-media {
@@ -4066,6 +4125,13 @@ textarea:focus-visible {
     margin-bottom: 6px;
     font-size: 0.8rem;
     line-height: 1.35;
+  }
+
+  body:not(.admin-body) .footer a {
+    display: inline-flex;
+    align-items: center;
+    min-height: 40px;
+    padding-block: 4px;
   }
 
   body:not(.admin-body) .modal {
@@ -4265,7 +4331,7 @@ textarea:focus-visible {
 
   body:not(.admin-body) .flavor-toolbar .segmented button {
     justify-content: center;
-    min-height: 35px;
+    min-height: 44px;
     padding: 0 6px;
     font-size: 0.76rem;
   }

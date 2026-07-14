@@ -6,8 +6,19 @@ module.exports = async function handler(req, res) {
     return json(res, 405, { ok: false, error: "method_not_allowed" });
   }
 
-  const body = await readBody(req);
-  if (String(body.password || "") !== adminPassword()) {
+  const configuredPassword = adminPassword();
+  if (!configuredPassword || !process.env.ADMIN_SESSION_SECRET) {
+    return json(res, 503, { ok: false, error: "admin_auth_not_configured" });
+  }
+  let body;
+  try {
+    body = await readBody(req, { maxBytes: 4096 });
+  } catch (error) {
+    return json(res, error.status || 400, { ok: false, error: error.code || "invalid_request" });
+  }
+  const provided = Buffer.from(String(body.password || ""));
+  const expected = Buffer.from(configuredPassword);
+  if (provided.length !== expected.length || !require("crypto").timingSafeEqual(provided, expected)) {
     return json(res, 401, { ok: false, error: "invalid_password" });
   }
 

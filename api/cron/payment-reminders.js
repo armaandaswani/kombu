@@ -3,8 +3,8 @@ const {
   escapeHtml,
   getAppState,
   json,
+  mutateAppState,
   sendEmail,
-  upsertAppState,
 } = require("../_lib/kombu-backend");
 
 function todayIso() {
@@ -41,7 +41,7 @@ function brl(value) {
 
 function authorized(req) {
   const secret = process.env.CRON_SECRET;
-  if (!secret) return true;
+  if (!secret) return false;
   return req.headers.authorization === `Bearer ${secret}`;
 }
 
@@ -50,6 +50,7 @@ module.exports = async function handler(req, res) {
     res.setHeader("Allow", "GET");
     return json(res, 405, { ok: false, error: "method_not_allowed" });
   }
+  if (!process.env.CRON_SECRET) return json(res, 503, { ok: false, error: "cron_not_configured" });
   if (!authorized(req)) return json(res, 401, { ok: false, error: "invalid_cron_secret" });
 
   const state = (await getAppState()) || {};
@@ -90,7 +91,15 @@ module.exports = async function handler(req, res) {
     }
   }
 
-  state.notifications = { ...(state.notifications || {}), paymentReminders: reminders };
-  if (sent.length) await upsertAppState(state, "payment-reminder-cron");
+  if (sent.length) {
+    await mutateAppState((latestState) => {
+      const latestReminders = latestState.notifications?.paymentReminders || {};
+      latestState.notifications = {
+        ...(latestState.notifications || {}),
+        paymentReminders: { ...latestReminders, ...reminders },
+      };
+      return latestState;
+    }, "payment-reminder-cron");
+  }
   return json(res, 200, { ok: true, due: dueOrders.length, sent });
 };

@@ -389,6 +389,7 @@ function renderFlavors(filter = "todos") {
     .map((flavor) => {
       return `
         <article class="flavor-card" style="--flavor-color: ${escapeHtml(flavor.color)}">
+          <button class="flavor-card-mobile-open" type="button" data-open-flavor="${escapeHtml(flavor.slug)}" aria-label="Ver detalhes e comprar ${escapeHtml(flavor.name)}"></button>
           <div class="flavor-card-media">
             <img src="${escapeHtml(flavor.image)}" alt="Garrafa Kombú sabor ${escapeHtml(flavor.name)}" loading="lazy" />
           </div>
@@ -411,13 +412,6 @@ function renderFlavors(filter = "todos") {
       `;
     })
     .join("");
-  grid.querySelectorAll(".flavor-card").forEach((card, index) => {
-    const flavor = visible[index];
-    card.setAttribute("role", "button");
-    card.setAttribute("tabindex", "0");
-    card.dataset.openFlavor = flavor.slug;
-    card.setAttribute("aria-label", `Ver detalhes do sabor ${flavor.name}`);
-  });
 }
 
 function setFlavorFilter(event) {
@@ -582,20 +576,43 @@ function persistForm(formId, successId, storageKey) {
   const success = document.querySelector(successId);
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
+    if (form.dataset.submitting === "true") return;
+    form.dataset.submitting = "true";
+    const submitButton = form.querySelector('button[type="submit"]');
+    const originalButtonText = submitButton?.innerHTML || "";
+    if (submitButton) {
+      submitButton.disabled = true;
+      submitButton.textContent = "Enviando...";
+    }
+    success.classList.add("hidden");
     const data = Object.fromEntries(new FormData(form).entries());
     const type = formId === "#resellerForm" ? "revenda" : "contato";
     const lead = normalizeLead(data, type);
-    const existing = JSON.parse(localStorage.getItem(storageKey) || "[]");
-    existing.push(lead);
-    localStorage.setItem(storageKey, JSON.stringify(existing));
-    syncLeadToAdminCrm(lead);
-    await notifyLeadByEmail(lead);
-    success.classList.remove("hidden");
-    success.textContent =
-      type === "revenda"
-        ? "Recebemos seus dados. A Kombú vai retornar pelo contato informado."
-        : "Recebemos sua mensagem. A Kombú vai retornar pelo contato informado.";
-    form.reset();
+    try {
+      const existing = JSON.parse(localStorage.getItem(storageKey) || "[]");
+      existing.push(lead);
+      localStorage.setItem(storageKey, JSON.stringify(existing));
+      if (isLocalPreview()) syncLeadToAdminCrm(lead);
+      const result = await notifyLeadByEmail(lead);
+      if (!result.persisted && !isLocalPreview()) {
+        throw new Error("O contato não foi salvo no servidor.");
+      }
+      success.classList.remove("hidden");
+      success.textContent =
+        type === "revenda"
+          ? "Recebemos seus dados. A Kombú vai retornar pelo contato informado."
+          : "Recebemos sua mensagem. A Kombú vai retornar pelo contato informado.";
+      form.reset();
+    } catch {
+      success.classList.remove("hidden");
+      success.textContent = "Não foi possível enviar agora. Seus dados continuam preenchidos; tente novamente em instantes.";
+    } finally {
+      form.dataset.submitting = "false";
+      if (submitButton) {
+        submitButton.disabled = false;
+        submitButton.innerHTML = originalButtonText;
+      }
+    }
   });
 }
 
@@ -633,10 +650,10 @@ async function notifyLeadByEmail(lead) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ lead }),
     });
-    if (!response.ok) return { emailSent: false };
-    return response.json();
+    const payload = await response.json().catch(() => ({}));
+    return { ok: response.ok, persisted: false, emailSent: false, ...payload };
   } catch {
-    return { emailSent: false };
+    return { ok: false, persisted: false, emailSent: false };
   }
 }
 
@@ -664,13 +681,6 @@ async function bootPublicSite() {
   document.querySelector("#flavorGrid").addEventListener("click", (event) => {
     const trigger = event.target.closest("[data-open-flavor]");
     if (trigger) openFlavor(trigger.dataset.openFlavor);
-  });
-  document.querySelector("#flavorGrid").addEventListener("keydown", (event) => {
-    if (event.key !== "Enter" && event.key !== " ") return;
-    const trigger = event.target.closest("[data-open-flavor]");
-    if (!trigger) return;
-    event.preventDefault();
-    openFlavor(trigger.dataset.openFlavor);
   });
   document.querySelector("#closeFlavorModal").addEventListener("click", closeFlavor);
   document.querySelector("#flavorModal").addEventListener("click", (event) => {

@@ -41,7 +41,7 @@ Add these in Vercel Project Settings -> Environment Variables. Do not paste `KEY
 
 | Key | Value |
 | --- | --- |
-| `ADMIN_PORTAL_PASSWORD` | `Rssb2010` |
+| `ADMIN_PORTAL_PASSWORD` | A strong private password; never commit it to Git |
 | `ADMIN_SESSION_SECRET` | A long random secret, for example from `openssl rand -base64 48` |
 | `SUPABASE_URL` | Your Supabase project URL, like `https://abcxyz.supabase.co` |
 | `SUPABASE_SERVICE_ROLE_KEY` | Supabase service role key, not the anon/public key |

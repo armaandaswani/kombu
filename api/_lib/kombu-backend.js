@@ -4,6 +4,8 @@ const ADMIN_EMAIL = "armaandaswani@icloud.com";
 const SESSION_COOKIE = "kombu_admin_session";
 const STATE_ID = "production";
 const PUBLIC_MEDIA_BUCKET = process.env.SUPABASE_PUBLIC_MEDIA_BUCKET || "public-media";
+const DEFAULT_BODY_LIMIT = 1024 * 1024;
+const STATE_BODY_LIMIT = 5 * 1024 * 1024;
 
 function json(res, status, payload) {
   res.statusCode = status;
@@ -11,13 +13,39 @@ function json(res, status, payload) {
   res.end(JSON.stringify(payload));
 }
 
-function readBody(req) {
-  return new Promise((resolve) => {
+function requestError(code, status = 400) {
+  const error = new Error(code);
+  error.code = code;
+  error.status = status;
+  return error;
+}
+
+function readBody(req, options = {}) {
+  const maxBytes = Number(options.maxBytes || DEFAULT_BODY_LIMIT);
+  if (req.body !== undefined && req.body !== null) {
+    const body = normalizeBody(req.body);
+    const size = Buffer.byteLength(typeof req.body === "string" ? req.body : JSON.stringify(body));
+    if (size > maxBytes) return Promise.reject(requestError("request_too_large", 413));
+    return Promise.resolve(body);
+  }
+
+  return new Promise((resolve, reject) => {
     let raw = "";
+    let size = 0;
+    let failed = false;
     req.on("data", (chunk) => {
+      if (failed) return;
+      size += Buffer.byteLength(chunk);
+      if (size > maxBytes) {
+        failed = true;
+        raw = "";
+        reject(requestError("request_too_large", 413));
+        return;
+      }
       raw += chunk;
     });
     req.on("end", () => {
+      if (failed) return;
       if (!raw) return resolve({});
       try {
         resolve(JSON.parse(raw));
@@ -25,9 +53,10 @@ function readBody(req) {
         if (String(req.headers["content-type"] || "").includes("application/x-www-form-urlencoded")) {
           return resolve(Object.fromEntries(new URLSearchParams(raw)));
         }
-        resolve({});
+        reject(requestError("invalid_json", 400));
       }
     });
+    req.on("error", reject);
   });
 }
 
@@ -48,19 +77,23 @@ function normalizeLead(payload) {
   const lead = body.lead || body;
   return {
     id: lead.id || `lead-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-    type: lead.type || "contato",
-    status: lead.status || "novo",
-    name: lead.name || lead.nome || "",
-    business: lead.business || lead.negocio || "",
-    businessType: lead.businessType || lead.tipo || "",
-    location: lead.location || lead.bairro || "",
-    whatsapp: lead.whatsapp || "",
-    instagram: lead.instagram || "",
-    message: lead.message || lead.mensagem || "",
+    type: cleanText(lead.type || "contato", 40),
+    status: cleanText(lead.status || "novo", 40),
+    name: cleanText(lead.name || lead.nome, 120),
+    business: cleanText(lead.business || lead.negocio, 160),
+    businessType: cleanText(lead.businessType || lead.tipo, 80),
+    location: cleanText(lead.location || lead.bairro, 160),
+    whatsapp: cleanText(lead.whatsapp, 40),
+    instagram: cleanText(lead.instagram, 80),
+    message: cleanText(lead.message || lead.mensagem, 4000),
     emailTo: lead.emailTo || process.env.LEAD_NOTIFY_EMAIL || ADMIN_EMAIL,
     source: lead.source || "site-publico",
     createdAt: lead.createdAt || new Date().toISOString(),
   };
+}
+
+function cleanText(value, maxLength) {
+  return String(value || "").trim().slice(0, maxLength);
 }
 
 function supabaseConfig() {
@@ -161,14 +194,70 @@ async function upsertAppState(state, updatedBy = "system") {
     updated_by: updatedBy,
     updated_at: new Date().toISOString(),
   };
-  await supabaseFetch("/rest/v1/app_state", {
+  const rows = await supabaseFetch("/rest/v1/app_state", {
     method: "POST",
     headers: {
       Prefer: "resolution=merge-duplicates,return=representation",
     },
     body: JSON.stringify(payload),
   });
-  return { ok: true };
+  return { ok: true, updatedAt: rows?.[0]?.updated_at || payload.updated_at };
+}
+
+async function replaceAppState(state, updatedBy = "system", expectedUpdatedAt = "") {
+  if (!hasSupabase()) return { ok: false, reason: "missing_supabase_env" };
+  if (!expectedUpdatedAt) return upsertAppState(state, updatedBy);
+
+  const updatedAt = new Date().toISOString();
+  const rows = await supabaseFetch(
+    `/rest/v1/app_state?id=eq.${encodeURIComponent(STATE_ID)}&updated_at=eq.${encodeURIComponent(expectedUpdatedAt)}`,
+    {
+      method: "PATCH",
+      headers: { Prefer: "return=representation" },
+      body: JSON.stringify({ state, updated_by: updatedBy, updated_at: updatedAt }),
+    },
+  );
+  if (!Array.isArray(rows) || rows.length === 0) throw requestError("state_conflict", 409);
+  return { ok: true, updatedAt: rows[0]?.updated_at || updatedAt };
+}
+
+async function mutateAppState(mutator, updatedBy = "system", retries = 4) {
+  for (let attempt = 0; attempt < retries; attempt += 1) {
+    const row = await getStateRow();
+    const current = row?.state && typeof row.state === "object" ? structuredCloneSafe(row.state) : {};
+    const next = await mutator(current);
+    try {
+      const result = await replaceAppState(next, updatedBy, row?.updated_at || "");
+      return { ...result, state: next };
+    } catch (error) {
+      if (error.code !== "state_conflict" || attempt === retries - 1) throw error;
+    }
+  }
+  throw requestError("state_conflict", 409);
+}
+
+function structuredCloneSafe(value) {
+  return JSON.parse(JSON.stringify(value));
+}
+
+function validateAppState(state) {
+  if (!state || typeof state !== "object" || Array.isArray(state)) return "invalid_state";
+  const serialized = JSON.stringify(state);
+  if (Buffer.byteLength(serialized) > STATE_BODY_LIMIT) return "state_too_large";
+  const arrayFields = [
+    "products", "ingredients", "packaging", "suppliers", "partners", "recipes", "batches",
+    "sales", "orders", "leads", "purchases", "expenses", "costSources", "audit",
+  ];
+  for (const key of arrayFields) {
+    if (state[key] !== undefined && !Array.isArray(state[key])) return `invalid_${key}`;
+    if (Array.isArray(state[key]) && state[key].length > 10000) return `too_many_${key}`;
+  }
+  for (const key of ["cms", "notifications", "settings"]) {
+    if (state[key] !== undefined && (!state[key] || typeof state[key] !== "object" || Array.isArray(state[key]))) {
+      return `invalid_${key}`;
+    }
+  }
+  return "";
 }
 
 function sanitizePublicState(state = {}) {
@@ -184,16 +273,17 @@ function sanitizePublicState(state = {}) {
 async function appendLeadToState(leadPayload) {
   const lead = normalizeLead(leadPayload);
   if (!hasSupabase()) return { ok: false, reason: "missing_supabase_env", lead };
-  const state = (await getAppState()) || {};
-  const leads = Array.isArray(state.leads) ? state.leads : [];
-  if (!leads.some((item) => item.id === lead.id)) leads.unshift(lead);
-  state.leads = leads.slice(0, 500);
-  state.notifications = {
-    ...(state.notifications || {}),
-    adminEmail: process.env.LEAD_NOTIFY_EMAIL || ADMIN_EMAIL,
-    provider: "resend",
-  };
-  await upsertAppState(state, "public-lead");
+  await mutateAppState((state) => {
+    const leads = Array.isArray(state.leads) ? state.leads : [];
+    if (!leads.some((item) => item.id === lead.id)) leads.unshift(lead);
+    state.leads = leads.slice(0, 500);
+    state.notifications = {
+      ...(state.notifications || {}),
+      adminEmail: process.env.LEAD_NOTIFY_EMAIL || ADMIN_EMAIL,
+      provider: "resend",
+    };
+    return state;
+  }, "public-lead");
   return { ok: true, lead };
 }
 
@@ -202,20 +292,22 @@ function base64Url(input) {
 }
 
 function adminPassword() {
-  return process.env.ADMIN_PORTAL_PASSWORD || process.env.ADMIN_PASSWORD || "Rssb2010";
+  return process.env.ADMIN_PORTAL_PASSWORD || process.env.ADMIN_PASSWORD || "";
 }
 
 function sessionSecret() {
-  return process.env.ADMIN_SESSION_SECRET || process.env.ADMIN_PORTAL_PASSWORD || process.env.ADMIN_PASSWORD || "kombu-local-session-secret";
+  return process.env.ADMIN_SESSION_SECRET || "";
 }
 
 function signPayload(payload) {
+  if (!sessionSecret()) throw requestError("admin_auth_not_configured", 503);
   const encoded = base64Url(JSON.stringify(payload));
   const signature = crypto.createHmac("sha256", sessionSecret()).update(encoded).digest("base64url");
   return `${encoded}.${signature}`;
 }
 
 function verifyToken(token = "") {
+  if (!sessionSecret()) return null;
   const [encoded, signature] = String(token).split(".");
   if (!encoded || !signature) return null;
   const expected = crypto.createHmac("sha256", sessionSecret()).update(encoded).digest("base64url");
@@ -325,11 +417,14 @@ module.exports = {
   backendErrorPayload,
   json,
   normalizeLead,
+  mutateAppState,
   readBody,
+  replaceAppState,
   requireAdmin,
   sanitizePublicState,
   sendEmail,
   setSessionCookie,
   supabaseFetch,
   upsertAppState,
+  validateAppState,
 };
