@@ -99,6 +99,16 @@ async function storedState(page) {
   return page.evaluate((key) => JSON.parse(localStorage.getItem(key)), storageKey);
 }
 
+async function assertNoHorizontalOverflow(page, label) {
+  const overflow = await page.evaluate(() => ({
+    viewport: document.documentElement.clientWidth,
+    document: document.documentElement.scrollWidth,
+    body: document.body.scrollWidth,
+  }));
+  assert.ok(overflow.document <= overflow.viewport + 1, `${label} document overflows horizontally: ${JSON.stringify(overflow)}`);
+  assert.ok(overflow.body <= overflow.viewport + 1, `${label} body overflows horizontally: ${JSON.stringify(overflow)}`);
+}
+
 async function run() {
   const browser = await chromium.launch({ headless: true, executablePath });
   const context = await browser.newContext({ viewport: { width: 390, height: 844 }, locale: "pt-BR" });
@@ -144,6 +154,19 @@ async function run() {
   assert.strictEqual(await page.locator('#editRecordForm input[name="name"]').inputValue(), "Mercado Teste");
   await page.click("#closeAdminModal");
 
+  await page.selectOption("#mobileModuleSelector", "orders");
+  const compactOrder = page.locator(".order-compact-card", { hasText: "Ana Teste" });
+  await compactOrder.locator("summary").click();
+  await compactOrder.locator('[data-action="edit-order:order-1"]').click();
+  await page.waitForSelector("#orderForm");
+  assert.strictEqual(await page.locator(".order-item-selector").count(), 1, "order editor should start with a compact flavor selector");
+  assert.strictEqual(await page.locator(".order-item-row:not([hidden])").count(), 1, "only one flavor editor may be visible at a time");
+  await page.click("[data-add-order-item]");
+  assert.strictEqual(await page.locator(".order-item-selector").count(), 2, "new flavors should be added to the compact selector");
+  assert.strictEqual(await page.locator(".order-item-row:not([hidden])").count(), 1, "adding a flavor must not expand every item editor");
+  await assertNoHorizontalOverflow(page, "compact order editor");
+  await page.click("#closeAdminModal");
+
   await page.selectOption("#mobileModuleSelector", "stock");
   await page.waitForSelector('[data-action="write-off-stock:LOT-TEST-1"]');
   await page.click('[data-action="write-off-stock:LOT-TEST-1"]');
@@ -164,11 +187,21 @@ async function run() {
   const available = state.batches[0].actual - state.sales.reduce((sum, sale) => sum + sale.qty, 0) - item.allocations.reduce((sum, allocation) => sum + allocation.qty, 0);
   assert.strictEqual(available, 0, "the written-off bottle must not return to available stock");
 
+  await page.selectOption("#mobileModuleSelector", "sales");
+  await page.waitForSelector('[data-sales-period="month"]');
+  assert.strictEqual(await page.locator(".sale-compact-card").count(), 1, "the current month should show its stock movement");
+  await page.click('[data-sales-period="custom"]');
+  await page.fill('[data-sales-custom="start"]', "2026-07-15");
+  await page.locator('[data-sales-custom="start"]').dispatchEvent("change");
+  await page.waitForSelector(".sales-compact-list .empty-note");
+  assert.strictEqual(await page.locator(".sale-compact-card").count(), 0, "custom range must filter older movements immediately");
+  await assertNoHorizontalOverflow(page, "sales period view");
+
   await browser.close();
-  console.log("Admin regression: password visibility, reservation override, partner deep-link, audit history and write-off passed.");
+  console.log("Admin regression: password visibility, compact order editing, period filters, reservation override, partner deep-link, audit history and write-off passed.");
 }
 
 run().catch((error) => {
   console.error(error);
-  process.exitCode = 1;
+  process.exit(1);
 });

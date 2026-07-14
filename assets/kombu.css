@@ -2025,6 +2025,145 @@ textarea:focus-visible {
   justify-content: flex-end;
 }
 
+.sales-period-panel {
+  display: grid;
+  gap: 14px;
+  margin-bottom: 12px;
+}
+
+.sales-period-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.sales-period-head h3,
+.sales-period-head p {
+  margin: 0;
+}
+
+.sales-period-head p {
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 0.86rem;
+  font-weight: 750;
+}
+
+.sales-custom-range {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 220px));
+  gap: 10px;
+}
+
+.sales-period-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.sales-period-summary span,
+.sale-compact-totals span {
+  display: grid;
+  gap: 3px;
+  border: 1px solid rgba(45, 75, 40, 0.12);
+  border-radius: 10px;
+  background: var(--surface-soft);
+  padding: 10px 12px;
+}
+
+.sales-period-summary small,
+.sale-compact-totals small {
+  color: var(--muted);
+  font-size: 0.68rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.sales-period-summary strong {
+  color: var(--green);
+  font-size: 1.15rem;
+}
+
+.sales-compact-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.sale-compact-card {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: #fff;
+  box-shadow: var(--shadow-soft);
+  padding: 13px;
+}
+
+.sale-compact-head,
+.sale-compact-product,
+.sale-compact-totals {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.sale-compact-head {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+}
+
+.sale-compact-head > div,
+.sale-compact-product {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.sale-compact-head strong,
+.sale-compact-product strong {
+  overflow-wrap: anywhere;
+  color: var(--ink);
+  line-height: 1.18;
+}
+
+.sale-compact-head span,
+.sale-compact-product span {
+  overflow-wrap: anywhere;
+  color: var(--muted);
+  font-size: 0.78rem;
+  line-height: 1.25;
+}
+
+.sale-compact-head > b {
+  border-radius: 999px;
+  background: var(--lime-soft);
+  color: var(--green);
+  padding: 5px 8px;
+  font-size: 0.78rem;
+  white-space: nowrap;
+}
+
+.sale-compact-totals {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.sale-compact-totals strong {
+  font-size: 0.92rem;
+}
+
+.sale-compact-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.sales-customer-history {
+  margin-top: 0;
+}
+
 .order-secondary-panel > summary {
   cursor: pointer;
   list-style: none;
@@ -2882,7 +3021,120 @@ textarea:focus-visible {
 }
 
 .order-item-row {
+  display: none;
   grid-template-columns: minmax(220px, 1.4fr) minmax(110px, 0.55fr) minmax(130px, 0.65fr) minmax(180px, 1fr) 46px;
+}
+
+.order-item-row.is-active {
+  display: grid;
+}
+
+.order-item-navigator {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 9px;
+  margin-bottom: 10px;
+}
+
+.order-item-selector {
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+  border: 1px solid rgba(45, 75, 40, 0.16);
+  border-radius: var(--radius-sm);
+  background: #fff;
+  color: var(--ink);
+  cursor: pointer;
+  padding: 11px 12px;
+  text-align: left;
+  font: inherit;
+}
+
+.order-item-selector.is-active {
+  border-color: var(--green);
+  background: #f5ffe8;
+  box-shadow: 0 0 0 2px rgba(45, 75, 40, 0.1);
+}
+
+.order-item-selector-head,
+.order-item-selector-stock {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+}
+
+.order-item-selector-head strong {
+  overflow-wrap: anywhere;
+  font-size: 0.92rem;
+  line-height: 1.15;
+}
+
+.order-item-selector-head i {
+  flex: 0 0 auto;
+  color: var(--green);
+  font-size: 18px;
+  font-style: normal;
+}
+
+.order-item-selector-stock b {
+  color: var(--muted);
+  font-size: 0.72rem;
+  line-height: 1;
+}
+
+.order-item-selector small {
+  overflow: hidden;
+  border-radius: 999px;
+  padding: 5px 7px;
+  font-size: 0.67rem;
+  font-weight: 900;
+  line-height: 1.1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.order-item-selector small.is-available {
+  background: var(--lime-soft);
+  color: var(--green);
+}
+
+.order-item-selector small.is-partial {
+  background: #fff0cf;
+  color: #986000;
+}
+
+.order-item-selector small.is-empty {
+  background: #ffe0dd;
+  color: #a1221b;
+}
+
+.order-add-item {
+  width: 100%;
+  margin-bottom: 12px;
+}
+
+.order-active-editor-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  border-top: 1px solid var(--line);
+  padding: 12px 2px 9px;
+}
+
+.order-active-editor-head span {
+  color: var(--muted);
+  font-size: 0.76rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.order-active-editor-head strong {
+  overflow-wrap: anywhere;
+  color: var(--green);
+  text-align: right;
 }
 
 .calculated-note {
@@ -4208,6 +4460,80 @@ textarea:focus-visible {
 }
 
 @media (max-width: 760px) {
+  .order-item-navigator {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 7px;
+  }
+
+  .order-item-selector {
+    gap: 6px;
+    padding: 9px;
+  }
+
+  .order-item-selector-head strong {
+    font-size: 0.82rem;
+  }
+
+  .order-item-selector-head i {
+    font-size: 16px;
+  }
+
+  .order-item-selector-stock {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .order-item-selector small {
+    font-size: 0.61rem;
+  }
+
+  .order-active-editor-head {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 3px;
+  }
+
+  .order-active-editor-head strong {
+    text-align: left;
+  }
+
+  .sales-period-head {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .sales-period-filter {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    width: 100%;
+    border-radius: 12px;
+    padding: 4px;
+  }
+
+  .sales-period-filter button {
+    min-width: 0;
+    padding: 8px 4px;
+    font-size: 0.68rem;
+  }
+
+  .sales-custom-range,
+  .sales-compact-list {
+    grid-template-columns: 1fr;
+  }
+
+  .sales-period-summary span {
+    padding: 8px;
+  }
+
+  .sales-period-summary strong {
+    font-size: 1rem;
+  }
+
+  .sale-compact-card {
+    padding: 11px;
+  }
+
   .order-metrics-compact {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 8px;

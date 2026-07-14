@@ -570,6 +570,9 @@ let activeRecipeId = state.recipes[0]?.id || "";
 let currentRole = "Owner / Admin";
 let currentStockView = "kombuchas";
 let currentLocale = localStorage.getItem(LOCALE_KEY) || "pt";
+let currentSalesPeriod = "month";
+let salesCustomStart = "";
+let salesCustomEnd = "";
 let cloudSyncReady = false;
 let cloudSyncEnabled = false;
 let cloudSyncConfigured = false;
@@ -1457,6 +1460,36 @@ function totals() {
 function saleRevenue(sale) {
   if (sale.movementType && sale.movementType !== "venda") return 0;
   return Number(sale.qty || 0) * Number(sale.unitPrice || 0) - Number(sale.discount || 0);
+}
+
+function salesPeriodRange() {
+  const today = todayIso();
+  if (currentSalesPeriod === "day") return { start: today, end: today };
+  if (currentSalesPeriod === "week") {
+    const date = new Date(`${today}T12:00:00`);
+    const mondayOffset = (date.getDay() + 6) % 7;
+    return { start: addDaysIso(today, -mondayOffset), end: addDaysIso(today, 6 - mondayOffset) };
+  }
+  if (currentSalesPeriod === "custom") {
+    return { start: salesCustomStart || "", end: salesCustomEnd || "" };
+  }
+  return { start: `${today.slice(0, 7)}-01`, end: addDaysIso(addMonthsIso(`${today.slice(0, 7)}-01`, 1), -1) };
+}
+
+function saleDateInRange(date, range) {
+  const value = String(date || "").slice(0, 10);
+  if (!value) return false;
+  if (range.start && value < range.start) return false;
+  if (range.end && value > range.end) return false;
+  return true;
+}
+
+function salesPeriodLabel(range) {
+  if (!range.start && !range.end) return "Todo o histórico";
+  if (range.start === range.end) return range.start ? `Em ${shortDate(range.start)}` : "Todo o histórico";
+  if (range.start && range.end) return `${shortDate(range.start)} a ${shortDate(range.end)}`;
+  if (range.start) return `Desde ${shortDate(range.start)}`;
+  return `Até ${shortDate(range.end)}`;
 }
 
 function customerStats() {
@@ -3208,6 +3241,13 @@ function renderPackaging() {
 }
 
 function renderSales() {
+  const range = salesPeriodRange();
+  const periodSales = state.sales
+    .filter((sale) => saleDateInRange(sale.date, range))
+    .filter((item) => matchesSearch(item));
+  const periodRevenue = periodSales.reduce((sum, sale) => sum + saleRevenue(sale), 0);
+  const periodQty = periodSales.reduce((sum, sale) => sum + Number(sale.qty || 0), 0);
+  const periodCustomers = new Set(periodSales.map((sale) => normalizeText(sale.customerName || sale.partner)).filter(Boolean)).size;
   const customerRows = customerStats()
     .slice(0, 8)
     .map((customer) => `
@@ -3220,30 +3260,66 @@ function renderSales() {
         <td>${customer.nextOrder || "Sem padrão ainda"}</td>
       </tr>
     `);
-  const rows = state.sales
-    .filter((item) => matchesSearch(item))
+  const salesCards = periodSales
     .map((sale) => {
       const revenue = saleRevenue(sale);
       const batch = state.batches.find((item) => item.code === sale.batchCode);
       const product = byId("products", sale.productId) || productForBatch(batch);
       const cogs = Number(sale.qty) * (batch ? batchCost(batch).batchCostPerBottle : 0);
       return `
-        <tr>
-          <td>${sale.date}</td>
-          <td><strong>${sale.customerName || sale.partner}</strong><br><span>${sale.movementType || "venda"} | ${sale.priceType || sale.channel}</span></td>
-          <td>${product ? productLabel(product) : sale.flavor}<br><span>${sale.batchCode}${sale.note ? ` | ${sale.note}` : ""}</span></td>
-          <td class="num">${number(sale.qty)}</td>
-          <td class="num">${brl(revenue)}</td>
-          <td class="num">${brl(cogs)}</td>
-          <td class="num"><strong>${brl(revenue - cogs)}</strong></td>
-          <td class="num">${pct(revenue ? ((revenue - cogs) / revenue) * 100 : 0)}</td>
-          <td>${rowActions([tableAction(`edit-sale:${sale.id}`, "Editar venda"), tableAction(`delete-sale:${sale.id}`, "Excluir venda", "delete", "danger")])}</td>
-        </tr>
+        <article class="sale-compact-card">
+          <div class="sale-compact-head">
+            <div>
+              <strong>${escapeHtml(sale.customerName || sale.partner || "Sem cliente")}</strong>
+              <span>${escapeHtml(shortDate(sale.date))} | ${escapeHtml(sale.movementType || "venda")}</span>
+            </div>
+            <b>${number(sale.qty)} un</b>
+          </div>
+          <div class="sale-compact-product">
+            <strong>${escapeHtml(product ? product.flavor : sale.flavor || "Produto")}</strong>
+            <span>${escapeHtml(sale.batchCode || "Sem lote")}${sale.note ? ` | ${escapeHtml(sale.note)}` : ""}</span>
+          </div>
+          <div class="sale-compact-totals">
+            <span><small>Valor</small><strong>${brl(revenue)}</strong></span>
+            <span><small>Lucro</small><strong>${brl(revenue - cogs)}</strong></span>
+          </div>
+          <div class="sale-compact-actions">${rowActions([tableAction(`edit-sale:${sale.id}`, "Editar venda"), tableAction(`delete-sale:${sale.id}`, "Excluir venda", "delete", "danger")])}</div>
+        </article>
       `;
-    });
+    })
+    .join("");
   return `
     ${pageHead("Vendas", "Registre vendas, perdas, brindes e consumo próprio por lote para manter estoque e CRM atualizados.", `${actionButton("new-sale", "Nova saída", "add")} ${actionButton("export-sales", "CSV", "download", "btn-outline")}`)}
-    <section class="admin-grid">
+    <section class="admin-card sales-period-panel">
+      <div class="sales-period-head">
+        <div>
+          <h3>Movimentações do período</h3>
+          <p>${escapeHtml(salesPeriodLabel(range))}</p>
+        </div>
+        <div class="segmented sales-period-filter" aria-label="Filtrar vendas por período">
+          ${[
+            ["day", "Dia"],
+            ["week", "Semana"],
+            ["month", "Mês"],
+            ["custom", "Personalizado"],
+          ].map(([value, label]) => `<button type="button" class="${currentSalesPeriod === value ? "is-active" : ""}" data-sales-period="${value}" aria-pressed="${currentSalesPeriod === value}">${label}</button>`).join("")}
+        </div>
+      </div>
+      ${currentSalesPeriod === "custom" ? `
+        <div class="sales-custom-range">
+          <label class="field"><span>De</span><input type="date" data-sales-custom="start" value="${salesCustomStart}"></label>
+          <label class="field"><span>Até</span><input type="date" data-sales-custom="end" value="${salesCustomEnd}"></label>
+        </div>
+      ` : ""}
+      <div class="sales-period-summary">
+        <span><small>Garrafas</small><strong>${number(periodQty)}</strong></span>
+        <span><small>Valor</small><strong>${brl(periodRevenue)}</strong></span>
+        <span><small>Clientes</small><strong>${number(periodCustomers)}</strong></span>
+      </div>
+    </section>
+    <section class="sales-compact-list">${salesCards || `<article class="admin-card"><p class="empty-note">Nenhuma movimentação encontrada neste período.</p></article>`}</section>
+    <details class="admin-card order-secondary-panel sales-customer-history">
+      <summary>Histórico e frequência por cliente</summary>
       ${table(
         [
           { label: "Cliente" },
@@ -3255,26 +3331,7 @@ function renderSales() {
         ],
         customerRows,
       )}
-      <article class="admin-card">
-        <h3>Como usar</h3>
-        <p class="empty-note">Use “Nova saída” também para perda, presente ou consumo próprio. Só movimentos marcados como venda entram como receita, mas todos baixam estoque do lote.</p>
-      </article>
-    </section>
-    ${table(
-      [
-        { label: "Data" },
-        { label: "Cliente / tipo" },
-        { label: "Produto / lote" },
-        { label: "Qtd.", num: true },
-        { label: "Receita", num: true },
-        { label: "COGS", num: true },
-        { label: "Lucro", num: true },
-        { label: "Margem", num: true },
-        { label: "Ações" },
-      ],
-      rows,
-      1160,
-    )}
+    </details>
   `;
 }
 
@@ -5873,7 +5930,7 @@ function orderItemRowTemplate(item = {}, clientType = "novo_cliente") {
   const allocationsJson = JSON.stringify(orderItemAllocations(item));
   const reservationOverrideJson = JSON.stringify(item.reservationOverride || null);
   return `
-    <div class="builder-row order-item-row">
+    <div class="builder-row order-item-row" hidden>
       <label class="field"><span>Produto / sabor</span><select data-field="productId">${state.products.map((product) => `<option value="${product.id}" ${selectedProductId === product.id ? "selected" : ""}>${escapeHtml(productLabel(product))}</option>`).join("")}</select></label>
       <label class="field"><span>Qtd. garrafas</span><input data-field="qty" type="number" min="1" step="1" value="${item.qty || 1}"></label>
       <label class="field"><span>Preço unitário</span><input data-field="unitPrice" type="number" min="0" step="0.01" value="${defaultPrice}"></label>
@@ -5896,6 +5953,58 @@ function orderItemRowTemplate(item = {}, clientType = "novo_cliente") {
       </button>
     </div>
   `;
+}
+
+function availableStockForProduct(productId) {
+  return finishedStockRows()
+    .filter((row) => row.product?.id === productId || row.productId === productId)
+    .reduce((sum, row) => sum + Number(row.stock || 0), 0);
+}
+
+function orderItemEditorKey(row) {
+  return row?.querySelector('[data-field="key"]')?.value || "";
+}
+
+function renderOrderItemNavigator(form, preferredKey = "") {
+  const rowsContainer = form.querySelector("#orderItemsRows");
+  const navigator = form.querySelector("#orderItemNavigator");
+  const activeTitle = form.querySelector("#orderActiveItemTitle");
+  if (!rowsContainer || !navigator) return;
+  const rows = Array.from(rowsContainer.querySelectorAll(".order-item-row"));
+  if (!rows.length) {
+    navigator.innerHTML = "";
+    return;
+  }
+  const currentRow = rows.find((row) => row.classList.contains("is-active"));
+  const activeKey = preferredKey || orderItemEditorKey(currentRow) || orderItemEditorKey(rows[0]);
+  navigator.innerHTML = rows
+    .map((row) => {
+      const key = orderItemEditorKey(row);
+      const item = readOrderItemRow(row) || {};
+      const product = byId("products", item.productId);
+      const available = availableStockForProduct(item.productId);
+      const reserved = orderItemReservedQty(item);
+      const requested = Number(item.qty || 0);
+      const remaining = Math.max(0, requested - reserved);
+      const availability = remaining <= 0 ? "reserva completa" : available <= 0 ? "sem estoque" : available < remaining ? "parcial" : "disponível";
+      return `
+        <button type="button" class="order-item-selector ${key === activeKey ? "is-active" : ""}" data-order-item-select="${escapeHtml(key)}" aria-pressed="${key === activeKey}">
+          <span class="order-item-selector-head"><strong>${escapeHtml(product?.flavor || item.flavor || "Novo sabor")}</strong><i class="material-symbols-outlined" aria-hidden="true">edit</i></span>
+          <span class="order-item-selector-stock"><b>Disp. ${number(available)}</b><b>Res. ${number(reserved)}/${number(requested)}</b></span>
+          <small class="${availability === "sem estoque" ? "is-empty" : availability === "parcial" ? "is-partial" : "is-available"}">${availability} | ${escapeHtml(item.productionStatus || "pendente")}</small>
+        </button>
+      `;
+    })
+    .join("");
+  rows.forEach((row) => {
+    const isActive = orderItemEditorKey(row) === activeKey;
+    row.classList.toggle("is-active", isActive);
+    row.hidden = !isActive;
+    if (isActive && activeTitle) {
+      const product = byId("products", row.querySelector('[data-field="productId"]')?.value);
+      activeTitle.textContent = product?.flavor || "Editar sabor";
+    }
+  });
 }
 
 function readOrderItemRow(row) {
@@ -5992,12 +6101,22 @@ function bindOrderForm(form) {
     enhanceSelectSearch(rows);
     applyClientPricing(rows.lastElementChild);
     updateOrderPreview(form);
+    renderOrderItemNavigator(form, orderItemEditorKey(rows.lastElementChild));
   });
   form.addEventListener("click", (event) => {
+    const itemSelector = event.target.closest("[data-order-item-select]");
+    if (itemSelector) {
+      renderOrderItemNavigator(form, itemSelector.dataset.orderItemSelect);
+      return;
+    }
     const removeButton = event.target.closest("[data-remove-builder-row]");
     if (!removeButton) return;
     const row = removeButton.closest(".order-item-row");
-    if (row && rows.children.length > 1) row.remove();
+    if (row && rows.children.length > 1) {
+      const nextRow = row.nextElementSibling || row.previousElementSibling;
+      row.remove();
+      renderOrderItemNavigator(form, orderItemEditorKey(nextRow));
+    }
     updateOrderPreview(form);
   });
   form.addEventListener("change", (event) => {
@@ -6019,13 +6138,19 @@ function bindOrderForm(form) {
       form.elements.paymentDueDate.value = addDaysIso(event.target.value, 15);
     }
     updateOrderPreview(form);
+    if (row || event.target.name === "clientType") renderOrderItemNavigator(form, orderItemEditorKey(row));
   });
-  form.addEventListener("input", () => updateOrderPreview(form));
+  form.addEventListener("input", (event) => {
+    updateOrderPreview(form);
+    const row = event.target.closest(".order-item-row");
+    if (row) renderOrderItemNavigator(form, orderItemEditorKey(row));
+  });
   rows.querySelectorAll(".order-item-row").forEach((row) => {
     if (!Number(row.querySelector('[data-field="unitPrice"]')?.value || 0)) applyClientPricing(row);
   });
   applyPartnerVisibility();
   updateOrderPreview(form);
+  renderOrderItemNavigator(form);
 }
 
 function orderForm(orderId) {
@@ -6051,12 +6176,34 @@ function orderForm(orderId) {
         .map((partner) => `<option value="${partner.id}" ${selectedPartnerId === partner.id ? "selected" : ""}>${escapeHtml(partnerOptionLabel(partner))}</option>`)
         .join("")}`
     : `<option value="">Nenhum parceiro cadastrado ainda</option>`;
+  const orderItemsSection = `
+    <div class="builder-section order-items-editor">
+      <div class="table-toolbar">
+        <div>
+          <h3>Sabores do pedido</h3>
+          <p>Toque em um sabor para ver e editar somente aquele item.</p>
+        </div>
+      </div>
+      <div class="order-item-navigator" id="orderItemNavigator" aria-label="Sabores do pedido"></div>
+      <button class="btn btn-outline order-add-item" type="button" data-add-order-item>
+        <span class="material-symbols-outlined" aria-hidden="true">add</span>
+        Adicionar sabor
+      </button>
+      <div class="order-active-editor-head">
+        <span>Editar sabor selecionado</span>
+        <strong id="orderActiveItemTitle"></strong>
+      </div>
+      <div id="orderItemsRows">${(existing && orderItems(existing).length ? orderItems(existing) : [{}]).map((item) => orderItemRowTemplate(item, clientType)).join("")}</div>
+    </div>
+  `;
   openModal(
     existing ? "Editar pedido" : "Novo pedido",
     "Pedidos",
     `
       <form id="orderForm">
-        <details class="form-section" open>
+        ${existing ? orderItemsSection : ""}
+
+        <details class="form-section" ${existing ? "" : "open"}>
           <summary>Operação do pedido</summary>
           <div class="input-grid">
             <label class="field"><span>Cliente</span><input name="customerName" value="${escapeHtml(existing?.customerName || "")}" required></label>
@@ -6087,19 +6234,7 @@ function orderForm(orderId) {
           </div>
         </details>
 
-        <div class="builder-section">
-          <div class="table-toolbar">
-            <div>
-              <h3>Itens do pedido</h3>
-              <p>Cada sabor tem seu próprio andamento. Lotes produzidos reservam garrafas automaticamente para pedidos abertos.</p>
-            </div>
-            <button class="btn btn-outline" type="button" data-add-order-item>
-              <span class="material-symbols-outlined" aria-hidden="true">add</span>
-              Item
-            </button>
-          </div>
-          <div id="orderItemsRows">${(existing && orderItems(existing).length ? orderItems(existing) : [{}]).map((item) => orderItemRowTemplate(item, clientType)).join("")}</div>
-        </div>
+        ${existing ? "" : orderItemsSection}
 
         <button class="btn btn-primary" type="submit">
           <span class="material-symbols-outlined" aria-hidden="true">save</span>
@@ -6556,6 +6691,19 @@ function fieldValue(input) {
 }
 
 function bindModuleEvents() {
+  document.querySelectorAll("[data-sales-period]").forEach((button) => {
+    button.addEventListener("click", () => {
+      currentSalesPeriod = button.dataset.salesPeriod;
+      render();
+    });
+  });
+  document.querySelectorAll("[data-sales-custom]").forEach((input) => {
+    input.addEventListener("change", () => {
+      if (input.dataset.salesCustom === "start") salesCustomStart = input.value;
+      if (input.dataset.salesCustom === "end") salesCustomEnd = input.value;
+      render();
+    });
+  });
   document.querySelector("#recipeSelector")?.addEventListener("change", (event) => {
     activeRecipeId = event.target.value;
     render();
