@@ -47,7 +47,7 @@ Configure these Vercel environment variables:
 - `SUPABASE_URL`: Supabase project URL.
 - `SUPABASE_SERVICE_ROLE_KEY`: server-only Supabase service role key.
 - `ADMIN_PORTAL_PASSWORD`: private admin password configured only in Vercel.
-- `ADMIN_SESSION_SECRET`: long secret used to sign the admin cookie.
+- `ADMIN_SESSION_SECRET`: optional long secret used to sign the admin cookie. When omitted, the server derives an isolated signing key from `SUPABASE_SERVICE_ROLE_KEY`.
 - `CRON_SECRET`: secret used by the scheduled payment reminder route.
 
 ## Notes

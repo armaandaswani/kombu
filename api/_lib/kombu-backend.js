@@ -296,7 +296,19 @@ function adminPassword() {
 }
 
 function sessionSecret() {
-  return process.env.ADMIN_SESSION_SECRET || "";
+  const explicitSecret = process.env.ADMIN_SESSION_SECRET || "";
+  if (explicitSecret) return explicitSecret;
+
+  const backendSecret = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
+  if (!backendSecret) return "";
+  return crypto
+    .createHmac("sha256", backendSecret)
+    .update("kombu-admin-session-v1")
+    .digest("hex");
+}
+
+function hasSessionSecret() {
+  return Boolean(sessionSecret());
 }
 
 function signPayload(payload) {
@@ -407,6 +419,7 @@ module.exports = {
   ADMIN_EMAIL,
   PUBLIC_MEDIA_BUCKET,
   adminPassword,
+  hasSessionSecret,
   appendLeadToState,
   clearSessionCookie,
   emailProviderReady,

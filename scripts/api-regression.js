@@ -19,6 +19,7 @@ async function run() {
     ADMIN_PORTAL_PASSWORD: process.env.ADMIN_PORTAL_PASSWORD,
     ADMIN_PASSWORD: process.env.ADMIN_PASSWORD,
     ADMIN_SESSION_SECRET: process.env.ADMIN_SESSION_SECRET,
+    SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY,
     CRON_SECRET: process.env.CRON_SECRET,
   };
   const backend = require("../api/_lib/kombu-backend");
@@ -33,6 +34,7 @@ async function run() {
   delete process.env.ADMIN_PORTAL_PASSWORD;
   delete process.env.ADMIN_PASSWORD;
   delete process.env.ADMIN_SESSION_SECRET;
+  delete process.env.SUPABASE_SERVICE_ROLE_KEY;
   let req = { method: "POST", headers: { host: "kombukombucha.com.br" }, body: { password: "anything" } };
   let res = responseMock();
   await login(req, res);
@@ -47,6 +49,13 @@ async function run() {
   assert.strictEqual(res.statusCode, 503, "login must fail closed without an independent session secret");
   assert.strictEqual(jsonBody(res).error, "admin_auth_not_configured");
   assert.deepStrictEqual(jsonBody(res).missing, ["ADMIN_SESSION_SECRET"]);
+
+  process.env.SUPABASE_SERVICE_ROLE_KEY = "a-long-test-supabase-service-role-key";
+  req = { method: "POST", headers: { host: "kombukombucha.com.br" }, body: { password: "test-password" } };
+  res = responseMock();
+  await login(req, res);
+  assert.strictEqual(res.statusCode, 200, "Supabase service role key should provide a secure session fallback");
+  assert.ok(String(res.headers["set-cookie"]).includes("HttpOnly"));
 
   process.env.ADMIN_SESSION_SECRET = "a-long-test-session-secret";
   req = { method: "POST", headers: { host: "kombukombucha.com.br" }, body: { password: "wrong" } };
