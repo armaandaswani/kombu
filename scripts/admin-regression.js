@@ -132,16 +132,20 @@ async function run() {
   assert.match(await readyCard.innerText(), /4\/4/);
 
   await readyCard.locator('[data-action="adjust-order-reservation:order-1"]').click();
-  await page.fill('#adjustOrderReservationForm input[name="targetQty"]', "3");
+  await page.fill('#adjustOrderReservationForm input[name="reservedNow"]', "3");
   await page.fill('#adjustOrderReservationForm input[name="reason"]', "Liberar uma unidade para venda");
   await page.click('#adjustOrderReservationForm button[type="submit"]');
   await page.waitForSelector("#adminModal", { state: "hidden" });
 
   let state = await storedState(page);
   let item = state.orders[0].items[0];
-  assert.strictEqual(item.reservationTarget, 3, "manual target should be persisted");
+  assert.strictEqual(item.qty, 4, "manual reservation changes must never alter the ordered quantity");
+  assert.strictEqual(item.reservationTarget, null, "legacy order target must not be used for current reservation adjustments");
+  assert.strictEqual(item.reservationOverride.reservedNow, 3, "the current reserved quantity should be persisted independently");
+  assert.strictEqual(item.reservationOverride.orderedQty, 4, "the audit snapshot should preserve the ordered quantity");
   assert.strictEqual(item.allocations.reduce((sum, allocation) => sum + allocation.qty, 0), 3, "exactly three bottles should remain reserved");
   assert.match(state.audit[0].detail, /4 -> 3/);
+  assert.match(state.audit[0].detail, /pedido permanece em 4/);
   assert.match(state.audit[0].detail, /Liberar uma unidade para venda/);
   assert.strictEqual(state.audit[0].user, "Owner / Admin");
 
@@ -191,9 +195,9 @@ async function run() {
   await page.waitForSelector('[data-sales-period="month"]');
   assert.strictEqual(await page.locator(".sale-compact-card").count(), 1, "the current month should show its stock movement");
   await page.click('[data-sales-period="custom"]');
-  await page.fill('[data-sales-custom="start"]', "2026-07-15");
+  await page.fill('[data-sales-custom="start"]', "2099-01-01");
   await page.locator('[data-sales-custom="start"]').dispatchEvent("change");
-  await page.waitForSelector(".sales-compact-list .empty-note");
+  await page.waitForFunction(() => document.querySelectorAll(".sale-compact-card").length === 0);
   assert.strictEqual(await page.locator(".sale-compact-card").count(), 0, "custom range must filter older movements immediately");
   await assertNoHorizontalOverflow(page, "sales period view");
 

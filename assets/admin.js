@@ -1563,8 +1563,10 @@ function orderItemReservedQty(item = {}) {
   return qty ? Math.min(qty, total) : total;
 }
 
-function orderItemReservationTarget(item = {}) {
+function orderItemAutomaticReservationLimit(item = {}) {
   const ordered = Math.max(0, Number(item.qty || 0));
+  const overrideQty = Number(item.reservationOverride?.reservedNow ?? item.reservationOverride?.targetQty);
+  if (Number.isFinite(overrideQty)) return Math.max(0, Math.min(ordered, overrideQty));
   if (item.reservationTarget === "" || item.reservationTarget == null) return ordered;
   const target = Number(item.reservationTarget);
   if (!Number.isFinite(target)) return ordered;
@@ -1677,7 +1679,11 @@ function orderReceivableValue(order) {
 }
 
 function orderItemRemainingQty(item = {}) {
-  return Math.max(0, orderItemReservationTarget(item) - orderItemReservedQty(item));
+  return Math.max(0, Number(item.qty || 0) - orderItemReservedQty(item));
+}
+
+function orderItemAutomaticReservationNeed(item = {}) {
+  return Math.max(0, orderItemAutomaticReservationLimit(item) - orderItemReservedQty(item));
 }
 
 function reservedFromBatch(code) {
@@ -2147,7 +2153,7 @@ function allocateBatchToOrders(batch) {
       const matchesProduct = productId && item.productId === productId;
       const matchesFlavor = !productId && normalizeText(item.flavor) === normalizeText(batch.flavor);
       if (!matchesProduct && !matchesFlavor) return;
-      const need = orderItemRemainingQty(item);
+      const need = orderItemAutomaticReservationNeed(item);
       if (!need) return;
       const allocated = Math.min(need, available);
       item.allocations = [...orderItemAllocations(item), { batchCode: batch.code, qty: allocated, date: batch.date, manual: false, note: "" }];
@@ -2161,7 +2167,7 @@ function allocateBatchToOrders(batch) {
 function resetOpenOrderReservations() {
   (state.orders || []).filter(isOpenOrder).forEach((order) => {
     orderItems(order).forEach((item) => {
-      const target = orderItemReservationTarget(item);
+      const target = orderItemAutomaticReservationLimit(item);
       const manualAllocations = orderItemAllocations(item).filter((allocation) => allocation.manual);
       item.allocations = manualAllocations;
       item.batchCode = "";
@@ -4489,7 +4495,7 @@ function adjustOrderReservationForm(orderId) {
           <div class="result-card field-full">
             <small>Cliente</small>
             <strong>${escapeHtml(orderClientDisplayName(order))}</strong>
-            <span>A reserva automática continuará ativa até a quantidade manual definida para cada sabor.</span>
+            <span>Este ajuste altera somente as garrafas separadas agora. A quantidade pedida não será modificada.</span>
           </div>
           <label class="field field-full"><span>Sabor</span><select name="itemIndex" class="admin-select" data-force-search="true">${items
             .map((item) => {
@@ -4497,7 +4503,8 @@ function adjustOrderReservationForm(orderId) {
               return `<option value="${index}">${escapeHtml(orderFlavorText(item))} | ${number(orderItemReservedQty(item))} de ${number(item.qty || 0)} reservada(s)</option>`;
             })
             .join("")}</select></label>
-          <label class="field"><span>Quantidade que deve ficar reservada</span><input name="targetQty" type="number" min="0" step="1" required></label>
+          <div class="result-card field-full" id="reservationCurrentSummary"></div>
+          <label class="field"><span>Reservada agora</span><input name="reservedNow" type="number" min="0" step="1" inputmode="numeric" required></label>
           <label class="field field-full"><span>Motivo do ajuste</span><input name="reason" required maxlength="240" placeholder="Ex: liberar 1 garrafa para venda, avaria identificada..."></label>
           <div class="result-card field-full" id="reservationAdjustmentPreview"></div>
         </div>
@@ -4510,48 +4517,61 @@ function adjustOrderReservationForm(orderId) {
   );
   const form = document.querySelector("#adjustOrderReservationForm");
   const preview = document.querySelector("#reservationAdjustmentPreview");
+  const summary = document.querySelector("#reservationCurrentSummary");
   const selectedItem = () => orderItems(order)[Number(form.elements.itemIndex.value)];
   const updatePreview = (resetValue = false) => {
     const item = selectedItem();
     if (!item) return;
     const current = orderItemReservedQty(item);
     const ordered = Number(item.qty || 0);
-    if (resetValue) form.elements.targetQty.value = String(current);
-    form.elements.targetQty.max = String(ordered);
-    const target = Number(form.elements.targetQty.value || 0);
-    const delta = target - current;
-    preview.innerHTML = `<small>Impacto imediato</small><strong>${number(current)} reservada(s) agora -> meta ${number(target)}</strong><span>${delta < 0 ? `${number(Math.abs(delta))} garrafa(s) serão liberadas para o estoque disponível.` : delta > 0 ? `O sistema reservará até ${number(delta)} garrafa(s), somente se houver estoque disponível.` : "Nenhuma mudança de quantidade."}</span>`;
+    const available = availableStockForProduct(item.productId);
+    const maximumNow = Math.min(ordered, current + available);
+    if (resetValue) form.elements.reservedNow.value = String(current);
+    form.elements.reservedNow.max = String(maximumNow);
+    const reservedNow = Number(form.elements.reservedNow.value || 0);
+    const delta = reservedNow - current;
+    const missingAfter = Math.max(0, ordered - reservedNow);
+    summary.innerHTML = `<small>Situação atual</small><strong>Pedido: ${number(ordered)} | Reservada: ${number(current)} | Disponível: ${number(available)}</strong><span>Você pode separar agora entre 0 e ${number(maximumNow)} garrafa(s), sem alterar o pedido.</span>`;
+    preview.innerHTML = `<small>Impacto imediato</small><strong>${number(current)} reservada(s) agora -> ${number(reservedNow)}</strong><span>O pedido continua com ${number(ordered)} garrafa(s); ${number(missingAfter)} continuarão faltando. ${delta < 0 ? `${number(Math.abs(delta))} garrafa(s) voltarão ao estoque disponível.` : delta > 0 ? `${number(delta)} garrafa(s) disponíveis serão separadas agora.` : "Nenhuma mudança na separação."}</span>`;
   };
   form.elements.itemIndex.addEventListener("change", () => updatePreview(true));
-  form.elements.targetQty.addEventListener("input", () => updatePreview(false));
+  form.elements.reservedNow.addEventListener("input", () => updatePreview(false));
   updatePreview(true);
   form.addEventListener("submit", (event) => {
     event.preventDefault();
     const item = selectedItem();
-    const target = Number(form.elements.targetQty.value);
+    const reservedNow = Number(form.elements.reservedNow.value);
     const ordered = Number(item?.qty || 0);
+    const before = orderItemReservedQty(item);
+    const maximumNow = Math.min(ordered, before + availableStockForProduct(item?.productId));
     const reason = String(form.elements.reason.value || "").trim();
-    if (!item || !Number.isInteger(target) || target < 0 || target > ordered) {
-      window.alert(`Informe uma quantidade entre 0 e ${number(ordered)}.`);
+    if (!item || !Number.isInteger(reservedNow) || reservedNow < 0 || reservedNow > maximumNow) {
+      window.alert(`Informe quantas estão reservadas agora, entre 0 e ${number(maximumNow)}.`);
       return;
     }
     if (!reason) {
       window.alert("Informe o motivo do ajuste para manter o histórico confiável.");
       return;
     }
-    const before = orderItemReservedQty(item);
-    item.reservationTarget = target;
-    item.reservationOverride = { targetQty: target, previousQty: before, reason, updatedAt: new Date().toISOString(), updatedBy: currentRole };
-    trimItemAllocationsTo(item, target);
+    item.reservationTarget = null;
+    item.reservationOverride = {
+      reservedNow,
+      previousQty: before,
+      orderedQty: ordered,
+      reason,
+      updatedAt: new Date().toISOString(),
+      updatedBy: currentRole,
+    };
+    trimItemAllocationsTo(item, reservedNow);
     reconcileOrderReservations();
     const after = orderItemReservedQty(item);
     addAudit(
       "Reserva ajustada manualmente",
-      `${orderClientDisplayName(order)} | ${orderFlavorText(item)}: ${number(before)} -> ${number(after)} reservada(s); meta ${number(target)}. Motivo: ${reason}`,
+      `${orderClientDisplayName(order)} | ${orderFlavorText(item)}: ${number(before)} -> ${number(after)} reservada(s) agora; pedido permanece em ${number(ordered)}. Motivo: ${reason}`,
     );
     closeModal();
     render();
-    if (after < target) window.alert(`A meta ficou em ${number(target)}, mas só há ${number(after)} reservada(s) agora. O restante será reservado automaticamente quando houver estoque.`);
+    if (after !== reservedNow) window.alert(`Não foi possível separar ${number(reservedNow)} agora. A reserva atual ficou em ${number(after)} garrafa(s).`);
   });
   document.querySelector("#restoreAutomaticReservation")?.addEventListener("click", () => {
     const item = selectedItem();
