@@ -14,6 +14,9 @@ const ORDER_CLIENT_TYPES = [
 ];
 const PAYMENT_STATUSES = ["aberto", "aguardando pagamento", "pago", "atrasado", "cancelado"];
 const PAYMENT_METHODS = ["Pix", "Dinheiro", "Cartão", "Boleto", "Transferência", "A prazo", "Outro"];
+const DELIVERY_PROOF_DEFAULT_PAYMENT_METHOD = "Prazo - 15 dias corridos após a entrega";
+const DELIVERY_PROOF_PAYMENT_NOTE =
+  "O link de pagamento será gerado pela plataforma Infinite Pay e enviado via WhatsApp ao responsável pelo pedido.";
 const RECURRING_RETAIL_PRICE = 20;
 const GLOBAL_RETAIL_PRICE = 22;
 const GLOBAL_WHOLESALE_PRICE = 15;
@@ -2031,6 +2034,26 @@ function deliveryProofDefaultQty(item = {}) {
   return Math.max(0, Math.min(Number(item.qty || 0), orderItemReservedQty(item)));
 }
 
+function deliveryProofPaymentMethod(order = {}) {
+  const storedMethod = String(order.paymentMethod || "").trim();
+  if (!storedMethod || normalizeText(storedMethod) === "a prazo") return DELIVERY_PROOF_DEFAULT_PAYMENT_METHOD;
+  return storedMethod;
+}
+
+function deliveryProofPaymentOptions(selectedMethod) {
+  const methods = [
+    DELIVERY_PROOF_DEFAULT_PAYMENT_METHOD,
+    ...PAYMENT_METHODS.filter((method) => method !== "A prazo" && method !== DELIVERY_PROOF_DEFAULT_PAYMENT_METHOD),
+  ];
+  if (selectedMethod && !methods.includes(selectedMethod)) methods.push(selectedMethod);
+  return methods
+    .map(
+      (method) =>
+        `<option value="${escapeHtml(method)}" ${selectedMethod === method ? "selected" : ""}>${escapeHtml(method)}</option>`,
+    )
+    .join("");
+}
+
 function deliveryProofForm(orderId) {
   const order = byId("orders", orderId);
   if (!order) {
@@ -2042,8 +2065,9 @@ function deliveryProofForm(orderId) {
     window.alert("Este pedido não possui sabores para incluir no comprovante.");
     return;
   }
+  const selectedPaymentMethod = deliveryProofPaymentMethod(order);
   openModal(
-    "Comprovante de entrega",
+    "Comprovante de entrega - 2 vias",
     "Pedidos",
     `
       <form id="deliveryProofForm" data-order-id="${escapeHtml(order.id)}">
@@ -2054,8 +2078,7 @@ function deliveryProofForm(orderId) {
         </div>
         <div class="input-grid delivery-proof-meta">
           <label class="field"><span>Data da entrega</span><input name="deliveryDate" type="date" value="${escapeHtml(order.deliveredAt || todayIso())}" required></label>
-          <label class="field"><span>Forma de pagamento</span><select name="paymentMethod" class="admin-select"><option value="">Não informada</option>${PAYMENT_METHODS.map((method) => `<option value="${method}" ${order.paymentMethod === method ? "selected" : ""}>${method}</option>`).join("")}</select></label>
-          <label class="field"><span>Nome de quem recebe</span><input name="recipientName" placeholder="Preencher no PDF ou à mão"></label>
+          <label class="field delivery-proof-payment"><span>Forma de pagamento</span><select name="paymentMethod" class="admin-select">${deliveryProofPaymentOptions(selectedPaymentMethod)}</select><small>${escapeHtml(DELIVERY_PROOF_PAYMENT_NOTE)}</small></label>
           <label class="field"><span>Frete / entrega</span><input name="deliveryFee" type="number" min="0" step="0.01" value="${inputNumber(order.deliveryFee || 0, 2)}" inputmode="decimal"></label>
         </div>
         <fieldset class="delivery-proof-items">
@@ -2080,7 +2103,7 @@ function deliveryProofForm(orderId) {
         </div>
         <button class="btn btn-primary" type="submit">
           <span class="material-symbols-outlined" aria-hidden="true">picture_as_pdf</span>
-          Baixar PDF A4
+          Baixar PDF A4 - 2 vias
         </button>
       </form>
     `,
@@ -2159,132 +2182,151 @@ function generateDeliveryProofPdf(order, form) {
   const pageWidth = 210;
   const margin = 15;
   const contentWidth = pageWidth - margin * 2;
-  doc.setProperties({ title: `Comprovante de entrega - ${orderClientDisplayName(order)}`, subject: "Comprovante de entrega Kombú", author: "Kombú Kombucha" });
-  doc.setFillColor(...green);
-  doc.rect(0, 0, pageWidth, 31, "F");
-  // Keep PDF creation synchronous so iOS Safari retains the user's download gesture.
-  doc.setFillColor(255, 255, 255);
-  doc.circle(margin + 9.5, 15.5, 9.5, "F");
-  doc.setTextColor(...green);
-  doc.setFont("times", "bold");
-  doc.setFontSize(16);
-  doc.text("K", margin + 9.5, 19.5, { align: "center" });
-  doc.setTextColor(255, 255, 255);
-  doc.setFont("times", "bold");
-  doc.setFontSize(17);
-  doc.text("Kombú Kombucha", 39, 14);
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(8);
-  doc.text("KOMBUCHA DA AMAZÔNIA", 39, 20);
-  doc.setFontSize(10);
-  doc.text("COMPROVANTE DE ENTREGA", pageWidth - margin, 16, { align: "right" });
-
-  let y = 42;
-  doc.setTextColor(...ink);
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(15);
-  doc.text(orderClientDisplayName(order), margin, y);
-  y += 7;
-  doc.setDrawColor(...line);
-  doc.line(margin, y, pageWidth - margin, y);
-  y += 7;
-  const detailRows = [
-    ["Entrega", fullDate(data.deliveryDate), "Forma de pagamento", data.paymentMethod || "Não informada"],
-    ["Data do pedido", fullDate(order.orderDate), "Quantidade entregue", `${number(deliveredQuantity)} garrafa(s)`],
-    ["Negócio", order.businessName || "-", "Status do pagamento", orderReceivableStatus(order)],
-    ["WhatsApp", order.whatsapp || "-", "Recebedor", data.recipientName || "A preencher"],
-  ];
-  doc.setFontSize(8);
-  detailRows.forEach(([labelA, valueA, labelB, valueB]) => {
-    doc.setFont("helvetica", "bold");
-    doc.setTextColor(...muted);
-    doc.text(labelA.toUpperCase(), margin, y);
-    doc.text(labelB.toUpperCase(), 111, y);
-    doc.setFont("helvetica", "normal");
-    doc.setTextColor(...ink);
-    doc.text(doc.splitTextToSize(String(valueA), 78)[0], margin, y + 4.5);
-    doc.text(doc.splitTextToSize(String(valueB), 82)[0], 111, y + 4.5);
-    y += 12;
+  doc.setProperties({
+    title: `Comprovante de entrega - ${orderClientDisplayName(order)}`,
+    subject: "Comprovante de entrega Kombú - Via Estabelecimento e Via Cliente",
+    author: "Kombú Kombucha",
   });
 
-  y += 2;
-  doc.setFillColor(239, 244, 237);
-  doc.rect(margin, y, contentWidth, 8, "F");
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(8);
-  doc.setTextColor(...green);
-  doc.text("SABOR", margin + 3, y + 5.3);
-  doc.text("QTD.", 137, y + 5.3, { align: "right" });
-  doc.text("UNITÁRIO", 165, y + 5.3, { align: "right" });
-  doc.text("TOTAL", pageWidth - margin - 3, y + 5.3, { align: "right" });
-  y += 8;
-  proofItems.forEach((item) => {
-    const flavorLines = doc.splitTextToSize(item.flavor, 94);
-    const rowHeight = Math.max(9, flavorLines.length * 4.4 + 4);
-    if (y + rowHeight > 242) {
-      doc.addPage();
-      y = 18;
-    }
-    doc.setDrawColor(...line);
-    doc.line(margin, y + rowHeight, pageWidth - margin, y + rowHeight);
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(9);
-    doc.setTextColor(...ink);
-    doc.text(flavorLines, margin + 3, y + 5.5);
-    doc.text(number(item.qty), 137, y + 5.5, { align: "right" });
-    doc.text(brl(item.unitPrice), 165, y + 5.5, { align: "right" });
-    doc.text(brl(item.qty * item.unitPrice), pageWidth - margin - 3, y + 5.5, { align: "right" });
-    y += rowHeight;
-  });
-  y += 6;
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(9);
-  doc.setTextColor(...muted);
-  doc.text("Produtos", 160, y, { align: "right" });
-  doc.setTextColor(...ink);
-  doc.text(brl(productsTotal), pageWidth - margin, y, { align: "right" });
-  if (deliveryFee > 0) {
-    y += 6;
-    doc.setTextColor(...muted);
-    doc.text("Frete / entrega", 160, y, { align: "right" });
-    doc.setTextColor(...ink);
-    doc.text(brl(deliveryFee), pageWidth - margin, y, { align: "right" });
-  }
-  y += 8;
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(12);
-  doc.setTextColor(...green);
-  doc.text("TOTAL", 160, y, { align: "right" });
-  doc.text(brl(total), pageWidth - margin, y, { align: "right" });
-  y += 9;
-  if (data.notes) {
+  const renderCopy = (copyLabel, pageIndex) => {
+    if (pageIndex > 0) doc.addPage();
+    doc.setFillColor(...green);
+    doc.rect(0, 0, pageWidth, 31, "F");
+    // Keep PDF creation synchronous so iOS Safari retains the user's download gesture.
+    doc.setFillColor(255, 255, 255);
+    doc.circle(margin + 9.5, 15.5, 9.5, "F");
+    doc.setTextColor(...green);
+    doc.setFont("times", "bold");
+    doc.setFontSize(16);
+    doc.text("K", margin + 9.5, 19.5, { align: "center" });
+    doc.setTextColor(255, 255, 255);
+    doc.setFont("times", "bold");
+    doc.setFontSize(17);
+    doc.text("Kombú Kombucha", 39, 14);
     doc.setFont("helvetica", "bold");
     doc.setFontSize(8);
+    doc.text("KOMBUCHA DA AMAZÔNIA", 39, 20);
+    doc.setFontSize(10);
+    doc.text("COMPROVANTE DE ENTREGA", pageWidth - margin, 13.5, { align: "right" });
+    doc.setFontSize(8);
+    doc.text(copyLabel.toUpperCase(), pageWidth - margin, 20, { align: "right" });
+
+    let y = 42;
+    doc.setTextColor(...ink);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(15);
+    doc.text(orderClientDisplayName(order), margin, y);
+    y += 7;
+    doc.setDrawColor(...line);
+    doc.line(margin, y, pageWidth - margin, y);
+    y += 7;
+    const detailRows = [
+      ["Entrega", fullDate(data.deliveryDate), "Quantidade entregue", `${number(deliveredQuantity)} garrafa(s)`],
+      ["Negócio", order.businessName || "-", "WhatsApp", order.whatsapp || "-"],
+    ];
+    doc.setFontSize(8);
+    detailRows.forEach(([labelA, valueA, labelB, valueB]) => {
+      doc.setFont("helvetica", "bold");
+      doc.setTextColor(...muted);
+      doc.text(labelA.toUpperCase(), margin, y);
+      doc.text(labelB.toUpperCase(), 111, y);
+      doc.setFont("helvetica", "normal");
+      doc.setTextColor(...ink);
+      doc.text(doc.splitTextToSize(String(valueA), 78)[0], margin, y + 4.5);
+      doc.text(doc.splitTextToSize(String(valueB), 82)[0], 111, y + 4.5);
+      y += 11;
+    });
+
+    const paymentNoteLines = doc.splitTextToSize(DELIVERY_PROOF_PAYMENT_NOTE, contentWidth - 6);
+    const paymentBoxHeight = 14 + paymentNoteLines.length * 3.4;
+    doc.setFillColor(247, 249, 245);
+    doc.roundedRect(margin, y, contentWidth, paymentBoxHeight, 1.5, 1.5, "F");
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(7.5);
     doc.setTextColor(...muted);
-    doc.text("OBSERVAÇÕES", margin, y);
+    doc.text("FORMA DE PAGAMENTO", margin + 3, y + 4.5);
+    doc.setFontSize(9);
+    doc.setTextColor(...ink);
+    doc.text(String(data.paymentMethod || DELIVERY_PROOF_DEFAULT_PAYMENT_METHOD), margin + 3, y + 9);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(7.2);
+    doc.setTextColor(...muted);
+    doc.text(paymentNoteLines, margin + 3, y + 13.5);
+    y += paymentBoxHeight + 3;
+
+    doc.setFillColor(239, 244, 237);
+    doc.rect(margin, y, contentWidth, 8, "F");
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(8);
+    doc.setTextColor(...green);
+    doc.text("SABOR", margin + 3, y + 5.3);
+    doc.text("QTD.", 137, y + 5.3, { align: "right" });
+    doc.text("UNITÁRIO", 165, y + 5.3, { align: "right" });
+    doc.text("TOTAL", pageWidth - margin - 3, y + 5.3, { align: "right" });
+    y += 8;
+    proofItems.forEach((item) => {
+      const flavorLines = doc.splitTextToSize(item.flavor, 94);
+      const rowHeight = Math.max(8.5, flavorLines.length * 4 + 3.5);
+      doc.setDrawColor(...line);
+      doc.line(margin, y + rowHeight, pageWidth - margin, y + rowHeight);
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(8.7);
+      doc.setTextColor(...ink);
+      doc.text(flavorLines, margin + 3, y + 5.3);
+      doc.text(number(item.qty), 137, y + 5.3, { align: "right" });
+      doc.text(brl(item.unitPrice), 165, y + 5.3, { align: "right" });
+      doc.text(brl(item.qty * item.unitPrice), pageWidth - margin - 3, y + 5.3, { align: "right" });
+      y += rowHeight;
+    });
     y += 5;
     doc.setFont("helvetica", "normal");
+    doc.setFontSize(8.5);
+    doc.setTextColor(...muted);
+    doc.text("Produtos", 160, y, { align: "right" });
     doc.setTextColor(...ink);
-    const noteLines = doc.splitTextToSize(String(data.notes), contentWidth);
-    doc.text(noteLines.slice(0, 3), margin, y);
-    y += Math.min(noteLines.length, 3) * 4 + 4;
-  }
-  y = Math.max(y, 222);
-  if (y > 238) {
-    doc.addPage();
-    y = 24;
-  }
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(8);
-  doc.setTextColor(...muted);
-  doc.text("Declaro ter recebido os produtos e quantidades descritos neste comprovante.", margin, y);
-  y += 19;
-  doc.setDrawColor(...muted);
-  doc.line(margin, y, 91, y);
-  doc.line(119, y, pageWidth - margin, y);
-  doc.setFontSize(7.5);
-  doc.text(data.recipientName || "Nome e assinatura do recebedor", margin, y + 4);
-  doc.text("Kombú Kombucha", 119, y + 4);
+    doc.text(brl(productsTotal), pageWidth - margin, y, { align: "right" });
+    if (deliveryFee > 0) {
+      y += 5.5;
+      doc.setTextColor(...muted);
+      doc.text("Frete / entrega", 160, y, { align: "right" });
+      doc.setTextColor(...ink);
+      doc.text(brl(deliveryFee), pageWidth - margin, y, { align: "right" });
+    }
+    y += 7;
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(11.5);
+    doc.setTextColor(...green);
+    doc.text("TOTAL", 160, y, { align: "right" });
+    doc.text(brl(total), pageWidth - margin, y, { align: "right" });
+    y += 7;
+    if (data.notes) {
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(7.5);
+      doc.setTextColor(...muted);
+      doc.text("OBSERVAÇÕES", margin, y);
+      y += 4.5;
+      doc.setFont("helvetica", "normal");
+      doc.setTextColor(...ink);
+      const noteLines = doc.splitTextToSize(String(data.notes), contentWidth);
+      doc.text(noteLines.slice(0, 2), margin, y);
+      y += Math.min(noteLines.length, 2) * 3.7 + 3;
+    }
+    y = Math.max(y, 244);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8);
+    doc.setTextColor(...muted);
+    doc.text("Declaro ter recebido os produtos e quantidades descritos neste comprovante.", margin, y);
+    y += 16;
+    doc.setDrawColor(...muted);
+    doc.line(margin, y, 91, y);
+    doc.line(119, y, pageWidth - margin, y);
+    doc.setFontSize(7.5);
+    doc.text("Nome e assinatura do recebedor", margin, y + 4);
+    doc.text("Kombú Kombucha", 119, y + 4);
+  };
+
+  renderCopy("Via Estabelecimento", 0);
+  renderCopy("Via Cliente", 1);
   const pageCount = doc.getNumberOfPages();
   for (let page = 1; page <= pageCount; page += 1) {
     doc.setPage(page);

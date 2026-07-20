@@ -1,5 +1,6 @@
 const assert = require("assert");
 const fs = require("fs");
+const { execFileSync } = require("child_process");
 const { chromium } = require("playwright");
 
 const baseUrl = process.env.AUDIT_BASE_URL || "http://127.0.0.1:4173";
@@ -239,7 +240,13 @@ async function run() {
   await page.locator('[data-action="delivery-proof:order-1"]').click();
   await page.waitForSelector("#deliveryProofForm");
   assert.strictEqual(await page.locator('[name="deliveredQty_0"]').inputValue(), "3", "proof should start with bottles already reserved for the client");
-  await page.selectOption('[name="paymentMethod"]', "Pix");
+  assert.strictEqual(
+    await page.locator('[name="paymentMethod"]').inputValue(),
+    "Prazo - 15 dias corridos após a entrega",
+    "delivery proof should default to the 15-day payment term",
+  );
+  assert.strictEqual(await page.locator('[name="recipientName"]').count(), 0, "recipient field should not clutter the delivery proof form");
+  assert.match(await page.locator(".delivery-proof-payment small").innerText(), /Infinite Pay/);
   assert.match(await page.locator("#deliveryProofQuantity").innerText(), /3 garrafa/);
   assert.match(await page.locator("#deliveryProofTotal").innerText(), /45,00/);
   const proofPath = "/tmp/kombu-delivery-proof-regression.pdf";
@@ -249,10 +256,16 @@ async function run() {
   ]);
   await download.saveAs(proofPath);
   const proofBytes = fs.readFileSync(proofPath);
-  assert.ok(proofBytes.length > 4000, "delivery proof should contain a real A4 PDF");
+  assert.ok(proofBytes.length > 7000, "delivery proof should contain both complete A4 copies");
   assert.strictEqual(proofBytes.subarray(0, 4).toString(), "%PDF");
+  const pdfInfo = execFileSync("pdfinfo", [proofPath], { encoding: "utf8" });
+  assert.match(pdfInfo, /^Pages:\s+2$/m, "delivery proof should contain establishment and customer copies");
   state = await storedState(page);
-  assert.strictEqual(state.orders[0].paymentMethod, "Pix", "selected payment method should remain attached to the order");
+  assert.strictEqual(
+    state.orders[0].paymentMethod,
+    "Prazo - 15 dias corridos após a entrega",
+    "default payment term should remain attached to the order",
+  );
   await page.click("#closeAdminModal");
 
   await updatedCard.locator('[data-action="dashboard-edit-partner:partner-1"]').click();

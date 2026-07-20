@@ -2853,6 +2853,13 @@ textarea:focus-visible {
   margin-bottom: 14px;
 }
 
+.delivery-proof-payment small {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.45;
+}
+
 .delivery-proof-items {
   display: grid;
   gap: 8px;
