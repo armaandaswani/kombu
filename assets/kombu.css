@@ -2735,6 +2735,13 @@ textarea:focus-visible {
   text-align: right;
 }
 
+.order-ready-delivered {
+  margin: -3px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
 .order-ready-meter {
   height: 12px;
   overflow: hidden;
@@ -2928,6 +2935,63 @@ textarea:focus-visible {
   margin: 0;
   color: var(--green);
   text-align: right;
+}
+
+.delivery-history {
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: #fff;
+  margin-top: 14px;
+}
+
+.delivery-history summary {
+  cursor: pointer;
+  color: var(--green);
+  padding: 13px 14px;
+  font-size: 14px;
+  font-weight: 900;
+}
+
+.delivery-history-list {
+  display: grid;
+  gap: 8px;
+  border-top: 1px solid var(--line);
+  padding: 10px;
+}
+
+.delivery-history-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-width: 0;
+  border-radius: 8px;
+  background: var(--soft);
+  padding: 10px;
+}
+
+.delivery-history-row > span {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.delivery-history-row strong,
+.delivery-history-row small {
+  overflow-wrap: anywhere;
+}
+
+.delivery-history-row small {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 750;
+}
+
+.delivery-history-row .btn {
+  flex: 0 0 auto;
+  min-height: 38px;
+  padding: 8px 11px;
 }
 
 .donut {
@@ -3854,6 +3918,16 @@ textarea:focus-visible {
     grid-column: 1;
     grid-row: auto;
     text-align: left;
+  }
+
+  .delivery-history-row {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .delivery-history-row .btn {
+    width: 100%;
+    justify-content: center;
   }
 
   .hero-media {

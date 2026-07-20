@@ -889,6 +889,26 @@ function normalizeState(savedState) {
   ["products", "ingredients", "packaging", "suppliers", "partners", "recipes", "batches", "sales", "orders", "leads", "purchases", "expenses", "costSources", "audit"].forEach((key) => {
     merged[key] = Array.isArray(saved[key]) ? saved[key] : base[key];
   });
+  merged.orders = merged.orders.map((order, orderIndex) => {
+    const deliveries = Array.isArray(order.deliveries) ? order.deliveries : [];
+    const deliveredByItem = deliveries.flatMap((delivery) => delivery.items || []).reduce((totals, item) => {
+      const key = item.orderItemKey || "";
+      if (key) totals[key] = Number(totals[key] || 0) + Number(item.qty || 0);
+      return totals;
+    }, {});
+    return {
+      ...order,
+      deliveries,
+      items: orderItems(order).map((item, itemIndex) => {
+        const key = item.key || `oi-${order.id || orderIndex}-${itemIndex}`;
+        return {
+          ...item,
+          key,
+          deliveredQty: Math.max(Number(item.deliveredQty || 0), Number(deliveredByItem[key] || 0)),
+        };
+      }),
+    };
+  });
   merged.packaging = merged.packaging.map((item) => ({ ...item, type: inferPackagingType(item), productId: item.productId || "" }));
   ensureProductLabelInventory(merged);
   if (merged.settings.priceVersion !== GLOBAL_PRICE_VERSION) {
@@ -1533,6 +1553,26 @@ function orderQuantity(order) {
   return orderItems(order).reduce((sum, item) => sum + Number(item.qty || 0), 0);
 }
 
+function orderDeliveries(order = {}) {
+  return Array.isArray(order.deliveries) ? order.deliveries : [];
+}
+
+function orderItemDeliveredQty(item = {}) {
+  return Math.max(0, Math.min(Number(item.qty || 0), Number(item.deliveredQty || 0)));
+}
+
+function orderItemOutstandingQty(item = {}) {
+  return Math.max(0, Number(item.qty || 0) - orderItemDeliveredQty(item));
+}
+
+function orderDeliveredQuantity(order) {
+  return orderItems(order).reduce((sum, item) => sum + orderItemDeliveredQty(item), 0);
+}
+
+function orderOutstandingQuantity(order) {
+  return orderItems(order).reduce((sum, item) => sum + orderItemOutstandingQty(item), 0);
+}
+
 function orderTotal(order) {
   return orderItems(order).reduce((sum, item) => sum + Number(item.qty || 0) * Number(item.unitPrice || 0), 0);
 }
@@ -1585,12 +1625,12 @@ function orderItemReservedQty(item = {}) {
   const allocated = orderItemAllocations(item).reduce((sum, allocation) => sum + Number(allocation.qty || 0), 0);
   const legacy = Math.max(Number(item.reservedQty || 0), Number(item.producedQty || 0));
   const total = Math.max(allocated, legacy);
-  const qty = Number(item.qty || 0);
-  return qty ? Math.min(qty, total) : total;
+  const qty = orderItemOutstandingQty(item);
+  return Math.min(qty, total);
 }
 
 function orderItemAutomaticReservationLimit(item = {}) {
-  const ordered = Math.max(0, Number(item.qty || 0));
+  const ordered = orderItemOutstandingQty(item);
   const overrideQty = Number(item.reservationOverride?.reservedNow ?? item.reservationOverride?.targetQty);
   if (Number.isFinite(overrideQty)) return Math.max(0, Math.min(ordered, overrideQty));
   if (item.reservationTarget === "" || item.reservationTarget == null) return ordered;
@@ -1705,7 +1745,7 @@ function orderReceivableValue(order) {
 }
 
 function orderItemRemainingQty(item = {}) {
-  return Math.max(0, Number(item.qty || 0) - orderItemReservedQty(item));
+  return Math.max(0, orderItemOutstandingQty(item) - orderItemReservedQty(item));
 }
 
 function orderItemAutomaticReservationNeed(item = {}) {
@@ -1792,18 +1832,22 @@ function refreshOrderReservationStatus(order) {
   let allReserved = items.length > 0;
   items.forEach((item) => {
     const reserved = orderItemReservedQty(item);
-    const qty = Number(item.qty || 0);
+    const qty = orderItemOutstandingQty(item);
     const allocations = orderItemAllocations(item);
     const batchCodes = orderItemBatchCodes(item);
     item.allocations = allocations;
-    item.reservedQty = qty ? Math.min(qty, reserved) : reserved;
+    item.reservedQty = qty ? Math.min(qty, reserved) : 0;
     item.producedQty = item.reservedQty;
     item.batchCode = batchCodes.join(", ");
     item.readyDate = allocations.at(-1)?.date || item.readyDate || "";
-    item.productionStatus = item.reservedQty >= qty && qty > 0 ? "reservado" : item.reservedQty > 0 ? "em produção" : "pendente";
+    item.productionStatus = qty <= 0 ? "entregue" : item.reservedQty >= qty ? "reservado" : item.reservedQty > 0 ? "em produção" : "pendente";
     anyReserved = anyReserved || item.reservedQty > 0;
-    allReserved = allReserved && item.reservedQty >= qty;
+    allReserved = allReserved && (qty <= 0 || item.reservedQty >= qty);
   });
+  if (items.length && items.every((item) => orderItemOutstandingQty(item) <= 0)) {
+    order.status = "entregue";
+    return;
+  }
   if (!isOpenOrder(order)) return;
   if (allReserved) order.status = "pronto";
   else if (anyReserved) order.status = "em produção";
@@ -1840,7 +1884,7 @@ function orderProductionRows() {
           orders: [],
           clients: [],
         };
-        const ordered = Number(item.qty || 0);
+        const ordered = orderItemOutstandingQty(item);
         const reserved = orderItemReservedQty(item);
         const missing = orderItemRemainingQty(item);
         current.ordered += ordered;
@@ -1905,11 +1949,13 @@ function orderReadyRows() {
     .map((order) => {
       const items = orderItems(order)
         .map((item) => {
-          const qty = Number(item.qty || 0);
+          const qty = orderItemOutstandingQty(item);
           const ready = orderItemReservedQty(item);
           return {
             product: orderFlavorText(item),
             qty,
+            originalQty: Number(item.qty || 0),
+            delivered: orderItemDeliveredQty(item),
             ready,
             missing: Math.max(0, qty - ready),
           };
@@ -1918,6 +1964,7 @@ function orderReadyRows() {
       const qty = items.reduce((sum, item) => sum + item.qty, 0);
       const ready = items.reduce((sum, item) => sum + item.ready, 0);
       const missing = Math.max(0, qty - ready);
+      const delivered = orderDeliveredQuantity(order);
       return {
         order,
         partner: selectedPartnerForOrder(order),
@@ -1925,6 +1972,8 @@ function orderReadyRows() {
         date: order.orderDate || order.createdAt?.slice(0, 10) || "",
         due: order.neededBy || order.estimatedReadyDate || "",
         qty,
+        originalQty: orderQuantity(order),
+        delivered,
         ready,
         missing,
         percent: qty ? Math.min(100, (ready / qty) * 100) : 0,
@@ -1959,6 +2008,7 @@ function orderReadyCard(row, view = "summary") {
         <strong>${number(row.ready)}/${number(row.qty)}</strong>
         <span>${row.missing ? `${number(row.missing)} faltando` : "pronto para entregar"}</span>
       </div>
+      ${row.delivered ? `<p class="order-ready-delivered">${number(row.delivered)} já entregue(s) de ${number(row.originalQty)} no pedido</p>` : ""}
       <div class="order-ready-meter" aria-label="${number(row.ready)} de ${number(row.qty)} garrafas separadas">
         <i style="width:${row.percent}%"></i>
       </div>
@@ -2031,7 +2081,7 @@ function fullDate(dateIso) {
 }
 
 function deliveryProofDefaultQty(item = {}) {
-  return Math.max(0, Math.min(Number(item.qty || 0), orderItemReservedQty(item)));
+  return Math.max(0, Math.min(orderItemOutstandingQty(item), orderItemReservedQty(item)));
 }
 
 function deliveryProofPaymentMethod(order = {}) {
@@ -2054,17 +2104,135 @@ function deliveryProofPaymentOptions(selectedMethod) {
     .join("");
 }
 
+function deliveryProofHistory(order = {}) {
+  const deliveries = orderDeliveries(order).slice().sort((a, b) => String(b.createdAt || b.deliveredAt || "").localeCompare(String(a.createdAt || a.deliveredAt || "")));
+  if (!deliveries.length) return "";
+  return `
+    <details class="delivery-history">
+      <summary>Entregas anteriores (${deliveries.length})</summary>
+      <div class="delivery-history-list">
+        ${deliveries
+          .map(
+            (delivery) => `
+              <div class="delivery-history-row">
+                <span><strong>Remessa ${number(delivery.number || 1)}</strong><small>${fullDate(delivery.deliveredAt)} | ${number(delivery.totalQty)} garrafa(s) | ${brl(delivery.total)}</small></span>
+                <button class="btn btn-outline" type="button" data-action="delivery-proof-reprint:${order.id}:${delivery.id}">
+                  <span class="material-symbols-outlined" aria-hidden="true">picture_as_pdf</span>Reemitir
+                </button>
+              </div>
+            `,
+          )
+          .join("")}
+      </div>
+    </details>
+  `;
+}
+
+function deliveryAllocationPlan(item = {}, quantity = 0) {
+  let remaining = Math.max(0, Number(quantity || 0));
+  const planned = [];
+  orderItemAllocations(item).forEach((allocation) => {
+    if (remaining <= 0) return;
+    const qty = Math.min(remaining, Number(allocation.qty || 0));
+    if (qty > 0) planned.push({ ...allocation, qty });
+    remaining -= qty;
+  });
+  if (remaining > 0) throw new Error("A quantidade escolhida não está totalmente reservada em lotes.");
+  return planned;
+}
+
+function buildOrderDelivery(order, form) {
+  const data = Object.fromEntries(new FormData(form).entries());
+  const items = orderItems(order)
+    .map((item, index) => {
+      const ready = deliveryProofDefaultQty(item);
+      const qty = Math.max(0, Math.min(ready, Number(data[`deliveredQty_${index}`] || 0)));
+      if (!qty) return null;
+      return {
+        orderItemKey: item.key,
+        productId: item.productId || "",
+        flavor: orderFlavorText(item),
+        qty,
+        unitPrice: Number(item.unitPrice || 0),
+        allocations: deliveryAllocationPlan(item, qty),
+      };
+    })
+    .filter(Boolean);
+  if (!items.length) throw new Error("Informe pelo menos uma garrafa nesta remessa.");
+  const deliveryFee = Math.max(0, Number(data.deliveryFee || 0));
+  const productsTotal = items.reduce((sum, item) => sum + Number(item.qty || 0) * Number(item.unitPrice || 0), 0);
+  return {
+    id: id("delivery"),
+    number: orderDeliveries(order).length + 1,
+    deliveredAt: data.deliveryDate || todayIso(),
+    createdAt: new Date().toISOString(),
+    paymentMethod: data.paymentMethod || DELIVERY_PROOF_DEFAULT_PAYMENT_METHOD,
+    paymentDueDate: addDaysIso(data.deliveryDate || todayIso(), 15),
+    deliveryFee,
+    notes: String(data.notes || "").trim(),
+    items,
+    totalQty: items.reduce((sum, item) => sum + Number(item.qty || 0), 0),
+    productsTotal,
+    total: productsTotal + deliveryFee,
+  };
+}
+
+function consumeDeliveryReservation(item, deliveryItem) {
+  let remaining = Number(deliveryItem.qty || 0);
+  const allocations = orderItemAllocations(item).map((allocation) => ({ ...allocation }));
+  deliveryItem.allocations.forEach((planned) => {
+    for (const allocation of allocations) {
+      if (remaining <= 0) break;
+      if (allocation.batchCode !== planned.batchCode || Number(allocation.qty || 0) <= 0) continue;
+      const reduction = Math.min(Number(planned.qty || 0), Number(allocation.qty || 0), remaining);
+      allocation.qty -= reduction;
+      remaining -= reduction;
+      break;
+    }
+  });
+  if (remaining > 0) throw new Error("A reserva mudou antes da confirmação. Abra a remessa novamente.");
+  item.deliveredQty = orderItemDeliveredQty(item) + Number(deliveryItem.qty || 0);
+  item.allocations = allocations.filter((allocation) => Number(allocation.qty || 0) > 0);
+  item.reservationOverride = null;
+  item.reservationTarget = null;
+  item.batchCode = orderItemBatchCodes(item).join(", ");
+  item.reservedQty = item.allocations.reduce((sum, allocation) => sum + Number(allocation.qty || 0), 0);
+  item.producedQty = item.reservedQty;
+}
+
+function registerOrderDelivery(order, delivery) {
+  delivery.items.forEach((deliveryItem) => {
+    const item = orderItems(order).find((candidate) => candidate.key === deliveryItem.orderItemKey);
+    if (!item) throw new Error(`Sabor da remessa não encontrado: ${deliveryItem.flavor}`);
+    consumeDeliveryReservation(item, deliveryItem);
+  });
+  order.deliveries = [...orderDeliveries(order), delivery];
+  order.firstDeliveryAt = order.firstDeliveryAt || delivery.deliveredAt;
+  order.lastDeliveryAt = delivery.deliveredAt;
+  order.paymentMethod = delivery.paymentMethod;
+  order.deliveryFee = delivery.deliveryFee;
+  order.deliveryNotes = delivery.notes;
+  order.updatedAt = new Date().toISOString();
+  refreshOrderReservationStatus(order);
+  if (orderOutstandingQuantity(order) <= 0) {
+    order.status = "entregue";
+    order.deliveredAt = delivery.deliveredAt;
+    order.paymentDueDate = delivery.paymentDueDate;
+  } else {
+    order.deliveredAt = "";
+  }
+  syncOrderIntegrations(order);
+  reconcileOrderReservations();
+  refreshOrderReservationStatus(order);
+}
+
 function deliveryProofForm(orderId) {
   const order = byId("orders", orderId);
   if (!order) {
     window.alert("Pedido não encontrado. Atualize a página e tente novamente.");
     return;
   }
-  const items = orderItems(order).filter((item) => Number(item.qty || 0) > 0);
-  if (!items.length) {
-    window.alert("Este pedido não possui sabores para incluir no comprovante.");
-    return;
-  }
+  const items = orderItems(order).map((item, index) => ({ item, index })).filter(({ item }) => deliveryProofDefaultQty(item) > 0);
   const selectedPaymentMethod = deliveryProofPaymentMethod(order);
   openModal(
     "Comprovante de entrega - 2 vias",
@@ -2074,37 +2242,37 @@ function deliveryProofForm(orderId) {
         <div class="result-card delivery-proof-customer">
           <small>Cliente</small>
           <strong>${escapeHtml(orderClientDisplayName(order))}</strong>
-          <span>${number(orderQuantity(order))} garrafa(s) no pedido</span>
+          <span>${number(orderDeliveredQuantity(order))} entregue(s) | ${number(orderOutstandingQuantity(order))} restante(s) de ${number(orderQuantity(order))}</span>
         </div>
         <div class="input-grid delivery-proof-meta">
           <label class="field"><span>Data da entrega</span><input name="deliveryDate" type="date" value="${escapeHtml(order.deliveredAt || todayIso())}" required></label>
           <label class="field delivery-proof-payment"><span>Forma de pagamento</span><select name="paymentMethod" class="admin-select">${deliveryProofPaymentOptions(selectedPaymentMethod)}</select><small>${escapeHtml(DELIVERY_PROOF_PAYMENT_NOTE)}</small></label>
-          <label class="field"><span>Frete / entrega</span><input name="deliveryFee" type="number" min="0" step="0.01" value="${inputNumber(order.deliveryFee || 0, 2)}" inputmode="decimal"></label>
+          <label class="field"><span>Frete / entrega</span><input name="deliveryFee" type="number" min="0" step="0.01" value="${inputNumber(orderDeliveries(order).length ? 0 : order.deliveryFee || 0, 2)}" inputmode="decimal"></label>
         </div>
-        <fieldset class="delivery-proof-items">
-          <legend>Quantidade entregue</legend>
-          <p>As quantidades começam pelo que já está separado para este cliente. Ajuste somente o que irá nesta entrega.</p>
-          ${items
-            .map(
-              (item, index) => `
+        ${items.length ? `<fieldset class="delivery-proof-items">
+          <legend>Nova remessa</legend>
+          <p>Inclua somente as garrafas que sairão agora. O que já foi entregue não aparece novamente.</p>
+          ${items.map(
+              ({ item, index }) => `
                 <label class="delivery-proof-item">
-                  <span><strong>${escapeHtml(orderFlavorText(item))}</strong><small>${brl(item.unitPrice)} por garrafa | pedido: ${number(item.qty)}</small></span>
-                  <input name="deliveredQty_${index}" type="number" min="0" max="${Number(item.qty || 0)}" step="1" value="${deliveryProofDefaultQty(item)}" inputmode="numeric" data-proof-qty data-unit-price="${Number(item.unitPrice || 0)}" required>
+                  <span><strong>${escapeHtml(orderFlavorText(item))}</strong><small>${number(orderItemDeliveredQty(item))} já entregue(s) | ${number(orderItemOutstandingQty(item))} restante(s)</small></span>
+                  <input name="deliveredQty_${index}" type="number" min="0" max="${deliveryProofDefaultQty(item)}" step="1" value="${deliveryProofDefaultQty(item)}" inputmode="numeric" data-proof-qty data-unit-price="${Number(item.unitPrice || 0)}" required>
                 </label>
               `,
             )
             .join("")}
-        </fieldset>
+        </fieldset>` : `<p class="empty-note">Nenhuma nova garrafa está reservada e pronta para outra remessa. As entregas anteriores continuam disponíveis abaixo.</p>`}
         <label class="field"><span>Observações no comprovante</span><textarea name="notes" placeholder="Condição da entrega, caixas, devoluções ou outra observação.">${escapeHtml(order.deliveryNotes || "")}</textarea></label>
         <div class="result-card delivery-proof-total" aria-live="polite">
           <small>Total desta entrega</small>
           <strong id="deliveryProofTotal">${brl(0)}</strong>
           <span id="deliveryProofQuantity">0 garrafa(s)</span>
         </div>
-        <button class="btn btn-primary" type="submit">
+        ${items.length ? `<button class="btn btn-primary" type="submit">
           <span class="material-symbols-outlined" aria-hidden="true">picture_as_pdf</span>
-          Baixar PDF A4 - 2 vias
-        </button>
+          Registrar entrega e baixar PDF
+        </button>` : ""}
+        ${deliveryProofHistory(order)}
       </form>
     `,
   );
@@ -2121,6 +2289,7 @@ function deliveryProofForm(orderId) {
   };
   form.addEventListener("input", updateTotal);
   updateTotal();
+  if (!items.length) return;
   form.addEventListener("submit", (event) => {
     event.preventDefault();
     const selectedQuantity = [...form.querySelectorAll("[data-proof-qty]")].reduce(
@@ -2135,12 +2304,12 @@ function deliveryProofForm(orderId) {
     button.disabled = true;
     button.querySelector(".material-symbols-outlined").textContent = "hourglass_top";
     try {
-      generateDeliveryProofPdf(order, form);
-      order.paymentMethod = form.elements.paymentMethod.value;
-      order.deliveryFee = Math.max(0, Number(form.elements.deliveryFee.value || 0));
-      order.deliveryNotes = form.elements.notes.value.trim();
-      order.updatedAt = new Date().toISOString();
-      addAudit("Comprovante de entrega gerado", `${orderClientDisplayName(order)} | ${form.elements.deliveryDate.value}`);
+      const delivery = buildOrderDelivery(order, form);
+      generateDeliveryProofPdf(order, delivery);
+      registerOrderDelivery(order, delivery);
+      addAudit("Entrega parcial registrada", `${orderClientDisplayName(order)} | remessa ${delivery.number} | ${number(delivery.totalQty)} garrafa(s)`);
+      closeModal();
+      render();
     } catch (error) {
       console.error(error);
       window.alert("Não foi possível gerar o PDF. Atualize a página e tente novamente.");
@@ -2158,22 +2327,31 @@ function fileSlug(value) {
     .slice(0, 60) || "cliente";
 }
 
-function generateDeliveryProofPdf(order, form) {
+function reprintDeliveryProof(payload = "") {
+  const [orderId, deliveryId] = String(payload).split(":");
+  const order = byId("orders", orderId);
+  const delivery = orderDeliveries(order).find((item) => item.id === deliveryId);
+  if (!order || !delivery) {
+    window.alert("Não encontrei esta remessa. Atualize a página e tente novamente.");
+    return;
+  }
+  generateDeliveryProofPdf(order, delivery);
+}
+
+function generateDeliveryProofPdf(order, delivery) {
   const jsPdf = window.jspdf?.jsPDF;
   if (!jsPdf) throw new Error("jsPDF não foi carregado.");
-  const data = Object.fromEntries(new FormData(form).entries());
-  const proofItems = orderItems(order)
-    .map((item, index) => ({
-      flavor: orderFlavorText(item),
-      qty: Math.max(0, Math.min(Number(item.qty || 0), Number(data[`deliveredQty_${index}`] || 0))),
-      unitPrice: Number(item.unitPrice || 0),
-    }))
-    .filter((item) => item.qty > 0);
+  const data = {
+    deliveryDate: delivery.deliveredAt,
+    paymentMethod: delivery.paymentMethod,
+    notes: delivery.notes,
+  };
+  const proofItems = (delivery.items || []).map((item) => ({ flavor: item.flavor, qty: Number(item.qty || 0), unitPrice: Number(item.unitPrice || 0) }));
   if (!proofItems.length) throw new Error("Comprovante sem itens.");
-  const deliveryFee = Math.max(0, Number(data.deliveryFee || 0));
-  const productsTotal = proofItems.reduce((sum, item) => sum + item.qty * item.unitPrice, 0);
-  const deliveredQuantity = proofItems.reduce((sum, item) => sum + item.qty, 0);
-  const total = productsTotal + deliveryFee;
+  const deliveryFee = Math.max(0, Number(delivery.deliveryFee || 0));
+  const productsTotal = Number(delivery.productsTotal || proofItems.reduce((sum, item) => sum + item.qty * item.unitPrice, 0));
+  const deliveredQuantity = Number(delivery.totalQty || proofItems.reduce((sum, item) => sum + item.qty, 0));
+  const total = Number(delivery.total || productsTotal + deliveryFee);
   const doc = new jsPdf({ orientation: "portrait", unit: "mm", format: "a4", compress: true });
   const green = [40, 85, 42];
   const ink = [28, 32, 29];
@@ -2209,7 +2387,7 @@ function generateDeliveryProofPdf(order, form) {
     doc.setFontSize(10);
     doc.text("COMPROVANTE DE ENTREGA", pageWidth - margin, 13.5, { align: "right" });
     doc.setFontSize(8);
-    doc.text(copyLabel.toUpperCase(), pageWidth - margin, 20, { align: "right" });
+    doc.text(`${copyLabel.toUpperCase()} | REMESSA ${String(delivery.number || 1).padStart(2, "0")}`, pageWidth - margin, 20, { align: "right" });
 
     let y = 42;
     doc.setTextColor(...ink);
@@ -2336,7 +2514,7 @@ function generateDeliveryProofPdf(order, form) {
     doc.text("Kombú Kombucha da Amazônia | Manaus - AM | @kombu.amazonia", margin, 289);
     doc.text(`${page}/${pageCount}`, pageWidth - margin, 289, { align: "right" });
   }
-  const filename = `comprovante-entrega-${fileSlug(orderClientDisplayName(order))}-${data.deliveryDate}.pdf`;
+  const filename = `comprovante-entrega-${fileSlug(orderClientDisplayName(order))}-remessa-${String(delivery.number || 1).padStart(2, "0")}-${data.deliveryDate}.pdf`;
   const blob = doc.output("blob");
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
@@ -2397,7 +2575,7 @@ function syncOrderPartner(order) {
     instagram: order.instagram || "",
     flavors,
     terms: "15 dias após entrega",
-    lastDelivery: order.deliveredAt || order.orderDate || "",
+    lastDelivery: order.lastDeliveryAt || order.deliveredAt || order.orderDate || "",
     visible: existing?.visible ?? false,
     sourceOrderId: order.id,
   };
@@ -2405,9 +2583,9 @@ function syncOrderPartner(order) {
   else state.partners.unshift({ id: id("par"), ...payload });
 }
 
-function salePayloadFromOrderItem(order, item) {
+function salePayloadFromOrderItem(order, item, delivery = {}) {
   return {
-    date: order.deliveredAt || order.orderDate || todayIso(),
+    date: delivery.deliveredAt || order.deliveredAt || order.orderDate || todayIso(),
     partner: order.customerName,
     customerName: order.customerName,
     channel: order.clientType?.includes("parceiro") ? "atacado" : "pedido",
@@ -2419,16 +2597,48 @@ function salePayloadFromOrderItem(order, item) {
     qty: Number(item.qty || 0),
     unitPrice: Number(item.unitPrice || 0),
     discount: 0,
-    delivery: Number(order.deliveryFee || 0),
-    note: `Gerado pelo pedido ${order.code}`,
+    delivery: Number(delivery.deliveryFee ?? order.deliveryFee ?? 0),
+    note: delivery.id ? `Gerado pela remessa ${delivery.number || 1} do pedido ${order.code}` : `Gerado pelo pedido ${order.code}`,
     orderId: order.id,
     orderCode: order.code,
+    deliveryId: delivery.id || "",
+    deliveryNumber: Number(delivery.number || 0),
     orderItemKey: item.key || `${item.productId || item.flavor}-${item.qty}-${item.unitPrice}`,
   };
 }
 
 function syncOrderSales(order) {
   state.sales = state.sales.filter((sale) => sale.orderId !== order.id);
+  const deliveries = orderDeliveries(order);
+  if (deliveries.length) {
+    deliveries.forEach((delivery) => {
+      let deliveryFeePending = Number(delivery.deliveryFee || 0);
+      (delivery.items || []).forEach((deliveryItem) => {
+        const allocations = Array.isArray(deliveryItem.allocations) && deliveryItem.allocations.length
+          ? deliveryItem.allocations
+          : [{ batchCode: "", qty: Number(deliveryItem.qty || 0) }];
+        allocations.forEach((allocation) => {
+          const qty = Number(allocation.qty || 0);
+          if (qty <= 0) return;
+          const item = {
+            key: deliveryItem.orderItemKey,
+            productId: deliveryItem.productId || "",
+            flavor: deliveryItem.flavor || "",
+            batchCode: allocation.batchCode || "",
+            qty,
+            unitPrice: Number(deliveryItem.unitPrice || 0),
+          };
+          state.sales.unshift({
+            id: id("sale"),
+            ...salePayloadFromOrderItem(order, item, { ...delivery, deliveryFee: deliveryFeePending }),
+            orderItemKey: `${deliveryItem.orderItemKey}-${delivery.id}-${allocation.batchCode || "sem-lote"}`,
+          });
+          deliveryFeePending = 0;
+        });
+      });
+    });
+    return;
+  }
   if (order.status !== "entregue") return;
   orderItems(order).forEach((item) => {
     if (Number(item.qty || 0) <= 0) return;
@@ -2470,6 +2680,10 @@ function updateOrderStatus(payload = "") {
   const status = statusParts.join(":");
   const order = byId("orders", orderId);
   if (!order || !ORDER_STATUSES.includes(status)) return;
+  if (status === "entregue" && orderOutstandingQuantity(order) > 0) {
+    window.alert("Ainda há itens pendentes. Registre a remessa pelo botão PDF da entrega; o pedido será concluído automaticamente quando todo o saldo for entregue.");
+    return;
+  }
   order.status = status;
   if (status === "entregue" && !order.deliveredAt) {
     order.deliveredAt = todayIso();
@@ -2538,11 +2752,12 @@ function resetOpenOrderReservations() {
       item.producedQty = 0;
       trimItemAllocationsTo(item, target);
       const manualReserved = orderItemAllocations(item).reduce((sum, allocation) => sum + Number(allocation.qty || 0), 0);
-      item.reservedQty = Math.min(Number(item.qty || manualReserved || 0), manualReserved);
+      const outstanding = orderItemOutstandingQty(item);
+      item.reservedQty = Math.min(outstanding, manualReserved);
       item.producedQty = item.reservedQty;
       item.batchCode = orderItemBatchCodes(item).join(", ");
       item.readyDate = manualAllocations.at(-1)?.date || "";
-      item.productionStatus = item.reservedQty > 0 ? (item.reservedQty >= Number(item.qty || 0) ? "reservado" : "em produção") : "pendente";
+      item.productionStatus = outstanding <= 0 ? "entregue" : item.reservedQty > 0 ? (item.reservedQty >= outstanding ? "reservado" : "em produção") : "pendente";
     });
     refreshOrderReservationStatus(order);
   });
@@ -3712,7 +3927,8 @@ function orderCard(order) {
     ? items
         .map((item) => {
           const reserved = orderItemReservedQty(item);
-          const qty = Number(item.qty || 0);
+          const qty = orderItemOutstandingQty(item);
+          const delivered = orderItemDeliveredQty(item);
           const missing = Math.max(0, qty - reserved);
           const percent = qty ? Math.min(100, (reserved / qty) * 100) : 0;
           const batches = orderItemBatchCodes(item).join(", ");
@@ -3720,7 +3936,7 @@ function orderCard(order) {
             <div class="order-mini-row">
               <div class="order-mini-main">
                 <strong>${escapeHtml(orderProductText(item))}</strong>
-                <span>${number(reserved)}/${number(qty)} reservado${batches ? ` | lote ${escapeHtml(batches)}` : ""}</span>
+                <span>${number(reserved)}/${number(qty)} reservado${delivered ? ` | ${number(delivered)} entregue` : ""}${batches ? ` | lote ${escapeHtml(batches)}` : ""}</span>
                 <i><b style="width:${percent}%"></b></i>
               </div>
               <div class="order-mini-count ${missing ? "is-missing" : "is-ready"}">
@@ -3747,7 +3963,7 @@ function orderCard(order) {
       </div>
       <div class="order-meta-grid">
         <span><b>Tipo</b>${escapeHtml(orderClientTypeLabel(order.clientType))}</span>
-        <span><b>Quantidade</b>${number(orderQuantity(order))} garrafas</span>
+        <span><b>Quantidade</b>${number(orderOutstandingQuantity(order))} pendente(s)<small>${number(orderDeliveredQuantity(order))} entregue(s) de ${number(orderQuantity(order))}</small></span>
         <span><b>Previsão</b>${order.estimatedReadyDate || "-"}<small>${escapeHtml(orderDateNote(order))}</small></span>
         <span><b>Entrega</b>${order.deliveredAt || "pendente"}<small>${due ? `Receber até ${due}` : "Sem cobrança aberta"}</small></span>
         <span><b>Pagamento</b>${order.status === "entregue" ? receivableStatus : "ainda não entregue"}</span>
@@ -3773,7 +3989,9 @@ function orderFlowStatusButton(order, status) {
 
 function orderCompactCard(order) {
   const items = orderItems(order);
-  const qty = orderQuantity(order);
+  const qty = orderOutstandingQuantity(order);
+  const originalQty = orderQuantity(order);
+  const delivered = orderDeliveredQuantity(order);
   const reserved = items.reduce((sum, item) => sum + orderItemReservedQty(item), 0);
   const missing = Math.max(0, qty - reserved);
   const percent = qty ? Math.min(100, (reserved / qty) * 100) : 0;
@@ -3781,14 +3999,15 @@ function orderCompactCard(order) {
   const itemRows = items.length
     ? items
         .map((item) => {
-          const itemQty = Number(item.qty || 0);
+          const itemQty = orderItemOutstandingQty(item);
+          const itemDelivered = orderItemDeliveredQty(item);
           const itemReady = orderItemReservedQty(item);
           const itemMissing = Math.max(0, itemQty - itemReady);
           return `
             <li>
               <span>${escapeHtml(orderFlavorText(item))}</span>
               <strong>${number(itemReady)}/${number(itemQty)}</strong>
-              <small>${itemMissing ? `${number(itemMissing)} faltando` : "ok"}</small>
+              <small>${itemMissing ? `${number(itemMissing)} faltando` : "ok"}${itemDelivered ? ` | ${number(itemDelivered)} entregue` : ""}</small>
             </li>
           `;
         })
@@ -3813,7 +4032,7 @@ function orderCompactCard(order) {
         <div class="order-compact-facts">
           <span><b>Prazo</b>${due ? escapeHtml(shortDate(due)) : "-"}</span>
           <span><b>Valor</b>${brl(orderTotal(order))}</span>
-          <span><b>Qtd.</b>${number(qty)} garrafas</span>
+          <span><b>Saldo</b>${number(qty)} pendente(s)<small>${number(delivered)} entregue(s) de ${number(originalQty)}</small></span>
         </div>
         <ul class="order-compact-items">${itemRows}</ul>
         <div class="order-status-rail" aria-label="Alterar status do pedido">
@@ -3847,7 +4066,7 @@ function renderOrders() {
       ${filteredOrders.length ? filteredOrders.map(orderCompactCard).join("") : `<article class="admin-card"><p class="empty-note">Nenhum pedido ainda. Use “Novo pedido” para começar.</p></article>`}
     </section>
     <section class="metric-grid order-metrics-compact">
-      ${metric("Pedidos abertos", number(openOrders.length), `${number(openOrders.reduce((sum, order) => sum + orderQuantity(order), 0))} garrafas no pipeline`, "pending_actions")}
+      ${metric("Pedidos abertos", number(openOrders.length), `${number(openOrders.reduce((sum, order) => sum + orderOutstandingQuantity(order), 0))} garrafas no pipeline`, "pending_actions")}
       ${metric("Em produção", number(inProduction.length), "Pedidos marcados como em produção", "factory")}
       ${metric("Atenção 7 dias", number(dueSoon.length), "Prontos, atrasados ou próximos da data", "event_upcoming")}
       ${metric("Valor em pedidos", brl(openOrders.reduce((sum, order) => sum + orderTotal(order), 0)), "Receita prevista em pipeline", "request_quote")}
@@ -6335,7 +6554,7 @@ function orderItemRowTemplate(item = {}, clientType = "novo_cliente") {
   return `
     <div class="builder-row order-item-row" hidden>
       <label class="field"><span>Produto / sabor</span><select data-field="productId">${state.products.map((product) => `<option value="${product.id}" ${selectedProductId === product.id ? "selected" : ""}>${escapeHtml(productLabel(product))}</option>`).join("")}</select></label>
-      <label class="field"><span>Qtd. garrafas</span><input data-field="qty" type="number" min="1" step="1" value="${item.qty || 1}"></label>
+      <label class="field"><span>Qtd. garrafas</span><input data-field="qty" type="number" min="${Math.max(1, orderItemDeliveredQty(item))}" step="1" value="${item.qty || 1}"></label>
       <label class="field"><span>Preço unitário</span><input data-field="unitPrice" type="number" min="0" step="0.01" value="${defaultPrice}"></label>
       <label class="field"><span>Status produção</span><select data-field="productionStatus">${ORDER_ITEM_STATUSES.map((option) => `<option value="${option}" ${status === option ? "selected" : ""}>${option}</option>`).join("")}</select></label>
       <label class="field"><span>Pronto em</span><input data-field="readyDate" type="date" value="${item.readyDate || ""}"></label>
@@ -6347,6 +6566,7 @@ function orderItemRowTemplate(item = {}, clientType = "novo_cliente") {
       <input type="hidden" data-field="batchCode" value="${escapeHtml(item.batchCode || "")}">
       <input type="hidden" data-field="producedQty" value="${Number(item.producedQty || 0)}">
       <input type="hidden" data-field="reservedQty" value="${Number(item.reservedQty || 0)}">
+      <input type="hidden" data-field="deliveredQty" value="${Number(item.deliveredQty || 0)}">
       <input type="hidden" data-field="allocations" value="${escapeHtml(allocationsJson)}">
       <input type="hidden" data-field="reservationTarget" value="${item.reservationTarget == null ? "" : Number(item.reservationTarget)}">
       <input type="hidden" data-field="reservationOverride" value="${escapeHtml(reservationOverrideJson)}">
@@ -6429,21 +6649,25 @@ function readOrderItemRow(row) {
       note: allocation.note || "",
     }))
     .filter((allocation) => allocation.batchCode && allocation.qty > 0);
+  const qty = Number(data.qty || 0);
+  const deliveredQty = Math.max(0, Math.min(qty, Number(data.deliveredQty || 0)));
+  const outstandingQty = Math.max(0, qty - deliveredQty);
   const allocatedQty = allocations.reduce((sum, allocation) => sum + Number(allocation.qty || 0), 0);
-  const reservedQty = Math.min(Number(data.qty || 0), Math.max(Number(data.reservedQty || 0), allocatedQty));
+  const reservedQty = Math.min(outstandingQty, Math.max(Number(data.reservedQty || 0), allocatedQty));
   let reservationOverride = null;
   try {
     reservationOverride = JSON.parse(data.reservationOverride || "null");
   } catch {
     reservationOverride = null;
   }
-  const reservationTarget = data.reservationTarget === "" ? null : Math.max(0, Math.min(Number(data.qty || 0), Number(data.reservationTarget || 0)));
+  const reservationTarget = data.reservationTarget === "" ? null : Math.max(0, Math.min(outstandingQty, Number(data.reservationTarget || 0)));
   return {
     productId: product.id,
     productName: productLabel(product),
     flavor: product.flavor,
     key: data.key || id("oi"),
-    qty: Number(data.qty || 0),
+    qty,
+    deliveredQty,
     unitPrice: Number(data.unitPrice || 0),
     productionStatus: data.productionStatus || "pendente",
     producedQty: reservedQty,
@@ -6659,6 +6883,10 @@ function orderForm(orderId) {
     const { items, totalQty, totalValue } = updateOrderPreview(form);
     if (!items.length) {
       window.alert("Adicione pelo menos um item ao pedido.");
+      return;
+    }
+    if (data.status === "entregue" && items.some((item) => orderItemOutstandingQty(item) > 0)) {
+      window.alert("Para concluir um pedido, registre a entrega pelo botão PDF da entrega. Assim o sistema baixa somente a remessa enviada e mantém o saldo pendente corretamente.");
       return;
     }
     const payload = {
@@ -7219,6 +7447,7 @@ function handleAction(action) {
     "reserve-stock": reserveStockForm,
     "adjust-order-reservation": adjustOrderReservationForm,
     "delivery-proof": deliveryProofForm,
+    "delivery-proof-reprint": reprintDeliveryProof,
     "write-off-stock": writeOffStockForm,
     "stock-sale": newSaleForm,
     "reverse-stock": reverseStockForm,

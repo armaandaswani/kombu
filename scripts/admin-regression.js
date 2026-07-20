@@ -56,8 +56,8 @@ const seed = {
       productId: "product-1",
       flavor: "Maracuja",
       date: "2026-07-14",
-      actual: 4,
-      expected: 4,
+      actual: 5,
+      expected: 5,
       status: "aprovado",
       expiry: "2026-11-14",
     },
@@ -120,6 +120,8 @@ async function assertNoHorizontalOverflow(page, label) {
 
 async function assertOldestOrderReservationPriority(browser) {
   const fifoSeed = JSON.parse(JSON.stringify(seed));
+  fifoSeed.batches[0].actual = 4;
+  fifoSeed.batches[0].expected = 4;
   fifoSeed.orders = [
     {
       id: "order-new-small",
@@ -249,24 +251,37 @@ async function run() {
   assert.match(await page.locator(".delivery-proof-payment small").innerText(), /Infinite Pay/);
   assert.match(await page.locator("#deliveryProofQuantity").innerText(), /3 garrafa/);
   assert.match(await page.locator("#deliveryProofTotal").innerText(), /45,00/);
-  const proofPath = "/tmp/kombu-delivery-proof-regression.pdf";
-  const [download] = await Promise.all([
+  const firstProofPath = "/tmp/kombu-delivery-proof-remessa-01.pdf";
+  const [firstDownload] = await Promise.all([
     page.waitForEvent("download"),
     page.click('#deliveryProofForm button[type="submit"]'),
   ]);
-  await download.saveAs(proofPath);
-  const proofBytes = fs.readFileSync(proofPath);
-  assert.ok(proofBytes.length > 7000, "delivery proof should contain both complete A4 copies");
-  assert.strictEqual(proofBytes.subarray(0, 4).toString(), "%PDF");
-  const pdfInfo = execFileSync("pdfinfo", [proofPath], { encoding: "utf8" });
-  assert.match(pdfInfo, /^Pages:\s+2$/m, "delivery proof should contain establishment and customer copies");
+  await firstDownload.saveAs(firstProofPath);
+  assert.match(firstDownload.suggestedFilename(), /remessa-01/);
+  await page.waitForSelector("#adminModal", { state: "hidden" });
+  const firstProofBytes = fs.readFileSync(firstProofPath);
+  assert.ok(firstProofBytes.length > 7000, "first delivery proof should contain both complete A4 copies");
+  assert.strictEqual(firstProofBytes.subarray(0, 4).toString(), "%PDF");
+  const firstPdfInfo = execFileSync("pdfinfo", [firstProofPath], { encoding: "utf8" });
+  assert.match(firstPdfInfo, /^Pages:\s+2$/m, "first delivery proof should contain establishment and customer copies");
   state = await storedState(page);
+  item = state.orders[0].items[0];
   assert.strictEqual(
     state.orders[0].paymentMethod,
     "Prazo – 15 dias corridos após a entrega",
     "default payment term should remain attached to the order",
   );
-  await page.click("#closeAdminModal");
+  assert.strictEqual(item.qty, 4, "a partial delivery must preserve the original ordered quantity");
+  assert.strictEqual(item.deliveredQty, 3, "the first delivery must persist only the three bottles sent now");
+  assert.strictEqual(state.orders[0].deliveries.length, 1);
+  assert.strictEqual(state.orders[0].deliveries[0].items[0].qty, 3);
+  assert.strictEqual(state.orders[0].deliveries[0].number, 1);
+  assert.strictEqual(
+    state.sales.filter((sale) => sale.movementType === "venda").reduce((sum, sale) => sum + Number(sale.qty || 0), 0),
+    3,
+    "only the first shipment may leave inventory",
+  );
+  assert.strictEqual(item.allocations.reduce((sum, allocation) => sum + allocation.qty, 0), 1, "the remaining bottle should be reserved for the next shipment");
 
   await updatedCard.locator('[data-action="dashboard-edit-partner:partner-1"]').click();
   await page.waitForSelector("#adminModal.is-open");
@@ -274,6 +289,40 @@ async function run() {
   assert.strictEqual(await page.locator("#adminModalTitle").innerText(), "Editar parceiro");
   assert.strictEqual(await page.locator('#editRecordForm input[name="name"]').inputValue(), "Mercado Teste");
   await page.click("#closeAdminModal");
+
+  await page.selectOption("#mobileModuleSelector", "dashboard");
+  const partialCard = page.locator(".order-ready-card", { hasText: "Ana Teste" });
+  assert.match(await partialCard.innerText(), /3 já entregue/);
+  assert.match(await partialCard.innerText(), /1\/1/);
+  await partialCard.locator('[data-action="delivery-proof:order-1"]').click();
+  await page.waitForSelector("#deliveryProofForm");
+  assert.strictEqual(await page.locator('[name="deliveredQty_0"]').inputValue(), "1", "the second proof may contain only the newly ready balance");
+  await page.locator(".delivery-history summary").click();
+  assert.match(await page.locator(".delivery-history").innerText(), /Remessa 1/);
+  assert.match(await page.locator("#deliveryProofQuantity").innerText(), /1 garrafa/);
+  assert.match(await page.locator("#deliveryProofTotal").innerText(), /15,00/);
+  const secondProofPath = "/tmp/kombu-delivery-proof-remessa-02.pdf";
+  const [secondDownload] = await Promise.all([
+    page.waitForEvent("download"),
+    page.click('#deliveryProofForm button[type="submit"]'),
+  ]);
+  await secondDownload.saveAs(secondProofPath);
+  assert.match(secondDownload.suggestedFilename(), /remessa-02/);
+  await page.waitForSelector("#adminModal", { state: "hidden" });
+  const secondPdfInfo = execFileSync("pdfinfo", [secondProofPath], { encoding: "utf8" });
+  assert.match(secondPdfInfo, /^Pages:\s+2$/m, "second delivery proof should also contain two A4 copies");
+  state = await storedState(page);
+  item = state.orders[0].items[0];
+  assert.strictEqual(item.qty, 4);
+  assert.strictEqual(item.deliveredQty, 4);
+  assert.strictEqual(state.orders[0].deliveries.length, 2);
+  assert.strictEqual(state.orders[0].deliveries[1].items[0].qty, 1);
+  assert.strictEqual(state.orders[0].status, "entregue");
+  assert.strictEqual(
+    state.sales.filter((sale) => sale.movementType === "venda").reduce((sum, sale) => sum + Number(sale.qty || 0), 0),
+    4,
+    "the two shipments together must sell exactly the original order quantity",
+  );
 
   await page.selectOption("#mobileModuleSelector", "orders");
   const compactOrder = page.locator(".order-compact-card", { hasText: "Ana Teste" });
@@ -299,10 +348,10 @@ async function run() {
 
   state = await storedState(page);
   item = state.orders[0].items[0];
-  assert.strictEqual(item.allocations.reduce((sum, allocation) => sum + allocation.qty, 0), 3, "write-off must not consume reserved stock");
-  assert.strictEqual(state.sales.length, 1);
-  assert.strictEqual(state.sales[0].movementType, "perda");
-  assert.strictEqual(state.sales[0].qty, 1);
+  assert.strictEqual(item.allocations.reduce((sum, allocation) => sum + allocation.qty, 0), 0, "completed deliveries must consume their reservations");
+  const losses = state.sales.filter((sale) => sale.movementType === "perda");
+  assert.strictEqual(losses.length, 1);
+  assert.strictEqual(losses[0].qty, 1);
   assert.match(state.audit[0].detail, /danificada/);
   assert.match(state.audit[0].detail, /Garrafa trincada/);
 
@@ -311,7 +360,7 @@ async function run() {
 
   await page.selectOption("#mobileModuleSelector", "sales");
   await page.waitForSelector('[data-sales-period="month"]');
-  assert.strictEqual(await page.locator(".sale-compact-card").count(), 1, "the current month should show its stock movement");
+  assert.ok((await page.locator(".sale-compact-card").count()) >= 3, "the current month should show both deliveries and the write-off");
   await page.click('[data-sales-period="custom"]');
   await page.fill('[data-sales-custom="start"]', "2099-01-01");
   await page.locator('[data-sales-custom="start"]').dispatchEvent("change");
@@ -321,7 +370,7 @@ async function run() {
 
   await assertOldestOrderReservationPriority(browser);
   await browser.close();
-  console.log("Admin regression: password visibility, compact order editing, missing-only dashboard, A4 delivery proof, period filters, FIFO order reservation, reservation override, partner deep-link, audit history and write-off passed.");
+  console.log("Admin regression: password visibility, compact order editing, two partial A4 deliveries, shipment history, period filters, FIFO order reservation, reservation override, partner deep-link, audit history and write-off passed.");
 }
 
 run().catch((error) => {
