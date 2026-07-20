@@ -2770,6 +2770,28 @@ textarea:focus-visible {
   padding: 9px 10px;
 }
 
+.order-ready-items .order-ready-items-title {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  padding: 0 1px 2px;
+}
+
+.order-ready-items.is-missing .order-ready-items-title strong,
+.order-ready-items.is-missing > div:not(.order-ready-items-title) span b {
+  color: #9b5c00;
+}
+
+.order-ready-items.is-missing > div:not(.order-ready-items-title) {
+  border-color: rgba(183, 122, 12, 0.2);
+  background: #fffaf0;
+}
+
+.order-ready-items span b {
+  font: inherit;
+  font-weight: 900;
+}
+
 .order-ready-items strong {
   min-width: 0;
   color: var(--ink);

@@ -1939,9 +1939,10 @@ function orderReadyCard(row, view = "summary") {
   const status = row.ready >= row.qty ? "completo" : row.ready > 0 ? "parcial" : "aguardando";
   const readyItems = row.items.filter((item) => item.ready > 0);
   const missingItems = row.items.filter((item) => item.missing > 0);
-  const selectedItems = view === "missing" ? missingItems : readyItems.length ? readyItems : missingItems;
-  const visibleItems = selectedItems.slice(0, 4);
+  const selectedItems = row.missing > 0 || view === "missing" ? missingItems : readyItems;
+  const visibleItems = row.missing > 0 || view === "missing" ? selectedItems : selectedItems.slice(0, 4);
   const extra = selectedItems.length - visibleItems.length;
+  const itemListLabel = row.missing > 0 ? "Sabores que faltam" : "Sabores separados";
   return `
     <article class="order-ready-card is-${status}" data-order-ready-card="${row.order.id}">
       <div class="order-ready-head">
@@ -1958,7 +1959,11 @@ function orderReadyCard(row, view = "summary") {
       <div class="order-ready-meter" aria-label="${number(row.ready)} de ${number(row.qty)} garrafas separadas">
         <i style="width:${row.percent}%"></i>
       </div>
-      <div class="order-ready-items">
+      <div class="order-ready-items ${row.missing > 0 ? "is-missing" : "is-ready"}">
+        <div class="order-ready-items-title">
+          <strong>${itemListLabel}</strong>
+          <span>${row.missing > 0 ? `${number(missingItems.length)} sabor(es)` : "pedido completo"}</span>
+        </div>
         ${
           visibleItems.length
             ? visibleItems
@@ -1967,8 +1972,8 @@ function orderReadyCard(row, view = "summary") {
                     <div>
                       <strong>${escapeHtml(item.product)}</strong>
                       <span>${
-                        view === "missing"
-                          ? `${number(item.missing)} faltando de ${number(item.qty)}`
+                        row.missing > 0 || view === "missing"
+                          ? `<b>${number(item.missing)} faltando</b> de ${number(item.qty)}`
                           : item.ready
                             ? `${number(item.ready)} pronta(s) de ${number(item.qty)}`
                             : `${number(item.missing)} faltando`
@@ -1982,9 +1987,9 @@ function orderReadyCard(row, view = "summary") {
         ${extra > 0 ? `<div class="order-ready-more">+${extra} sabor(es)</div>` : ""}
       </div>
       <div class="order-ready-actions">
+        ${actionButton(`delivery-proof:${row.order.id}`, "PDF da entrega", "picture_as_pdf", "btn-primary")}
         ${actionButton(`adjust-order-reservation:${row.order.id}`, "Ajustar reserva", "tune", "btn-outline")}
         ${row.partner ? actionButton(`dashboard-edit-partner:${row.partner.id}`, "Editar parceiro", "edit", "btn-outline") : ""}
-        ${actionButton(`delivery-proof:${row.order.id}`, "Comprovante", "description", "btn-outline")}
       </div>
     </article>
   `;
@@ -2049,7 +2054,7 @@ function deliveryProofForm(orderId) {
         </div>
         <div class="input-grid delivery-proof-meta">
           <label class="field"><span>Data da entrega</span><input name="deliveryDate" type="date" value="${escapeHtml(order.deliveredAt || todayIso())}" required></label>
-          <label class="field"><span>Forma de pagamento</span><select name="paymentMethod" class="admin-select" required><option value="">Selecione</option>${PAYMENT_METHODS.map((method) => `<option value="${method}" ${order.paymentMethod === method ? "selected" : ""}>${method}</option>`).join("")}</select></label>
+          <label class="field"><span>Forma de pagamento</span><select name="paymentMethod" class="admin-select"><option value="">Não informada</option>${PAYMENT_METHODS.map((method) => `<option value="${method}" ${order.paymentMethod === method ? "selected" : ""}>${method}</option>`).join("")}</select></label>
           <label class="field"><span>Nome de quem recebe</span><input name="recipientName" placeholder="Preencher no PDF ou à mão"></label>
           <label class="field"><span>Frete / entrega</span><input name="deliveryFee" type="number" min="0" step="0.01" value="${inputNumber(order.deliveryFee || 0, 2)}" inputmode="decimal"></label>
         </div>
@@ -2093,7 +2098,7 @@ function deliveryProofForm(orderId) {
   };
   form.addEventListener("input", updateTotal);
   updateTotal();
-  form.addEventListener("submit", async (event) => {
+  form.addEventListener("submit", (event) => {
     event.preventDefault();
     const selectedQuantity = [...form.querySelectorAll("[data-proof-qty]")].reduce(
       (sum, input) => sum + Number(input.value || 0),
@@ -2103,16 +2108,11 @@ function deliveryProofForm(orderId) {
       window.alert("Informe pelo menos uma garrafa entregue.");
       return;
     }
-    if (!form.elements.paymentMethod.value) {
-      window.alert("Selecione a forma de pagamento.");
-      form.elements.paymentMethod.focus();
-      return;
-    }
     const button = form.querySelector('button[type="submit"]');
     button.disabled = true;
     button.querySelector(".material-symbols-outlined").textContent = "hourglass_top";
     try {
-      await generateDeliveryProofPdf(order, form);
+      generateDeliveryProofPdf(order, form);
       order.paymentMethod = form.elements.paymentMethod.value;
       order.deliveryFee = Math.max(0, Number(form.elements.deliveryFee.value || 0));
       order.deliveryNotes = form.elements.notes.value.trim();
@@ -2135,19 +2135,7 @@ function fileSlug(value) {
     .slice(0, 60) || "cliente";
 }
 
-async function imageDataUrl(url) {
-  const response = await fetch(url);
-  if (!response.ok) throw new Error(`Falha ao carregar imagem: ${response.status}`);
-  const blob = await response.blob();
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result);
-    reader.onerror = reject;
-    reader.readAsDataURL(blob);
-  });
-}
-
-async function generateDeliveryProofPdf(order, form) {
+function generateDeliveryProofPdf(order, form) {
   const jsPdf = window.jspdf?.jsPDF;
   if (!jsPdf) throw new Error("jsPDF não foi carregado.");
   const data = Object.fromEntries(new FormData(form).entries());
@@ -2159,7 +2147,6 @@ async function generateDeliveryProofPdf(order, form) {
     }))
     .filter((item) => item.qty > 0);
   if (!proofItems.length) throw new Error("Comprovante sem itens.");
-  if (!data.paymentMethod) throw new Error("Forma de pagamento não informada.");
   const deliveryFee = Math.max(0, Number(data.deliveryFee || 0));
   const productsTotal = proofItems.reduce((sum, item) => sum + item.qty * item.unitPrice, 0);
   const deliveredQuantity = proofItems.reduce((sum, item) => sum + item.qty, 0);
@@ -2175,17 +2162,13 @@ async function generateDeliveryProofPdf(order, form) {
   doc.setProperties({ title: `Comprovante de entrega - ${orderClientDisplayName(order)}`, subject: "Comprovante de entrega Kombú", author: "Kombú Kombucha" });
   doc.setFillColor(...green);
   doc.rect(0, 0, pageWidth, 31, "F");
-  try {
-    const logo = await imageDataUrl("assets/kombu-k-logo.png");
-    doc.addImage(logo, "PNG", margin, 6, 19, 19, undefined, "FAST");
-  } catch {
-    doc.setFillColor(255, 255, 255);
-    doc.circle(margin + 9.5, 15.5, 9.5, "F");
-    doc.setTextColor(...green);
-    doc.setFont("times", "bold");
-    doc.setFontSize(16);
-    doc.text("K", margin + 9.5, 19.5, { align: "center" });
-  }
+  // Keep PDF creation synchronous so iOS Safari retains the user's download gesture.
+  doc.setFillColor(255, 255, 255);
+  doc.circle(margin + 9.5, 15.5, 9.5, "F");
+  doc.setTextColor(...green);
+  doc.setFont("times", "bold");
+  doc.setFontSize(16);
+  doc.text("K", margin + 9.5, 19.5, { align: "center" });
   doc.setTextColor(255, 255, 255);
   doc.setFont("times", "bold");
   doc.setFontSize(17);
@@ -2206,7 +2189,7 @@ async function generateDeliveryProofPdf(order, form) {
   doc.line(margin, y, pageWidth - margin, y);
   y += 7;
   const detailRows = [
-    ["Entrega", fullDate(data.deliveryDate), "Forma de pagamento", data.paymentMethod],
+    ["Entrega", fullDate(data.deliveryDate), "Forma de pagamento", data.paymentMethod || "Não informada"],
     ["Data do pedido", fullDate(order.orderDate), "Quantidade entregue", `${number(deliveredQuantity)} garrafa(s)`],
     ["Negócio", order.businessName || "-", "Status do pagamento", orderReceivableStatus(order)],
     ["WhatsApp", order.whatsapp || "-", "Recebedor", data.recipientName || "A preencher"],
@@ -2311,7 +2294,17 @@ async function generateDeliveryProofPdf(order, form) {
     doc.text("Kombú Kombucha da Amazônia | Manaus - AM | @kombu.amazonia", margin, 289);
     doc.text(`${page}/${pageCount}`, pageWidth - margin, 289, { align: "right" });
   }
-  doc.save(`comprovante-entrega-${fileSlug(orderClientDisplayName(order))}-${data.deliveryDate}.pdf`);
+  const filename = `comprovante-entrega-${fileSlug(orderClientDisplayName(order))}-${data.deliveryDate}.pdf`;
+  const blob = doc.output("blob");
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  link.style.display = "none";
+  document.body.append(link);
+  link.click();
+  link.remove();
+  window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
 }
 
 function paymentReminderRows() {
@@ -3721,7 +3714,7 @@ function orderCard(order) {
         ${itemRows}
       </div>
       <div class="order-card-actions">
-        ${rowActions([tableAction(`edit-order:${order.id}`, "Editar pedido"), tableAction(`delete-order:${order.id}`, "Excluir pedido", "delete", "danger")])}
+        ${rowActions([tableAction(`delivery-proof:${order.id}`, "PDF da entrega", "picture_as_pdf"), tableAction(`edit-order:${order.id}`, "Editar pedido"), tableAction(`delete-order:${order.id}`, "Excluir pedido", "delete", "danger")])}
       </div>
     </article>
   `;
@@ -3785,6 +3778,7 @@ function orderCompactCard(order) {
           ${ORDER_FLOW_STATUSES.map((status) => orderFlowStatusButton(order, status)).join("")}
         </div>
         <div class="order-compact-actions">
+          ${actionButton(`delivery-proof:${order.id}`, "PDF da entrega", "picture_as_pdf", "btn-primary")}
           ${actionButton(`edit-order:${order.id}`, "Editar detalhes", "edit", "btn-outline")}
         </div>
       </div>
@@ -4102,10 +4096,23 @@ function renderSchema() {
   `;
 }
 
+function auditDetailWithFlavor(detail) {
+  return state.batches.reduce((result, batch) => {
+    const code = String(batch.code || "").trim();
+    const product = productForBatch(batch);
+    const flavor = String(batch.flavor || product?.flavor || product?.name || "").trim();
+    if (!code || !flavor || !result.includes(code) || normalizeText(result).includes(normalizeText(flavor))) return result;
+
+    const escapedCode = code.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const withLabeledBatch = result.replace(new RegExp(`lote\\s+${escapedCode}`, "gi"), `sabor ${flavor} | lote ${code}`);
+    return withLabeledBatch === result ? result.split(code).join(`${flavor} | lote ${code}`) : withLabeledBatch;
+  }, String(detail || ""));
+}
+
 function renderAuditRows(limit) {
   return state.audit
     .slice(0, limit)
-    .map((entry) => `<div class="audit-row"><strong>${entry.action}</strong><span>${new Date(entry.at).toLocaleString("pt-BR")} | ${entry.user}</span><span>${entry.detail}</span></div>`)
+    .map((entry) => `<div class="audit-row"><strong>${escapeHtml(entry.action)}</strong><span>${escapeHtml(new Date(entry.at).toLocaleString("pt-BR"))} | ${escapeHtml(entry.user)}</span><span>${escapeHtml(auditDetailWithFlavor(entry.detail))}</span></div>`)
     .join("");
 }
 
@@ -5205,7 +5212,10 @@ function quickSaleForm() {
       delivery: 0,
       note: "Venda rápida pelo dashboard",
     });
-    addAudit(data.priceType === "gratis" ? "Saída registrada" : "Venda registrada", `${number(qty)} garrafas do lote ${data.batchCode} para ${data.customerName}`);
+    addAudit(
+      data.priceType === "gratis" ? "Saída registrada" : "Venda registrada",
+      `${number(qty)} garrafa(s) de ${batch?.flavor || product?.name || "sabor não identificado"} | lote ${data.batchCode} | ${data.customerName}`,
+    );
     closeModal();
     render();
   });
@@ -5294,7 +5304,10 @@ function newSaleForm(batchCode = "") {
       delivery: Number(data.delivery || 0),
       note: data.note || "",
     });
-    addAudit(data.movementType === "venda" ? "Venda registrada" : "Saída registrada", `${number(qty)} garrafas do lote ${data.batchCode} para ${data.customerName}`);
+    addAudit(
+      data.movementType === "venda" ? "Venda registrada" : "Saída registrada",
+      `${number(qty)} garrafa(s) de ${batch?.flavor || product?.name || "sabor não identificado"} | lote ${data.batchCode} | ${data.customerName}`,
+    );
     closeModal();
     render();
   });

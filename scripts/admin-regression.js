@@ -88,7 +88,14 @@ const seed = {
   leads: [],
   purchases: [],
   expenses: [],
-  audit: [],
+  audit: [
+    {
+      at: "2026-07-14T12:00:00.000Z",
+      user: "Owner / Admin",
+      action: "Venda registrada",
+      detail: "1 garrafa do lote LOT-TEST-1 para Ana Teste",
+    },
+  ],
   settings: {
     globalRetailPrice: 22,
     globalWholesalePrice: 15,
@@ -189,6 +196,10 @@ async function run() {
   await page.click('#loginForm button[type="submit"]');
   await page.waitForSelector("#adminShell:not(.is-locked)");
 
+  const legacySaleAudit = page.locator(".audit-row", { hasText: "LOT-TEST-1" });
+  assert.match(await legacySaleAudit.innerText(), /Maracuja/);
+  assert.match(await legacySaleAudit.innerText(), /lote LOT-TEST-1/);
+
   const readyCard = page.locator(".order-ready-card", { hasText: "Ana Teste" });
   await assert.doesNotReject(() => readyCard.waitFor());
   assert.match(await readyCard.innerText(), /4\/4/);
@@ -212,7 +223,11 @@ async function run() {
   assert.strictEqual(state.audit[0].user, "Owner / Admin");
 
   const updatedCard = page.locator(".order-ready-card", { hasText: "Ana Teste" });
-  assert.match(await updatedCard.innerText(), /3\/4/);
+  const updatedCardText = await updatedCard.innerText();
+  assert.match(updatedCardText, /3\/4/);
+  assert.match(updatedCardText, /Sabores que faltam/);
+  assert.match(updatedCardText, /Maracuja/);
+  assert.match(updatedCardText, /1 faltando de 4/);
 
   await page.click('[data-dashboard-order-view="missing"]');
   const missingCard = page.locator(".order-ready-card", { hasText: "Ana Teste" });
@@ -234,7 +249,7 @@ async function run() {
   ]);
   await download.saveAs(proofPath);
   const proofBytes = fs.readFileSync(proofPath);
-  assert.ok(proofBytes.length > 5000, "delivery proof should contain a real A4 PDF");
+  assert.ok(proofBytes.length > 4000, "delivery proof should contain a real A4 PDF");
   assert.strictEqual(proofBytes.subarray(0, 4).toString(), "%PDF");
   state = await storedState(page);
   assert.strictEqual(state.orders[0].paymentMethod, "Pix", "selected payment method should remain attached to the order");
@@ -250,6 +265,7 @@ async function run() {
   await page.selectOption("#mobileModuleSelector", "orders");
   const compactOrder = page.locator(".order-compact-card", { hasText: "Ana Teste" });
   await compactOrder.locator("summary").click();
+  assert.match(await compactOrder.locator('[data-action="delivery-proof:order-1"]').innerText(), /PDF da entrega/);
   await compactOrder.locator('[data-action="edit-order:order-1"]').click();
   await page.waitForSelector("#orderForm");
   assert.strictEqual(await page.locator(".order-item-selector").count(), 1, "order editor should start with a compact flavor selector");
