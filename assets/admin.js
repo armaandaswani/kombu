@@ -13,6 +13,7 @@ const ORDER_CLIENT_TYPES = [
   { value: "parceiro_recorrente", label: "Parceiro recorrente", price: "wholesale" },
 ];
 const PAYMENT_STATUSES = ["aberto", "aguardando pagamento", "pago", "atrasado", "cancelado"];
+const PAYMENT_METHODS = ["Pix", "Dinheiro", "Cartão", "Boleto", "Transferência", "A prazo", "Outro"];
 const RECURRING_RETAIL_PRICE = 20;
 const GLOBAL_RETAIL_PRICE = 22;
 const GLOBAL_WHOLESALE_PRICE = 15;
@@ -571,6 +572,7 @@ let currentRole = "Owner / Admin";
 let currentStockView = "kombuchas";
 let currentLocale = localStorage.getItem(LOCALE_KEY) || "pt";
 let currentSalesPeriod = "month";
+let currentDashboardOrderView = "summary";
 let salesCustomStart = "";
 let salesCustomEnd = "";
 let cloudSyncReady = false;
@@ -1536,6 +1538,27 @@ function isOpenOrder(order) {
   return !["entregue", "cancelado"].includes(order?.status);
 }
 
+function orderReservationTimestamp(order = {}) {
+  const createdAt = Date.parse(String(order.createdAt || ""));
+  if (Number.isFinite(createdAt)) return createdAt;
+  const orderDate = Date.parse(String(order.orderDate || ""));
+  return Number.isFinite(orderDate) ? orderDate : Number.MAX_SAFE_INTEGER;
+}
+
+function compareOrdersByReservationPriority(a = {}, b = {}) {
+  const timestampDifference = orderReservationTimestamp(a) - orderReservationTimestamp(b);
+  if (timestampDifference) return timestampDifference;
+  const orderDateDifference = String(a.orderDate || "").localeCompare(String(b.orderDate || ""));
+  if (orderDateDifference) return orderDateDifference;
+  const codeDifference = String(a.code || "").localeCompare(String(b.code || ""));
+  if (codeDifference) return codeDifference;
+  return String(a.id || "").localeCompare(String(b.id || ""));
+}
+
+function openOrdersByReservationPriority() {
+  return (state.orders || []).filter(isOpenOrder).sort(compareOrdersByReservationPriority);
+}
+
 function orderItemAllocations(item = {}) {
   const clean = (Array.isArray(item.allocations) ? item.allocations : [])
     .map((allocation) => ({
@@ -1751,13 +1774,7 @@ function batchMatchesOrderItem(batch, item = {}) {
 
 function reservationOptionsForBatch(batch) {
   if (!batch) return [];
-  return (state.orders || [])
-    .filter(isOpenOrder)
-    .sort((a, b) =>
-      String(a.neededBy || a.estimatedReadyDate || a.orderDate || a.createdAt || "").localeCompare(
-        String(b.neededBy || b.estimatedReadyDate || b.orderDate || b.createdAt || ""),
-      ),
-    )
+  return openOrdersByReservationPriority()
     .flatMap((order) =>
       orderItems(order)
         .map((item, index) => ({ order, item, index, need: orderItemRemainingQty(item) }))
@@ -1918,14 +1935,15 @@ function orderReadyRows() {
     });
 }
 
-function orderReadyCard(row) {
+function orderReadyCard(row, view = "summary") {
   const status = row.ready >= row.qty ? "completo" : row.ready > 0 ? "parcial" : "aguardando";
   const readyItems = row.items.filter((item) => item.ready > 0);
   const missingItems = row.items.filter((item) => item.missing > 0);
-  const visibleItems = (readyItems.length ? readyItems : missingItems).slice(0, 4);
-  const extra = (readyItems.length ? readyItems : missingItems).length - visibleItems.length;
+  const selectedItems = view === "missing" ? missingItems : readyItems.length ? readyItems : missingItems;
+  const visibleItems = selectedItems.slice(0, 4);
+  const extra = selectedItems.length - visibleItems.length;
   return `
-    <article class="order-ready-card is-${status}">
+    <article class="order-ready-card is-${status}" data-order-ready-card="${row.order.id}">
       <div class="order-ready-head">
         <div>
           <strong>${escapeHtml(row.client)}</strong>
@@ -1948,7 +1966,13 @@ function orderReadyCard(row) {
                   (item) => `
                     <div>
                       <strong>${escapeHtml(item.product)}</strong>
-                      <span>${item.ready ? `${number(item.ready)} pronta(s) de ${number(item.qty)}` : `${number(item.missing)} faltando`}</span>
+                      <span>${
+                        view === "missing"
+                          ? `${number(item.missing)} faltando de ${number(item.qty)}`
+                          : item.ready
+                            ? `${number(item.ready)} pronta(s) de ${number(item.qty)}`
+                            : `${number(item.missing)} faltando`
+                      }</span>
                     </div>
                   `,
                 )
@@ -1960,24 +1984,334 @@ function orderReadyCard(row) {
       <div class="order-ready-actions">
         ${actionButton(`adjust-order-reservation:${row.order.id}`, "Ajustar reserva", "tune", "btn-outline")}
         ${row.partner ? actionButton(`dashboard-edit-partner:${row.partner.id}`, "Editar parceiro", "edit", "btn-outline") : ""}
+        ${actionButton(`delivery-proof:${row.order.id}`, "Comprovante", "description", "btn-outline")}
       </div>
     </article>
   `;
 }
 
 function dashboardReadyOrders() {
-  const rows = orderReadyRows();
+  const allRows = orderReadyRows();
+  const rows = currentDashboardOrderView === "missing" ? allRows.filter((row) => row.missing > 0) : allRows;
   return `
     <section class="admin-card dashboard-ready-card">
       <div class="dashboard-card-head">
-        <h3>${tr("Pronto por cliente")}</h3>
-        <span>${tr("Separado para entrega")}</span>
+        <div>
+          <h3>${tr("Pronto por cliente")}</h3>
+          <span>${tr("Separado para entrega")}</span>
+        </div>
+        <div class="segmented dashboard-order-view" aria-label="Filtrar pedidos do dashboard">
+          <button type="button" data-dashboard-order-view="summary" class="${currentDashboardOrderView === "summary" ? "is-active" : ""}">Resumo</button>
+          <button type="button" data-dashboard-order-view="missing" class="${currentDashboardOrderView === "missing" ? "is-active" : ""}">Só faltantes</button>
+        </div>
       </div>
       <div class="order-ready-grid">
-        ${rows.length ? rows.slice(0, 6).map(orderReadyCard).join("") : `<p class="empty-note">Nenhum pedido aberto com garrafas para separar.</p>`}
+        ${
+          rows.length
+            ? rows.slice(0, 6).map((row) => orderReadyCard(row, currentDashboardOrderView)).join("")
+            : `<p class="empty-note">${currentDashboardOrderView === "missing" ? "Nenhuma garrafa faltando nos pedidos abertos." : "Nenhum pedido aberto com garrafas para separar."}</p>`
+        }
       </div>
     </section>
   `;
+}
+
+function fullDate(dateIso) {
+  if (!dateIso) return "-";
+  const date = new Date(`${String(dateIso).slice(0, 10)}T12:00:00`);
+  return Number.isNaN(date.getTime()) ? String(dateIso) : new Intl.DateTimeFormat("pt-BR").format(date);
+}
+
+function deliveryProofDefaultQty(item = {}) {
+  return Math.max(0, Math.min(Number(item.qty || 0), orderItemReservedQty(item)));
+}
+
+function deliveryProofForm(orderId) {
+  const order = byId("orders", orderId);
+  if (!order) {
+    window.alert("Pedido não encontrado. Atualize a página e tente novamente.");
+    return;
+  }
+  const items = orderItems(order).filter((item) => Number(item.qty || 0) > 0);
+  if (!items.length) {
+    window.alert("Este pedido não possui sabores para incluir no comprovante.");
+    return;
+  }
+  openModal(
+    "Comprovante de entrega",
+    "Pedidos",
+    `
+      <form id="deliveryProofForm" data-order-id="${escapeHtml(order.id)}">
+        <div class="result-card delivery-proof-customer">
+          <small>Cliente</small>
+          <strong>${escapeHtml(orderClientDisplayName(order))}</strong>
+          <span>${number(orderQuantity(order))} garrafa(s) no pedido</span>
+        </div>
+        <div class="input-grid delivery-proof-meta">
+          <label class="field"><span>Data da entrega</span><input name="deliveryDate" type="date" value="${escapeHtml(order.deliveredAt || todayIso())}" required></label>
+          <label class="field"><span>Forma de pagamento</span><select name="paymentMethod" class="admin-select" required><option value="">Selecione</option>${PAYMENT_METHODS.map((method) => `<option value="${method}" ${order.paymentMethod === method ? "selected" : ""}>${method}</option>`).join("")}</select></label>
+          <label class="field"><span>Nome de quem recebe</span><input name="recipientName" placeholder="Preencher no PDF ou à mão"></label>
+          <label class="field"><span>Frete / entrega</span><input name="deliveryFee" type="number" min="0" step="0.01" value="${inputNumber(order.deliveryFee || 0, 2)}" inputmode="decimal"></label>
+        </div>
+        <fieldset class="delivery-proof-items">
+          <legend>Quantidade entregue</legend>
+          <p>As quantidades começam pelo que já está separado para este cliente. Ajuste somente o que irá nesta entrega.</p>
+          ${items
+            .map(
+              (item, index) => `
+                <label class="delivery-proof-item">
+                  <span><strong>${escapeHtml(orderFlavorText(item))}</strong><small>${brl(item.unitPrice)} por garrafa | pedido: ${number(item.qty)}</small></span>
+                  <input name="deliveredQty_${index}" type="number" min="0" max="${Number(item.qty || 0)}" step="1" value="${deliveryProofDefaultQty(item)}" inputmode="numeric" data-proof-qty data-unit-price="${Number(item.unitPrice || 0)}" required>
+                </label>
+              `,
+            )
+            .join("")}
+        </fieldset>
+        <label class="field"><span>Observações no comprovante</span><textarea name="notes" placeholder="Condição da entrega, caixas, devoluções ou outra observação.">${escapeHtml(order.deliveryNotes || "")}</textarea></label>
+        <div class="result-card delivery-proof-total" aria-live="polite">
+          <small>Total desta entrega</small>
+          <strong id="deliveryProofTotal">${brl(0)}</strong>
+          <span id="deliveryProofQuantity">0 garrafa(s)</span>
+        </div>
+        <button class="btn btn-primary" type="submit">
+          <span class="material-symbols-outlined" aria-hidden="true">picture_as_pdf</span>
+          Baixar PDF A4
+        </button>
+      </form>
+    `,
+  );
+  const form = document.querySelector("#deliveryProofForm");
+  const updateTotal = () => {
+    const quantity = [...form.querySelectorAll("[data-proof-qty]")].reduce((sum, input) => sum + Number(input.value || 0), 0);
+    const productsTotal = [...form.querySelectorAll("[data-proof-qty]")].reduce(
+      (sum, input) => sum + Number(input.value || 0) * Number(input.dataset.unitPrice || 0),
+      0,
+    );
+    const total = productsTotal + Number(form.elements.deliveryFee.value || 0);
+    form.querySelector("#deliveryProofTotal").textContent = brl(total);
+    form.querySelector("#deliveryProofQuantity").textContent = `${number(quantity)} garrafa(s)`;
+  };
+  form.addEventListener("input", updateTotal);
+  updateTotal();
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const selectedQuantity = [...form.querySelectorAll("[data-proof-qty]")].reduce(
+      (sum, input) => sum + Number(input.value || 0),
+      0,
+    );
+    if (selectedQuantity <= 0) {
+      window.alert("Informe pelo menos uma garrafa entregue.");
+      return;
+    }
+    if (!form.elements.paymentMethod.value) {
+      window.alert("Selecione a forma de pagamento.");
+      form.elements.paymentMethod.focus();
+      return;
+    }
+    const button = form.querySelector('button[type="submit"]');
+    button.disabled = true;
+    button.querySelector(".material-symbols-outlined").textContent = "hourglass_top";
+    try {
+      await generateDeliveryProofPdf(order, form);
+      order.paymentMethod = form.elements.paymentMethod.value;
+      order.deliveryFee = Math.max(0, Number(form.elements.deliveryFee.value || 0));
+      order.deliveryNotes = form.elements.notes.value.trim();
+      order.updatedAt = new Date().toISOString();
+      addAudit("Comprovante de entrega gerado", `${orderClientDisplayName(order)} | ${form.elements.deliveryDate.value}`);
+    } catch (error) {
+      console.error(error);
+      window.alert("Não foi possível gerar o PDF. Atualize a página e tente novamente.");
+    } finally {
+      button.disabled = false;
+      button.querySelector(".material-symbols-outlined").textContent = "picture_as_pdf";
+    }
+  });
+}
+
+function fileSlug(value) {
+  return normalizeText(value)
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 60) || "cliente";
+}
+
+async function imageDataUrl(url) {
+  const response = await fetch(url);
+  if (!response.ok) throw new Error(`Falha ao carregar imagem: ${response.status}`);
+  const blob = await response.blob();
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+}
+
+async function generateDeliveryProofPdf(order, form) {
+  const jsPdf = window.jspdf?.jsPDF;
+  if (!jsPdf) throw new Error("jsPDF não foi carregado.");
+  const data = Object.fromEntries(new FormData(form).entries());
+  const proofItems = orderItems(order)
+    .map((item, index) => ({
+      flavor: orderFlavorText(item),
+      qty: Math.max(0, Math.min(Number(item.qty || 0), Number(data[`deliveredQty_${index}`] || 0))),
+      unitPrice: Number(item.unitPrice || 0),
+    }))
+    .filter((item) => item.qty > 0);
+  if (!proofItems.length) throw new Error("Comprovante sem itens.");
+  if (!data.paymentMethod) throw new Error("Forma de pagamento não informada.");
+  const deliveryFee = Math.max(0, Number(data.deliveryFee || 0));
+  const productsTotal = proofItems.reduce((sum, item) => sum + item.qty * item.unitPrice, 0);
+  const deliveredQuantity = proofItems.reduce((sum, item) => sum + item.qty, 0);
+  const total = productsTotal + deliveryFee;
+  const doc = new jsPdf({ orientation: "portrait", unit: "mm", format: "a4", compress: true });
+  const green = [40, 85, 42];
+  const ink = [28, 32, 29];
+  const muted = [91, 101, 94];
+  const line = [215, 223, 215];
+  const pageWidth = 210;
+  const margin = 15;
+  const contentWidth = pageWidth - margin * 2;
+  doc.setProperties({ title: `Comprovante de entrega - ${orderClientDisplayName(order)}`, subject: "Comprovante de entrega Kombú", author: "Kombú Kombucha" });
+  doc.setFillColor(...green);
+  doc.rect(0, 0, pageWidth, 31, "F");
+  try {
+    const logo = await imageDataUrl("assets/kombu-k-logo.png");
+    doc.addImage(logo, "PNG", margin, 6, 19, 19, undefined, "FAST");
+  } catch {
+    doc.setFillColor(255, 255, 255);
+    doc.circle(margin + 9.5, 15.5, 9.5, "F");
+    doc.setTextColor(...green);
+    doc.setFont("times", "bold");
+    doc.setFontSize(16);
+    doc.text("K", margin + 9.5, 19.5, { align: "center" });
+  }
+  doc.setTextColor(255, 255, 255);
+  doc.setFont("times", "bold");
+  doc.setFontSize(17);
+  doc.text("Kombú Kombucha", 39, 14);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(8);
+  doc.text("KOMBUCHA DA AMAZÔNIA", 39, 20);
+  doc.setFontSize(10);
+  doc.text("COMPROVANTE DE ENTREGA", pageWidth - margin, 16, { align: "right" });
+
+  let y = 42;
+  doc.setTextColor(...ink);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(15);
+  doc.text(orderClientDisplayName(order), margin, y);
+  y += 7;
+  doc.setDrawColor(...line);
+  doc.line(margin, y, pageWidth - margin, y);
+  y += 7;
+  const detailRows = [
+    ["Entrega", fullDate(data.deliveryDate), "Forma de pagamento", data.paymentMethod],
+    ["Data do pedido", fullDate(order.orderDate), "Quantidade entregue", `${number(deliveredQuantity)} garrafa(s)`],
+    ["Negócio", order.businessName || "-", "Status do pagamento", orderReceivableStatus(order)],
+    ["WhatsApp", order.whatsapp || "-", "Recebedor", data.recipientName || "A preencher"],
+  ];
+  doc.setFontSize(8);
+  detailRows.forEach(([labelA, valueA, labelB, valueB]) => {
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(...muted);
+    doc.text(labelA.toUpperCase(), margin, y);
+    doc.text(labelB.toUpperCase(), 111, y);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(...ink);
+    doc.text(doc.splitTextToSize(String(valueA), 78)[0], margin, y + 4.5);
+    doc.text(doc.splitTextToSize(String(valueB), 82)[0], 111, y + 4.5);
+    y += 12;
+  });
+
+  y += 2;
+  doc.setFillColor(239, 244, 237);
+  doc.rect(margin, y, contentWidth, 8, "F");
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(8);
+  doc.setTextColor(...green);
+  doc.text("SABOR", margin + 3, y + 5.3);
+  doc.text("QTD.", 137, y + 5.3, { align: "right" });
+  doc.text("UNITÁRIO", 165, y + 5.3, { align: "right" });
+  doc.text("TOTAL", pageWidth - margin - 3, y + 5.3, { align: "right" });
+  y += 8;
+  proofItems.forEach((item) => {
+    const flavorLines = doc.splitTextToSize(item.flavor, 94);
+    const rowHeight = Math.max(9, flavorLines.length * 4.4 + 4);
+    if (y + rowHeight > 242) {
+      doc.addPage();
+      y = 18;
+    }
+    doc.setDrawColor(...line);
+    doc.line(margin, y + rowHeight, pageWidth - margin, y + rowHeight);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(9);
+    doc.setTextColor(...ink);
+    doc.text(flavorLines, margin + 3, y + 5.5);
+    doc.text(number(item.qty), 137, y + 5.5, { align: "right" });
+    doc.text(brl(item.unitPrice), 165, y + 5.5, { align: "right" });
+    doc.text(brl(item.qty * item.unitPrice), pageWidth - margin - 3, y + 5.5, { align: "right" });
+    y += rowHeight;
+  });
+  y += 6;
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(9);
+  doc.setTextColor(...muted);
+  doc.text("Produtos", 160, y, { align: "right" });
+  doc.setTextColor(...ink);
+  doc.text(brl(productsTotal), pageWidth - margin, y, { align: "right" });
+  if (deliveryFee > 0) {
+    y += 6;
+    doc.setTextColor(...muted);
+    doc.text("Frete / entrega", 160, y, { align: "right" });
+    doc.setTextColor(...ink);
+    doc.text(brl(deliveryFee), pageWidth - margin, y, { align: "right" });
+  }
+  y += 8;
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(12);
+  doc.setTextColor(...green);
+  doc.text("TOTAL", 160, y, { align: "right" });
+  doc.text(brl(total), pageWidth - margin, y, { align: "right" });
+  y += 9;
+  if (data.notes) {
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(8);
+    doc.setTextColor(...muted);
+    doc.text("OBSERVAÇÕES", margin, y);
+    y += 5;
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(...ink);
+    const noteLines = doc.splitTextToSize(String(data.notes), contentWidth);
+    doc.text(noteLines.slice(0, 3), margin, y);
+    y += Math.min(noteLines.length, 3) * 4 + 4;
+  }
+  y = Math.max(y, 222);
+  if (y > 238) {
+    doc.addPage();
+    y = 24;
+  }
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(8);
+  doc.setTextColor(...muted);
+  doc.text("Declaro ter recebido os produtos e quantidades descritos neste comprovante.", margin, y);
+  y += 19;
+  doc.setDrawColor(...muted);
+  doc.line(margin, y, 91, y);
+  doc.line(119, y, pageWidth - margin, y);
+  doc.setFontSize(7.5);
+  doc.text(data.recipientName || "Nome e assinatura do recebedor", margin, y + 4);
+  doc.text("Kombú Kombucha", 119, y + 4);
+  const pageCount = doc.getNumberOfPages();
+  for (let page = 1; page <= pageCount; page += 1) {
+    doc.setPage(page);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(7);
+    doc.setTextColor(...muted);
+    doc.text("Kombú Kombucha da Amazônia | Manaus - AM | @kombu.amazonia", margin, 289);
+    doc.text(`${page}/${pageCount}`, pageWidth - margin, 289, { align: "right" });
+  }
+  doc.save(`comprovante-entrega-${fileSlug(orderClientDisplayName(order))}-${data.deliveryDate}.pdf`);
 }
 
 function paymentReminderRows() {
@@ -2140,13 +2474,7 @@ function allocateBatchToOrders(batch) {
   let available = Math.max(0, Number(batch.actual || 0) - soldFromBatch(batch.code) - alreadyReserved);
   const recipe = byId("recipes", batch.recipeId);
   const productId = batch.productId || recipe?.productId || "";
-  const openOrders = (state.orders || [])
-    .filter(isOpenOrder)
-    .sort((a, b) =>
-      String(a.neededBy || a.estimatedReadyDate || a.orderDate || a.createdAt || "").localeCompare(
-        String(b.neededBy || b.estimatedReadyDate || b.orderDate || b.createdAt || ""),
-      ),
-    );
+  const openOrders = openOrdersByReservationPriority();
   openOrders.forEach((order) => {
     orderItems(order).forEach((item) => {
       if (!available) return;
@@ -6245,6 +6573,7 @@ function orderForm(orderId) {
             <label class="field"><span>Data do pedido</span><input name="orderDate" type="date" value="${orderDate}" required></label>
             <label class="field"><span>Receber até</span><input name="paymentDueDate" type="date" value="${paymentDueDate}"></label>
             <label class="field"><span>Status pagamento</span><select name="paymentStatus" class="admin-select">${PAYMENT_STATUSES.map((status) => `<option value="${status}" ${orderReceivableStatus(existing || {}) === status || existing?.paymentStatus === status ? "selected" : ""}>${status}</option>`).join("")}</select></label>
+            <label class="field"><span>Forma de pagamento</span><select name="paymentMethod" class="admin-select"><option value="">Não informada</option>${PAYMENT_METHODS.map((method) => `<option value="${method}" ${existing?.paymentMethod === method ? "selected" : ""}>${method}</option>`).join("")}</select></label>
             <label class="field"><span>WhatsApp</span><input name="whatsapp" value="${escapeHtml(existing?.whatsapp || "")}"></label>
             <label class="field"><span>Origem</span><input name="source" value="${escapeHtml(existing?.source || "")}" placeholder="WhatsApp, feira, revendedor..."></label>
             <label class="field field-full"><span>Observações do pedido</span><textarea name="notes" placeholder="Condição comercial, entrega, prioridade, cobrança...">${escapeHtml(existing?.notes || "")}</textarea></label>
@@ -6284,6 +6613,7 @@ function orderForm(orderId) {
       deliveredAt: data.deliveredAt,
       paymentDueDate: data.paymentDueDate || (data.deliveredAt ? addDaysIso(data.deliveredAt, 15) : ""),
       paymentStatus: data.paymentStatus,
+      paymentMethod: data.paymentMethod || "",
       neededBy: data.neededBy,
       status: data.status,
       clientType: data.clientType || "novo_cliente",
@@ -6711,6 +7041,12 @@ function fieldValue(input) {
 }
 
 function bindModuleEvents() {
+  document.querySelectorAll("[data-dashboard-order-view]").forEach((button) => {
+    button.addEventListener("click", () => {
+      currentDashboardOrderView = button.dataset.dashboardOrderView === "missing" ? "missing" : "summary";
+      render();
+    });
+  });
   document.querySelectorAll("[data-sales-period]").forEach((button) => {
     button.addEventListener("click", () => {
       currentSalesPeriod = button.dataset.salesPeriod;
@@ -6827,6 +7163,7 @@ function handleAction(action) {
     "correct-batch-qty": correctBatchQuantityForm,
     "reserve-stock": reserveStockForm,
     "adjust-order-reservation": adjustOrderReservationForm,
+    "delivery-proof": deliveryProofForm,
     "write-off-stock": writeOffStockForm,
     "stock-sale": newSaleForm,
     "reverse-stock": reverseStockForm,

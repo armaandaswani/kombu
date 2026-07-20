@@ -1,4 +1,5 @@
 const assert = require("assert");
+const fs = require("fs");
 const { chromium } = require("playwright");
 
 const baseUrl = process.env.AUDIT_BASE_URL || "http://127.0.0.1:4173";
@@ -109,6 +110,67 @@ async function assertNoHorizontalOverflow(page, label) {
   assert.ok(overflow.body <= overflow.viewport + 1, `${label} body overflows horizontally: ${JSON.stringify(overflow)}`);
 }
 
+async function assertOldestOrderReservationPriority(browser) {
+  const fifoSeed = JSON.parse(JSON.stringify(seed));
+  fifoSeed.orders = [
+    {
+      id: "order-new-small",
+      code: "PED-NEW-SMALL",
+      createdAt: "2026-07-12T08:00:00.000Z",
+      orderDate: "2026-07-12",
+      neededBy: "2026-07-15",
+      status: "confirmado",
+      paymentStatus: "aberto",
+      customerName: "Pedido novo pequeno",
+      items: [
+        {
+          productId: "product-1",
+          productName: "Kombucha Maracuja 500ml",
+          flavor: "Maracuja",
+          qty: 1,
+          unitPrice: 15,
+          allocations: [],
+        },
+      ],
+    },
+    {
+      id: "order-old-large",
+      code: "PED-OLD-LARGE",
+      orderDate: "2026-07-10",
+      neededBy: "2026-07-20",
+      status: "confirmado",
+      paymentStatus: "aberto",
+      customerName: "Pedido antigo grande",
+      items: [
+        {
+          productId: "product-1",
+          productName: "Kombucha Maracuja 500ml",
+          flavor: "Maracuja",
+          qty: 4,
+          unitPrice: 15,
+          allocations: [],
+        },
+      ],
+    },
+  ];
+
+  const context = await browser.newContext({ viewport: { width: 390, height: 844 }, locale: "pt-BR" });
+  await context.addInitScript(({ key, value }) => localStorage.setItem(key, JSON.stringify(value)), { key: storageKey, value: fifoSeed });
+  const page = await context.newPage();
+  await page.goto(`${baseUrl}/admin.html`, { waitUntil: "domcontentloaded" });
+  await page.fill("#adminPassword", "local-regression");
+  await page.click('#loginForm button[type="submit"]');
+  await page.waitForSelector("#adminShell:not(.is-locked)");
+
+  const fifoState = await storedState(page);
+  const oldOrder = fifoState.orders.find((order) => order.id === "order-old-large");
+  const newOrder = fifoState.orders.find((order) => order.id === "order-new-small");
+  const reserved = (order) => order.items[0].allocations.reduce((sum, allocation) => sum + Number(allocation.qty || 0), 0);
+  assert.strictEqual(reserved(oldOrder), 4, "the oldest order must receive the available batch first");
+  assert.strictEqual(reserved(newOrder), 0, "a newer smaller order must not overtake an older order");
+  await context.close();
+}
+
 async function run() {
   const browser = await chromium.launch({ headless: true, executablePath });
   const context = await browser.newContext({ viewport: { width: 390, height: 844 }, locale: "pt-BR" });
@@ -151,6 +213,33 @@ async function run() {
 
   const updatedCard = page.locator(".order-ready-card", { hasText: "Ana Teste" });
   assert.match(await updatedCard.innerText(), /3\/4/);
+
+  await page.click('[data-dashboard-order-view="missing"]');
+  const missingCard = page.locator(".order-ready-card", { hasText: "Ana Teste" });
+  assert.match(await missingCard.innerText(), /1 faltando de 4/);
+  assert.ok(!(await missingCard.innerText()).includes("pronta(s)"), "missing view should replace ready-item detail instead of adding clutter");
+  await assertNoHorizontalOverflow(page, "dashboard missing-only view");
+  await page.click('[data-dashboard-order-view="summary"]');
+
+  await page.locator('[data-action="delivery-proof:order-1"]').click();
+  await page.waitForSelector("#deliveryProofForm");
+  assert.strictEqual(await page.locator('[name="deliveredQty_0"]').inputValue(), "3", "proof should start with bottles already reserved for the client");
+  await page.selectOption('[name="paymentMethod"]', "Pix");
+  assert.match(await page.locator("#deliveryProofQuantity").innerText(), /3 garrafa/);
+  assert.match(await page.locator("#deliveryProofTotal").innerText(), /45,00/);
+  const proofPath = "/tmp/kombu-delivery-proof-regression.pdf";
+  const [download] = await Promise.all([
+    page.waitForEvent("download"),
+    page.click('#deliveryProofForm button[type="submit"]'),
+  ]);
+  await download.saveAs(proofPath);
+  const proofBytes = fs.readFileSync(proofPath);
+  assert.ok(proofBytes.length > 5000, "delivery proof should contain a real A4 PDF");
+  assert.strictEqual(proofBytes.subarray(0, 4).toString(), "%PDF");
+  state = await storedState(page);
+  assert.strictEqual(state.orders[0].paymentMethod, "Pix", "selected payment method should remain attached to the order");
+  await page.click("#closeAdminModal");
+
   await updatedCard.locator('[data-action="dashboard-edit-partner:partner-1"]').click();
   await page.waitForSelector("#adminModal.is-open");
   assert.strictEqual(await page.locator("#mobileModuleSelector").inputValue(), "partners");
@@ -201,8 +290,9 @@ async function run() {
   assert.strictEqual(await page.locator(".sale-compact-card").count(), 0, "custom range must filter older movements immediately");
   await assertNoHorizontalOverflow(page, "sales period view");
 
+  await assertOldestOrderReservationPriority(browser);
   await browser.close();
-  console.log("Admin regression: password visibility, compact order editing, period filters, reservation override, partner deep-link, audit history and write-off passed.");
+  console.log("Admin regression: password visibility, compact order editing, missing-only dashboard, A4 delivery proof, period filters, FIFO order reservation, reservation override, partner deep-link, audit history and write-off passed.");
 }
 
 run().catch((error) => {
