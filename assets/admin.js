@@ -14,7 +14,7 @@ const ORDER_CLIENT_TYPES = [
 ];
 const PAYMENT_STATUSES = ["aberto", "aguardando pagamento", "pago", "atrasado", "cancelado"];
 const PAYMENT_METHODS = ["Pix", "Dinheiro", "Cartão", "Boleto", "Transferência", "A prazo", "Outro"];
-const DELIVERY_PROOF_DEFAULT_PAYMENT_METHOD = "Prazo - 15 dias corridos após a entrega";
+const DELIVERY_PROOF_DEFAULT_PAYMENT_METHOD = "Prazo – 15 dias corridos após a entrega";
 const DELIVERY_PROOF_PAYMENT_NOTE =
   "O link de pagamento será gerado pela plataforma Infinite Pay e enviado via WhatsApp ao responsável pelo pedido.";
 const RECURRING_RETAIL_PRICE = 20;

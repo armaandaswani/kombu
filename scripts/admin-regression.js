@@ -242,7 +242,7 @@ async function run() {
   assert.strictEqual(await page.locator('[name="deliveredQty_0"]').inputValue(), "3", "proof should start with bottles already reserved for the client");
   assert.strictEqual(
     await page.locator('[name="paymentMethod"]').inputValue(),
-    "Prazo - 15 dias corridos após a entrega",
+    "Prazo – 15 dias corridos após a entrega",
     "delivery proof should default to the 15-day payment term",
   );
   assert.strictEqual(await page.locator('[name="recipientName"]').count(), 0, "recipient field should not clutter the delivery proof form");
@@ -263,7 +263,7 @@ async function run() {
   state = await storedState(page);
   assert.strictEqual(
     state.orders[0].paymentMethod,
-    "Prazo - 15 dias corridos após a entrega",
+    "Prazo – 15 dias corridos após a entrega",
     "default payment term should remain attached to the order",
   );
   await page.click("#closeAdminModal");
