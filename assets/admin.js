@@ -21,6 +21,9 @@ const RECURRING_RETAIL_PRICE = 20;
 const GLOBAL_RETAIL_PRICE = 22;
 const GLOBAL_WHOLESALE_PRICE = 15;
 const GLOBAL_PRICE_VERSION = "2026-07-04-22-15";
+const BASE_BOTTLE_SIZE_ML = 500;
+const SMALL_BOTTLE_SIZE_ML = 300;
+const SMALL_BOTTLE_RECIPE_RATIO = SMALL_BOTTLE_SIZE_ML / BASE_BOTTLE_SIZE_ML;
 
 const ADMIN_I18N = {
   en: {
@@ -231,6 +234,7 @@ const COST_INGREDIENT_SEED = [
 
 const PACKAGING_SEED = [
   { id: "pkg-bottle-500", name: "Garrafa 500ml", type: "bottle", productId: "", supplier: "Base de custos Kombú", unit: "un", costEach: 0.84, stock: 0, min: 0, location: "" },
+  { id: "pkg-bottle-300", name: "Garrafa 300ml", type: "bottle", productId: "", supplier: "Thoten Pac", unit: "un", costEach: 1.2, stock: 0, min: 0, location: "" },
   { id: "pkg-label-500", name: "Rótulo 500ml", type: "label", productId: "", supplier: "Base de custos Kombú", unit: "un", costEach: 0.85, stock: 0, min: 0, location: "" },
   { id: "pkg-datador", name: "Datador por garrafa", type: "material", productId: "", supplier: "Base de custos Kombú", unit: "un", costEach: 0, stock: 0, min: 0, location: "" },
 ];
@@ -847,14 +851,20 @@ function normalizeCmsFlavors(savedFlavors = []) {
   return [...normalized, ...savedBySlug.values()];
 }
 
+function ensureCorePackagingInventory(data) {
+  PACKAGING_SEED.forEach((seed) => {
+    if (!data.packaging.some((item) => item.id === seed.id)) data.packaging.push(clone(seed));
+  });
+}
+
 function ensureProductLabelInventory(data) {
-  const genericLabelCost = Number(data.packaging.find((item) => item.id === "pkg-label-500")?.costEach || 0.85);
+  const labelCostBySize = (sizeMl) => Number(data.packaging.find((item) => item.id === `pkg-label-${sizeMl}`)?.costEach || 0);
   if (!data.packaging.some((item) => item.id === "pkg-datador")) {
     data.packaging.push({ id: "pkg-datador", name: "Datador por garrafa", type: "material", productId: "", supplier: "Base de custos Kombú", unit: "un", costEach: 0, stock: 0, min: 0, location: "" });
   }
   data.products.forEach((product) => {
     const labelId = labelPackagingIdForProduct(product);
-    if (!data.packaging.some((item) => item.id === labelId)) data.packaging.push(labelPackagingForProduct(product, genericLabelCost));
+    if (!data.packaging.some((item) => item.id === labelId)) data.packaging.push(labelPackagingForProduct(product, labelCostBySize(Number(product.sizeMl || BASE_BOTTLE_SIZE_ML))));
   });
   data.recipes.forEach((recipe) => {
     const product = data.products.find((item) => item.id === recipe.productId);
@@ -871,6 +881,73 @@ function ensureProductLabelInventory(data) {
       packaging.push({ itemId: "pkg-datador", qty: 1 });
     }
     recipe.packaging = packaging;
+  });
+}
+
+function proportionalRecipeQuantity(value) {
+  return Number((Number(value || 0) * SMALL_BOTTLE_RECIPE_RATIO).toFixed(6));
+}
+
+function ensure300MlProductVariants(data) {
+  const baseProducts = data.products.filter((product) => Number(product.sizeMl || BASE_BOTTLE_SIZE_ML) === BASE_BOTTLE_SIZE_ML);
+  baseProducts.forEach((product) => {
+    const existing = data.products.find((candidate) =>
+      Number(candidate.sizeMl) === SMALL_BOTTLE_SIZE_ML && normalizeText(candidate.flavor) === normalizeText(product.flavor),
+    );
+    if (existing) return;
+    data.products.push({
+      ...clone(product),
+      id: `${product.id}-300`,
+      ean: "",
+      item: `${product.item}-300`,
+      sizeMl: SMALL_BOTTLE_SIZE_ML,
+      description: String(product.description || "").replace(/500\s*ml/gi, "300ml"),
+      baselineCost: 0,
+      visible: false,
+      sourceProductId: product.id,
+    });
+  });
+}
+
+function ensure300MlRecipeVariants(data) {
+  const sourceRecipes = data.recipes.filter((recipe) => Number(recipe.bottleMl || BASE_BOTTLE_SIZE_ML) === BASE_BOTTLE_SIZE_ML);
+  sourceRecipes.forEach((recipe) => {
+    const sourceProduct = data.products.find((product) => product.id === recipe.productId);
+    if (!sourceProduct) return;
+    const targetProduct = data.products.find((product) =>
+      Number(product.sizeMl) === SMALL_BOTTLE_SIZE_ML && normalizeText(product.flavor) === normalizeText(sourceProduct.flavor),
+    );
+    if (!targetProduct) return;
+    const existing = data.recipes.find((candidate) =>
+      candidate.productId === targetProduct.id && Number(candidate.bottleMl) === SMALL_BOTTLE_SIZE_ML,
+    );
+    if (existing) return;
+    const targetLabelId = labelPackagingIdForProduct(targetProduct);
+    const packaging = (Array.isArray(recipe.packaging) ? recipe.packaging : []).map((line) => {
+      const sourceMaterial = data.packaging.find((item) => item.id === line.itemId);
+      if (line.itemId === "pkg-bottle-500" || (sourceMaterial?.type === "bottle" && Number(sourceMaterial?.productId ? sourceProduct.sizeMl : BASE_BOTTLE_SIZE_ML) === BASE_BOTTLE_SIZE_ML)) {
+        return { ...line, itemId: "pkg-bottle-300" };
+      }
+      if (sourceMaterial?.type === "label") return { ...line, itemId: targetLabelId };
+      return { ...line };
+    });
+    if (!packaging.some((line) => line.itemId === "pkg-bottle-300")) packaging.unshift({ itemId: "pkg-bottle-300", qty: 1 });
+    if (!packaging.some((line) => line.itemId === targetLabelId)) packaging.push({ itemId: targetLabelId, qty: 1 });
+    data.recipes.push({
+      ...clone(recipe),
+      id: `${recipe.id}-300`,
+      productId: targetProduct.id,
+      flavor: targetProduct.flavor,
+      version: /500\s*ml/i.test(String(recipe.version || ""))
+        ? String(recipe.version).replace(/500\s*ml/gi, "300ml")
+        : `${String(recipe.version || "base").trim()} 300ml`,
+      bottleMl: SMALL_BOTTLE_SIZE_ML,
+      ingredients: (Array.isArray(recipe.ingredients) ? recipe.ingredients : []).map((line) => ({
+        ...line,
+        qty: proportionalRecipeQuantity(line.qty),
+      })),
+      packaging,
+    });
   });
 }
 
@@ -910,7 +987,10 @@ function normalizeState(savedState) {
     };
   });
   merged.packaging = merged.packaging.map((item) => ({ ...item, type: inferPackagingType(item), productId: item.productId || "" }));
+  ensureCorePackagingInventory(merged);
+  ensure300MlProductVariants(merged);
   ensureProductLabelInventory(merged);
+  ensure300MlRecipeVariants(merged);
   if (merged.settings.priceVersion !== GLOBAL_PRICE_VERSION) {
     merged.products.forEach((product) => {
       product.retailPrice = GLOBAL_RETAIL_PRICE;
@@ -1698,7 +1778,10 @@ function orderProductText(item) {
 
 function orderFlavorText(item) {
   const product = byId("products", item.productId);
-  return item.flavor || product?.flavor || item.productName || product?.title || "Kombucha";
+  const flavor = item.flavor || product?.flavor || item.productName || product?.title || "Kombucha";
+  const sizeMl = Number(item.sizeMl || product?.sizeMl || 0);
+  if (!sizeMl || new RegExp(`${sizeMl}\\s*ml`, "i").test(flavor)) return flavor;
+  return `${flavor} ${sizeMl}ml`;
 }
 
 function orderStatusBadge(status) {
@@ -4410,6 +4493,66 @@ function enhanceSelectSearch(container = document) {
   });
 }
 
+function variantPickerTemplate(choices, selectedId, fieldAttribute = 'name="productId"') {
+  const selected = choices.find((choice) => choice.id === selectedId) || choices[0] || {};
+  const flavors = [...new Set(choices.map((choice) => choice.flavor).filter(Boolean))];
+  const sizes = choices
+    .filter((choice) => choice.flavor === selected.flavor)
+    .sort((a, b) => Number(a.sizeMl || 0) - Number(b.sizeMl || 0));
+  return `
+    <div class="variant-picker" data-variant-picker>
+      <label class="field"><span>Sabor</span><select data-variant-flavor data-force-search="true">${flavors.map((flavor) => `<option value="${escapeHtml(flavor)}" ${flavor === selected.flavor ? "selected" : ""}>${escapeHtml(flavor)}</option>`).join("")}</select></label>
+      <label class="field"><span>Tamanho</span><select data-variant-size>${sizes.map((choice) => `<option value="${choice.sizeMl}" ${choice.id === selected.id ? "selected" : ""}>${number(choice.sizeMl)}ml</option>`).join("")}</select></label>
+      <input type="hidden" ${fieldAttribute} data-variant-choice value="${escapeHtml(selected.id || "")}">
+    </div>
+  `;
+}
+
+function bindVariantPicker(root, choices, onChange = () => {}) {
+  const picker = root?.matches?.("[data-variant-picker]") ? root : root?.querySelector?.("[data-variant-picker]");
+  if (!picker || picker.dataset.variantBound === "true") return;
+  picker.dataset.variantBound = "true";
+  const flavorSelect = picker.querySelector("[data-variant-flavor]");
+  const sizeSelect = picker.querySelector("[data-variant-size]");
+  const valueField = picker.querySelector("[data-variant-choice]");
+  const currentChoice = () => choices.find((choice) => choice.id === valueField.value) || null;
+  const renderSizes = (preferredSize) => {
+    const available = choices
+      .filter((choice) => choice.flavor === flavorSelect.value)
+      .sort((a, b) => Number(a.sizeMl || 0) - Number(b.sizeMl || 0));
+    const selected = available.find((choice) => Number(choice.sizeMl) === Number(preferredSize)) || available[0];
+    sizeSelect.innerHTML = available.map((choice) => `<option value="${choice.sizeMl}" ${choice.id === selected?.id ? "selected" : ""}>${number(choice.sizeMl)}ml</option>`).join("");
+    valueField.value = selected?.id || "";
+    onChange(selected || null);
+  };
+  flavorSelect.addEventListener("change", () => renderSizes(currentChoice()?.sizeMl));
+  sizeSelect.addEventListener("change", () => {
+    const selected = choices.find((choice) => choice.flavor === flavorSelect.value && Number(choice.sizeMl) === Number(sizeSelect.value));
+    valueField.value = selected?.id || "";
+    onChange(selected || null);
+  });
+}
+
+function productVariantChoices(products = state.products) {
+  return products.map((product) => ({ id: product.id, flavor: product.flavor || product.name || "Kombucha", sizeMl: Number(product.sizeMl || BASE_BOTTLE_SIZE_ML) }));
+}
+
+function recipeVariantChoices(recipes = state.recipes) {
+  return recipes.map((recipe) => {
+    const product = byId("products", recipe.productId);
+    return { id: recipe.id, flavor: recipe.flavor || product?.flavor || "Kombucha", sizeMl: Number(recipe.bottleMl || product?.sizeMl || BASE_BOTTLE_SIZE_ML) };
+  });
+}
+
+function populateSaleBatchOptions(form, stockRows, productId, preferredBatchCode = "") {
+  const batchSelect = form.elements.batchCode;
+  const matches = stockRows.filter((row) => row.product?.id === productId || row.productId === productId);
+  const selectedCode = matches.some((row) => row.code === preferredBatchCode) ? preferredBatchCode : matches[0]?.code || "";
+  batchSelect.innerHTML = matches.map((row) => `<option value="${escapeHtml(row.code)}" data-retail="${productRetailPrice(row.product)}" data-wholesale="${productWholesalePrice(row.product)}" data-stock="${row.stock}" ${row.code === selectedCode ? "selected" : ""}>${escapeHtml(row.code)} (${number(row.stock)} disp.)</option>`).join("");
+  batchSelect.disabled = !matches.length;
+  return selectedCode;
+}
+
 function render() {
   const view = {
     dashboard: renderDashboard,
@@ -5385,7 +5528,7 @@ function reverseStockForm(batchCode) {
 
 function quickSaleForm() {
   const stockRows = finishedStockRows()
-    .filter((row) => row.stock > 0)
+    .filter((row) => row.stock > 0 && row.product)
     .sort((a, b) => (a.flavor || "").localeCompare(b.flavor || "") || a.code.localeCompare(b.code));
   if (!stockRows.length) {
     openModal(
@@ -5404,7 +5547,8 @@ function quickSaleForm() {
         <div class="input-grid">
           <label class="field field-full"><span>Cliente</span><input name="customerName" list="quickCustomerOptions" value="Balcão" required></label>
           <datalist id="quickCustomerOptions">${[...new Set([...state.partners.map((item) => item.name), ...state.sales.map((sale) => sale.customerName || sale.partner).filter(Boolean)])].map((name) => `<option value="${escapeHtml(name)}"></option>`).join("")}</datalist>
-          <label class="field field-full"><span>Lote / sabor</span><select name="batchCode">${stockRows.map((row) => `<option value="${row.code}" data-retail="${productRetailPrice(row.product)}" data-wholesale="${productWholesalePrice(row.product)}" data-stock="${row.stock}">${escapeHtml(row.flavor)} - ${escapeHtml(row.code)} (${number(row.stock)} disp.)</option>`).join("")}</select></label>
+          ${variantPickerTemplate(productVariantChoices([...new Map(stockRows.map((row) => [row.product.id, row.product])).values()]), stockRows[0]?.product?.id)}
+          <label class="field field-full"><span>Lote disponível</span><select name="batchCode"></select></label>
           <label class="field"><span>Quantidade</span><input name="qty" type="number" min="1" step="1" value="1" required></label>
           <label class="field"><span>Preço</span><select name="priceType"><option value="varejo">Varejo</option><option value="atacado">Atacado</option><option value="custom">Valor combinado</option><option value="gratis">Sem cobrança</option></select></label>
           <label class="field"><span>Preço unitário</span><input name="unitPrice" type="number" step="0.01" required></label>
@@ -5438,6 +5582,11 @@ function quickSaleForm() {
       <span>${number(available)} disponível(is) neste lote.</span>
     `;
   };
+  populateSaleBatchOptions(form, stockRows, form.elements.productId.value);
+  bindVariantPicker(form, productVariantChoices([...new Map(stockRows.map((row) => [row.product.id, row.product])).values()]), (choice) => {
+    populateSaleBatchOptions(form, stockRows, choice?.id || "");
+    updateQuickSale(true);
+  });
   form.elements.batchCode.addEventListener("change", () => updateQuickSale(true));
   form.elements.priceType.addEventListener("change", () => updateQuickSale(true));
   form.elements.qty.addEventListener("input", () => updateQuickSale(false));
@@ -5484,8 +5633,8 @@ function quickSaleForm() {
 }
 
 function newSaleForm(batchCode = "") {
-  const allStockRows = finishedStockRows().filter((row) => row.stock > 0);
-  const stockRows = batchCode ? allStockRows.filter((row) => row.code === batchCode) : allStockRows;
+  const allStockRows = finishedStockRows().filter((row) => row.stock > 0 && row.product);
+  const stockRows = allStockRows;
   if (!stockRows.length) {
     openModal(
       "Sem estoque disponível",
@@ -5495,6 +5644,8 @@ function newSaleForm(batchCode = "") {
     );
     return;
   }
+  const selectedStock = stockRows.find((row) => row.code === batchCode) || stockRows[0];
+  const saleProducts = [...new Map(stockRows.map((row) => [row.product.id, row.product])).values()];
   openModal(
     batchCode ? "Saída deste lote" : "Nova saída",
     "Vendas",
@@ -5505,10 +5656,11 @@ function newSaleForm(batchCode = "") {
           <label class="field"><span>Tipo de saída</span><select name="movementType"><option value="venda">Venda</option><option value="consumo">Consumo próprio</option><option value="presente">Presente / amostra</option><option value="perda">Perda / quebra</option></select></label>
           <label class="field field-full"><span>Cliente / destino</span><input name="customerName" list="customerOptions" placeholder="Nome do cliente, parceiro ou destino" required></label>
           <datalist id="customerOptions">${[...new Set([...state.partners.map((item) => item.name), ...state.sales.map((sale) => sale.customerName || sale.partner).filter(Boolean)])].map((name) => `<option value="${escapeHtml(name)}"></option>`).join("")}</datalist>
-          <label class="field"><span>Lote</span><select name="batchCode">${stockRows.map((row) => `<option value="${row.code}" data-retail="${productRetailPrice(row.product)}" data-wholesale="${productWholesalePrice(row.product)}" data-stock="${row.stock}">${row.code} - ${row.product ? productLabel(row.product) : row.flavor} (${row.stock} un)</option>`).join("")}</select></label>
+          ${variantPickerTemplate(productVariantChoices(saleProducts), selectedStock?.product?.id)}
+          <label class="field field-full"><span>Lote disponível</span><select name="batchCode"></select></label>
           <label class="field"><span>Quantidade</span><input name="qty" type="number" min="1" required></label>
           <label class="field"><span>Preço</span><select name="priceType"><option value="varejo">Varejo</option><option value="atacado">Atacado</option><option value="custom">Valor combinado</option><option value="gratis">Sem cobrança</option></select></label>
-          <label class="field"><span>Preço unitário</span><input name="unitPrice" type="number" step="0.01" value="${productRetailPrice(stockRows[0]?.product) || productWholesalePrice(stockRows[0]?.product) || 0}" required></label>
+          <label class="field"><span>Preço unitário</span><input name="unitPrice" type="number" step="0.01" value="${productRetailPrice(selectedStock?.product) || productWholesalePrice(selectedStock?.product) || 0}" required></label>
           <label class="field"><span>Desconto</span><input name="discount" type="number" step="0.01" value="0"></label>
           <label class="field"><span>Entrega</span><input name="delivery" type="number" step="0.01" value="0"></label>
           <label class="field field-full"><span>Observação</span><input name="note" placeholder="Ex: recorrente com preço diferenciado, brinde, garrafa quebrada..."></label>
@@ -5531,6 +5683,11 @@ function newSaleForm(batchCode = "") {
     if (type === "varejo") saleForm.elements.unitPrice.value = String(Number(option?.dataset.retail || 0));
     if (type === "atacado") saleForm.elements.unitPrice.value = String(Number(option?.dataset.wholesale || 0));
   };
+  populateSaleBatchOptions(saleForm, stockRows, selectedStock?.product?.id || "", batchCode);
+  bindVariantPicker(saleForm, productVariantChoices(saleProducts), (choice) => {
+    populateSaleBatchOptions(saleForm, stockRows, choice?.id || "");
+    updateSalePrice(true);
+  });
   saleForm.elements.batchCode.addEventListener("change", () => updateSalePrice(true));
   saleForm.elements.priceType.addEventListener("change", () => updateSalePrice(true));
   saleForm.elements.movementType.addEventListener("change", () => updateSalePrice(true));
@@ -5591,7 +5748,7 @@ function newBatchForm() {
     `
       <form id="batchForm">
         <div class="input-grid">
-          <label class="field field-full"><span>Sabor produzido</span><select name="recipeId">${state.recipes.map((recipe) => `<option value="${recipe.id}">${recipeLabel(recipe)}</option>`).join("")}</select></label>
+          ${variantPickerTemplate(recipeVariantChoices(), state.recipes[0]?.id, 'name="recipeId"')}
           <label class="field"><span>Data de entrada / produção</span><input name="date" type="date" value="${todayIso()}" required></label>
           <label class="field"><span>Garrafas produzidas</span><input name="actual" type="number" min="1" step="1" value="20" required></label>
           <label class="field"><span>Código do lote</span><input name="code" required></label>
@@ -5614,6 +5771,7 @@ function newBatchForm() {
       <span>Ideal vender até ${plan.idealSellBy}; obrigatório vender até ${plan.sellBy}.</span>
     `;
   };
+  bindVariantPicker(form, recipeVariantChoices(), updateBatchPreview);
   form.addEventListener("change", updateBatchPreview);
   updateBatchPreview();
   form.addEventListener("submit", (event) => {
@@ -6125,7 +6283,7 @@ function fieldInput(field, value) {
   if (field.type === "textarea") {
     return `<label class="field ${full}"><span>${label}</span><textarea name="${name}" ${required}>${escapeHtml(current)}</textarea></label>`;
   }
-  return `<label class="field ${full}"><span>${label}</span><input name="${name}" type="${field.type || "text"}" value="${escapeHtml(current)}" ${field.min != null ? `min="${field.min}"` : ""} ${field.step ? `step="${field.step}"` : ""} ${required}></label>`;
+  return `<label class="field ${full}"><span>${label}</span><input name="${name}" type="${field.type || "text"}" value="${escapeHtml(current)}" ${field.type === "number" ? 'inputmode="decimal"' : ""} ${field.min != null ? `min="${field.min}"` : ""} ${field.step ? `step="${field.step}"` : ""} ${required}></label>`;
 }
 
 function readRecordForm(form, fields) {
@@ -6553,7 +6711,7 @@ function orderItemRowTemplate(item = {}, clientType = "novo_cliente") {
   const reservationOverrideJson = JSON.stringify(item.reservationOverride || null);
   return `
     <div class="builder-row order-item-row" hidden>
-      <label class="field"><span>Produto / sabor</span><select data-field="productId">${state.products.map((product) => `<option value="${product.id}" ${selectedProductId === product.id ? "selected" : ""}>${escapeHtml(productLabel(product))}</option>`).join("")}</select></label>
+      ${variantPickerTemplate(productVariantChoices(), selectedProductId, 'data-field="productId"')}
       <label class="field"><span>Qtd. garrafas</span><input data-field="qty" type="number" min="${Math.max(1, orderItemDeliveredQty(item))}" step="1" value="${item.qty || 1}"></label>
       <label class="field"><span>Preço unitário</span><input data-field="unitPrice" type="number" min="0" step="0.01" value="${defaultPrice}"></label>
       <label class="field"><span>Status produção</span><select data-field="productionStatus">${ORDER_ITEM_STATUSES.map((option) => `<option value="${option}" ${status === option ? "selected" : ""}>${option}</option>`).join("")}</select></label>
@@ -6612,7 +6770,7 @@ function renderOrderItemNavigator(form, preferredKey = "") {
       const availability = remaining <= 0 ? "reserva completa" : available <= 0 ? "sem estoque" : available < remaining ? "parcial" : "disponível";
       return `
         <button type="button" class="order-item-selector ${key === activeKey ? "is-active" : ""}" data-order-item-select="${escapeHtml(key)}" aria-pressed="${key === activeKey}">
-          <span class="order-item-selector-head"><strong>${escapeHtml(product?.flavor || item.flavor || "Novo sabor")}</strong><i class="material-symbols-outlined" aria-hidden="true">edit</i></span>
+          <span class="order-item-selector-head"><strong>${escapeHtml(product ? `${product.flavor} · ${number(product.sizeMl)}ml` : item.flavor || "Novo sabor")}</strong><i class="material-symbols-outlined" aria-hidden="true">edit</i></span>
           <span class="order-item-selector-stock"><b>Disp. ${number(available)}</b><b>Res. ${number(reserved)}/${number(requested)}</b></span>
           <small class="${availability === "sem estoque" ? "is-empty" : availability === "parcial" ? "is-partial" : "is-available"}">${availability} | ${escapeHtml(item.productionStatus || "pendente")}</small>
         </button>
@@ -6625,7 +6783,7 @@ function renderOrderItemNavigator(form, preferredKey = "") {
     row.hidden = !isActive;
     if (isActive && activeTitle) {
       const product = byId("products", row.querySelector('[data-field="productId"]')?.value);
-      activeTitle.textContent = product?.flavor || "Editar sabor";
+      activeTitle.textContent = product ? `${product.flavor} · ${number(product.sizeMl)}ml` : "Editar sabor";
     }
   });
 }
@@ -6665,6 +6823,7 @@ function readOrderItemRow(row) {
     productId: product.id,
     productName: productLabel(product),
     flavor: product.flavor,
+    sizeMl: Number(product.sizeMl || BASE_BOTTLE_SIZE_ML),
     key: data.key || id("oi"),
     qty,
     deliveredQty,
@@ -6723,9 +6882,17 @@ function bindOrderForm(form) {
     const product = byId("products", row.querySelector('[data-field="productId"]')?.value);
     setRowField(row, "unitPrice", priceForOrderClientType(product, form.elements.clientType?.value || "novo_cliente"));
   };
+  const bindProductPicker = (row) => {
+    bindVariantPicker(row, productVariantChoices(), () => {
+      applyClientPricing(row);
+      updateOrderPreview(form);
+      renderOrderItemNavigator(form, orderItemEditorKey(row));
+    });
+  };
   form.querySelector("[data-add-order-item]")?.addEventListener("click", () => {
     rows.insertAdjacentHTML("beforeend", orderItemRowTemplate({}, form.elements.clientType?.value || "novo_cliente"));
     enhanceSelectSearch(rows);
+    bindProductPicker(rows.lastElementChild);
     applyClientPricing(rows.lastElementChild);
     updateOrderPreview(form);
     renderOrderItemNavigator(form, orderItemEditorKey(rows.lastElementChild));
@@ -6773,6 +6940,7 @@ function bindOrderForm(form) {
     if (row) renderOrderItemNavigator(form, orderItemEditorKey(row));
   });
   rows.querySelectorAll(".order-item-row").forEach((row) => {
+    bindProductPicker(row);
     if (!Number(row.querySelector('[data-field="unitPrice"]')?.value || 0)) applyClientPricing(row);
   });
   applyPartnerVisibility();
@@ -7495,9 +7663,9 @@ function handleAction(action) {
         { name: "productId", label: "Sabor/produto do rótulo", type: "select", options: [{ value: "", label: "Genérico" }, ...state.products.map((product) => ({ value: product.id, label: productLabel(product) }))] },
         { name: "supplier", label: "Fornecedor" },
         { name: "unit", label: "Unidade", value: "un" },
-        { name: "costEach", label: "Custo unitário", type: "number" },
-        { name: "stock", label: "Estoque", type: "number" },
-        { name: "min", label: "Mínimo", type: "number" },
+        { name: "costEach", label: "Custo unitário", type: "number", min: 0, step: "0.01" },
+        { name: "stock", label: "Estoque", type: "number", min: 0, step: "1" },
+        { name: "min", label: "Mínimo", type: "number", min: 0, step: "1" },
         { name: "location", label: "Local" },
       ]),
     "new-partner": () =>

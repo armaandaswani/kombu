@@ -21,7 +21,18 @@ const seed = {
       active: true,
     },
   ],
-  ingredients: [],
+  ingredients: [
+    {
+      id: "ingredient-1",
+      name: "Maracuja",
+      category: "fruta",
+      purchaseUnit: "g",
+      costPerUnit: 0.025,
+      stock: 1000,
+      min: 0,
+      status: "ativo",
+    },
+  ],
   packaging: [],
   suppliers: [],
   partners: [
@@ -44,7 +55,7 @@ const seed = {
       yieldBottles: 1,
       wholesalePrice: 15,
       retailPrice: 22,
-      ingredients: [],
+      ingredients: [{ ingredientId: "ingredient-1", qty: 40, unit: "g" }],
       packaging: [],
     },
   ],
@@ -58,6 +69,18 @@ const seed = {
       date: "2026-07-14",
       actual: 5,
       expected: 5,
+      status: "aprovado",
+      expiry: "2026-11-14",
+    },
+    {
+      id: "batch-300",
+      code: "LOT-TEST-300",
+      recipeId: "recipe-1-300",
+      productId: "product-1-300",
+      flavor: "Maracuja",
+      date: "2026-07-14",
+      actual: 2,
+      expected: 2,
       status: "aprovado",
       expiry: "2026-11-14",
     },
@@ -199,6 +222,46 @@ async function run() {
   await page.click('#loginForm button[type="submit"]');
   await page.waitForSelector("#adminShell:not(.is-locked)");
 
+  let state = await storedState(page);
+  const product300 = state.products.find((product) => product.id === "product-1-300");
+  const recipe300 = state.recipes.find((recipe) => recipe.id === "recipe-1-300");
+  assert.ok(product300, "a 300ml product variant should be created without replacing the 500ml product");
+  assert.strictEqual(product300.sizeMl, 300);
+  assert.ok(recipe300, "a 300ml recipe variant should be created automatically");
+  assert.strictEqual(recipe300.bottleMl, 300);
+  assert.strictEqual(recipe300.ingredients[0].qty, 24, "300ml ingredient quantities must be exactly 60% of the 500ml recipe");
+  assert.ok(recipe300.packaging.some((line) => line.itemId === "pkg-bottle-300"), "the 300ml recipe must use the 300ml bottle");
+  assert.strictEqual(state.packaging.find((item) => item.id === "pkg-bottle-300").costEach, 1.2);
+
+  await page.selectOption("#mobileModuleSelector", "packaging");
+  await page.click('[data-action="new-packaging"]');
+  await page.fill('#simpleForm input[name="name"]', "Material decimal teste");
+  await page.fill('#simpleForm input[name="costEach"]', "1.2");
+  await page.click('#simpleForm button[type="submit"]');
+  await page.waitForSelector("#adminModal", { state: "hidden" });
+  state = await storedState(page);
+  assert.strictEqual(state.packaging.find((item) => item.name === "Material decimal teste").costEach, 1.2, "packaging costs must accept cent values such as R$ 1.20");
+
+  await page.selectOption("#mobileModuleSelector", "batches");
+  await page.click('[data-action="new-batch"]');
+  assert.strictEqual(await page.locator('#batchForm [data-variant-flavor]').inputValue(), "Maracuja");
+  assert.deepStrictEqual(
+    await page.locator('#batchForm [data-variant-size] option').evaluateAll((options) => options.map((option) => option.value)),
+    ["300", "500"],
+    "new batches must ask for flavor first and then expose both bottle sizes",
+  );
+  await page.click("#closeAdminModal");
+
+  await page.selectOption("#mobileModuleSelector", "dashboard");
+  await page.click('[data-action="quick-sale"]');
+  assert.strictEqual(await page.locator('#quickSaleForm [data-variant-flavor]').inputValue(), "Maracuja");
+  assert.deepStrictEqual(
+    await page.locator('#quickSaleForm [data-variant-size] option').evaluateAll((options) => options.map((option) => option.value)),
+    ["300", "500"],
+    "sales must ask for flavor first and size second when both variants have available stock",
+  );
+  await page.click("#closeAdminModal");
+
   const legacySaleAudit = page.locator(".audit-row", { hasText: "LOT-TEST-1" });
   assert.match(await legacySaleAudit.innerText(), /Maracuja/);
   assert.match(await legacySaleAudit.innerText(), /lote LOT-TEST-1/);
@@ -213,7 +276,7 @@ async function run() {
   await page.click('#adjustOrderReservationForm button[type="submit"]');
   await page.waitForSelector("#adminModal", { state: "hidden" });
 
-  let state = await storedState(page);
+  state = await storedState(page);
   let item = state.orders[0].items[0];
   assert.strictEqual(item.qty, 4, "manual reservation changes must never alter the ordered quantity");
   assert.strictEqual(item.reservationTarget, null, "legacy order target must not be used for current reservation adjustments");
@@ -241,6 +304,7 @@ async function run() {
 
   await page.locator('[data-action="delivery-proof:order-1"]').click();
   await page.waitForSelector("#deliveryProofForm");
+  assert.match(await page.locator(".delivery-proof-item").innerText(), /Maracuja 500ml/);
   assert.strictEqual(await page.locator('[name="deliveredQty_0"]').inputValue(), "3", "proof should start with bottles already reserved for the client");
   assert.strictEqual(
     await page.locator('[name="paymentMethod"]').inputValue(),
@@ -332,6 +396,11 @@ async function run() {
   await page.waitForSelector("#orderForm");
   assert.strictEqual(await page.locator(".order-item-selector").count(), 1, "order editor should start with a compact flavor selector");
   assert.strictEqual(await page.locator(".order-item-row:not([hidden])").count(), 1, "only one flavor editor may be visible at a time");
+  assert.deepStrictEqual(
+    await page.locator('.order-item-row:not([hidden]) [data-variant-size] option').evaluateAll((options) => options.map((option) => option.value)),
+    ["300", "500"],
+    "order items must keep flavor and bottle size as separate, compact choices",
+  );
   await page.click("[data-add-order-item]");
   assert.strictEqual(await page.locator(".order-item-selector").count(), 2, "new flavors should be added to the compact selector");
   assert.strictEqual(await page.locator(".order-item-row:not([hidden])").count(), 1, "adding a flavor must not expand every item editor");
@@ -370,7 +439,7 @@ async function run() {
 
   await assertOldestOrderReservationPriority(browser);
   await browser.close();
-  console.log("Admin regression: password visibility, compact order editing, two partial A4 deliveries, shipment history, period filters, FIFO order reservation, reservation override, partner deep-link, audit history and write-off passed.");
+  console.log("Admin regression: password visibility, decimal packaging cost, automatic 300ml recipes, flavor-size flows, compact order editing, two partial A4 deliveries, shipment history, period filters, FIFO order reservation, reservation override, partner deep-link, audit history and write-off passed.");
 }
 
 run().catch((error) => {

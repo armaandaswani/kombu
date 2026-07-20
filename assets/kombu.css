@@ -3201,6 +3201,20 @@ textarea:focus-visible {
   margin-bottom: 10px;
 }
 
+.variant-picker {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) minmax(120px, 0.35fr);
+  gap: 10px;
+  min-width: 0;
+  align-items: end;
+}
+
+.variant-picker .field,
+.variant-picker .select-search-wrap {
+  min-width: 0;
+}
+
 .recipe-ingredient-row {
   grid-template-columns: repeat(4, minmax(120px, 1fr)) 46px;
 }
@@ -4116,6 +4130,10 @@ textarea:focus-visible {
   .image-fields,
   .flavor-cms-control,
   .flavor-cms-fields {
+    grid-template-columns: 1fr;
+  }
+
+  .variant-picker {
     grid-template-columns: 1fr;
   }
 
