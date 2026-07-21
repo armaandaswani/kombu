@@ -1271,6 +1271,10 @@ function productDisplayCost(product) {
   return recipe ? recipeCost(recipe).costPerBottle : Number(product?.baselineCost || 0);
 }
 
+function productIsOperational(product) {
+  return product?.visible !== false && normalizeText(product?.status || "ativo") === "ativo";
+}
+
 function productWholesalePrice(product) {
   return Number(product?.wholesalePrice || 0);
 }
@@ -3276,6 +3280,7 @@ function renderProducts() {
     .map((product) => {
       const recipe = recipeForProduct(product);
       const calculatedCost = productDisplayCost(product);
+      const operational = productIsOperational(product);
       const wholesale = productWholesalePrice(product);
       const margin = wholesale ? ((wholesale - calculatedCost) / wholesale) * 100 : 0;
       return `
@@ -3285,10 +3290,9 @@ function renderProducts() {
           <td class="num">${number(product.sizeMl)}ml</td>
           <td class="num">${brl(product.retailPrice)}</td>
           <td class="num">${brl(product.wholesalePrice)}</td>
-          <td class="num">${product.baselineCost ? brl(product.baselineCost) : "Pendente"}</td>
-          <td class="num"><strong>${recipe ? brl(calculatedCost) : "Sem receita"}</strong></td>
+          <td class="num"><strong>${recipe ? brl(calculatedCost) : "Custo pendente"}</strong></td>
           <td class="num">${recipe ? pct(margin) : "-"}</td>
-          <td><span class="status ${statusClass(product.status, "general")}">${product.status}</span></td>
+          <td><span class="status ${operational ? "good" : "warn"}">${operational ? "Disponível" : "Indisponível"}</span></td>
           <td>${rowActions([tableAction(`edit-product:${product.id}`, "Editar produto"), tableAction(`delete-product:${product.id}`, "Excluir produto", "delete", "danger")])}</td>
         </tr>
       `;
@@ -3296,38 +3300,42 @@ function renderProducts() {
   const compactProducts = state.products
     .filter((item) => matchesSearch(item))
     .map(
-      (product) => `
+      (product) => {
+        const recipe = recipeForProduct(product);
+        const operational = productIsOperational(product);
+        return `
         <article class="product-compact-card">
           <div>
             <strong>${escapeHtml(product.flavor)}</strong>
             <span>${escapeHtml(product.item || product.ean || "sem codigo")} | ${number(product.sizeMl)}ml</span>
           </div>
           <div class="product-compact-meta">
-            <span class="status ${statusClass(product.status, "general")}">${escapeHtml(product.status)}</span>
-            <small>${product.visible ? "publico" : "oculto"}</small>
+            <span class="status ${operational ? "good" : "warn"}">${operational ? "Disponível" : "Indisponível"}</span>
           </div>
           <div class="product-compact-prices">
             <span>Varejo ${brl(product.retailPrice)}</span>
             <span>Atacado ${brl(product.wholesalePrice)}</span>
+            <span>${recipe ? `Custo ${brl(productDisplayCost(product))}` : "Custo pendente"}</span>
           </div>
           <div class="product-compact-actions">
             ${rowActions([tableAction(`edit-product:${product.id}`, "Editar sabor"), tableAction(`delete-product:${product.id}`, "Excluir sabor", "delete", "danger")])}
           </div>
         </article>
-      `,
+      `;
+      },
     )
     .join("");
   return `
     ${pageHead(
       "Produtos / EAN",
-      "Catálogo operacional com código de barras, item, descrição, preço e vínculo com receitas/custos.",
-      `${actionButton("new-product", "Novo produto", "add")} ${actionButton("global-prices", "Preço global", "price_change", "btn-outline")} ${actionButton("import-cost-base", "Restaurar base dos prints", "upload_file", "btn-outline")} ${actionButton("export-products", "CSV", "download", "btn-outline")}`,
+      "Catálogo de sabores e tamanhos. O custo é calculado automaticamente pela receita vinculada.",
+      `${actionButton("new-product", "Novo produto", "add")} ${actionButton("global-prices", "Preço global", "price_change", "btn-outline")} ${actionButton("export-products", "CSV", "download", "btn-outline")}`,
     )}
     <section class="metric-grid">
       ${metric("Produtos cadastrados", number(state.products.length), "Itens KMB e variações", "barcode_scanner")}
       ${metric("Com receita vinculada", number(state.products.filter((product) => recipeForProduct(product)).length), "Calculam custo automaticamente", "calculate")}
-      ${metric("Ativos públicos", number(state.products.filter((product) => product.visible).length), "Controle de visibilidade", "visibility")}
-      ${metric("Custo médio calculado", brl(state.products.reduce((sum, product) => sum + productDisplayCost(product), 0) / Math.max(1, state.products.length)), "Média do catálogo", "price_check")}
+      ${metric("Disponíveis", number(state.products.filter(productIsOperational).length), "Catálogo operacional", "check_circle")}
+      ${metric("Custo médio calculado", brl(state.products.filter((product) => recipeForProduct(product)).reduce((sum, product) => sum + productDisplayCost(product), 0) / Math.max(1, state.products.filter((product) => recipeForProduct(product)).length)), "Somente receitas vinculadas", "price_check")}
     </section>
     <section class="admin-card">
       <div class="table-toolbar">
@@ -3358,14 +3366,13 @@ function renderProducts() {
         { label: "Tamanho", num: true },
         { label: "Varejo", num: true },
         { label: "Atacado", num: true },
-        { label: "Custo print", num: true },
-        { label: "Custo receita", num: true },
+        { label: "Custo da receita", num: true },
         { label: "Margem atacado", num: true },
-        { label: "Status" },
+        { label: "Disponibilidade" },
         { label: "Ações" },
       ],
       rows,
-      1260,
+      1120,
     )}
   `;
 }
@@ -4637,8 +4644,9 @@ function restoreCostBase() {
 function productsForPriceScope(scope) {
   const filters = {
     all: () => true,
-    active: (product) => product.status === "ativo",
-    visible: (product) => product.visible,
+    operational: productIsOperational,
+    active: productIsOperational,
+    visible: productIsOperational,
     size500: (product) => Number(product.sizeMl) === 500,
     search: (product) => matchesSearch(product),
   };
@@ -4676,8 +4684,7 @@ function globalPriceForm() {
             <span>Aplicar em</span>
             <select name="scope">
               <option value="all">Todos os produtos (${state.products.length})</option>
-              <option value="active">Somente status ativo (${productsForPriceScope("active").length})</option>
-              <option value="visible">Somente públicos/visíveis (${productsForPriceScope("visible").length})</option>
+              <option value="operational">Somente disponíveis (${productsForPriceScope("operational").length})</option>
               <option value="size500">Somente 500ml (${productsForPriceScope("size500").length})</option>
               <option value="search">${searchLabel}</option>
             </select>
@@ -4755,10 +4762,14 @@ function newProductForm() {
           <label class="field"><span>Tamanho ml</span><input name="sizeMl" type="number" min="1" value="500" required></label>
           <label class="field"><span>Preço varejo</span><input name="retailPrice" type="number" min="0" step="0.01" value="${retailDefault}"></label>
           <label class="field"><span>Preço atacado</span><input name="wholesalePrice" type="number" min="0" step="0.01" value="${wholesaleDefault}"></label>
-          <label class="field"><span>Custo base</span><input name="baselineCost" type="number" min="0" step="0.01" value="0"></label>
-          <label class="field"><span>Status</span><select name="status"><option>ativo</option><option>planejado</option><option>pausado</option></select></label>
           <label class="field field-full"><span>Descrição</span><input name="description" placeholder="Kombucha Premium de 500ml - Sabor ..."></label>
-          <label class="check-row field-full"><input name="visible" type="checkbox" checked> <span>Visível/ativo para operação</span></label>
+          <div class="product-cost-summary field-full">
+            <small>Custo por garrafa</small>
+            <strong>Calculado após vincular a receita</strong>
+            <span>Ingredientes e materiais definem este valor automaticamente.</span>
+          </div>
+          <label class="check-row field-full"><input name="operational" type="checkbox" checked> <span>Disponível no catálogo operacional</span></label>
+          <p class="field-help field-full">Desative apenas se este sabor e tamanho não puderem ser usados em novos lançamentos internos. A publicação no site é controlada no CMS.</p>
         </div>
         <button class="btn btn-primary" type="submit">Salvar produto</button>
       </form>
@@ -4776,9 +4787,9 @@ function newProductForm() {
       description: data.description || `Kombucha Premium de ${data.sizeMl}ml - Sabor ${data.flavor}`,
       wholesalePrice: Number(data.wholesalePrice || 0),
       retailPrice: Number(data.retailPrice || 0),
-      baselineCost: Number(data.baselineCost || 0),
-      status: data.status || "ativo",
-      visible: data.visible === "on",
+      baselineCost: 0,
+      status: data.operational === "on" ? "ativo" : "inativo",
+      visible: data.operational === "on",
     };
     state.products.unshift(product);
     addAudit("Produto criado", productLabel(product));
@@ -6359,18 +6370,62 @@ function deleteOrder(recordId) {
   render();
 }
 
-const productFields = [
-  { name: "item", label: "Item", required: true },
-  { name: "ean", label: "EAN-13" },
-  { name: "flavor", label: "Sabor", required: true },
-  { name: "sizeMl", label: "Tamanho ml", type: "number", min: 1, required: true },
-  { name: "retailPrice", label: "Preço varejo", type: "number", min: 0, step: "0.01" },
-  { name: "wholesalePrice", label: "Preço atacado", type: "number", min: 0, step: "0.01" },
-  { name: "baselineCost", label: "Custo base", type: "number", min: 0, step: "0.01" },
-  { name: "status", label: "Status", type: "select", options: ["ativo", "planejado", "pausado", "inativo"] },
-  { name: "description", label: "Descrição", full: true },
-  { name: "visible", label: "Visível/ativo para operação", type: "checkbox", full: true },
-];
+function editProductForm(productId) {
+  const product = byId("products", productId);
+  if (!product) return;
+  const recipe = recipeForProduct(product);
+  const cost = recipe ? recipeCost(recipe).costPerBottle : 0;
+  openModal(
+    "Editar produto",
+    "Produtos",
+    `
+      <form id="editProductForm">
+        <div class="input-grid">
+          <label class="field"><span>Item</span><input name="item" value="${escapeHtml(product.item || "")}" required></label>
+          <label class="field"><span>EAN-13</span><input name="ean" value="${escapeHtml(product.ean || "")}" inputmode="numeric" maxlength="13"></label>
+          <label class="field"><span>Sabor</span><input name="flavor" value="${escapeHtml(product.flavor || "")}" required></label>
+          <label class="field"><span>Tamanho ml</span><input name="sizeMl" type="number" inputmode="numeric" min="1" value="${Number(product.sizeMl || 0)}" required></label>
+          <label class="field"><span>Preço varejo</span><input name="retailPrice" type="number" inputmode="decimal" min="0" step="0.01" value="${Number(product.retailPrice || 0)}"></label>
+          <label class="field"><span>Preço atacado</span><input name="wholesalePrice" type="number" inputmode="decimal" min="0" step="0.01" value="${Number(product.wholesalePrice || 0)}"></label>
+          <label class="field field-full"><span>Descrição</span><input name="description" value="${escapeHtml(product.description || "")}"></label>
+          <div class="product-cost-summary field-full">
+            <small>Custo atual por garrafa</small>
+            <strong>${recipe ? brl(cost) : "Custo pendente"}</strong>
+            <span>${recipe ? `Calculado automaticamente pela receita ${escapeHtml(recipe.version || "vinculada")}. Altere ingredientes e materiais na aba Receitas.` : "Este produto ainda não tem receita vinculada. Crie ou vincule a receita para calcular o custo."}</span>
+          </div>
+          <label class="check-row field-full">
+            <input name="operational" type="checkbox" ${productIsOperational(product) ? "checked" : ""}>
+            <span>Disponível no catálogo operacional</span>
+          </label>
+          <p class="field-help field-full">Desative apenas se este sabor e tamanho não puderem ser usados em novos lançamentos internos. A publicação no site é controlada no CMS.</p>
+        </div>
+        <button class="btn btn-primary" type="submit">
+          <span class="material-symbols-outlined" aria-hidden="true">save</span>
+          Salvar alterações
+        </button>
+      </form>
+    `,
+  );
+  document.querySelector("#editProductForm").addEventListener("submit", (event) => {
+    event.preventDefault();
+    const data = new FormData(event.target);
+    const operational = data.get("operational") === "on";
+    Object.assign(product, {
+      item: String(data.get("item") || "").trim(),
+      ean: String(data.get("ean") || "").trim(),
+      flavor: String(data.get("flavor") || "").trim(),
+      sizeMl: Number(data.get("sizeMl") || 0),
+      retailPrice: Number(data.get("retailPrice") || 0),
+      wholesalePrice: Number(data.get("wholesalePrice") || 0),
+      description: String(data.get("description") || "").trim(),
+      visible: operational,
+      status: operational ? "ativo" : "inativo",
+    });
+    addAudit("Produto atualizado", productLabel(product));
+    closeModal();
+    render();
+  });
+}
 
 const ingredientFields = [
   { name: "name", label: "Nome", required: true },
@@ -7582,7 +7637,7 @@ function handleAction(action) {
   const [dynamicAction, ...dynamicParts] = action.split(":");
   const dynamicPayload = dynamicParts.join(":");
   const dynamicMap = {
-    "edit-product": (itemId) => editRecordForm("products", itemId, "Editar produto", productFields),
+    "edit-product": editProductForm,
     "delete-product": (itemId) => deleteRecord("products", itemId),
     "edit-ingredient": (itemId) => editRecordForm("ingredients", itemId, "Editar ingrediente", ingredientFields, (record) => {
       record.packageUnit = record.packageUnit || record.purchaseUnit || "g";
@@ -7723,7 +7778,7 @@ function handleAction(action) {
       addAudit("Dados operacionais limpos", "Base de produtos e custos dos prints preservada.");
       render();
     },
-    "export-products": () => exportCSV("kombu-produtos-ean", [["EAN-13", "Item", "Sabor", "Tamanho ml", "Descricao", "Varejo", "Atacado", "Custo base"], ...state.products.map((p) => [p.ean, p.item, p.flavor, p.sizeMl, p.description, p.retailPrice, p.wholesalePrice, p.baselineCost])]),
+    "export-products": () => exportCSV("kombu-produtos-ean", [["EAN-13", "Item", "Sabor", "Tamanho ml", "Descricao", "Varejo", "Atacado", "Custo receita", "Disponibilidade"], ...state.products.map((p) => [p.ean, p.item, p.flavor, p.sizeMl, p.description, p.retailPrice, p.wholesalePrice, recipeForProduct(p) ? productDisplayCost(p) : "", productIsOperational(p) ? "disponível" : "indisponível"])]),
     "export-ingredients": () => exportCSV("kombu-ingredientes", [["Nome", "Categoria", "Fornecedor", "Estoque", "Unidade", "Custo", "Status"], ...state.ingredients.map((i) => [i.name, i.category, i.supplier, i.stock, i.purchaseUnit, i.costPerUnit, ingredientNeedsCost(i) ? "custo pendente" : i.status])]),
     "export-purchases": () => exportCSV("kombu-compras", [["Data", "Fornecedor", "Item", "Pacotes", "Conteúdo pacote", "Unidade pacote", "Entra estoque", "Unidade estoque", "Total", "Custo unitário", "Método", "Comprador"], ...state.purchases.map((p) => [p.date, p.supplier, p.item, p.packageCount || "", p.packageSize || "", p.packageUnit || "", p.qty, p.unit, p.total, p.costPerUnit || "", p.method, p.buyer])]),
     "export-sales": () => exportCSV("kombu-saidas-vendas", [["Data", "Tipo", "Cliente/destino", "Preço", "Sabor", "Lote", "Qtd", "Preço unitário", "Receita", "Desconto", "Entrega", "Observação"], ...state.sales.map((s) => [s.date, s.movementType || "venda", s.customerName || s.partner, s.priceType || s.channel, s.flavor, s.batchCode, s.qty, s.unitPrice, saleRevenue(s), s.discount, s.delivery, s.note || ""])]),

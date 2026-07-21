@@ -2395,6 +2395,8 @@ textarea:focus-visible {
   display: inline-flex;
   align-items: center;
   gap: 6px;
+  flex-shrink: 0;
+  white-space: nowrap;
   border-radius: 999px;
   padding: 5px 9px;
   font-size: 12px;
@@ -3087,6 +3089,43 @@ textarea:focus-visible {
   margin-top: 4px;
   font-size: 1.55rem;
   line-height: 1.1;
+}
+
+.product-cost-summary {
+  display: grid;
+  gap: 4px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--surface-soft);
+  padding: 14px;
+}
+
+.product-cost-summary small,
+.product-cost-summary span,
+.field-help {
+  color: var(--muted);
+}
+
+.product-cost-summary small {
+  font-size: 0.78rem;
+  font-weight: 850;
+  text-transform: uppercase;
+}
+
+.product-cost-summary strong {
+  color: var(--green);
+  font-size: 1.35rem;
+  line-height: 1.2;
+}
+
+.product-cost-summary span,
+.field-help {
+  font-size: 0.88rem;
+  line-height: 1.45;
+}
+
+.field-help {
+  margin: -4px 0 0;
 }
 
 .reservation-note {

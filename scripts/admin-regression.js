@@ -242,6 +242,38 @@ async function run() {
   state = await storedState(page);
   assert.strictEqual(state.packaging.find((item) => item.name === "Material decimal teste").costEach, 1.2, "packaging costs must accept cent values such as R$ 1.20");
 
+  await page.selectOption("#mobileModuleSelector", "products");
+  const productsText = await page.locator("#adminContent").innerText();
+  assert.strictEqual(await page.getByText("Custo da receita", { exact: true }).count(), 1, "products must identify the recipe as the cost source");
+  assert.ok(!productsText.includes("Custo print"), "products must not expose the obsolete manual print cost");
+  const productCard = page.locator(".product-compact-card", { hasText: "Maracuja" }).first();
+  const productCardText = await productCard.innerText();
+  assert.match(productCardText, /Custo R\$/, "product cards must show the current recipe calculation");
+  assert.ok(!/Custo R\$[\s\u00a0]*0,00/.test(productCardText), "linked recipes must not fall back to a zero manual cost");
+  await productCard.locator('[data-action="edit-product:product-1"]').click();
+  await page.waitForSelector("#editProductForm");
+  assert.strictEqual(await page.locator('#editProductForm [name="baselineCost"]').count(), 0, "recipe-derived cost must not be manually editable");
+  assert.strictEqual(await page.locator('#editProductForm [name="status"]').count(), 0, "product status must not duplicate operational availability");
+  const productCostSummary = await page.locator("#editProductForm .product-cost-summary").innerText();
+  assert.match(productCostSummary, /R\$/);
+  assert.ok(!/R\$[\s\u00a0]*0,00/.test(productCostSummary));
+  assert.match(productCostSummary, /Calculado automaticamente pela receita/);
+  assert.strictEqual(await page.locator('#editProductForm [name="operational"]').isChecked(), true);
+  await page.locator('#editProductForm [name="operational"]').uncheck();
+  await page.click('#editProductForm button[type="submit"]');
+  await page.waitForSelector("#adminModal", { state: "hidden" });
+  state = await storedState(page);
+  assert.strictEqual(state.products.find((product) => product.id === "product-1").visible, false);
+  assert.strictEqual(state.products.find((product) => product.id === "product-1").status, "inativo");
+  await page.locator('.product-compact-card [data-action="edit-product:product-1"]').click();
+  await page.waitForSelector("#editProductForm");
+  await page.locator('#editProductForm [name="operational"]').check();
+  await page.click('#editProductForm button[type="submit"]');
+  await page.waitForSelector("#adminModal", { state: "hidden" });
+  state = await storedState(page);
+  assert.strictEqual(state.products.find((product) => product.id === "product-1").visible, true);
+  assert.strictEqual(state.products.find((product) => product.id === "product-1").status, "ativo");
+
   await page.selectOption("#mobileModuleSelector", "batches");
   await page.click('[data-action="new-batch"]');
   assert.strictEqual(await page.locator('#batchForm [data-variant-flavor]').inputValue(), "Maracuja");
@@ -439,7 +471,7 @@ async function run() {
 
   await assertOldestOrderReservationPriority(browser);
   await browser.close();
-  console.log("Admin regression: password visibility, decimal packaging cost, automatic 300ml recipes, flavor-size flows, compact order editing, two partial A4 deliveries, shipment history, period filters, FIFO order reservation, reservation override, partner deep-link, audit history and write-off passed.");
+  console.log("Admin regression: password visibility, decimal packaging cost, recipe-driven product cost, unified product availability, automatic 300ml recipes, flavor-size flows, compact order editing, two partial A4 deliveries, shipment history, period filters, FIFO order reservation, reservation override, partner deep-link, audit history and write-off passed.");
 }
 
 run().catch((error) => {
