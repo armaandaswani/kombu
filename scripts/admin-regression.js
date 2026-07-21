@@ -227,12 +227,12 @@ async function run() {
   const recipe300 = state.recipes.find((recipe) => recipe.id === "recipe-1-300");
   assert.ok(product300, "a 300ml product variant should be created without replacing the 500ml product");
   assert.strictEqual(product300.sizeMl, 300);
-  assert.strictEqual(product300.retailPrice, 16, "300ml products must keep their own retail reference");
-  assert.strictEqual(product300.wholesalePrice, 10, "300ml products must keep their own wholesale reference");
+  assert.strictEqual(product300.retailPrice, 20, "300ml products must keep their own retail reference");
+  assert.strictEqual(product300.wholesalePrice, 13, "300ml products must keep their own wholesale reference");
   assert.ok(recipe300, "a 300ml recipe variant should be created automatically");
   assert.strictEqual(recipe300.bottleMl, 300);
-  assert.strictEqual(recipe300.retailPrice, 16, "300ml recipes must inherit the 300ml retail reference");
-  assert.strictEqual(recipe300.wholesalePrice, 10, "300ml recipes must inherit the 300ml wholesale reference");
+  assert.strictEqual(recipe300.retailPrice, 20, "300ml recipes must inherit the 300ml retail reference");
+  assert.strictEqual(recipe300.wholesalePrice, 13, "300ml recipes must inherit the 300ml wholesale reference");
   assert.strictEqual(recipe300.ingredients[0].qty, 24, "300ml ingredient quantities must be exactly 60% of the 500ml recipe");
   assert.ok(recipe300.packaging.some((line) => line.itemId === "pkg-bottle-300"), "the 300ml recipe must use the 300ml bottle");
   assert.strictEqual(state.packaging.find((item) => item.id === "pkg-bottle-300").costEach, 1.2);
@@ -264,14 +264,14 @@ async function run() {
   );
   assert.match(
     await page.locator('.size-pricing-card', { hasText: "300ml" }).innerText(),
-    /R\$\s*16,00[\s\S]*R\$\s*10,00/,
+    /R\$\s*20,00[\s\S]*R\$\s*13,00/,
     "300ml pricing summary must show its own retail and wholesale prices",
   );
   await page.click('[data-action="global-prices-300"]');
   await page.waitForSelector("#globalPriceForm");
   assert.strictEqual(await page.locator("#globalPriceForm").getAttribute("data-size-ml"), "300");
-  assert.strictEqual(Number(await page.locator('#globalPriceForm [name="retailPrice"]').inputValue()), 16);
-  assert.strictEqual(Number(await page.locator('#globalPriceForm [name="wholesalePrice"]').inputValue()), 10);
+  assert.strictEqual(Number(await page.locator('#globalPriceForm [name="retailPrice"]').inputValue()), 20);
+  assert.strictEqual(Number(await page.locator('#globalPriceForm [name="wholesalePrice"]').inputValue()), 13);
   const pricingSummary = await page.locator("#globalPriceForm .pricing-form-summary").innerText();
   assert.match(pricingSummary, /Maior custo/, "pricing review must explain the real cost used for the suggestion");
   assert.ok(!/Maior custo[^\n]*R\$\s*0,00/.test(pricingSummary), "pricing suggestions must use the linked recipe costs");
