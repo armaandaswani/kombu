@@ -20,10 +20,14 @@ const DELIVERY_PROOF_PAYMENT_NOTE =
 const RECURRING_RETAIL_PRICE = 20;
 const GLOBAL_RETAIL_PRICE = 22;
 const GLOBAL_WHOLESALE_PRICE = 15;
-const GLOBAL_PRICE_VERSION = "2026-07-04-22-15";
+const SMALL_RETAIL_PRICE = 16;
+const SMALL_WHOLESALE_PRICE = 10;
+const GLOBAL_PRICE_VERSION = "2026-07-21-prices-by-size-v1";
 const BASE_BOTTLE_SIZE_ML = 500;
 const SMALL_BOTTLE_SIZE_ML = 300;
 const SMALL_BOTTLE_RECIPE_RATIO = SMALL_BOTTLE_SIZE_ML / BASE_BOTTLE_SIZE_ML;
+const DEFAULT_RETAIL_MARGIN_TARGET = 80;
+const DEFAULT_WHOLESALE_MARGIN_TARGET = 70;
 
 const ADMIN_I18N = {
   en: {
@@ -566,6 +570,20 @@ const defaultState = {
   settings: {
     globalRetailPrice: GLOBAL_RETAIL_PRICE,
     globalWholesalePrice: GLOBAL_WHOLESALE_PRICE,
+    pricesBySize: {
+      500: {
+        retailPrice: GLOBAL_RETAIL_PRICE,
+        wholesalePrice: GLOBAL_WHOLESALE_PRICE,
+        retailTargetMargin: DEFAULT_RETAIL_MARGIN_TARGET,
+        wholesaleTargetMargin: DEFAULT_WHOLESALE_MARGIN_TARGET,
+      },
+      300: {
+        retailPrice: SMALL_RETAIL_PRICE,
+        wholesalePrice: SMALL_WHOLESALE_PRICE,
+        retailTargetMargin: DEFAULT_RETAIL_MARGIN_TARGET,
+        wholesaleTargetMargin: DEFAULT_WHOLESALE_MARGIN_TARGET,
+      },
+    },
     priceVersion: GLOBAL_PRICE_VERSION,
   },
   audit: [],
@@ -902,6 +920,8 @@ function ensure300MlProductVariants(data) {
       item: `${product.item}-300`,
       sizeMl: SMALL_BOTTLE_SIZE_ML,
       description: String(product.description || "").replace(/500\s*ml/gi, "300ml"),
+      retailPrice: SMALL_RETAIL_PRICE,
+      wholesalePrice: SMALL_WHOLESALE_PRICE,
       baselineCost: 0,
       visible: false,
       sourceProductId: product.id,
@@ -942,6 +962,8 @@ function ensure300MlRecipeVariants(data) {
         ? String(recipe.version).replace(/500\s*ml/gi, "300ml")
         : `${String(recipe.version || "base").trim()} 300ml`,
       bottleMl: SMALL_BOTTLE_SIZE_ML,
+      retailPrice: SMALL_RETAIL_PRICE,
+      wholesalePrice: SMALL_WHOLESALE_PRICE,
       ingredients: (Array.isArray(recipe.ingredients) ? recipe.ingredients : []).map((line) => ({
         ...line,
         qty: proportionalRecipeQuantity(line.qty),
@@ -991,21 +1013,40 @@ function normalizeState(savedState) {
   ensure300MlProductVariants(merged);
   ensureProductLabelInventory(merged);
   ensure300MlRecipeVariants(merged);
+  const savedPricesBySize = saved.settings?.pricesBySize || {};
+  merged.settings.pricesBySize = {
+    500: {
+      retailPrice: Number(savedPricesBySize[500]?.retailPrice ?? merged.settings.globalRetailPrice ?? GLOBAL_RETAIL_PRICE),
+      wholesalePrice: Number(savedPricesBySize[500]?.wholesalePrice ?? merged.settings.globalWholesalePrice ?? GLOBAL_WHOLESALE_PRICE),
+      retailTargetMargin: Number(savedPricesBySize[500]?.retailTargetMargin ?? DEFAULT_RETAIL_MARGIN_TARGET),
+      wholesaleTargetMargin: Number(savedPricesBySize[500]?.wholesaleTargetMargin ?? DEFAULT_WHOLESALE_MARGIN_TARGET),
+    },
+    300: {
+      retailPrice: Number(savedPricesBySize[300]?.retailPrice ?? SMALL_RETAIL_PRICE),
+      wholesalePrice: Number(savedPricesBySize[300]?.wholesalePrice ?? SMALL_WHOLESALE_PRICE),
+      retailTargetMargin: Number(savedPricesBySize[300]?.retailTargetMargin ?? DEFAULT_RETAIL_MARGIN_TARGET),
+      wholesaleTargetMargin: Number(savedPricesBySize[300]?.wholesaleTargetMargin ?? DEFAULT_WHOLESALE_MARGIN_TARGET),
+    },
+  };
   if (merged.settings.priceVersion !== GLOBAL_PRICE_VERSION) {
-    merged.products.forEach((product) => {
-      product.retailPrice = GLOBAL_RETAIL_PRICE;
-      product.wholesalePrice = GLOBAL_WHOLESALE_PRICE;
-    });
-    merged.recipes.forEach((recipe) => {
-      recipe.retailPrice = GLOBAL_RETAIL_PRICE;
-      recipe.wholesalePrice = GLOBAL_WHOLESALE_PRICE;
-    });
+    merged.products
+      .filter((product) => Number(product.sizeMl) === SMALL_BOTTLE_SIZE_ML)
+      .forEach((product) => {
+        product.retailPrice = SMALL_RETAIL_PRICE;
+        product.wholesalePrice = SMALL_WHOLESALE_PRICE;
+      });
+    merged.recipes
+      .filter((recipe) => Number(recipe.bottleMl) === SMALL_BOTTLE_SIZE_ML)
+      .forEach((recipe) => {
+        recipe.retailPrice = SMALL_RETAIL_PRICE;
+        recipe.wholesalePrice = SMALL_WHOLESALE_PRICE;
+      });
     merged.costSources.forEach((source) => {
       source.retailPrice500 = GLOBAL_RETAIL_PRICE;
       source.wholesalePrice500 = GLOBAL_WHOLESALE_PRICE;
     });
-    merged.settings.globalRetailPrice = GLOBAL_RETAIL_PRICE;
-    merged.settings.globalWholesalePrice = GLOBAL_WHOLESALE_PRICE;
+    merged.settings.pricesBySize[300].retailPrice = SMALL_RETAIL_PRICE;
+    merged.settings.pricesBySize[300].wholesalePrice = SMALL_WHOLESALE_PRICE;
     merged.settings.priceVersion = GLOBAL_PRICE_VERSION;
   }
   return merged;
@@ -1283,6 +1324,19 @@ function productRetailPrice(product) {
   return Number(product?.retailPrice || 0);
 }
 
+function priceSettingsForSize(sizeMl = BASE_BOTTLE_SIZE_ML) {
+  const normalizedSize = Number(sizeMl) === SMALL_BOTTLE_SIZE_ML ? SMALL_BOTTLE_SIZE_ML : BASE_BOTTLE_SIZE_ML;
+  const fallback = normalizedSize === SMALL_BOTTLE_SIZE_ML
+    ? { retailPrice: SMALL_RETAIL_PRICE, wholesalePrice: SMALL_WHOLESALE_PRICE }
+    : { retailPrice: GLOBAL_RETAIL_PRICE, wholesalePrice: GLOBAL_WHOLESALE_PRICE };
+  return {
+    ...fallback,
+    retailTargetMargin: DEFAULT_RETAIL_MARGIN_TARGET,
+    wholesaleTargetMargin: DEFAULT_WHOLESALE_MARGIN_TARGET,
+    ...(state.settings.pricesBySize?.[normalizedSize] || {}),
+  };
+}
+
 function orderClientTypeLabel(value) {
   return ORDER_CLIENT_TYPES.find((type) => type.value === value)?.label || "Novo cliente";
 }
@@ -1314,13 +1368,15 @@ function selectedPartnerForOrder(order = {}) {
 
 function priceForOrderClientType(product, clientType) {
   const type = ORDER_CLIENT_TYPES.find((item) => item.value === clientType) || ORDER_CLIENT_TYPES[0];
-  if (type.price === "wholesale") return productWholesalePrice(product) || state.settings.globalWholesalePrice || GLOBAL_WHOLESALE_PRICE;
-  if (type.price === "recurringRetail") return RECURRING_RETAIL_PRICE;
+  const sizePrices = priceSettingsForSize(product?.sizeMl);
+  if (type.price === "wholesale") return productWholesalePrice(product) || sizePrices.wholesalePrice;
+  if (type.price === "recurringRetail") return Math.min(RECURRING_RETAIL_PRICE, productRetailPrice(product) || sizePrices.retailPrice);
   return productRetailPrice(product) || productWholesalePrice(product) || 0;
 }
 
-function commonProductPrice(field, fallback = 0) {
-  const counts = state.products.reduce((acc, product) => {
+function commonProductPrice(field, fallback = 0, sizeMl = null) {
+  const products = sizeMl ? state.products.filter((product) => Number(product.sizeMl) === Number(sizeMl)) : state.products;
+  const counts = products.reduce((acc, product) => {
     const price = Number(product[field] || 0);
     if (!price) return acc;
     const key = price.toFixed(2);
@@ -1329,6 +1385,47 @@ function commonProductPrice(field, fallback = 0) {
   }, {});
   const common = Object.entries(counts).sort((a, b) => b[1] - a[1])[0]?.[0];
   return Number(common || fallback || 0);
+}
+
+function roundPriceUp(value, step = 0.5) {
+  const numeric = Number(value || 0);
+  return numeric > 0 ? Math.ceil((numeric - Number.EPSILON) / step) * step : 0;
+}
+
+function suggestedPriceForCost(cost, targetMargin) {
+  const margin = Math.min(95, Math.max(0, Number(targetMargin || 0))) / 100;
+  return roundPriceUp(Number(cost || 0) / Math.max(0.05, 1 - margin));
+}
+
+function marginForPrice(price, cost) {
+  const numericPrice = Number(price || 0);
+  return numericPrice > 0 ? ((numericPrice - Number(cost || 0)) / numericPrice) * 100 : 0;
+}
+
+function pricingAnalysisForSize(sizeMl) {
+  const products = state.products.filter((product) => Number(product.sizeMl) === Number(sizeMl));
+  const costedProducts = products.filter((product) => recipeForProduct(product));
+  const costs = costedProducts.map(productDisplayCost).filter((cost) => Number(cost) > 0);
+  const averageCost = costs.reduce((sum, cost) => sum + cost, 0) / Math.max(1, costs.length);
+  const highestCost = costs.length ? Math.max(...costs) : 0;
+  const settings = priceSettingsForSize(sizeMl);
+  const retailPrice = commonProductPrice("retailPrice", settings.retailPrice, sizeMl);
+  const wholesalePrice = commonProductPrice("wholesalePrice", settings.wholesalePrice, sizeMl);
+  return {
+    sizeMl: Number(sizeMl),
+    products,
+    costedProducts,
+    averageCost,
+    highestCost,
+    retailPrice,
+    wholesalePrice,
+    retailTargetMargin: Number(settings.retailTargetMargin),
+    wholesaleTargetMargin: Number(settings.wholesaleTargetMargin),
+    suggestedRetailPrice: suggestedPriceForCost(highestCost, settings.retailTargetMargin),
+    suggestedWholesalePrice: suggestedPriceForCost(highestCost, settings.wholesaleTargetMargin),
+    retailFloorMargin: marginForPrice(retailPrice, highestCost),
+    wholesaleFloorMargin: marginForPrice(wholesalePrice, highestCost),
+  };
 }
 
 const unitFactor = { g: 1, kg: 1000, ml: 1, l: 1000, L: 1000, un: 1 };
@@ -3272,9 +3369,39 @@ function renderSuppliers() {
   `;
 }
 
+function sizePricingCard(sizeMl) {
+  const analysis = pricingAnalysisForSize(sizeMl);
+  const suggestionAvailable = analysis.highestCost > 0;
+  return `
+    <article class="size-pricing-card">
+      <div class="size-pricing-head">
+        <div>
+          <span class="eyebrow">VARIANTE</span>
+          <h3>${number(sizeMl)}ml</h3>
+        </div>
+        <span>${analysis.products.length} sabores</span>
+      </div>
+      <div class="size-pricing-current">
+        <div><small>Varejo atual</small><strong>${brl(analysis.retailPrice)}</strong></div>
+        <div><small>Atacado atual</small><strong>${brl(analysis.wholesalePrice)}</strong></div>
+      </div>
+      <div class="size-pricing-costs">
+        <span>Custo médio <strong>${brl(analysis.averageCost)}</strong></span>
+        <span>Maior custo <strong>${brl(analysis.highestCost)}</strong></span>
+      </div>
+      <div class="size-pricing-suggestion ${suggestionAvailable ? "" : "is-pending"}">
+        <small>Sugestão para proteger todos os sabores</small>
+        ${suggestionAvailable
+          ? `<strong>Varejo ${brl(analysis.suggestedRetailPrice)} · Atacado ${brl(analysis.suggestedWholesalePrice)}</strong>
+             <span>Metas: ${number(analysis.retailTargetMargin)}% varejo · ${number(analysis.wholesaleTargetMargin)}% atacado</span>`
+          : `<strong>Custo pendente</strong><span>Cadastre os custos das receitas para calcular a sugestão.</span>`}
+      </div>
+      ${actionButton(`global-prices-${sizeMl}`, `Revisar preços ${sizeMl}ml`, "price_change", "btn-outline")}
+    </article>
+  `;
+}
+
 function renderProducts() {
-  const currentRetail = commonProductPrice("retailPrice", state.settings.globalRetailPrice || GLOBAL_RETAIL_PRICE);
-  const currentWholesale = commonProductPrice("wholesalePrice", state.settings.globalWholesalePrice || GLOBAL_WHOLESALE_PRICE);
   const rows = state.products
     .filter((item) => matchesSearch(item))
     .map((product) => {
@@ -3329,7 +3456,7 @@ function renderProducts() {
     ${pageHead(
       "Produtos / EAN",
       "Catálogo de sabores e tamanhos. O custo é calculado automaticamente pela receita vinculada.",
-      `${actionButton("new-product", "Novo produto", "add")} ${actionButton("global-prices", "Preço global", "price_change", "btn-outline")} ${actionButton("export-products", "CSV", "download", "btn-outline")}`,
+      `${actionButton("new-product", "Novo produto", "add")} ${actionButton("export-products", "CSV", "download", "btn-outline")}`,
     )}
     <section class="metric-grid">
       ${metric("Produtos cadastrados", number(state.products.length), "Itens KMB e variações", "barcode_scanner")}
@@ -3337,17 +3464,16 @@ function renderProducts() {
       ${metric("Disponíveis", number(state.products.filter(productIsOperational).length), "Catálogo operacional", "check_circle")}
       ${metric("Custo médio calculado", brl(state.products.filter((product) => recipeForProduct(product)).reduce((sum, product) => sum + productDisplayCost(product), 0) / Math.max(1, state.products.filter((product) => recipeForProduct(product)).length)), "Somente receitas vinculadas", "price_check")}
     </section>
-    <section class="admin-card">
+    <section class="size-pricing-section">
       <div class="table-toolbar">
         <div>
-          <h3>Preço global das kombuchas</h3>
-          <p>Use este controle para alterar varejo e atacado de todos os sabores de uma vez.</p>
+          <h3>Preços por tamanho</h3>
+          <p>500ml e 300ml têm referências próprias. A sugestão usa o maior custo real da variante para proteger a margem de todos os sabores.</p>
         </div>
-        ${actionButton("global-prices", "Alterar preços", "price_change", "btn-outline")}
       </div>
-      <div class="metric-grid compact">
-        ${metric("Varejo atual", brl(currentRetail), "Aplicado como referência dos pedidos de varejo", "sell")}
-        ${metric("Atacado atual", brl(currentWholesale), "Aplicado para parceiros novos e recorrentes", "storefront")}
+      <div class="size-pricing-grid">
+        ${sizePricingCard(BASE_BOTTLE_SIZE_ML)}
+        ${sizePricingCard(SMALL_BOTTLE_SIZE_ML)}
       </div>
     </section>
     <section class="admin-card product-compact-panel">
@@ -4670,86 +4796,117 @@ function syncRecipePricesForProducts(products, prices) {
   return recipeCount;
 }
 
-function globalPriceForm() {
-  const retailDefault = commonProductPrice("retailPrice", state.settings.globalRetailPrice || GLOBAL_RETAIL_PRICE).toFixed(2);
-  const wholesaleDefault = commonProductPrice("wholesalePrice", state.settings.globalWholesalePrice || GLOBAL_WHOLESALE_PRICE).toFixed(2);
-  const searchLabel = globalSearch ? `Busca atual (${productsForPriceScope("search").length})` : "Busca atual";
+function globalPriceForm(sizeMl = BASE_BOTTLE_SIZE_ML) {
+  const normalizedSize = Number(sizeMl) === SMALL_BOTTLE_SIZE_ML ? SMALL_BOTTLE_SIZE_ML : BASE_BOTTLE_SIZE_ML;
+  const analysis = pricingAnalysisForSize(normalizedSize);
+  const costCoverage = `${analysis.costedProducts.length} de ${analysis.products.length} sabores com receita vinculada`;
   openModal(
-    "Preço global",
+    `Preços ${normalizedSize}ml`,
     "Produtos / EAN",
     `
-      <form id="globalPriceForm">
+      <form id="globalPriceForm" data-size-ml="${normalizedSize}">
+        <div class="pricing-form-summary">
+          <div><small>Custo médio</small><strong>${brl(analysis.averageCost)}</strong></div>
+          <div><small>Maior custo</small><strong>${brl(analysis.highestCost)}</strong></div>
+          <p>${costCoverage}. A recomendação usa o maior custo para preservar a margem em todos os sabores desta variante.</p>
+        </div>
         <div class="input-grid">
-          <label class="field field-full">
-            <span>Aplicar em</span>
-            <select name="scope">
-              <option value="all">Todos os produtos (${state.products.length})</option>
-              <option value="operational">Somente disponíveis (${productsForPriceScope("operational").length})</option>
-              <option value="size500">Somente 500ml (${productsForPriceScope("size500").length})</option>
-              <option value="search">${searchLabel}</option>
-            </select>
+          <label class="field">
+            <span>Meta de margem no varejo</span>
+            <input name="retailTargetMargin" type="number" min="0" max="95" step="0.1" value="${inputNumber(analysis.retailTargetMargin, 1)}" inputmode="decimal" />
           </label>
           <label class="field">
-            <span>Novo preço varejo</span>
-            <input name="retailPrice" type="number" min="0" step="0.01" placeholder="${retailDefault}" />
+            <span>Meta de margem no atacado</span>
+            <input name="wholesaleTargetMargin" type="number" min="0" max="95" step="0.1" value="${inputNumber(analysis.wholesaleTargetMargin, 1)}" inputmode="decimal" />
+          </label>
+          <div class="pricing-live-suggestion field-full" aria-live="polite">
+            <span>Preço sugerido pelos custos</span>
+            <div><strong id="suggestedRetailPrice">${analysis.highestCost ? brl(analysis.suggestedRetailPrice) : "Custo pendente"}</strong><small>Varejo</small></div>
+            <div><strong id="suggestedWholesalePrice">${analysis.highestCost ? brl(analysis.suggestedWholesalePrice) : "Custo pendente"}</strong><small>Atacado</small></div>
+            <button class="btn btn-outline" id="useSuggestedPrices" type="button" ${analysis.highestCost ? "" : "disabled"}>
+              <span class="material-symbols-outlined" aria-hidden="true">auto_awesome</span>
+              Usar sugestões
+            </button>
+          </div>
+          <label class="field">
+            <span>Preço varejo ${normalizedSize}ml</span>
+            <input name="retailPrice" type="number" min="0.01" step="0.01" value="${inputNumber(analysis.retailPrice, 2)}" inputmode="decimal" required />
+            <small id="retailMarginPreview">Margem no sabor mais caro: ${pct(analysis.retailFloorMargin)}</small>
           </label>
           <label class="field">
-            <span>Novo preço atacado</span>
-            <input name="wholesalePrice" type="number" min="0" step="0.01" placeholder="${wholesaleDefault}" />
+            <span>Preço atacado ${normalizedSize}ml</span>
+            <input name="wholesalePrice" type="number" min="0.01" step="0.01" value="${inputNumber(analysis.wholesalePrice, 2)}" inputmode="decimal" required />
+            <small id="wholesaleMarginPreview">Margem no sabor mais caro: ${pct(analysis.wholesaleFloorMargin)}</small>
           </label>
-          <label class="check-row field-full">
-            <input name="syncRecipes" type="checkbox" checked />
-            <span>Atualizar também os preços das receitas vinculadas para manter custos e margens alinhados</span>
-          </label>
-          <p class="empty-note field-full">Preencha varejo, atacado ou os dois. Campo em branco não será alterado.</p>
+          <p class="field-help field-full">Ao salvar, todos os sabores e receitas de ${normalizedSize}ml recebem estes preços. A outra variante não será alterada.</p>
         </div>
         <button class="btn btn-primary" type="submit">
           <span class="material-symbols-outlined" aria-hidden="true">price_change</span>
-          Aplicar preço global
+          Salvar preços ${normalizedSize}ml
         </button>
       </form>
     `,
   );
-  document.querySelector("#globalPriceForm").addEventListener("submit", (event) => {
+  const form = document.querySelector("#globalPriceForm");
+  const suggested = { retail: analysis.suggestedRetailPrice, wholesale: analysis.suggestedWholesalePrice };
+  const updatePricingPreview = () => {
+    const retailTarget = Number(form.elements.retailTargetMargin.value || 0);
+    const wholesaleTarget = Number(form.elements.wholesaleTargetMargin.value || 0);
+    suggested.retail = suggestedPriceForCost(analysis.highestCost, retailTarget);
+    suggested.wholesale = suggestedPriceForCost(analysis.highestCost, wholesaleTarget);
+    form.querySelector("#suggestedRetailPrice").textContent = analysis.highestCost ? brl(suggested.retail) : "Custo pendente";
+    form.querySelector("#suggestedWholesalePrice").textContent = analysis.highestCost ? brl(suggested.wholesale) : "Custo pendente";
+    form.querySelector("#retailMarginPreview").textContent = `Margem no sabor mais caro: ${pct(marginForPrice(form.elements.retailPrice.value, analysis.highestCost))}`;
+    form.querySelector("#wholesaleMarginPreview").textContent = `Margem no sabor mais caro: ${pct(marginForPrice(form.elements.wholesalePrice.value, analysis.highestCost))}`;
+  };
+  form.addEventListener("input", updatePricingPreview);
+  form.querySelector("#useSuggestedPrices").addEventListener("click", () => {
+    form.elements.retailPrice.value = inputNumber(suggested.retail, 2);
+    form.elements.wholesalePrice.value = inputNumber(suggested.wholesale, 2);
+    updatePricingPreview();
+  });
+  form.addEventListener("submit", (event) => {
     event.preventDefault();
     const data = new FormData(event.target);
-    const retailRaw = String(data.get("retailPrice") || "").trim();
-    const wholesaleRaw = String(data.get("wholesalePrice") || "").trim();
-    const hasRetail = retailRaw !== "";
-    const hasWholesale = wholesaleRaw !== "";
-    if (!hasRetail && !hasWholesale) {
-      window.alert("Informe pelo menos um preço para atualizar.");
+    const retailPrice = Number(data.get("retailPrice"));
+    const wholesalePrice = Number(data.get("wholesalePrice"));
+    const retailTargetMargin = Number(data.get("retailTargetMargin"));
+    const wholesaleTargetMargin = Number(data.get("wholesaleTargetMargin"));
+    if (![retailPrice, wholesalePrice].every((price) => Number.isFinite(price) && price > 0)) {
+      window.alert("Informe preços de varejo e atacado maiores que zero.");
       return;
     }
-    const retailPrice = Number(retailRaw);
-    const wholesalePrice = Number(wholesaleRaw);
-    if ((hasRetail && !Number.isFinite(retailPrice)) || (hasWholesale && !Number.isFinite(wholesalePrice))) {
-      window.alert("Informe preços válidos.");
+    if (![retailTargetMargin, wholesaleTargetMargin].every((margin) => Number.isFinite(margin) && margin >= 0 && margin <= 95)) {
+      window.alert("As metas de margem devem ficar entre 0% e 95%.");
       return;
     }
-    const products = productsForPriceScope(data.get("scope"));
+    const products = state.products.filter((product) => Number(product.sizeMl) === normalizedSize);
     if (!products.length) {
-      window.alert("Nenhum produto encontrado para este filtro.");
+      window.alert(`Nenhum produto de ${normalizedSize}ml foi encontrado.`);
       return;
     }
     products.forEach((product) => {
-      if (hasRetail) product.retailPrice = retailPrice;
-      if (hasWholesale) product.wholesalePrice = wholesalePrice;
+      product.retailPrice = retailPrice;
+      product.wholesalePrice = wholesalePrice;
     });
-    if (hasRetail) state.settings.globalRetailPrice = retailPrice;
-    if (hasWholesale) state.settings.globalWholesalePrice = wholesalePrice;
+    state.settings.pricesBySize ||= {};
+    state.settings.pricesBySize[normalizedSize] = { retailPrice, wholesalePrice, retailTargetMargin, wholesaleTargetMargin };
+    if (normalizedSize === BASE_BOTTLE_SIZE_ML) {
+      state.settings.globalRetailPrice = retailPrice;
+      state.settings.globalWholesalePrice = wholesalePrice;
+    }
     state.settings.priceVersion = GLOBAL_PRICE_VERSION;
-    const recipeCount = data.get("syncRecipes") === "on" ? syncRecipePricesForProducts(products, { hasRetail, hasWholesale, retailPrice, wholesalePrice }) : 0;
-    const changed = [hasRetail ? `varejo ${brl(retailPrice)}` : "", hasWholesale ? `atacado ${brl(wholesalePrice)}` : ""].filter(Boolean).join(" | ");
-    addAudit("Preço global atualizado", `${products.length} produtos | ${changed}${recipeCount ? ` | ${recipeCount} receitas` : ""}`);
+    const recipeCount = syncRecipePricesForProducts(products, { hasRetail: true, hasWholesale: true, retailPrice, wholesalePrice });
+    addAudit("Preços por tamanho atualizados", `${normalizedSize}ml | ${products.length} produtos e ${recipeCount} receitas | varejo ${brl(retailPrice)} | atacado ${brl(wholesalePrice)}`);
     closeModal();
     render();
   });
 }
 
 function newProductForm() {
-  const retailDefault = commonProductPrice("retailPrice", state.settings.globalRetailPrice || GLOBAL_RETAIL_PRICE).toFixed(2);
-  const wholesaleDefault = commonProductPrice("wholesalePrice", state.settings.globalWholesalePrice || GLOBAL_WHOLESALE_PRICE).toFixed(2);
+  const initialPrices = priceSettingsForSize(BASE_BOTTLE_SIZE_ML);
+  const retailDefault = commonProductPrice("retailPrice", initialPrices.retailPrice, BASE_BOTTLE_SIZE_ML).toFixed(2);
+  const wholesaleDefault = commonProductPrice("wholesalePrice", initialPrices.wholesalePrice, BASE_BOTTLE_SIZE_ML).toFixed(2);
   openModal(
     "Novo produto",
     "Produtos / EAN",
@@ -4759,7 +4916,7 @@ function newProductForm() {
           <label class="field"><span>Item</span><input name="item" placeholder="KMB013" required></label>
           <label class="field"><span>EAN-13</span><input name="ean" inputmode="numeric" placeholder="789..." maxlength="13"></label>
           <label class="field"><span>Sabor</span><input name="flavor" required></label>
-          <label class="field"><span>Tamanho ml</span><input name="sizeMl" type="number" min="1" value="500" required></label>
+          <label class="field"><span>Tamanho</span><select name="sizeMl"><option value="500">500ml</option><option value="300">300ml</option></select></label>
           <label class="field"><span>Preço varejo</span><input name="retailPrice" type="number" min="0" step="0.01" value="${retailDefault}"></label>
           <label class="field"><span>Preço atacado</span><input name="wholesalePrice" type="number" min="0" step="0.01" value="${wholesaleDefault}"></label>
           <label class="field field-full"><span>Descrição</span><input name="description" placeholder="Kombucha Premium de 500ml - Sabor ..."></label>
@@ -4775,7 +4932,21 @@ function newProductForm() {
       </form>
     `,
   );
-  document.querySelector("#productForm").addEventListener("submit", (event) => {
+  const form = document.querySelector("#productForm");
+  [form.elements.retailPrice, form.elements.wholesalePrice].forEach((input) => {
+    input.addEventListener("input", () => { input.dataset.userEdited = "true"; });
+  });
+  form.elements.sizeMl.addEventListener("change", () => {
+    const size = Number(form.elements.sizeMl.value);
+    const defaults = priceSettingsForSize(size);
+    if (form.elements.retailPrice.dataset.userEdited !== "true") {
+      form.elements.retailPrice.value = inputNumber(commonProductPrice("retailPrice", defaults.retailPrice, size), 2);
+    }
+    if (form.elements.wholesalePrice.dataset.userEdited !== "true") {
+      form.elements.wholesalePrice.value = inputNumber(commonProductPrice("wholesalePrice", defaults.wholesalePrice, size), 2);
+    }
+  });
+  form.addEventListener("submit", (event) => {
     event.preventDefault();
     const data = Object.fromEntries(new FormData(event.target).entries());
     const product = {
@@ -7691,7 +7862,9 @@ function handleAction(action) {
   }
   const actionMap = {
     "new-product": newProductForm,
-    "global-prices": globalPriceForm,
+    "global-prices": () => globalPriceForm(BASE_BOTTLE_SIZE_ML),
+    "global-prices-500": () => globalPriceForm(BASE_BOTTLE_SIZE_ML),
+    "global-prices-300": () => globalPriceForm(SMALL_BOTTLE_SIZE_ML),
     "import-cost-base": restoreCostBase,
     "new-ingredient": newIngredientForm,
     "new-purchase": newPurchaseForm,
