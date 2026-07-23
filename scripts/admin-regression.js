@@ -341,10 +341,49 @@ async function run() {
   );
   await page.click("#closeAdminModal");
 
+  await page.selectOption("#mobileModuleSelector", "stock");
+  assert.strictEqual(await page.locator('[data-stock-size="500"]').count(), 1);
+  assert.strictEqual(await page.locator('[data-stock-size="300"]').count(), 1);
+  assert.match(await page.locator('[data-stock-size="500"]').innerText(), /1 disponível/);
+  assert.match(await page.locator('[data-stock-size="300"]').innerText(), /2 disponíveis/);
+  assert.strictEqual(await page.locator(".stock-overview-row", { hasText: "Maracuja" }).count(), 1);
+  assert.match(await page.locator(".stock-batch-list").innerText(), /LOT-TEST-1/);
+  assert.ok(!(await page.locator(".stock-batch-list").innerText()).includes("LOT-TEST-300"));
+
+  await page.click('[data-stock-size="300"]');
+  assert.match(await page.locator('[data-stock-size="300"]').innerText(), /2 disponíveis/);
+  assert.strictEqual(await page.locator(".stock-overview-row", { hasText: "Maracuja" }).count(), 1);
+  assert.match(await page.locator(".stock-batch-list").innerText(), /LOT-TEST-300/);
+  assert.ok(!(await page.locator(".stock-batch-list").innerText()).includes("LOT-TEST-1"));
+
+  const ingredientBeforeStockCorrection = Number(
+    (await storedState(page)).ingredients.find((ingredient) => ingredient.id === "ingredient-1").stock,
+  );
+  await page.locator(".stock-overview-row", { hasText: "Maracuja" }).click();
+  await page.fill('#adjustFlavorStockForm [name="available"]', "1");
+  await page.fill('#adjustFlavorStockForm [name="reason"]', "Correção de contagem 300 ml");
+  await page.click('#adjustFlavorStockForm button[type="submit"]');
+  await page.waitForSelector("#adminModal", { state: "hidden" });
+
+  state = await storedState(page);
+  assert.strictEqual(state.batches.find((batch) => batch.id === "batch-300").actual, 1);
+  assert.strictEqual(
+    Number(state.ingredients.find((ingredient) => ingredient.id === "ingredient-1").stock),
+    ingredientBeforeStockCorrection + 24,
+  );
+  assert.match(state.audit[0].detail, /300 ml/);
+  assert.match(state.audit[0].detail, /2 -> 1/);
+  assert.match(state.audit[0].detail, /Correção de contagem/);
+  assert.match(await page.locator('[data-stock-size="300"]').innerText(), /1 disponível/);
+  await page.click('[data-stock-size="500"]');
+  assert.match(await page.locator('[data-stock-size="500"]').innerText(), /1 disponível/);
+  await assertNoHorizontalOverflow(page, "stock variant overview");
+  await page.selectOption("#mobileModuleSelector", "reports");
   const legacySaleAudit = page.locator(".audit-row", { hasText: "LOT-TEST-1" });
   assert.match(await legacySaleAudit.innerText(), /Maracuja/);
   assert.match(await legacySaleAudit.innerText(), /lote LOT-TEST-1/);
 
+  await page.selectOption("#mobileModuleSelector", "dashboard");
   const readyCard = page.locator(".order-ready-card", { hasText: "Ana Teste" });
   await assert.doesNotReject(() => readyCard.waitFor());
   assert.match(await readyCard.innerText(), /4\/4/);

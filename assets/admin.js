@@ -59,6 +59,8 @@ const ADMIN_I18N = {
     "Estoque": "Stock",
     "Estoque geral por sabor": "Total stock by flavor",
     "Estoque por sabor": "Stock by flavor",
+    "Tamanho da garrafa": "Bottle size",
+    "Toque em um sabor para corrigir o saldo disponível.": "Tap a flavor to correct its available stock.",
     "Fornecedor": "Supplier",
     "Fornecedores": "Suppliers",
     "Garrafas": "Bottles",
@@ -103,8 +105,12 @@ const ADMIN_I18N = {
     "Separado agora": "Separated now",
     "Separado para entrega": "Separated for delivery",
     "disponíveis": "available",
+    "disponível": "available",
     "reservadas": "reserved",
+    "reservada": "reserved",
     "disp.": "avail.",
+    "por sabor": "by flavor",
+    "Ajustar": "Adjust",
     "Vendas": "Sales",
     "Venda rápida": "Quick sale",
     "Visão Geral": "Overview",
@@ -597,6 +603,7 @@ let globalSearch = "";
 let activeRecipeId = state.recipes[0]?.id || "";
 let currentRole = "Owner / Admin";
 let currentStockView = "kombuchas";
+let currentKombuchaStockSize = BASE_BOTTLE_SIZE_ML;
 let currentLocale = localStorage.getItem(LOCALE_KEY) || "pt";
 let currentSalesPeriod = "month";
 let currentDashboardOrderView = "summary";
@@ -1241,6 +1248,20 @@ function productForBatch(batch) {
   return byId("products", batch?.productId) || productForRecipe(byId("recipes", batch?.recipeId));
 }
 
+function productSizeMl(product) {
+  return Number(product?.sizeMl || recipeForProduct(product)?.bottleMl || BASE_BOTTLE_SIZE_ML);
+}
+
+function batchSizeMl(batch) {
+  const product = batch?.product || productForBatch(batch);
+  const recipe = byId("recipes", batch?.recipeId);
+  return Number(product?.sizeMl || recipe?.bottleMl || BASE_BOTTLE_SIZE_ML);
+}
+
+function productStockKey(product) {
+  return `${normalizeText(product?.flavor || product?.item)}::${productSizeMl(product)}`;
+}
+
 function ingredientForPurchase(purchase) {
   return byId("ingredients", purchase?.ingredientId) || state.ingredients.find((item) => normalizeText(item.name) === normalizeText(purchase?.item));
 }
@@ -1565,7 +1586,14 @@ function applyBatchInventory(recipe, bottles, direction) {
 function adjustBatchInventoryTo(batch, nextActual) {
   const recipe = byId("recipes", batch?.recipeId);
   if (!recipe) return { ok: false, message: "Este lote não tem receita vinculada para recalcular insumos." };
-  const previousInventoryQty = batch.inventoryAdjusted ? Number(batch.inventoryQty || batch.actual || 0) : 0;
+  const previousInventoryQty =
+    typeof batch.inventoryAdjusted === "boolean"
+      ? batch.inventoryAdjusted
+        ? Number(batch.inventoryQty || batch.actual || 0)
+        : 0
+      : shouldConsumeBatch(batch)
+        ? Number(batch.inventoryQty ?? batch.actual ?? 0)
+        : 0;
   const nextInventoryQty = shouldConsumeBatch({ ...batch, actual: nextActual }) ? Number(nextActual || 0) : 0;
   const delta = nextInventoryQty - previousInventoryQty;
   if (delta > 0) applyBatchInventory(recipe, delta, -1);
@@ -4429,19 +4457,37 @@ function stockFlowChip(label, detail, tone = "") {
 
 function stockByFlavorRows() {
   const batches = finishedStockRows();
-  const usedBatchCodes = new Set();
-  const productRows = state.products.map((product) => {
+  const usedBatches = new Set();
+  const productGroups = new Map();
+  state.products.forEach((product) => {
+    const key = productStockKey(product);
+    const group = productGroups.get(key) || { key, products: [] };
+    group.products.push(product);
+    productGroups.set(key, group);
+  });
+  const productRows = [...productGroups.values()].map((group) => {
+    const products = [...group.products].sort((a, b) =>
+      String(a.item || "").localeCompare(String(b.item || ""), "pt-BR", { numeric: true }),
+    );
+    const product = products[0];
+    const productIds = new Set(products.map((item) => item.id));
     const matching = batches.filter((row) => {
-      const sameProduct = row.product?.id === product.id || row.productId === product.id;
-      const sameFlavor = normalizeText(row.flavor || row.product?.flavor) === normalizeText(product.flavor);
-      if (sameProduct || sameFlavor) usedBatchCodes.add(row.code);
-      return sameProduct || sameFlavor;
+      const linkedProduct = row.product || productForBatch(row);
+      const explicitProductId = linkedProduct?.id || row.productId || "";
+      const matches = explicitProductId
+        ? productIds.has(explicitProductId)
+        : normalizeText(row.flavor || linkedProduct?.flavor) === normalizeText(product.flavor) &&
+          batchSizeMl(row) === productSizeMl(product);
+      if (matches) usedBatches.add(row.id || row.code);
+      return matches;
     });
     return {
-      key: product.id,
+      key: group.key,
       item: product.item || "",
       flavor: product.flavor || product.item || "Kombucha",
       product,
+      productIds: [...productIds],
+      sizeMl: productSizeMl(product),
       available: matching.reduce((sum, row) => sum + Number(row.stock || 0), 0),
       reserved: matching.reduce((sum, row) => sum + Number(row.reserved || 0), 0),
       sold: matching.reduce((sum, row) => sum + Number(row.sold || 0), 0),
@@ -4450,12 +4496,14 @@ function stockByFlavorRows() {
     };
   });
   const extraRows = batches
-    .filter((row) => !usedBatchCodes.has(row.code))
+    .filter((row) => !usedBatches.has(row.id || row.code))
     .map((row) => ({
-      key: row.code,
+      key: row.id || row.code,
       item: row.product?.item || row.code,
       flavor: row.flavor || row.product?.flavor || "Kombucha",
       product: row.product || null,
+      productIds: row.product?.id ? [row.product.id] : [],
+      sizeMl: batchSizeMl(row),
       available: Number(row.stock || 0),
       reserved: Number(row.reserved || 0),
       sold: Number(row.sold || 0),
@@ -4463,13 +4511,25 @@ function stockByFlavorRows() {
       batches: 1,
     }));
   return [...productRows, ...extraRows].sort((a, b) => {
+    const sizeCompare = Number(b.sizeMl || 0) - Number(a.sizeMl || 0);
     const itemCompare = String(a.item || "").localeCompare(String(b.item || ""), "pt-BR", { numeric: true });
-    return itemCompare || String(a.flavor).localeCompare(String(b.flavor), "pt-BR");
+    return sizeCompare || itemCompare || String(a.flavor).localeCompare(String(b.flavor), "pt-BR");
   });
 }
 
 function stockFlavorOverview() {
-  const rows = stockByFlavorRows().filter((row) => {
+  const allRows = stockByFlavorRows();
+  const sizeOptions = [BASE_BOTTLE_SIZE_ML, SMALL_BOTTLE_SIZE_ML];
+  const sizeSummary = sizeOptions.map((sizeMl) => {
+    const rows = allRows.filter((row) => Number(row.sizeMl) === Number(sizeMl));
+    return {
+      sizeMl,
+      available: rows.reduce((sum, row) => sum + Number(row.available || 0), 0),
+      reserved: rows.reduce((sum, row) => sum + Number(row.reserved || 0), 0),
+    };
+  });
+  const rows = allRows.filter((row) => {
+    if (Number(row.sizeMl) !== Number(currentKombuchaStockSize)) return false;
     if (!globalSearch) return true;
     const haystack = normalizeText(`${row.item} ${row.flavor} ${row.product?.description || ""}`);
     return haystack.includes(normalizeText(globalSearch));
@@ -4479,10 +4539,28 @@ function stockFlavorOverview() {
   const maxQty = Math.max(1, ...rows.map((row) => Number(row.available || 0) + Number(row.reserved || 0)));
   return `
     <article class="admin-card stock-overview-card">
+      <div class="stock-size-summary" aria-label="${tr("Tamanho da garrafa")}">
+        ${sizeSummary
+          .map(
+            (summary) => `
+              <button
+                class="stock-size-option ${Number(currentKombuchaStockSize) === summary.sizeMl ? "is-active" : ""}"
+                type="button"
+                data-stock-size="${summary.sizeMl}"
+                aria-pressed="${Number(currentKombuchaStockSize) === summary.sizeMl}"
+              >
+                <span class="stock-size-label">${summary.sizeMl} ml</span>
+                <strong>${number(summary.available)} ${tr(Number(summary.available) === 1 ? "disponível" : "disponíveis")}</strong>
+                <small>${number(summary.reserved)} ${tr(Number(summary.reserved) === 1 ? "reservada" : "reservadas")}</small>
+              </button>
+            `,
+          )
+          .join("")}
+      </div>
       <div class="stock-overview-head">
         <div>
-          <h3>${tr("Estoque geral por sabor")}</h3>
-          <p>${tr("Leitura rápida para ver o que existe agora, sem abrir lote por lote.")}</p>
+          <h3>${tr("Estoque")} ${currentKombuchaStockSize} ml ${tr("por sabor")}</h3>
+          <p>${tr("Toque em um sabor para corrigir o saldo disponível.")}</p>
         </div>
         <div class="stock-overview-total">
           <strong>${number(totalAvailable)}</strong>
@@ -4497,18 +4575,20 @@ function stockFlavorOverview() {
                 .map((row) => {
                   const width = Math.max(3, ((Number(row.available || 0) + Number(row.reserved || 0)) / maxQty) * 100);
                   const isEmpty = Number(row.available || 0) <= 0 && Number(row.reserved || 0) <= 0;
+                  const action = row.product ? ` data-action="adjust-flavor-stock:${row.product.id}"` : "";
                   return `
-                    <div class="stock-overview-row ${isEmpty ? "is-empty" : ""}">
+                    <button type="button" class="stock-overview-row ${isEmpty ? "is-empty" : ""}"${action} ${row.product ? "" : "disabled"}>
                       <div class="stock-overview-name">
                         <strong>${escapeHtml(row.flavor)}</strong>
-                        <span>${escapeHtml(row.item || "Sem código")}${row.reserved ? ` | ${number(row.reserved)} ${tr("reservadas")}` : ""}</span>
+                        <span>${currentKombuchaStockSize} ml${row.reserved ? ` | ${number(row.reserved)} ${tr("reservadas")}` : ""}</span>
                       </div>
                       <div class="stock-overview-qty">
                         <strong>${number(row.available)}</strong>
                         <span>${tr("disp.")}</span>
                       </div>
                       <div class="stock-overview-bar" aria-hidden="true"><i style="width:${width}%"></i></div>
-                    </div>
+                      ${row.product ? `<span class="stock-overview-adjust"><span class="material-symbols-outlined" aria-hidden="true">edit_square</span> ${tr("Ajustar")}</span>` : ""}
+                    </button>
                   `;
                 })
                 .join("")
@@ -4605,7 +4685,9 @@ function renderStock() {
         </tr>
       `;
     });
-  const stockRows = finishedStockRows().filter((row) => matchesSearch(row) || matchesSearch(row.product || {}));
+  const stockRows = finishedStockRows()
+    .filter((row) => batchSizeMl(row) === Number(currentKombuchaStockSize))
+    .filter((row) => matchesSearch(row) || matchesSearch(row.product || {}));
   const stockAlerts = `
     <article class="admin-card stock-alert-card">
       <h3>Alertas de estoque</h3>
@@ -6270,6 +6352,134 @@ function writeOffStockForm(batchCode) {
     addAudit("Baixa definitiva de estoque", `${batchCode}: ${number(qty)} garrafa(s). Motivo: ${data.reasonType}. ${data.note}`);
     closeModal();
     render();
+  });
+}
+
+function adjustFlavorStockForm(productId) {
+  const selectedProduct = byId("products", productId);
+  if (!selectedProduct) return;
+  const groupKey = productStockKey(selectedProduct);
+  const groupedProducts = state.products.filter((product) => productStockKey(product) === groupKey);
+  const productIds = new Set(groupedProducts.map((product) => product.id));
+  const sizeMl = productSizeMl(selectedProduct);
+  const matchingRows = finishedStockRows()
+    .filter((row) => {
+      const linkedProduct = row.product || productForBatch(row);
+      const explicitProductId = linkedProduct?.id || row.productId || "";
+      return explicitProductId
+        ? productIds.has(explicitProductId)
+        : normalizeText(row.flavor || linkedProduct?.flavor) === normalizeText(selectedProduct.flavor) &&
+            batchSizeMl(row) === sizeMl;
+    })
+    .sort((a, b) => String(b.productionDate || b.code || "").localeCompare(String(a.productionDate || a.code || "")));
+  const currentAvailable = matchingRows.reduce((sum, row) => sum + Number(row.stock || 0), 0);
+  const currentReserved = matchingRows.reduce((sum, row) => sum + Number(row.reserved || 0), 0);
+  const currentProduced = matchingRows.reduce((sum, row) => sum + Number(row.actual || 0), 0);
+
+  openModal(
+    "Ajustar estoque",
+    "Estoque",
+    `
+      <form id="adjustFlavorStockForm">
+        <div class="input-grid">
+          <div class="result-card field-full">
+            <small>Sabor e tamanho</small>
+            <strong>${escapeHtml(selectedProduct.flavor || selectedProduct.item)} | ${sizeMl} ml</strong>
+            <span>${number(currentAvailable)} disponível(is), ${number(currentReserved)} reservada(s), ${number(currentProduced)} produzida(s).</span>
+          </div>
+          <label class="field">
+            <span>Quantidade disponível correta</span>
+            <input name="available" type="number" min="0" step="1" value="${currentAvailable}" required inputmode="numeric">
+          </label>
+          <label class="field field-full">
+            <span>Motivo do ajuste</span>
+            <input name="reason" required placeholder="Ex: erro de contagem, avaria ou garrafa encontrada">
+          </label>
+          <div class="result-card field-full" id="flavorStockAdjustmentPreview"></div>
+        </div>
+        <button class="btn btn-primary" type="submit">Salvar ajuste</button>
+      </form>
+    `,
+  );
+
+  const form = document.querySelector("#adjustFlavorStockForm");
+  const preview = document.querySelector("#flavorStockAdjustmentPreview");
+  const updatePreview = () => {
+    const nextAvailable = Number(form.elements.available.value || 0);
+    const delta = nextAvailable - currentAvailable;
+    const detail =
+      delta === 0
+        ? "Nenhuma mudança será feita."
+        : delta < 0
+          ? `${number(Math.abs(delta))} garrafa(s) serão retiradas do saldo e os insumos proporcionais voltarão ao estoque.`
+          : `${number(delta)} garrafa(s) serão adicionadas ao lote mais recente e os insumos proporcionais serão baixados.`;
+    preview.innerHTML = `<small>Impacto imediato</small><strong>${number(currentAvailable)} → ${number(nextAvailable)} disponível(is)</strong><span>${detail} Pedidos e reservas não serão alterados.</span>`;
+  };
+  form.addEventListener("input", updatePreview);
+  updatePreview();
+
+  form.addEventListener("submit", (event) => {
+    event.preventDefault();
+    const data = Object.fromEntries(new FormData(form).entries());
+    const nextAvailable = Number(data.available);
+    if (!Number.isInteger(nextAvailable) || nextAvailable < 0) {
+      window.alert("Informe uma quantidade inteira igual ou maior que zero.");
+      return;
+    }
+    const delta = nextAvailable - currentAvailable;
+    if (!delta) {
+      closeModal();
+      return;
+    }
+    if (!matchingRows.length) {
+      window.alert("Este sabor ainda não possui um lote aprovado. Crie um lote para adicionar estoque.");
+      return;
+    }
+
+    const changes = [];
+    if (delta < 0) {
+      let remaining = Math.abs(delta);
+      matchingRows.forEach((row) => {
+        if (remaining <= 0 || Number(row.stock || 0) <= 0) return;
+        const reduction = Math.min(remaining, Number(row.stock || 0));
+        const sourceBatch = byId("batches", row.id) || state.batches.find((batch) => batch.code === row.code);
+        changes.push({ batch: sourceBatch, nextActual: Number(row.actual || 0) - reduction });
+        remaining -= reduction;
+      });
+      if (remaining > 0) {
+        window.alert(`Só existem ${number(currentAvailable)} garrafa(s) disponíveis para retirar.`);
+        return;
+      }
+    } else {
+      const newestRow = matchingRows[0];
+      const sourceBatch = byId("batches", newestRow.id) || state.batches.find((batch) => batch.code === newestRow.code);
+      changes.push({ batch: sourceBatch, nextActual: Number(newestRow.actual || 0) + delta });
+    }
+
+    if (changes.some((change) => !change.batch || !byId("recipes", change.batch.recipeId))) {
+      window.alert("Um dos lotes não possui receita vinculada. Corrija o vínculo antes de ajustar o estoque.");
+      return;
+    }
+    changes.forEach((change) => {
+      adjustBatchInventoryTo(change.batch, change.nextActual);
+      change.batch.actual = change.nextActual;
+      change.batch.correctedAt = new Date().toISOString();
+      change.batch.correctionReason = data.reason;
+    });
+    reconcileOrderReservations();
+    addAudit(
+      "Estoque disponível ajustado",
+      `${selectedProduct.flavor || selectedProduct.item} ${sizeMl} ml: ${number(currentAvailable)} -> ${number(nextAvailable)} disponível(is). Motivo: ${data.reason}`,
+    );
+    const resultingRow = stockByFlavorRows().find((row) => row.key === groupKey);
+    const resultingAvailable = Number(resultingRow?.available || 0);
+    closeModal();
+    render();
+    if (resultingAvailable !== nextAvailable) {
+      window.alert(
+        `O saldo foi corrigido, mas ${number(nextAvailable - resultingAvailable)} garrafa(s) foram automaticamente direcionadas a pedidos mais antigos. Disponível agora: ${number(resultingAvailable)}.`,
+      );
+    }
   });
 }
 
@@ -8502,6 +8712,12 @@ function bindModuleEvents() {
       render();
     });
   });
+  document.querySelectorAll("[data-stock-size]").forEach((button) => {
+    button.addEventListener("click", () => {
+      currentKombuchaStockSize = Number(button.dataset.stockSize);
+      render();
+    });
+  });
 }
 
 function handleAction(action) {
@@ -8541,6 +8757,7 @@ function handleAction(action) {
     "edit-sale": editSaleForm,
     "delete-sale": (itemId) => deleteRecord("sales", itemId),
     "correct-batch-qty": correctBatchQuantityForm,
+    "adjust-flavor-stock": adjustFlavorStockForm,
     "reserve-stock": reserveStockForm,
     "adjust-order-reservation": adjustOrderReservationForm,
     "delivery-proof": deliveryProofForm,
