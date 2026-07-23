@@ -124,6 +124,7 @@ const MODULE_LABELS = {
   packaging: "Embalagens",
   sales: "Vendas",
   orders: "Pedidos",
+  receipts: "Recibos",
   leads: "Leads CRM",
   partners: "Parceiros",
   expenses: "Despesas",
@@ -480,6 +481,7 @@ const defaultState = {
   batches: [],
   sales: [],
   orders: [],
+  receipts: [],
   leads: [],
   purchases: [],
   expenses: [],
@@ -598,6 +600,8 @@ let currentStockView = "kombuchas";
 let currentLocale = localStorage.getItem(LOCALE_KEY) || "pt";
 let currentSalesPeriod = "month";
 let currentDashboardOrderView = "summary";
+let receiptDraft = null;
+let receiptWizardStep = 1;
 let salesCustomStart = "";
 let salesCustomEnd = "";
 let cloudSyncReady = false;
@@ -985,7 +989,7 @@ function normalizeState(savedState) {
   };
   merged.notifications = { ...base.notifications, ...(saved.notifications || {}) };
   merged.settings = { ...base.settings, ...(saved.settings || {}) };
-  ["products", "ingredients", "packaging", "suppliers", "partners", "recipes", "batches", "sales", "orders", "leads", "purchases", "expenses", "costSources", "audit"].forEach((key) => {
+  ["products", "ingredients", "packaging", "suppliers", "partners", "recipes", "batches", "sales", "orders", "receipts", "leads", "purchases", "expenses", "costSources", "audit"].forEach((key) => {
     merged[key] = Array.isArray(saved[key]) ? saved[key] : base[key];
   });
   merged.orders = merged.orders.map((order, orderIndex) => {
@@ -1008,6 +1012,19 @@ function normalizeState(savedState) {
       }),
     };
   });
+  merged.receipts = merged.receipts.map((receipt, index) => ({
+    ...receipt,
+    id: receipt.id || id("receipt"),
+    number: receipt.number || `REC-LEGADO-${String(index + 1).padStart(3, "0")}`,
+    type: receipt.type === "manual" ? "manual" : "order",
+    orderId: receipt.orderId || "",
+    deliveryIds: Array.isArray(receipt.deliveryIds) ? receipt.deliveryIds : [],
+    items: Array.isArray(receipt.items) ? receipt.items : [],
+    amount: Math.max(0, Number(receipt.amount || 0)),
+    status: receipt.status === "cancelado" ? "cancelado" : "emitido",
+    receivedAt: receipt.receivedAt || todayIso(),
+    issuedAt: receipt.issuedAt || receipt.createdAt || new Date().toISOString(),
+  }));
   merged.packaging = merged.packaging.map((item) => ({ ...item, type: inferPackagingType(item), productId: item.productId || "" }));
   ensureCorePackagingInventory(merged);
   ensure300MlProductVariants(merged);
@@ -1199,8 +1216,8 @@ function addAudit(action, detail = "") {
 function canWrite(module = currentModule) {
   if (currentRole === "Viewer") return false;
   if (currentRole === "Produção") return ["dashboard", "products", "ingredients", "recipes", "costs", "batches", "stock", "packaging", "orders"].includes(module);
-  if (currentRole === "Financeiro") return ["dashboard", "products", "purchases", "suppliers", "costs", "expenses", "reports", "orders"].includes(module);
-  if (currentRole === "Vendas") return ["dashboard", "products", "sales", "orders", "leads", "partners", "cms", "reports"].includes(module);
+  if (currentRole === "Financeiro") return ["dashboard", "products", "purchases", "suppliers", "costs", "expenses", "reports", "orders", "receipts"].includes(module);
+  if (currentRole === "Vendas") return ["dashboard", "products", "sales", "orders", "receipts", "leads", "partners", "cms", "reports"].includes(module);
   return true;
 }
 
@@ -1758,6 +1775,109 @@ function orderTotal(order) {
   return orderItems(order).reduce((sum, item) => sum + Number(item.qty || 0) * Number(item.unitPrice || 0), 0);
 }
 
+function activeReceipts() {
+  return (state.receipts || []).filter((receipt) => receipt.status !== "cancelado");
+}
+
+function orderReceipts(orderOrId, includeCancelled = false) {
+  const orderId = typeof orderOrId === "string" ? orderOrId : orderOrId?.id;
+  return (state.receipts || [])
+    .filter((receipt) => receipt.orderId === orderId && (includeCancelled || receipt.status !== "cancelado"))
+    .sort((a, b) => String(b.receivedAt || b.issuedAt || "").localeCompare(String(a.receivedAt || a.issuedAt || "")));
+}
+
+function deliveryReceipts(deliveryId) {
+  return activeReceipts().filter((receipt) => (receipt.deliveryIds || []).includes(deliveryId));
+}
+
+function orderReceivedAmount(order) {
+  return orderReceipts(order).reduce((sum, receipt) => sum + Number(receipt.amount || 0), 0);
+}
+
+function orderPendingAmount(order) {
+  return Math.max(0, orderTotal(order) - orderReceivedAmount(order));
+}
+
+function deliveryProductsTotal(delivery = {}) {
+  if (Number.isFinite(Number(delivery.productsTotal))) return Number(delivery.productsTotal);
+  return (delivery.items || []).reduce((sum, item) => sum + Number(item.qty || 0) * Number(item.unitPrice || 0), 0);
+}
+
+function nextReceiptNumber(dateIso = todayIso()) {
+  const compactDate = String(dateIso || todayIso()).slice(0, 10).replaceAll("-", "");
+  const prefix = `REC-${compactDate}`;
+  const existing = (state.receipts || []).filter((receipt) => String(receipt.number || "").startsWith(prefix)).length;
+  return `${prefix}-${String(existing + 1).padStart(3, "0")}`;
+}
+
+function receiptCustomerLabel(receipt = {}) {
+  const customer = String(receipt.customerName || "").trim();
+  const business = String(receipt.businessName || "").trim();
+  if (customer && business && normalizeText(customer) !== normalizeText(business)) return `${customer} (${business})`;
+  return customer || business || "Cliente não informado";
+}
+
+function receiptItemsFromDeliveries(order, deliveryIds = []) {
+  const selected = new Set(deliveryIds);
+  const grouped = new Map();
+  orderDeliveries(order)
+    .filter((delivery) => selected.has(delivery.id))
+    .forEach((delivery) => {
+      (delivery.items || []).forEach((item) => {
+        const productId = item.productId || "";
+        const flavor = item.flavor || orderFlavorText(item);
+        const unitPrice = Number(item.unitPrice || 0);
+        const key = `${productId}::${normalizeText(flavor)}::${unitPrice}`;
+        const current = grouped.get(key) || {
+          productId,
+          flavor,
+          qty: 0,
+          unitPrice,
+          total: 0,
+          deliveryIds: [],
+          deliveryNumbers: [],
+          deliveredAt: [],
+        };
+        current.qty += Number(item.qty || 0);
+        current.total += Number(item.qty || 0) * unitPrice;
+        current.deliveryIds.push(delivery.id);
+        current.deliveryNumbers.push(delivery.number || "");
+        current.deliveredAt.push(delivery.deliveredAt || "");
+        grouped.set(key, current);
+      });
+    });
+  return [...grouped.values()];
+}
+
+function orderFinancialSummaryMarkup(order) {
+  const receipts = orderReceipts(order, true);
+  const received = orderReceivedAmount(order);
+  const pending = orderPendingAmount(order);
+  return `
+    <section class="order-financial-summary" aria-label="Resumo financeiro">
+      <div class="order-financial-totals">
+        <span><small>Total</small><strong>${brl(orderTotal(order))}</strong></span>
+        <span><small>Recebido</small><strong>${brl(received)}</strong></span>
+        <span><small>Pendente</small><strong>${brl(pending)}</strong></span>
+      </div>
+      ${receipts.length ? `
+        <details>
+          <summary>${receipts.filter((receipt) => receipt.status !== "cancelado").length} recibo(s)</summary>
+          <div class="receipt-mini-list">
+            ${receipts.map((receipt) => `
+              <button type="button" class="receipt-mini-row ${receipt.status === "cancelado" ? "is-cancelled" : ""}" data-action="view-receipt:${receipt.id}">
+                <span>${escapeHtml(receipt.number)}${receipt.status === "cancelado" ? " · cancelado" : ""}</span>
+                <strong>${brl(receipt.amount)}</strong>
+                <small>${fullDate(receipt.receivedAt)}</small>
+              </button>
+            `).join("")}
+          </div>
+        </details>
+      ` : `<small class="muted">Nenhum pagamento registrado.</small>`}
+    </section>
+  `;
+}
+
 function isOpenOrder(order) {
   return !["entregue", "cancelado"].includes(order?.status);
 }
@@ -1917,7 +2037,8 @@ function orderPaymentDueDate(order) {
 
 function orderReceivableStatus(order) {
   if (order?.status === "cancelado") return "cancelado";
-  if (order?.paymentStatus === "pago") return "pago";
+  if (orderPendingAmount(order) <= 0 || order?.paymentStatus === "pago") return "pago";
+  if (orderReceivedAmount(order) > 0) return "parcial";
   if (order?.status !== "entregue") return "em produção";
   const due = orderPaymentDueDate(order);
   if (due && daysUntil(due) < 0) return "atrasado";
@@ -1925,7 +2046,7 @@ function orderReceivableStatus(order) {
 }
 
 function orderReceivableValue(order) {
-  return order?.status === "entregue" && orderReceivableStatus(order) !== "pago" ? orderTotal(order) : 0;
+  return order?.status === "entregue" && orderReceivableStatus(order) !== "pago" ? orderPendingAmount(order) : 0;
 }
 
 function orderItemRemainingQty(item = {}) {
@@ -2225,6 +2346,7 @@ function orderReadyCard(row, view = "summary") {
       </div>
       <div class="order-ready-actions">
         ${actionButton(`delivery-proof:${row.order.id}`, "PDF da entrega", "picture_as_pdf", "btn-primary")}
+        ${orderDeliveries(row.order).length ? actionButton(`order-receipt:${row.order.id}`, "Emitir recibo", "request_quote", "btn-outline") : ""}
         ${actionButton(`adjust-order-reservation:${row.order.id}`, "Ajustar reserva", "tune", "btn-outline")}
         ${row.partner ? actionButton(`dashboard-edit-partner:${row.partner.id}`, "Editar parceiro", "edit", "btn-outline") : ""}
       </div>
@@ -2709,6 +2831,576 @@ function generateDeliveryProofPdf(order, delivery) {
   link.click();
   link.remove();
   window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
+}
+
+function receiptSuggestedAmount(order, deliveryIds = []) {
+  const selected = new Set(deliveryIds);
+  const deliveries = orderDeliveries(order);
+  const deliveryTotal = deliveries
+    .filter((delivery) => selected.has(delivery.id))
+    .reduce((sum, delivery) => sum + deliveryProductsTotal(delivery), 0);
+  const alreadyReceived = activeReceipts()
+    .filter((receipt) => receipt.orderId === order?.id)
+    .reduce((sum, receipt) => {
+      const linked = new Set(receipt.deliveryIds || []);
+      const linkedTotal = deliveries
+        .filter((delivery) => linked.has(delivery.id))
+        .reduce((subtotal, delivery) => subtotal + deliveryProductsTotal(delivery), 0);
+      const selectedLinkedTotal = deliveries
+        .filter((delivery) => linked.has(delivery.id) && selected.has(delivery.id))
+        .reduce((subtotal, delivery) => subtotal + deliveryProductsTotal(delivery), 0);
+      if (!linkedTotal || !selectedLinkedTotal) return sum;
+      return sum + Number(receipt.amount || 0) * (selectedLinkedTotal / linkedTotal);
+    }, 0);
+  return Math.max(0, deliveryTotal - alreadyReceived);
+}
+
+function newReceiptDraft(orderId = "") {
+  const eligibleOrders = (state.orders || []).filter((order) => orderDeliveries(order).length);
+  const order = eligibleOrders.find((item) => item.id === orderId) || eligibleOrders[0] || null;
+  const unlinkedDeliveries = order ? orderDeliveries(order).filter((delivery) => !deliveryReceipts(delivery.id).length) : [];
+  const deliveryIds = unlinkedDeliveries.map((delivery) => delivery.id);
+  return {
+    type: order ? "order" : "manual",
+    orderId: order?.id || "",
+    deliveryIds,
+    customerName: order?.customerName || "",
+    businessName: order?.businessName || "",
+    taxId: "",
+    amount: order ? receiptSuggestedAmount(order, deliveryIds) : "",
+    receivedAt: todayIso(),
+    paymentMethod: "Pix",
+    paymentReference: order ? `pedido ${order.code || ""}`.trim() : "",
+    notes: "",
+  };
+}
+
+function receiptWizardOrder() {
+  if (receiptDraft?.type !== "order") return null;
+  return byId("orders", receiptDraft?.orderId);
+}
+
+function receiptWizardDuplicateDeliveries() {
+  return (receiptDraft?.deliveryIds || []).filter((deliveryId) => deliveryReceipts(deliveryId).length);
+}
+
+function receiptWizardStepMarkup() {
+  return [1, 2, 3]
+    .map((step) => `<span class="${receiptWizardStep === step ? "is-active" : receiptWizardStep > step ? "is-complete" : ""}"><b>${step}</b>${["O que foi pago", "Pagamento", "Revisar"][step - 1]}</span>`)
+    .join("");
+}
+
+function receiptWizardStepOne() {
+  const order = receiptWizardOrder();
+  const eligibleOrders = (state.orders || []).filter((item) => orderDeliveries(item).length);
+  const deliveries = order ? orderDeliveries(order) : [];
+  return `
+    <form id="receiptWizardForm" class="receipt-wizard-form">
+      <div class="segmented receipt-source-toggle" aria-label="Origem do recibo">
+        <button type="button" data-receipt-type="order" class="${receiptDraft.type === "order" ? "is-active" : ""}" ${eligibleOrders.length ? "" : "disabled"}>Entrega / pedido</button>
+        <button type="button" data-receipt-type="manual" class="${receiptDraft.type === "manual" ? "is-active" : ""}">Recibo avulso</button>
+      </div>
+      ${
+        receiptDraft.type === "order"
+          ? `
+            <label class="field full">
+              <span>Pedido / cliente</span>
+              <select name="orderId" required>
+                ${eligibleOrders.map((item) => `<option value="${item.id}" ${item.id === receiptDraft.orderId ? "selected" : ""}>${escapeHtml(orderClientDisplayName(item))} · ${escapeHtml(item.code || "")}</option>`).join("")}
+              </select>
+            </label>
+            ${
+              order
+                ? `
+                  <div class="receipt-delivery-list">
+                    <div class="receipt-section-title">
+                      <div><strong>Selecione a entrega recebida</strong><small>O recibo incluirá somente os itens dessas remessas.</small></div>
+                    </div>
+                    ${deliveries
+                      .map((delivery) => {
+                        const existing = deliveryReceipts(delivery.id);
+                        return `
+                          <label class="receipt-delivery-option ${existing.length ? "has-receipt" : ""}">
+                            <input type="checkbox" name="deliveryIds" value="${delivery.id}" ${(receiptDraft.deliveryIds || []).includes(delivery.id) ? "checked" : ""} />
+                            <span>
+                              <strong>Entrega ${escapeHtml(fullDate(delivery.deliveredAt))}</strong>
+                              <small>${number(delivery.totalQty || 0)} garrafa(s) · ${brl(deliveryProductsTotal(delivery))}</small>
+                              ${existing.length ? `<em>${existing.length} recibo(s) já vinculado(s)</em>` : ""}
+                            </span>
+                          </label>
+                        `;
+                      })
+                      .join("")}
+                  </div>
+                `
+                : `<p class="empty-note">Registre uma entrega no pedido antes de emitir um recibo vinculado.</p>`
+            }
+          `
+          : `
+            <div class="form-grid receipt-manual-grid">
+              <label class="field"><span>Pagador / cliente</span><input name="customerName" value="${escapeHtml(receiptDraft.customerName || "")}" required /></label>
+              <label class="field"><span>Negócio / empresa</span><input name="businessName" value="${escapeHtml(receiptDraft.businessName || "")}" /></label>
+              <label class="field"><span>CPF / CNPJ <small>opcional</small></span><input name="taxId" value="${escapeHtml(receiptDraft.taxId || "")}" inputmode="numeric" /></label>
+              <label class="field"><span>Referente a</span><input name="paymentReference" value="${escapeHtml(receiptDraft.paymentReference || "")}" placeholder="Ex.: fornecimento de kombuchas" required /></label>
+            </div>
+          `
+      }
+      <div class="receipt-wizard-actions">
+        <button class="btn btn-primary" type="submit">Continuar <span class="material-symbols-outlined" aria-hidden="true">arrow_forward</span></button>
+      </div>
+    </form>
+  `;
+}
+
+function receiptWizardStepTwo() {
+  const order = receiptWizardOrder();
+  const items = order ? receiptItemsFromDeliveries(order, receiptDraft.deliveryIds || []) : [];
+  return `
+    <form id="receiptWizardForm" class="receipt-wizard-form">
+      <div class="receipt-payment-context">
+        <strong>${escapeHtml(order ? orderClientDisplayName(order) : receiptDraft.customerName || "Recibo avulso")}</strong>
+        <span>${order ? `${number(items.reduce((sum, item) => sum + Number(item.qty || 0), 0))} garrafa(s) selecionada(s)` : escapeHtml(receiptDraft.paymentReference || "")}</span>
+      </div>
+      <div class="form-grid receipt-payment-grid">
+        <label class="field">
+          <span>Valor recebido</span>
+          <input name="amount" type="number" min="0.01" step="0.01" inputmode="decimal" value="${escapeHtml(receiptDraft.amount)}" required />
+        </label>
+        <label class="field">
+          <span>Data do recebimento</span>
+          <input name="receivedAt" type="date" value="${escapeHtml(receiptDraft.receivedAt || todayIso())}" required />
+        </label>
+        <label class="field">
+          <span>Forma de pagamento</span>
+          <select name="paymentMethod">
+            ${["Pix", "Cartão", "Dinheiro", "Transferência", "Link InfinitePay", "Outro"].map((method) => `<option ${receiptDraft.paymentMethod === method ? "selected" : ""}>${method}</option>`).join("")}
+          </select>
+        </label>
+        <label class="field">
+          <span>Referência do pagamento</span>
+          <input name="paymentReference" value="${escapeHtml(receiptDraft.paymentReference || "")}" placeholder="Ex.: pedido, link ou transação" required />
+        </label>
+      </div>
+      <details class="receipt-optional-fields">
+        <summary>Adicionar mais informações</summary>
+        <div class="form-grid">
+          <label class="field"><span>CPF / CNPJ <small>opcional</small></span><input name="taxId" value="${escapeHtml(receiptDraft.taxId || "")}" /></label>
+          <label class="field full"><span>Observações <small>opcional</small></span><textarea name="notes" rows="3">${escapeHtml(receiptDraft.notes || "")}</textarea></label>
+        </div>
+      </details>
+      <div class="receipt-wizard-actions">
+        <button class="btn btn-outline" type="button" data-receipt-back>Voltar</button>
+        <button class="btn btn-primary" type="submit">Revisar <span class="material-symbols-outlined" aria-hidden="true">arrow_forward</span></button>
+      </div>
+    </form>
+  `;
+}
+
+function receiptWizardStepThree() {
+  const order = receiptWizardOrder();
+  const items = order ? receiptItemsFromDeliveries(order, receiptDraft.deliveryIds || []) : [];
+  const duplicateDeliveries = receiptWizardDuplicateDeliveries();
+  return `
+    <form id="receiptWizardForm" class="receipt-wizard-form">
+      <div class="receipt-review">
+        <div><span>Cliente</span><strong>${escapeHtml(order ? orderClientDisplayName(order) : receiptDraft.customerName || "-")}</strong></div>
+        <div><span>Valor recebido</span><strong>${brl(Number(receiptDraft.amount || 0))}</strong></div>
+        <div><span>Data</span><strong>${escapeHtml(fullDate(receiptDraft.receivedAt))}</strong></div>
+        <div><span>Pagamento</span><strong>${escapeHtml(receiptDraft.paymentMethod || "-")}</strong></div>
+      </div>
+      ${
+        items.length
+          ? `<div class="receipt-review-items">${items.map((item) => `<span><strong>${escapeHtml(item.flavor)}</strong><b>${number(item.qty)}</b></span>`).join("")}</div>`
+          : ""
+      }
+      ${
+        duplicateDeliveries.length
+          ? `
+            <label class="receipt-warning-confirm">
+              <input name="duplicateConfirmed" type="checkbox" required />
+              <span><strong>Atenção: ${duplicateDeliveries.length} entrega(s) já possuem recibo.</strong> Confirmo que desejo registrar outro recebimento para a mesma entrega.</span>
+            </label>
+          `
+          : ""
+      }
+      <label class="receipt-required-confirm">
+        <input name="receivedConfirmed" type="checkbox" required />
+        <span>Confirmo que este valor já foi recebido.</span>
+      </label>
+      <p class="receipt-no-operation-note">Este recibo registra somente o financeiro. Estoque, reservas, entregas e status do pedido não serão alterados.</p>
+      <div class="receipt-wizard-actions">
+        <button class="btn btn-outline" type="button" data-receipt-back>Voltar</button>
+        <button class="btn btn-primary" type="submit"><span class="material-symbols-outlined" aria-hidden="true">receipt_long</span> Gerar recibo</button>
+      </div>
+    </form>
+  `;
+}
+
+function renderReceiptWizard() {
+  const stepContent = [receiptWizardStepOne, receiptWizardStepTwo, receiptWizardStepThree][receiptWizardStep - 1]();
+  openModal(
+    receiptWizardStep === 3 ? "Revisar recibo" : "Novo recibo",
+    "Financeiro",
+    `<div class="receipt-wizard">
+      <div class="receipt-wizard-steps">${receiptWizardStepMarkup()}</div>
+      ${stepContent}
+    </div>`,
+  );
+  bindReceiptWizardEvents();
+}
+
+function startReceiptWizard(orderId = "") {
+  receiptDraft = newReceiptDraft(orderId);
+  receiptWizardStep = 1;
+  renderReceiptWizard();
+}
+
+function receiptWizardFormData(form) {
+  const data = Object.fromEntries(new FormData(form).entries());
+  if (receiptWizardStep === 1 && receiptDraft.type === "order") {
+    data.deliveryIds = [...form.querySelectorAll('input[name="deliveryIds"]:checked')].map((input) => input.value);
+  }
+  return data;
+}
+
+function bindReceiptWizardEvents() {
+  const form = document.querySelector("#receiptWizardForm");
+  if (!form) return;
+  document.querySelectorAll("[data-receipt-type]").forEach((button) => {
+    button.addEventListener("click", () => {
+      if (button.dataset.receiptType === "order") {
+        receiptDraft = newReceiptDraft(receiptDraft.orderId);
+      } else {
+        receiptDraft = {
+          ...newReceiptDraft(""),
+          type: "manual",
+          orderId: "",
+          deliveryIds: [],
+          customerName: "",
+          businessName: "",
+          taxId: "",
+          amount: "",
+          paymentReference: "",
+          notes: "",
+        };
+      }
+      renderReceiptWizard();
+    });
+  });
+  form.elements.orderId?.addEventListener("change", (event) => {
+    receiptDraft = newReceiptDraft(event.target.value);
+    renderReceiptWizard();
+  });
+  form.querySelector("[data-receipt-back]")?.addEventListener("click", () => {
+    Object.assign(receiptDraft, receiptWizardFormData(form));
+    receiptWizardStep = Math.max(1, receiptWizardStep - 1);
+    renderReceiptWizard();
+  });
+  form.addEventListener("submit", (event) => {
+    event.preventDefault();
+    if (!form.reportValidity()) return;
+    const data = receiptWizardFormData(form);
+    Object.assign(receiptDraft, data);
+    if (receiptWizardStep === 1) {
+      if (receiptDraft.type === "order" && !(receiptDraft.deliveryIds || []).length) {
+        window.alert("Selecione pelo menos uma entrega.");
+        return;
+      }
+      const order = receiptWizardOrder();
+      if (order) {
+        receiptDraft.customerName = order.customerName || "";
+        receiptDraft.businessName = order.businessName || "";
+        receiptDraft.amount = receiptSuggestedAmount(order, receiptDraft.deliveryIds || []);
+        receiptDraft.paymentReference = `pedido ${order.code || ""}`.trim();
+      }
+      receiptWizardStep = 2;
+      renderReceiptWizard();
+      return;
+    }
+    if (receiptWizardStep === 2) {
+      receiptDraft.amount = Number(data.amount || 0);
+      if (receiptDraft.amount <= 0) {
+        window.alert("Informe um valor recebido maior que zero.");
+        return;
+      }
+      receiptWizardStep = 3;
+      renderReceiptWizard();
+      return;
+    }
+    issueReceipt();
+  });
+}
+
+function issueReceipt() {
+  const order = receiptWizardOrder();
+  const receipt = {
+    id: id("receipt"),
+    number: nextReceiptNumber(receiptDraft.receivedAt),
+    type: receiptDraft.type || "manual",
+    orderId: order?.id || "",
+    deliveryIds: [...(receiptDraft.deliveryIds || [])],
+    items: order ? receiptItemsFromDeliveries(order, receiptDraft.deliveryIds || []) : [],
+    customerName: order?.customerName || receiptDraft.customerName || "",
+    businessName: order?.businessName || receiptDraft.businessName || "",
+    taxId: receiptDraft.taxId || "",
+    amount: Number(receiptDraft.amount || 0),
+    receivedAt: receiptDraft.receivedAt || todayIso(),
+    paymentMethod: receiptDraft.paymentMethod || "",
+    paymentReference: receiptDraft.paymentReference || "",
+    notes: receiptDraft.notes || "",
+    status: "emitido",
+    issuedAt: new Date().toISOString(),
+    createdBy: currentRole,
+  };
+  state.receipts.unshift(receipt);
+  addAudit("Recibo emitido", `${receipt.number} | ${receiptCustomerLabel(receipt)} | ${brl(receipt.amount)}`);
+  saveState();
+  closeModal();
+  receiptDraft = null;
+  receiptWizardStep = 1;
+  render();
+  viewReceipt(receipt.id);
+}
+
+const RECEIPT_UNITS = ["", "um", "dois", "três", "quatro", "cinco", "seis", "sete", "oito", "nove"];
+const RECEIPT_TEENS = ["dez", "onze", "doze", "treze", "quatorze", "quinze", "dezesseis", "dezessete", "dezoito", "dezenove"];
+const RECEIPT_TENS = ["", "", "vinte", "trinta", "quarenta", "cinquenta", "sessenta", "setenta", "oitenta", "noventa"];
+const RECEIPT_HUNDREDS = ["", "cento", "duzentos", "trezentos", "quatrocentos", "quinhentos", "seiscentos", "setecentos", "oitocentos", "novecentos"];
+
+function integerToPortuguese(value) {
+  const numberValue = Math.max(0, Math.floor(Number(value || 0)));
+  if (numberValue === 0) return "zero";
+  if (numberValue === 100) return "cem";
+  if (numberValue < 10) return RECEIPT_UNITS[numberValue];
+  if (numberValue < 20) return RECEIPT_TEENS[numberValue - 10];
+  if (numberValue < 100) return `${RECEIPT_TENS[Math.floor(numberValue / 10)]}${numberValue % 10 ? ` e ${RECEIPT_UNITS[numberValue % 10]}` : ""}`;
+  if (numberValue < 1000) return `${RECEIPT_HUNDREDS[Math.floor(numberValue / 100)]}${numberValue % 100 ? ` e ${integerToPortuguese(numberValue % 100)}` : ""}`;
+  if (numberValue < 1_000_000) {
+    const thousands = Math.floor(numberValue / 1000);
+    const remainder = numberValue % 1000;
+    return `${thousands === 1 ? "mil" : `${integerToPortuguese(thousands)} mil`}${remainder ? `${remainder < 100 ? " e" : ""} ${integerToPortuguese(remainder)}` : ""}`;
+  }
+  return numberValue.toLocaleString("pt-BR");
+}
+
+function moneyInWords(value) {
+  const normalized = Math.round(Number(value || 0) * 100);
+  const reais = Math.floor(normalized / 100);
+  const cents = normalized % 100;
+  const reaisText = `${integerToPortuguese(reais)} ${reais === 1 ? "real" : "reais"}`;
+  return cents ? `${reaisText} e ${integerToPortuguese(cents)} ${cents === 1 ? "centavo" : "centavos"}` : reaisText;
+}
+
+function receiptPdf(receiptId, mode = "download", secondCopy = false) {
+  const receipt = byId("receipts", receiptId);
+  if (!receipt) return;
+  const Pdf = window.jspdf?.jsPDF;
+  if (!Pdf) {
+    window.alert("Gerador de PDF indisponível. Recarregue a página e tente novamente.");
+    return;
+  }
+  const doc = new Pdf({ unit: "mm", format: "a4" });
+  const green = [40, 85, 42];
+  const muted = [91, 103, 96];
+  const margin = 18;
+  doc.setFillColor(...green);
+  doc.rect(0, 0, 210, 35, "F");
+  doc.setTextColor(255, 255, 255);
+  doc.setFont("times", "bold");
+  doc.setFontSize(25);
+  doc.text("K", margin, 23);
+  doc.setFontSize(16);
+  doc.text("Kombú Kombucha", 31, 17);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(8);
+  doc.text("KOMBUCHA DA AMAZÔNIA", 31, 23);
+  doc.setFontSize(13);
+  doc.text(secondCopy ? "RECIBO · 2ª VIA" : "RECIBO", 192, 18, { align: "right" });
+  doc.setFontSize(8);
+  doc.text(receipt.number, 192, 24, { align: "right" });
+  let y = 49;
+  doc.setTextColor(25, 28, 26);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(13);
+  doc.text(`Recebemos de ${receiptCustomerLabel(receipt)}`, margin, y);
+  y += 10;
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(10);
+  const paymentReference = receipt.paymentReference || "pagamento recebido";
+  const paymentReferenceText = /^pedido\b/i.test(paymentReference)
+    ? `ao ${paymentReference}`
+    : `a ${paymentReference}`;
+  const intro = `a importância de ${brl(receipt.amount)} (${moneyInWords(receipt.amount)}), referente ${paymentReferenceText}.`;
+  const introLines = doc.splitTextToSize(intro, 174);
+  doc.text(introLines, margin, y);
+  y += introLines.length * 5 + 6;
+  const info = [
+    ["Data do recebimento", fullDate(receipt.receivedAt)],
+    ["Forma de pagamento", receipt.paymentMethod || "-"],
+    ["Cliente / empresa", [receipt.customerName, receipt.businessName].filter(Boolean).join(" · ") || "-"],
+    ["CPF / CNPJ", receipt.taxId || "Não informado"],
+  ];
+  info.forEach(([label, value]) => {
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(...muted);
+    doc.text(label.toUpperCase(), margin, y);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(25, 28, 26);
+    doc.text(String(value), 67, y);
+    y += 8;
+  });
+  if (receipt.items?.length) {
+    y += 4;
+    doc.setFillColor(239, 245, 235);
+    doc.rect(margin, y, 174, 8, "F");
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(...green);
+    doc.text("ITEM ENTREGUE", margin + 3, y + 5.5);
+    doc.text("QTD.", 189, y + 5.5, { align: "right" });
+    y += 13;
+    receipt.items.forEach((item) => {
+      doc.setFont("helvetica", "normal");
+      doc.setTextColor(25, 28, 26);
+      doc.text(String(item.flavor || "Kombucha"), margin + 3, y);
+      doc.text(String(number(item.qty || 0)), 189, y, { align: "right" });
+      doc.setDrawColor(220, 226, 220);
+      doc.line(margin, y + 3, 192, y + 3);
+      y += 8;
+    });
+  }
+  if (receipt.notes) {
+    y += 4;
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(...muted);
+    doc.text("OBSERVAÇÕES", margin, y);
+    y += 6;
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(25, 28, 26);
+    const noteLines = doc.splitTextToSize(receipt.notes, 174);
+    doc.text(noteLines, margin, y);
+    y += noteLines.length * 5;
+  }
+  y = Math.max(y + 18, 210);
+  doc.setFont("helvetica", "normal");
+  doc.setTextColor(25, 28, 26);
+  doc.text(`Manaus, ${fullDate(receipt.receivedAt)}.`, margin, y);
+  y += 24;
+  doc.setDrawColor(...muted);
+  doc.line(58, y, 152, y);
+  doc.setFontSize(8);
+  doc.setTextColor(...muted);
+  doc.text("Kombú Kombucha", 105, y + 5, { align: "center" });
+  if (receipt.status === "cancelado") {
+    doc.setTextColor(190, 45, 45);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(38);
+    doc.text("CANCELADO", 105, 150, { align: "center", angle: 28 });
+  }
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(7);
+  doc.setTextColor(...muted);
+  doc.text("Kombú Kombucha da Amazônia | Manaus - AM | @kombu.amazonia", margin, 289);
+  doc.text(receipt.number, 192, 289, { align: "right" });
+  const filename = `recibo-${fileSlug(receiptCustomerLabel(receipt))}-${receipt.number}${secondCopy ? "-segunda-via" : ""}.pdf`;
+  if (mode === "print") {
+    doc.autoPrint();
+    window.open(doc.output("bloburl"), "_blank", "noopener");
+  } else {
+    doc.save(filename);
+  }
+}
+
+function receiptDetailMarkup(receipt) {
+  const order = byId("orders", receipt.orderId);
+  return `
+    <div class="receipt-detail ${receipt.status === "cancelado" ? "is-cancelled" : ""}">
+      <div class="receipt-detail-head">
+        <div><span>${escapeHtml(receipt.number)}</span><strong>${escapeHtml(receiptCustomerLabel(receipt))}</strong></div>
+        <span class="status-pill ${receipt.status === "cancelado" ? "danger" : "success"}">${escapeHtml(receipt.status)}</span>
+      </div>
+      <div class="receipt-review">
+        <div><span>Valor</span><strong>${brl(receipt.amount)}</strong></div>
+        <div><span>Recebido em</span><strong>${escapeHtml(fullDate(receipt.receivedAt))}</strong></div>
+        <div><span>Pagamento</span><strong>${escapeHtml(receipt.paymentMethod || "-")}</strong></div>
+        <div><span>Referência</span><strong>${escapeHtml(receipt.paymentReference || "-")}</strong></div>
+      </div>
+      ${order ? `<p class="receipt-linked-order">Pedido de ${escapeHtml(orderClientDisplayName(order))} · ${number(receipt.deliveryIds?.length || 0)} entrega(s) vinculada(s)</p>` : ""}
+      ${receipt.items?.length ? `<div class="receipt-review-items">${receipt.items.map((item) => `<span><strong>${escapeHtml(item.flavor)}</strong><b>${number(item.qty)}</b></span>`).join("")}</div>` : ""}
+      ${receipt.cancelReason ? `<p class="receipt-cancel-reason"><strong>Motivo do cancelamento:</strong> ${escapeHtml(receipt.cancelReason)}</p>` : ""}
+      <div class="receipt-detail-actions">
+        ${actionButton(`download-receipt:${receipt.id}`, "PDF", "picture_as_pdf", "btn-primary")}
+        ${actionButton(`print-receipt:${receipt.id}`, "Imprimir", "print", "btn-outline")}
+        ${actionButton(`share-receipt:${receipt.id}`, "WhatsApp", "share", "btn-outline")}
+        ${actionButton(`second-copy-receipt:${receipt.id}`, "2ª via", "content_copy", "btn-outline")}
+        ${receipt.status !== "cancelado" ? actionButton(`cancel-receipt:${receipt.id}`, "Cancelar", "cancel", "btn-outline") : ""}
+      </div>
+    </div>
+  `;
+}
+
+function viewReceipt(receiptId) {
+  const receipt = byId("receipts", receiptId);
+  if (receipt) openModal("Recibo", "Financeiro", receiptDetailMarkup(receipt));
+}
+
+function shareReceipt(receiptId) {
+  const receipt = byId("receipts", receiptId);
+  if (!receipt) return;
+  receiptPdf(receiptId);
+  const message = encodeURIComponent(`Recibo ${receipt.number}\n${receiptCustomerLabel(receipt)}\nValor recebido: ${brl(receipt.amount)}\nData: ${fullDate(receipt.receivedAt)}\n\nO PDF foi baixado para ser anexado nesta conversa.`);
+  window.open(`https://wa.me/?text=${message}`, "_blank", "noopener");
+}
+
+function cancelReceipt(receiptId) {
+  const receipt = byId("receipts", receiptId);
+  if (!receipt || receipt.status === "cancelado") return;
+  const reason = window.prompt("Informe o motivo do cancelamento. O recibo continuará no histórico:");
+  if (!reason?.trim()) return;
+  receipt.status = "cancelado";
+  receipt.cancelReason = reason.trim();
+  receipt.cancelledAt = new Date().toISOString();
+  receipt.cancelledBy = currentRole;
+  addAudit("Recibo cancelado", `${receipt.number} | ${receipt.cancelReason}`);
+  saveState();
+  closeModal();
+  render();
+  viewReceipt(receipt.id);
+}
+
+function renderReceipts() {
+  const receipts = (state.receipts || []).filter((receipt) => matchesSearch(receipt));
+  const issued = activeReceipts();
+  const received = issued.reduce((sum, receipt) => sum + Number(receipt.amount || 0), 0);
+  return `
+    ${pageHead(
+      "Recibos",
+      "Registre valores já recebidos, emita PDF e acompanhe pagamentos sem alterar estoque ou entregas.",
+      `${actionButton("new-receipt", "Novo recibo", "add")} ${actionButton("export-receipts", "CSV", "download", "btn-outline")}`,
+    )}
+    <section class="metric-grid receipt-metrics">
+      ${metric("Recebido", brl(received), `${number(issued.length)} recibo(s) ativo(s)`, "payments")}
+      ${metric("A receber", brl((state.orders || []).reduce((sum, order) => sum + orderPendingAmount(order), 0)), "Saldo dos pedidos", "schedule")}
+      ${metric("Cancelados", number((state.receipts || []).filter((receipt) => receipt.status === "cancelado").length), "Histórico preservado", "history")}
+    </section>
+    <section class="receipt-list">
+      ${
+        receipts.length
+          ? receipts
+              .map(
+                (receipt) => `
+                  <article class="receipt-card ${receipt.status === "cancelado" ? "is-cancelled" : ""}">
+                    <button type="button" data-action="view-receipt:${receipt.id}">
+                      <span><small>${escapeHtml(receipt.number)} · ${escapeHtml(fullDate(receipt.receivedAt))}</small><strong>${escapeHtml(receiptCustomerLabel(receipt))}</strong></span>
+                      <span><strong>${brl(receipt.amount)}</strong><small>${escapeHtml(receipt.status)}</small></span>
+                    </button>
+                  </article>
+                `,
+              )
+              .join("")
+          : `<article class="admin-card"><p class="empty-note">Nenhum recibo emitido.</p></article>`
+      }
+    </section>
+  `;
 }
 
 function paymentReminderRows() {
@@ -4187,8 +4879,14 @@ function orderCard(order) {
       <div class="order-mini-list">
         ${itemRows}
       </div>
+      ${orderFinancialSummaryMarkup(order)}
       <div class="order-card-actions">
-        ${rowActions([tableAction(`delivery-proof:${order.id}`, "PDF da entrega", "picture_as_pdf"), tableAction(`edit-order:${order.id}`, "Editar pedido"), tableAction(`delete-order:${order.id}`, "Excluir pedido", "delete", "danger")])}
+        ${rowActions([
+          tableAction(`delivery-proof:${order.id}`, "PDF da entrega", "picture_as_pdf"),
+          ...(orderDeliveries(order).length ? [tableAction(`order-receipt:${order.id}`, "Emitir recibo", "request_quote")] : []),
+          tableAction(`edit-order:${order.id}`, "Editar pedido"),
+          tableAction(`delete-order:${order.id}`, "Excluir pedido", "delete", "danger"),
+        ])}
       </div>
     </article>
   `;
@@ -4254,8 +4952,10 @@ function orderCompactCard(order) {
         <div class="order-status-rail" aria-label="Alterar status do pedido">
           ${ORDER_FLOW_STATUSES.map((status) => orderFlowStatusButton(order, status)).join("")}
         </div>
+        ${orderFinancialSummaryMarkup(order)}
         <div class="order-compact-actions">
           ${actionButton(`delivery-proof:${order.id}`, "PDF da entrega", "picture_as_pdf", "btn-primary")}
+          ${orderDeliveries(order).length ? actionButton(`order-receipt:${order.id}`, "Emitir recibo", "request_quote", "btn-outline") : ""}
           ${actionButton(`edit-order:${order.id}`, "Editar detalhes", "edit", "btn-outline")}
         </div>
       </div>
@@ -4700,6 +5400,7 @@ function render() {
     packaging: renderPackaging,
     sales: renderSales,
     orders: renderOrders,
+    receipts: renderReceipts,
     leads: renderLeads,
     partners: renderPartners,
     expenses: renderExpenses,
@@ -7804,7 +8505,9 @@ function bindModuleEvents() {
 }
 
 function handleAction(action) {
-  if (!canWrite() && !["export-products", "export-ingredients", "export-purchases", "export-sales", "export-orders", "export-leads", "export-reports", "export-costs"].includes(action)) return;
+  const readOnlyActions = ["export-products", "export-ingredients", "export-purchases", "export-sales", "export-orders", "export-leads", "export-reports", "export-costs", "export-receipts"];
+  const readOnlyPrefixes = ["view-receipt:", "download-receipt:", "print-receipt:", "share-receipt:", "second-copy-receipt:"];
+  if (!canWrite() && !readOnlyActions.includes(action) && !readOnlyPrefixes.some((prefix) => action.startsWith(prefix))) return;
   const [dynamicAction, ...dynamicParts] = action.split(":");
   const dynamicPayload = dynamicParts.join(":");
   const dynamicMap = {
@@ -7842,6 +8545,13 @@ function handleAction(action) {
     "adjust-order-reservation": adjustOrderReservationForm,
     "delivery-proof": deliveryProofForm,
     "delivery-proof-reprint": reprintDeliveryProof,
+    "order-receipt": startReceiptWizard,
+    "view-receipt": viewReceipt,
+    "download-receipt": (receiptId) => receiptPdf(receiptId),
+    "print-receipt": (receiptId) => receiptPdf(receiptId, "print"),
+    "share-receipt": shareReceipt,
+    "second-copy-receipt": (receiptId) => receiptPdf(receiptId, "download", true),
+    "cancel-receipt": cancelReceipt,
     "write-off-stock": writeOffStockForm,
     "stock-sale": newSaleForm,
     "reverse-stock": reverseStockForm,
@@ -7871,6 +8581,7 @@ function handleAction(action) {
     "quick-sale": quickSaleForm,
     "new-sale": newSaleForm,
     "new-order": () => orderForm(),
+    "new-receipt": () => startReceiptWizard(),
     "new-batch": newBatchForm,
     "stock-adjustment": stockAdjustmentForm,
     "new-supplier": () =>
@@ -7956,6 +8667,7 @@ function handleAction(action) {
     "export-purchases": () => exportCSV("kombu-compras", [["Data", "Fornecedor", "Item", "Pacotes", "Conteúdo pacote", "Unidade pacote", "Entra estoque", "Unidade estoque", "Total", "Custo unitário", "Método", "Comprador"], ...state.purchases.map((p) => [p.date, p.supplier, p.item, p.packageCount || "", p.packageSize || "", p.packageUnit || "", p.qty, p.unit, p.total, p.costPerUnit || "", p.method, p.buyer])]),
     "export-sales": () => exportCSV("kombu-saidas-vendas", [["Data", "Tipo", "Cliente/destino", "Preço", "Sabor", "Lote", "Qtd", "Preço unitário", "Receita", "Desconto", "Entrega", "Observação"], ...state.sales.map((s) => [s.date, s.movementType || "venda", s.customerName || s.partner, s.priceType || s.channel, s.flavor, s.batchCode, s.qty, s.unitPrice, saleRevenue(s), s.discount, s.delivery, s.note || ""])]),
     "export-orders": () => exportCSV("kombu-pedidos", [["Código", "Data", "Tipo cliente", "Status", "Cliente", "Negócio", "WhatsApp", "Previsão pronto", "Entrega", "Receber até", "Pagamento", "Precisa até", "Qtd", "Valor", "Itens", "Observações"], ...(state.orders || []).map((order) => [order.code, order.orderDate, orderClientTypeLabel(order.clientType), order.status, order.customerName, order.businessName, order.whatsapp, order.estimatedReadyDate, order.deliveredAt || "", orderPaymentDueDate(order), orderReceivableStatus(order), order.neededBy, orderQuantity(order), orderTotal(order), orderItems(order).map((item) => `${item.qty}x ${orderProductText(item)} | ${item.productionStatus || "pendente"} | reservado ${orderItemReservedQty(item)} | lotes ${orderItemBatchCodes(item).join(" + ") || "-"} @ ${brl(item.unitPrice)}`).join("; "), order.notes || ""])]),
+    "export-receipts": () => exportCSV("kombu-recibos", [["Recibo", "Status", "Data recebimento", "Cliente", "Negócio", "Valor", "Método", "Referência", "Pedido", "Entregas", "Emitido por", "Motivo cancelamento"], ...(state.receipts || []).map((receipt) => [receipt.number, receipt.status, receipt.receivedAt, receipt.customerName, receipt.businessName, receipt.amount, receipt.method, receipt.reference, receipt.orderCode, (receipt.deliveryIds || []).join(" + "), receipt.createdBy, receipt.cancelReason || ""])]),
     "export-leads": () => exportCSV("kombu-leads-crm", [["Criado em", "Tipo", "Status", "Nome", "Negócio", "Tipo negócio", "Local", "WhatsApp", "Instagram", "Mensagem"], ...state.leads.map((lead) => [lead.createdAt, lead.type, lead.status, lead.name, lead.business, lead.businessType, lead.location, lead.whatsapp, lead.instagram, lead.message])]),
     "export-reports": () => exportCSV("kombu-relatorio", [["Métrica", "Valor"], ["Receita", totals().salesRevenue], ["COGS", totals().cogs], ["Lucro bruto", totals().grossProfit], ["Despesas", totals().expenses], ["Líquido", totals().net], ["Pedidos em aberto", totals().openOrderValue], ["A receber", totals().receivable], ["Produção faltante", totals().productionMissing]]),
     "export-costs": () => {

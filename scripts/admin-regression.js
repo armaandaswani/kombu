@@ -109,6 +109,7 @@ const seed = {
       ],
     },
   ],
+  receipts: [],
   leads: [],
   purchases: [],
   expenses: [],
@@ -209,7 +210,17 @@ async function run() {
   const context = await browser.newContext({ viewport: { width: 390, height: 844 }, locale: "pt-BR" });
   await context.addInitScript(({ key, value }) => localStorage.setItem(key, JSON.stringify(value)), { key: storageKey, value: seed });
   const page = await context.newPage();
-  page.on("dialog", (dialog) => dialog.accept());
+  page.on("pageerror", (error) => console.error("PAGE ERROR:", error.stack || error.message));
+  page.on("console", (message) => {
+    if (message.type() === "error") console.error("BROWSER ERROR:", message.text());
+  });
+  page.on("dialog", (dialog) => {
+    if (dialog.type() === "prompt") {
+      dialog.accept("Correção financeira");
+      return;
+    }
+    dialog.accept();
+  });
 
   await page.goto(`${baseUrl}/admin.html`, { waitUntil: "domcontentloaded" });
   assert.strictEqual(await page.locator("#adminPassword").getAttribute("type"), "password");
@@ -457,9 +468,105 @@ async function run() {
   );
 
   await page.selectOption("#mobileModuleSelector", "orders");
-  const compactOrder = page.locator(".order-compact-card", { hasText: "Ana Teste" });
-  await compactOrder.locator("summary").click();
+  let compactOrder = page.locator(".order-compact-card", { hasText: "Ana Teste" });
+  await compactOrder.locator(":scope > summary").click();
   assert.match(await compactOrder.locator('[data-action="delivery-proof:order-1"]').innerText(), /PDF da entrega/);
+
+  await compactOrder.locator('[data-action="order-receipt:order-1"]').click();
+  await page.waitForSelector("#receiptWizardForm");
+  assert.strictEqual(await page.locator(".receipt-wizard-steps > span").count(), 3, "receipt issuance must use three short steps");
+  assert.strictEqual(await page.locator('input[name="deliveryIds"]:checked').count(), 2, "all unpaid deliveries should be selected initially");
+	  assert.match(await page.locator(".receipt-delivery-list").innerText(), /3 garrafa/);
+	  assert.match(await page.locator(".receipt-delivery-list").innerText(), /1 garrafa/);
+	  await assertNoHorizontalOverflow(page, "receipt delivery selection");
+	  await page.screenshot({ path: "/tmp/kombu-receipt-mobile-step1.png" });
+  await page.click('#receiptWizardForm button[type="submit"]');
+  assert.strictEqual(await page.locator('#receiptWizardForm input[name="amount"]').inputValue(), "60", "the two deliveries should suggest their combined value");
+  await page.fill('#receiptWizardForm input[name="amount"]', "45");
+  await page.click('#receiptWizardForm button[type="submit"]');
+  assert.match(await page.locator(".receipt-required-confirm").innerText(), /Confirmo que este valor já foi recebido/);
+  assert.strictEqual(await page.locator(".receipt-review-items > span").count(), 1, "the same flavor from two deliveries should be consolidated");
+  assert.match(await page.locator(".receipt-review-items").innerText(), /Maracuja[\s\S]*4/);
+  await page.check('input[name="receivedConfirmed"]');
+  await page.click('#receiptWizardForm button[type="submit"]');
+  await page.waitForSelector(".receipt-detail");
+
+  state = await storedState(page);
+  assert.strictEqual(state.receipts.length, 1);
+  assert.strictEqual(state.receipts[0].amount, 45);
+  assert.strictEqual(state.receipts[0].orderId, "order-1");
+  assert.strictEqual(state.receipts[0].deliveryIds.length, 2);
+  assert.strictEqual(state.receipts[0].items.length, 1);
+  assert.strictEqual(state.receipts[0].items[0].qty, 4);
+  const receiptId = state.receipts[0].id;
+  const receiptPdfPath = "/tmp/kombu-receipt.pdf";
+  const [receiptDownload] = await Promise.all([
+    page.waitForEvent("download"),
+    page.click(`[data-action="download-receipt:${receiptId}"]`),
+  ]);
+  await receiptDownload.saveAs(receiptPdfPath);
+  assert.match(receiptDownload.suggestedFilename(), /^recibo-/);
+  assert.match(execFileSync("pdfinfo", [receiptPdfPath], { encoding: "utf8" }), /^Pages:\s+1$/m, "a receipt must be a single A4 page");
+  const secondCopyPath = "/tmp/kombu-receipt-second-copy.pdf";
+  const [secondCopyDownload] = await Promise.all([
+    page.waitForEvent("download"),
+    page.click(`[data-action="second-copy-receipt:${receiptId}"]`),
+  ]);
+  await secondCopyDownload.saveAs(secondCopyPath);
+  assert.match(secondCopyDownload.suggestedFilename(), /segunda-via/);
+  assert.match(execFileSync("pdfinfo", [secondCopyPath], { encoding: "utf8" }), /^Pages:\s+1$/m);
+  await page.click("#closeAdminModal");
+
+  compactOrder = page.locator(".order-compact-card", { hasText: "Ana Teste" });
+  await compactOrder.locator(":scope > summary").click();
+  const financialSummary = await compactOrder.locator(".order-financial-summary").innerText();
+  assert.match(financialSummary, /Total[\s\S]*60,00/);
+  assert.match(financialSummary, /Recebido[\s\S]*45,00/);
+  assert.match(financialSummary, /Pendente[\s\S]*15,00/);
+
+  await compactOrder.locator('[data-action="order-receipt:order-1"]').click();
+  await page.waitForSelector("#receiptWizardForm");
+  assert.strictEqual(await page.locator('input[name="deliveryIds"]:checked').count(), 0, "deliveries with a receipt should not be preselected");
+  await page.locator('input[name="deliveryIds"]').evaluateAll((inputs) => inputs.forEach((input) => input.click()));
+  await page.click('#receiptWizardForm button[type="submit"]');
+  assert.strictEqual(await page.locator('#receiptWizardForm input[name="amount"]').inputValue(), "15", "the next receipt should suggest only the unpaid balance");
+  await page.click('#receiptWizardForm button[type="submit"]');
+  assert.match(await page.locator(".receipt-warning-confirm").innerText(), /já possuem recibo/);
+  await page.click("#closeAdminModal");
+
+  await page.selectOption("#mobileModuleSelector", "receipts");
+  await page.click('[data-action="new-receipt"]');
+  await page.click('[data-receipt-type="manual"]');
+  assert.strictEqual(await page.locator('select[name="orderId"]').count(), 0, "manual receipts must not retain a hidden order");
+  await page.fill('input[name="customerName"]', "Cliente Avulso");
+  await page.fill('input[name="paymentReference"]', "Venda em feira");
+  await page.click('#receiptWizardForm button[type="submit"]');
+  await page.fill('#receiptWizardForm input[name="amount"]', "10");
+  await page.click('#receiptWizardForm button[type="submit"]');
+  await page.check('input[name="receivedConfirmed"]');
+  await page.click('#receiptWizardForm button[type="submit"]');
+  await page.waitForSelector(".receipt-detail");
+  state = await storedState(page);
+  assert.strictEqual(state.receipts.length, 2);
+  const manualReceipt = state.receipts.find((receipt) => receipt.customerName === "Cliente Avulso");
+  assert.ok(manualReceipt);
+  assert.strictEqual(manualReceipt.orderId, "");
+  assert.deepStrictEqual(manualReceipt.deliveryIds, []);
+  await page.click(`[data-action="cancel-receipt:${manualReceipt.id}"]`);
+  await page.waitForSelector(".receipt-detail.is-cancelled");
+  state = await storedState(page);
+  assert.strictEqual(state.receipts.length, 2, "cancelled receipts must remain in the financial history");
+  assert.strictEqual(state.receipts.find((receipt) => receipt.id === manualReceipt.id).status, "cancelado");
+  assert.strictEqual(state.receipts.find((receipt) => receipt.id === manualReceipt.id).cancelReason, "Correção financeira");
+  await page.click("#closeAdminModal");
+  assert.match(await page.locator(".receipt-metrics").innerText(), /Recebido[\s\S]*45,00/i);
+	  assert.match(await page.locator(".receipt-metrics").innerText(), /Cancelados[\s\S]*1/i);
+	  await assertNoHorizontalOverflow(page, "receipts module");
+	  await page.screenshot({ path: "/tmp/kombu-receipts-mobile.png" });
+
+  await page.selectOption("#mobileModuleSelector", "orders");
+  compactOrder = page.locator(".order-compact-card", { hasText: "Ana Teste" });
+  await compactOrder.locator(":scope > summary").click();
   await compactOrder.locator('[data-action="edit-order:order-1"]').click();
   await page.waitForSelector("#orderForm");
   assert.strictEqual(await page.locator(".order-item-selector").count(), 1, "order editor should start with a compact flavor selector");
@@ -507,7 +614,7 @@ async function run() {
 
   await assertOldestOrderReservationPriority(browser);
   await browser.close();
-  console.log("Admin regression: password visibility, decimal packaging cost, recipe-driven product cost, unified product availability, automatic 300ml recipes, flavor-size flows, compact order editing, two partial A4 deliveries, shipment history, period filters, FIFO order reservation, reservation override, partner deep-link, audit history and write-off passed.");
+  console.log("Admin regression: password visibility, decimal packaging cost, recipe-driven product cost, unified product availability, automatic 300ml recipes, flavor-size flows, compact order editing, two partial A4 deliveries, delivery-linked and manual receipts, partial payment balance, duplicate receipt warning, PDF and second copy, cancellation history, shipment history, period filters, FIFO order reservation, reservation override, partner deep-link, audit history and write-off passed.");
 }
 
 run().catch((error) => {
