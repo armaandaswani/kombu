@@ -42,22 +42,28 @@ function makeBatch({
   id = "batch-500",
   code = "KMB010-260727",
   actual = 11,
+  inventoryQty,
   productId = "product-manga-current-500",
   recipeId = "recipe-manga-500",
   flavor = "Manga & Jasmim",
   sizeMl = 500,
   date = "2026-07-27",
+  createdAt,
+  updatedAt,
   status = "aprovado",
 } = {}) {
   return {
     id,
     code,
     actual,
+    inventoryQty,
     productId,
     recipeId,
     flavor,
     sizeMl,
     date,
+    createdAt,
+    updatedAt,
     status,
   };
 }
@@ -323,6 +329,88 @@ function testManualCurrentReservationIsPreservedWithoutChangingOrder() {
   assert.equal(batchSummary(result).available, 1);
 }
 
+function testLaterProductionSupersedesManualCurrentReservation() {
+  const order = makeOrder({
+    qty: 10,
+    reservationOverride: {
+      active: true,
+      reservedNow: 3,
+      reason: "Liberar uma garrafa do estoque atual",
+      updatedAt: "2026-07-20T12:00:00.000Z",
+    },
+  });
+  const result = reconcile(
+    makeState({
+      batches: [
+        makeBatch({
+          actual: 11,
+          createdAt: "2026-07-27T10:00:00.000Z",
+          updatedAt: "2026-07-27T10:00:00.000Z",
+        }),
+      ],
+      orders: [order],
+    })
+  );
+  const reconciledItem = item(result.state.orders[0]);
+
+  assert.equal(reconciledItem.qty, 10);
+  assert.equal(reserved(result.state.orders[0]), 10);
+  assert.equal(reconciledItem.reservationOverride.active, false);
+  assert.equal(reconciledItem.reservationOverride.supersededByBatch, "KMB010-260727");
+  assert.equal(batchSummary(result).available, 1);
+  const allocationAudit = result.state.audit.find(
+    (record) => record.action === "Reserva automática aplicada" && record.orderId === "PED-260702-01"
+  );
+  assert.ok(allocationAudit);
+  assert.equal(allocationAudit.flavor, "Manga & Jasmim");
+  assert.equal(allocationAudit.sizeMl, 500);
+  assert.equal(allocationAudit.previousQty, 0);
+  assert.equal(allocationAudit.newQty, 10);
+  assert.equal(allocationAudit.quantityChanged, 10);
+}
+
+function testInventoryQuantitySupportsReservations() {
+  const batch = makeBatch({ inventoryQty: 11 });
+  delete batch.actual;
+  const result = reconcile(
+    makeState({
+      batches: [batch],
+      orders: [makeOrder({ qty: 10 })],
+    })
+  );
+
+  assert.equal(reserved(result.state.orders[0]), 10);
+  assert.equal(batchSummary(result).reserved, 10);
+  assert.equal(batchSummary(result).available, 1);
+}
+
+function testSupersededOverrideReconciliationIsIdempotent() {
+  const first = reconcile(
+    makeState({
+      batches: [
+        makeBatch({
+          actual: 11,
+          updatedAt: "2026-07-27T10:00:00.000Z",
+        }),
+      ],
+      orders: [
+        makeOrder({
+          qty: 10,
+          reservationOverride: {
+            active: true,
+            reservedNow: 3,
+            updatedAt: "2026-07-20T12:00:00.000Z",
+          },
+        }),
+      ],
+    })
+  );
+  const second = reconcile(first.state);
+
+  assert.equal(second.changed, false);
+  assert.deepEqual(second.state, first.state);
+}
+
 function testSalesReduceReservableCapacity() {
   const result = reconcile(
     makeState({
@@ -347,6 +435,9 @@ const tests = [
   testRepeatedReconciliationIsIdempotent,
   testInvalidAndDuplicateAllocationsAreRepaired,
   testManualCurrentReservationIsPreservedWithoutChangingOrder,
+  testLaterProductionSupersedesManualCurrentReservation,
+  testInventoryQuantitySupportsReservations,
+  testSupersededOverrideReconciliationIsIdempotent,
   testSalesReduceReservableCapacity,
 ];
 

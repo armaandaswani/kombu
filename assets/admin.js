@@ -1344,7 +1344,10 @@ function batchFlavorIdentity(batch = {}) {
 }
 
 function batchProducedQuantity(batch = {}) {
-  return Math.max(0, Number(batch.actual ?? batch.actualYield ?? batch.quantity ?? 0));
+  return Math.max(
+    0,
+    Number(batch.actual ?? batch.inventoryQty ?? batch.actualYield ?? batch.quantity ?? 0),
+  );
 }
 
 function productStockKey(product) {
@@ -1741,7 +1744,7 @@ function batchCost(batch) {
   const recipe = byId("recipes", batch.recipeId) || state.recipes.find((item) => item.flavor === batch.flavor) || state.recipes[0];
   if (!recipe) return { ...recipeCost(null), batchTotal: 0, batchCostPerBottle: 0 };
   const cost = recipeCost(recipe);
-  const actual = Number(batch.actual || batch.expected || recipe.yieldBottles || 1);
+  const actual = Number(batchProducedQuantity(batch) || batch.expected || recipe.yieldBottles || 1);
   const total = cost.costPerBottle * actual;
   return { ...cost, batchTotal: total, batchCostPerBottle: total / actual };
 }
@@ -1761,7 +1764,7 @@ function finishedStockRows() {
         product: productForBatch(batch),
         sold,
         reserved,
-        stock: Math.max(0, Number(batch.actual || 0) - sold - reserved),
+        stock: Math.max(0, batchProducedQuantity(batch) - sold - reserved),
         cost: batchCost(batch),
       };
     });
@@ -1775,7 +1778,7 @@ function totals() {
   }, 0);
   const expenses = state.expenses.reduce((sum, expense) => sum + Number(expense.amount || 0), 0);
   const finishedStock = finishedStockRows().reduce((sum, row) => sum + row.stock, 0);
-  const produced = state.batches.reduce((sum, batch) => sum + Number(batch.actual || 0), 0);
+  const produced = state.batches.reduce((sum, batch) => sum + batchProducedQuantity(batch), 0);
   const sold = state.sales.reduce((sum, sale) => sum + Number(sale.qty || 0), 0);
   const openOrders = (state.orders || []).filter(isOpenOrder);
   const openOrderValue = openOrders.reduce((sum, order) => sum + orderTotal(order), 0);
@@ -2064,12 +2067,12 @@ function orderItemReservedQty(item = {}) {
 
 function orderItemAutomaticReservationLimit(item = {}) {
   const ordered = orderItemOutstandingQty(item);
-  const overrideQty = Number(item.reservationOverride?.reservedNow ?? item.reservationOverride?.targetQty);
-  if (Number.isFinite(overrideQty)) return Math.max(0, Math.min(ordered, overrideQty));
-  if (item.reservationTarget === "" || item.reservationTarget == null) return ordered;
-  const target = Number(item.reservationTarget);
-  if (!Number.isFinite(target)) return ordered;
-  return Math.max(0, Math.min(ordered, target));
+  const override = item.reservationOverride;
+  if (!override || override.active === false) return ordered;
+  const overrideQty = Number(override.reservedNow ?? override.targetQty);
+  return Number.isFinite(overrideQty)
+    ? Math.max(0, Math.min(ordered, overrideQty))
+    : ordered;
 }
 
 function trimItemAllocationsTo(item, targetQty) {
@@ -2255,6 +2258,48 @@ function batchMatchesOrderItem(batch, item = {}) {
   const batchFlavorKey = batchFlavorIdentity(batch);
   const itemFlavorKey = orderItemFlavorIdentity(item);
   return Boolean(batchFlavorKey && itemFlavorKey && batchFlavorKey === itemFlavorKey);
+}
+
+function reservationTimestampValue(...values) {
+  for (const value of values) {
+    const timestamp = Date.parse(String(value || ""));
+    if (Number.isFinite(timestamp)) return timestamp;
+  }
+  return Number.NaN;
+}
+
+function batchReservationEventValue(batch = {}) {
+  return reservationTimestampValue(
+    batch.updatedAt,
+    batch.createdAt,
+    batch.correctedAt,
+    batch.productionDate,
+    batch.date,
+  );
+}
+
+function releaseSupersededReservationOverrides(eligibleBatches = []) {
+  const supersededAt = new Date().toISOString();
+  openOrdersByReservationPriority().forEach((order) => {
+    orderItems(order).forEach((item) => {
+      const override = item.reservationOverride;
+      if (!override || override.active === false) return;
+      const overrideAt = reservationTimestampValue(override.updatedAt);
+      if (!Number.isFinite(overrideAt)) return;
+      const newerBatch = eligibleBatches.find(
+        (batch) =>
+          batchMatchesOrderItem(batch, item) &&
+          batchReservationEventValue(batch) > overrideAt,
+      );
+      if (!newerBatch) return;
+      item.reservationOverride = {
+        ...override,
+        active: false,
+        supersededAt,
+        supersededByBatch: String(newerBatch.code || newerBatch.id || ""),
+      };
+    });
+  });
 }
 
 function reservationOptionsForBatch(batch) {
@@ -3774,12 +3819,13 @@ function resetOpenOrderReservations() {
 }
 
 function reconcileOrderReservations() {
+  const eligibleBatches = (state.batches || [])
+    .filter(shouldConsumeBatch)
+    .sort((a, b) => String(a.date || "").localeCompare(String(b.date || "")) || String(a.code || "").localeCompare(String(b.code || "")));
+  releaseSupersededReservationOverrides(eligibleBatches);
   resetOpenOrderReservations();
   const byBatch = {};
-  (state.batches || [])
-    .filter(shouldConsumeBatch)
-    .sort((a, b) => String(a.date || "").localeCompare(String(b.date || "")) || String(a.code || "").localeCompare(String(b.code || "")))
-    .forEach((batch) => {
+  eligibleBatches.forEach((batch) => {
       const reserved = allocateBatchToOrders(batch);
       if (reserved > 0) byBatch[batch.code] = reserved;
     });
@@ -4505,7 +4551,8 @@ function renderBatches() {
     .filter((item) => matchesSearch(item))
     .map((batch) => {
       const cost = batchCost(batch);
-      const loss = Number(batch.expected || 0) - Number(batch.actual || 0);
+      const produced = batchProducedQuantity(batch);
+      const loss = Number(batch.expected || 0) - produced;
       const product = productForBatch(batch);
       return `
         <tr>
@@ -4513,7 +4560,7 @@ function renderBatches() {
           <td>${product ? `<strong>${product.item}</strong><br><span>#${product.ean}</span>` : "Sem produto"}</td>
           <td>${batch.date}</td>
           <td>${batch.responsible}</td>
-          <td class="num">${number(batch.expected)} / ${number(batch.actual)}</td>
+          <td class="num">${number(batch.expected)} / ${number(produced)}</td>
           <td class="num">${number(loss)}</td>
           <td class="num">${brl(cost.batchCostPerBottle)}</td>
           <td>${batch.idealSellBy || "-"}</td>
@@ -4597,7 +4644,7 @@ function stockByFlavorRows() {
       available: matching.reduce((sum, row) => sum + Number(row.stock || 0), 0),
       reserved: matching.reduce((sum, row) => sum + Number(row.reserved || 0), 0),
       sold: matching.reduce((sum, row) => sum + Number(row.sold || 0), 0),
-      produced: matching.reduce((sum, row) => sum + Number(row.actual || 0), 0),
+      produced: matching.reduce((sum, row) => sum + batchProducedQuantity(row), 0),
       batches: matching.length,
     };
   });
@@ -4613,7 +4660,7 @@ function stockByFlavorRows() {
       available: Number(row.stock || 0),
       reserved: Number(row.reserved || 0),
       sold: Number(row.sold || 0),
-      produced: Number(row.actual || 0),
+      produced: batchProducedQuantity(row),
       batches: 1,
     }));
   return [...productRows, ...extraRows].sort((a, b) => {
@@ -4739,7 +4786,7 @@ function stockBatchCard(row) {
         <div class="stock-stat is-available"><span>Disponível</span><strong>${number(row.stock)}</strong></div>
         <div class="stock-stat"><span>Reservado</span><strong>${number(row.reserved)}</strong></div>
         <div class="stock-stat"><span>Saídas</span><strong>${number(row.sold)}</strong></div>
-        <div class="stock-stat"><span>Produzido</span><strong>${number(row.actual)}</strong></div>
+        <div class="stock-stat"><span>Produzido</span><strong>${number(batchProducedQuantity(row))}</strong></div>
       </div>
       <div class="stock-card-meta">
         <span>Ideal ${row.idealSellBy || "-"}</span>
@@ -6365,6 +6412,7 @@ function adjustOrderReservationForm(orderId) {
     }
     item.reservationTarget = null;
     item.reservationOverride = {
+      active: true,
       reservedNow,
       previousQty: before,
       orderedQty: ordered,
@@ -6480,7 +6528,7 @@ function adjustFlavorStockForm(productId) {
     .sort((a, b) => String(b.productionDate || b.code || "").localeCompare(String(a.productionDate || a.code || "")));
   const currentAvailable = matchingRows.reduce((sum, row) => sum + Number(row.stock || 0), 0);
   const currentReserved = matchingRows.reduce((sum, row) => sum + Number(row.reserved || 0), 0);
-  const currentProduced = matchingRows.reduce((sum, row) => sum + Number(row.actual || 0), 0);
+  const currentProduced = matchingRows.reduce((sum, row) => sum + batchProducedQuantity(row), 0);
 
   openModal(
     "Ajustar estoque",
@@ -6549,7 +6597,7 @@ function adjustFlavorStockForm(productId) {
         if (remaining <= 0 || Number(row.stock || 0) <= 0) return;
         const reduction = Math.min(remaining, Number(row.stock || 0));
         const sourceBatch = byId("batches", row.id) || state.batches.find((batch) => batch.code === row.code);
-        changes.push({ batch: sourceBatch, nextActual: Number(row.actual || 0) - reduction });
+        changes.push({ batch: sourceBatch, nextActual: batchProducedQuantity(row) - reduction });
         remaining -= reduction;
       });
       if (remaining > 0) {
@@ -6559,7 +6607,7 @@ function adjustFlavorStockForm(productId) {
     } else {
       const newestRow = matchingRows[0];
       const sourceBatch = byId("batches", newestRow.id) || state.batches.find((batch) => batch.code === newestRow.code);
-      changes.push({ batch: sourceBatch, nextActual: Number(newestRow.actual || 0) + delta });
+      changes.push({ batch: sourceBatch, nextActual: batchProducedQuantity(newestRow) + delta });
     }
 
     if (changes.some((change) => !change.batch || !byId("recipes", change.batch.recipeId))) {
@@ -6569,7 +6617,8 @@ function adjustFlavorStockForm(productId) {
     changes.forEach((change) => {
       adjustBatchInventoryTo(change.batch, change.nextActual);
       change.batch.actual = change.nextActual;
-      change.batch.correctedAt = new Date().toISOString();
+      change.batch.updatedAt = new Date().toISOString();
+      change.batch.correctedAt = change.batch.updatedAt;
       change.batch.correctionReason = data.reason;
     });
     reconcileOrderReservations();
@@ -6595,7 +6644,7 @@ function correctBatchQuantityForm(batchId) {
   const row = finishedStockRows().find((item) => item.id === batchId || item.code === batch.code) || batch;
   const recipe = byId("recipes", batch.recipeId);
   const committed = Number(row.sold || 0) + Number(row.reserved || 0);
-  const currentActual = Number(batch.actual || 0);
+  const currentActual = batchProducedQuantity(batch);
   const currentAvailable = Math.max(0, currentActual - committed);
   openModal(
     "Corrigir quantidade",
@@ -6650,7 +6699,8 @@ function correctBatchQuantityForm(batchId) {
     }
     batch.actual = nextActual;
     if (!Number(batch.expected || 0)) batch.expected = nextActual;
-    batch.correctedAt = todayIso();
+    batch.updatedAt = new Date().toISOString();
+    batch.correctedAt = batch.updatedAt;
     batch.correctionReason = data.reason;
     const beforeReserved = Number(row.reserved || 0);
     const reservationReport = reconcileOrderReservations();
@@ -6980,6 +7030,7 @@ function newBatchForm() {
     const plan = batchDatePlan(data.date);
     const bottles = Number(data.actual || 0);
     if (!recipe || !bottles) return;
+    const createdAt = new Date().toISOString();
     const batch = {
       id: id("bat"),
       code: data.code,
@@ -6996,6 +7047,8 @@ function newBatchForm() {
       status: "aprovado",
       inventoryAdjusted: true,
       inventoryQty: bottles,
+      createdAt,
+      updatedAt: createdAt,
     };
     state.batches.unshift(batch);
     applyBatchInventory(recipe, bottles, -1);
@@ -7882,19 +7935,19 @@ function editBatchForm(batchId) {
   ];
   editRecordForm("batches", batchId, "Editar lote", batchFields, (batch) => {
     const originalRecipe = byId("recipes", original?.recipeId);
-    if (original?.inventoryAdjusted && originalRecipe) applyBatchInventory(originalRecipe, Number(original.inventoryQty || original.actual || 0), 1);
+    if (original?.inventoryAdjusted && originalRecipe) applyBatchInventory(originalRecipe, batchProducedQuantity(original), 1);
     const recipe = byId("recipes", batch.recipeId);
     batch.flavor = recipe?.flavor || batch.flavor;
     batch.productId = recipe?.productId || batch.productId || "";
-    batch.expected = Number(batch.actual || 0);
+    batch.expected = batchProducedQuantity(batch);
     const plan = batchDatePlan(batch.date);
     batch.idealSellBy = batch.idealSellBy || plan.idealSellBy;
     batch.sellBy = batch.sellBy || plan.sellBy;
     batch.expiry = batch.expiry || plan.expiry;
     if (recipe && shouldConsumeBatch(batch)) {
-      applyBatchInventory(recipe, Number(batch.actual || 0), -1);
+      applyBatchInventory(recipe, batchProducedQuantity(batch), -1);
       batch.inventoryAdjusted = true;
-      batch.inventoryQty = Number(batch.actual || 0);
+      batch.inventoryQty = batchProducedQuantity(batch);
     } else {
       batch.inventoryAdjusted = false;
       batch.inventoryQty = 0;
@@ -7908,7 +7961,7 @@ function deleteBatch(batchId) {
   if (!batch) return;
   if (!window.confirm(`Excluir lote "${batch.code}"? O estoque de ingredientes e materiais será restaurado quando este lote já tiver dado baixa.`)) return;
   const recipe = byId("recipes", batch.recipeId);
-  if (batch.inventoryAdjusted && recipe) applyBatchInventory(recipe, Number(batch.inventoryQty || batch.actual || 0), 1);
+  if (batch.inventoryAdjusted && recipe) applyBatchInventory(recipe, batchProducedQuantity(batch), 1);
   state.batches = state.batches.filter((item) => item.id !== batchId);
   reconcileOrderReservations();
   addAudit("Lote excluído", batch.code);

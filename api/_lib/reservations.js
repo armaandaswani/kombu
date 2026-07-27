@@ -166,7 +166,9 @@ function isOpenOrder(order) {
 }
 
 function batchProducedQuantity(batch) {
-  return nonNegative(batch?.actual ?? batch?.actualYield ?? batch?.quantity);
+  return nonNegative(
+    batch?.actual ?? batch?.inventoryQty ?? batch?.actualYield ?? batch?.quantity
+  );
 }
 
 function isEligibleBatch(batch) {
@@ -216,11 +218,60 @@ function reservationLimit(item) {
   const manualTarget =
     override && override.active !== false
       ? override.reservedNow ?? override.targetQty
-      : item?.reservationTarget;
+      : undefined;
   if (manualTarget === undefined || manualTarget === null || manualTarget === "") {
     return outstanding;
   }
   return Math.min(outstanding, nonNegative(manualTarget));
+}
+
+function timestampValue(...values) {
+  for (const value of values) {
+    const timestamp = Date.parse(value || "");
+    if (Number.isFinite(timestamp)) return timestamp;
+  }
+  return Number.NaN;
+}
+
+function batchReservationEventValue(batch) {
+  return timestampValue(
+    batch?.updatedAt,
+    batch?.createdAt,
+    batch?.correctedAt,
+    batch?.productionDate,
+    batch?.date
+  );
+}
+
+function releaseSupersededReservationOverrides(
+  openOrders,
+  eligibleBatches,
+  maps,
+  reconciledAt
+) {
+  openOrders.forEach((order) => {
+    orderItems(order).forEach((item) => {
+      const override = item?.reservationOverride;
+      if (!override || override.active === false) return;
+
+      const overrideAt = timestampValue(override.updatedAt);
+      if (!Number.isFinite(overrideAt)) return;
+
+      const newerBatch = eligibleBatches.find(
+        (batch) =>
+          batchMatchesOrderItem(batch, item, maps) &&
+          batchReservationEventValue(batch) > overrideAt
+      );
+      if (!newerBatch) return;
+
+      item.reservationOverride = {
+        ...override,
+        active: false,
+        supersededAt: reconciledAt,
+        supersededByBatch: String(newerBatch.code || newerBatch.id || ""),
+      };
+    });
+  });
 }
 
 function allocationQuantity(allocation) {
@@ -314,9 +365,90 @@ function reservationSnapshot(state) {
         readyDate: item.readyDate,
         productionStatus: item.productionStatus,
         allocations: item.allocations,
+        reservationOverride: item.reservationOverride,
       })),
     })),
   });
+}
+
+function orderAuditLabel(order) {
+  return String(
+    order?.client ||
+      order?.clientName ||
+      order?.customer ||
+      order?.customerName ||
+      order?.business ||
+      order?.businessName ||
+      order?.code ||
+      order?.id ||
+      "Pedido"
+  );
+}
+
+function reservationAuditState(state, maps) {
+  const rows = new Map();
+  (state.orders || []).forEach((order, orderIndex) => {
+    const orderIdentity = String(order?.id || order?.code || `order-${orderIndex}`);
+    orderItems(order).forEach((item, itemIndex) => {
+      const product = maps.products.get(item?.productId);
+      const itemIdentity = String(
+        item?.id ||
+          item?.productId ||
+          `${orderItemFlavor(item, maps)}-${orderItemSize(item, maps)}-${itemIndex}`
+      );
+      const flavor = String(
+        item?.flavor ||
+          item?.productName ||
+          item?.name ||
+          product?.flavor ||
+          product?.name ||
+          "Sabor"
+      ).replace(/\s+\d+\s*ml\s*$/i, "");
+      rows.set(`${orderIdentity}:${itemIdentity}`, {
+        flavor,
+        sizeMl: orderItemSize(item, maps),
+        orderId: String(order?.code || order?.id || ""),
+        client: orderAuditLabel(order),
+        quantity: reservedQuantity(item),
+      });
+    });
+  });
+  return rows;
+}
+
+function reservationAuditChanges(beforeRows, afterRows, reconciledAt, user) {
+  const records = [];
+  const keys = new Set([...beforeRows.keys(), ...afterRows.keys()]);
+  keys.forEach((key) => {
+    const before = beforeRows.get(key);
+    const after = afterRows.get(key);
+    const previousQty = before?.quantity || 0;
+    const newQty = after?.quantity || 0;
+    if (previousQty === newQty) return;
+
+    const row = after || before;
+    const quantityChanged = newQty - previousQty;
+    const direction = quantityChanged > 0 ? "recebeu" : "liberou";
+    records.push({
+      at: reconciledAt,
+      user,
+      action:
+        quantityChanged > 0
+          ? "Reserva automática aplicada"
+          : "Reserva automática reduzida",
+      entity: "reservation",
+      flavor: row.flavor,
+      sizeMl: row.sizeMl,
+      orderId: row.orderId,
+      client: row.client,
+      previousQty,
+      newQty,
+      quantityChanged,
+      reason: "Reconciliação automática de estoque e pedidos por prioridade FIFO.",
+      detail: `${row.flavor} ${row.sizeMl}ml | ${row.client} | ${previousQty} -> ${newQty} (${direction} ${Math.abs(quantityChanged)}) | prioridade FIFO`,
+    });
+  });
+  return records;
 }
 
 function reconcileReservations(inputState, options = {}) {
@@ -328,8 +460,10 @@ function reconcileReservations(inputState, options = {}) {
   state.sales = Array.isArray(state.sales) ? state.sales : [];
   state.audit = Array.isArray(state.audit) ? state.audit : [];
 
+  const reconciledAt = options.now || new Date().toISOString();
   const before = reservationSnapshot(state);
   const maps = stateMaps(state);
+  const beforeAuditRows = reservationAuditState(state, maps);
   const eligibleBatches = state.batches.filter(isEligibleBatch).sort(compareBatches);
   const batchesByCode = new Map(
     eligibleBatches.map((batch) => [String(batch.code || batch.id || ""), batch])
@@ -344,6 +478,12 @@ function reconcileReservations(inputState, options = {}) {
 
   const openOrders = state.orders.filter(isOpenOrder).sort(compareOrders);
   const openOrderSet = new Set(openOrders);
+  releaseSupersededReservationOverrides(
+    openOrders,
+    eligibleBatches,
+    maps,
+    reconciledAt
+  );
   const manualCandidates = [];
 
   state.orders.forEach((order) => {
@@ -422,9 +562,16 @@ function reconcileReservations(inputState, options = {}) {
   const after = reservationSnapshot(state);
   const changed = before !== after;
   if (changed && options.audit !== false) {
-    state.audit.unshift({
-      at: options.now || new Date().toISOString(),
-      user: options.user || options.updatedBy || "system",
+    const auditUser = options.user || options.updatedBy || "system";
+    const detailedRecords = reservationAuditChanges(
+      beforeAuditRows,
+      reservationAuditState(state, maps),
+      reconciledAt,
+      auditUser
+    );
+    state.audit.unshift(...detailedRecords, {
+      at: reconciledAt,
+      user: auditUser,
       action: "Reservas reconciliadas",
       detail:
         "Reservas automáticas recalculadas por produto, sabor, tamanho e prioridade FIFO dos pedidos.",
