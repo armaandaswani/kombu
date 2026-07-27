@@ -1098,12 +1098,15 @@ function saveState() {
 
 async function pushStateToCloud() {
   if (!cloudSyncReady || !isAuthenticated()) return;
+  const submittedState = clone(state);
+  const submittedStateJson = JSON.stringify(submittedState);
+  const submittedUpdatedAt = cloudStateUpdatedAt;
   try {
     const response = await fetch("/api/state", {
       method: "PUT",
       credentials: "same-origin",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ state, updatedAt: cloudStateUpdatedAt }),
+      body: JSON.stringify({ state: submittedState, updatedAt: submittedUpdatedAt }),
     });
     if (response.ok || response.status === 202) {
       const payload = await readJsonSafe(response);
@@ -1112,6 +1115,20 @@ async function pushStateToCloud() {
       cloudSyncLastError = "";
       cloudStateUpdatedAt = payload.updatedAt || cloudStateUpdatedAt;
       lastCloudSaveAt = cloudStateUpdatedAt || new Date().toISOString();
+      if (payload.state && JSON.stringify(state) === submittedStateJson) {
+        state = normalizeState(payload.state);
+        try {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+        } catch (error) {
+          console.error("Falha ao salvar estado reconciliado localmente.", error);
+        }
+        if (!state.recipes.some((recipe) => recipe.id === activeRecipeId)) {
+          activeRecipeId = state.recipes[0]?.id || null;
+        }
+        if (payload.reconciled) render();
+      } else if (payload.state) {
+        scheduleCloudSave();
+      }
     } else if (response.status === 401) {
       cloudSyncEnabled = false;
       cloudSyncLastError = "Sessão expirada. Entre novamente para salvar na nuvem.";
@@ -1255,7 +1272,79 @@ function productSizeMl(product) {
 function batchSizeMl(batch) {
   const product = batch?.product || productForBatch(batch);
   const recipe = byId("recipes", batch?.recipeId);
-  return Number(product?.sizeMl || recipe?.bottleMl || BASE_BOTTLE_SIZE_ML);
+  return Number(
+    batch?.sizeMl ||
+      batch?.size ||
+      batch?.bottleMl ||
+      product?.sizeMl ||
+      recipe?.bottleMl ||
+      sizeMlFromText(batch?.flavor, batch?.productName, batch?.code) ||
+      BASE_BOTTLE_SIZE_ML
+  );
+}
+
+function normalizeFlavorIdentity(value = "") {
+  let text = normalizeText(value).trim();
+  const saborIndex = text.lastIndexOf("sabor ");
+  if (saborIndex >= 0) text = text.slice(saborIndex + 6);
+  return text
+    .replace(/\b\d+\s*ml\b/g, " ")
+    .replace(/\b(kombucha|premium|garrafa|produto|base|receita|v\d+)\b/g, " ")
+    .replace(/\bc\s*[/.-]\s*/g, " ")
+    .replace(/&/g, " e ")
+    .replace(/\b(com|e|de|da|do)\b/g, " ")
+    .replace(/[^a-z0-9]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function sizeMlFromText(...values) {
+  for (const value of values) {
+    const match = String(value || "").match(/\b(\d{2,4})\s*ml\b/i);
+    if (match) return Number(match[1]);
+  }
+  return 0;
+}
+
+function orderItemSizeMl(item = {}) {
+  const product = byId("products", item.productId);
+  return Number(
+    item.sizeMl ||
+      item.size ||
+      item.bottleMl ||
+      product?.sizeMl ||
+      sizeMlFromText(item.flavor, item.productName, item.description, item.item) ||
+      BASE_BOTTLE_SIZE_ML
+  );
+}
+
+function orderItemFlavorIdentity(item = {}) {
+  const product = byId("products", item.productId);
+  return normalizeFlavorIdentity(
+    item.flavor ||
+      item.productName ||
+      item.name ||
+      product?.flavor ||
+      product?.name ||
+      product?.description
+  );
+}
+
+function batchFlavorIdentity(batch = {}) {
+  const recipe = byId("recipes", batch.recipeId);
+  const product = byId("products", batch.productId || recipe?.productId);
+  return normalizeFlavorIdentity(
+    batch.flavor ||
+      batch.productName ||
+      product?.flavor ||
+      recipe?.flavor ||
+      product?.name ||
+      product?.description
+  );
+}
+
+function batchProducedQuantity(batch = {}) {
+  return Math.max(0, Number(batch.actual ?? batch.actualYield ?? batch.quantity ?? 0));
 }
 
 function productStockKey(product) {
@@ -1604,7 +1693,11 @@ function adjustBatchInventoryTo(batch, nextActual) {
 }
 
 function shouldConsumeBatch(batch) {
-  return Number(batch?.actual || 0) > 0 && !["planejado", "bloqueado", "descartado"].includes(batch?.status);
+  const status = normalizeText(batch?.status).trim();
+  return (
+    batchProducedQuantity(batch) > 0 &&
+    !["planejado", "planned", "bloqueado", "blocked", "descartado", "discarded"].includes(status)
+  );
 }
 
 function recipeCost(recipe) {
@@ -1907,7 +2000,18 @@ function orderFinancialSummaryMarkup(order) {
 }
 
 function isOpenOrder(order) {
-  return !["entregue", "cancelado"].includes(order?.status);
+  const status = normalizeText(order?.status).trim();
+  return ![
+    "entregue",
+    "cancelado",
+    "cancelada",
+    "concluido",
+    "concluida",
+    "delivered",
+    "cancelled",
+    "canceled",
+    "completed",
+  ].includes(status);
 }
 
 function orderReservationTimestamp(order = {}) {
@@ -2142,10 +2246,15 @@ function batchAvailableStock(code) {
 
 function batchMatchesOrderItem(batch, item = {}) {
   if (!batch || !item) return false;
+  if (batchSizeMl(batch) !== orderItemSizeMl(item)) return false;
+
   const recipe = byId("recipes", batch.recipeId);
   const productId = batch.productId || recipe?.productId || "";
-  if (productId && item.productId === productId) return true;
-  return normalizeText(item.flavor || item.productName) === normalizeText(batch.flavor);
+  if (productId && item.productId && productId === item.productId) return true;
+
+  const batchFlavorKey = batchFlavorIdentity(batch);
+  const itemFlavorKey = orderItemFlavorIdentity(item);
+  return Boolean(batchFlavorKey && itemFlavorKey && batchFlavorKey === itemFlavorKey);
 }
 
 function reservationOptionsForBatch(batch) {
@@ -2172,7 +2281,7 @@ function refreshOrderReservationStatus(order) {
     item.reservedQty = qty ? Math.min(qty, reserved) : 0;
     item.producedQty = item.reservedQty;
     item.batchCode = batchCodes.join(", ");
-    item.readyDate = allocations.at(-1)?.date || item.readyDate || "";
+    item.readyDate = allocations.at(-1)?.date || "";
     item.productionStatus = qty <= 0 ? "entregue" : item.reservedQty >= qty ? "reservado" : item.reservedQty > 0 ? "em produção" : "pendente";
     anyReserved = anyReserved || item.reservedQty > 0;
     allReserved = allReserved && (qty <= 0 || item.reservedQty >= qty);
@@ -3622,18 +3731,15 @@ function syncPurchaseExpense(purchase) {
 }
 
 function allocateBatchToOrders(batch) {
-  if (!batch || !Number(batch.actual || 0)) return 0;
+  const produced = batchProducedQuantity(batch);
+  if (!batch || !produced) return 0;
   const alreadyReserved = reservedFromBatch(batch.code);
-  let available = Math.max(0, Number(batch.actual || 0) - soldFromBatch(batch.code) - alreadyReserved);
-  const recipe = byId("recipes", batch.recipeId);
-  const productId = batch.productId || recipe?.productId || "";
+  let available = Math.max(0, produced - soldFromBatch(batch.code) - alreadyReserved);
   const openOrders = openOrdersByReservationPriority();
   openOrders.forEach((order) => {
     orderItems(order).forEach((item) => {
       if (!available) return;
-      const matchesProduct = productId && item.productId === productId;
-      const matchesFlavor = !productId && normalizeText(item.flavor) === normalizeText(batch.flavor);
-      if (!matchesProduct && !matchesFlavor) return;
+      if (!batchMatchesOrderItem(batch, item)) return;
       const need = orderItemAutomaticReservationNeed(item);
       if (!need) return;
       const allocated = Math.min(need, available);
@@ -3642,7 +3748,7 @@ function allocateBatchToOrders(batch) {
       available -= allocated;
     });
   });
-  return Math.max(0, Number(batch.actual || 0) - soldFromBatch(batch.code) - alreadyReserved - available);
+  return Math.max(0, produced - soldFromBatch(batch.code) - alreadyReserved - available);
 }
 
 function resetOpenOrderReservations() {

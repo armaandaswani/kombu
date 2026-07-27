@@ -1,4 +1,31 @@
 const { backendErrorPayload, getStateRow, hasSupabase, json, readBody, replaceAppState, requireAdmin, validateAppState } = require("./_lib/kombu-backend");
+const { reconcileReservations } = require("./_lib/reservations");
+
+async function getReconciledState(updatedBy = "reservation-reconciler", retries = 4) {
+  for (let attempt = 0; attempt < retries; attempt += 1) {
+    const row = await getStateRow();
+    if (!row) return { row: null, reconciled: null };
+
+    const reconciled = reconcileReservations(row.state, { updatedBy });
+    if (!reconciled.changed) return { row, reconciled };
+
+    try {
+      const saved = await replaceAppState(reconciled.state, updatedBy, row.updated_at || "");
+      return {
+        row: {
+          ...row,
+          state: reconciled.state,
+          updated_at: saved.updatedAt || row.updated_at,
+        },
+        reconciled,
+      };
+    } catch (error) {
+      if (error.code !== "state_conflict" || attempt === retries - 1) throw error;
+    }
+  }
+
+  return { row: null, reconciled: null };
+}
 
 module.exports = async function handler(req, res) {
   const session = requireAdmin(req, res);
@@ -6,13 +33,15 @@ module.exports = async function handler(req, res) {
 
   if (req.method === "GET") {
     try {
-      const row = await getStateRow();
+      const { row, reconciled } = await getReconciledState();
       return json(res, 200, {
         ok: true,
         configured: hasSupabase(),
         exists: Boolean(row),
         state: row?.state || null,
         updatedAt: row?.updated_at || null,
+        reconciled: Boolean(reconciled?.changed),
+        reservations: reconciled?.summary || null,
       });
     } catch (error) {
       return json(res, 503, backendErrorPayload(error));
@@ -29,11 +58,19 @@ module.exports = async function handler(req, res) {
     if (!body.state || typeof body.state !== "object") {
       return json(res, 400, { ok: false, error: "missing_state" });
     }
-    const validationError = validateAppState(body.state);
+    const reconciled = reconcileReservations(body.state, {
+      updatedBy: session.role || "admin",
+    });
+    const validationError = validateAppState(reconciled.state);
     if (validationError) return json(res, validationError === "state_too_large" ? 413 : 422, { ok: false, error: validationError });
     try {
-      const result = await replaceAppState(body.state, session.role || "admin", String(body.updatedAt || ""));
-      return json(res, result.ok ? 200 : 202, result);
+      const result = await replaceAppState(reconciled.state, session.role || "admin", String(body.updatedAt || ""));
+      return json(res, result.ok ? 200 : 202, {
+        ...result,
+        state: reconciled.state,
+        reconciled: reconciled.changed,
+        reservations: reconciled.summary,
+      });
     } catch (error) {
       if (error.code === "state_conflict") {
         const row = await getStateRow().catch(() => null);
