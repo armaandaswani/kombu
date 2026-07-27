@@ -718,26 +718,6 @@ textarea:focus-visible {
   border: 0;
 }
 
-#mapPins {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-}
-
-.map-pin {
-  position: absolute;
-  z-index: 2;
-  display: grid;
-  width: 42px;
-  height: 42px;
-  place-items: center;
-  border: 2px solid #fff;
-  border-radius: 50%;
-  background: var(--green);
-  color: #fff;
-  box-shadow: 0 12px 22px rgba(45, 75, 40, 0.22);
-}
-
 .partner-list {
   display: grid;
   gap: 12px;

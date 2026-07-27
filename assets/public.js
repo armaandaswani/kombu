@@ -375,7 +375,7 @@ function getPublicPartners() {
     const adminState = readAdminState();
     return (adminState?.partners || [])
       .filter((partner) => partner.visible)
-      .map((partner, index) => ({
+      .map((partner) => ({
         name: partner.name,
         type: partner.type || "ponto de venda",
         neighborhood: partner.neighborhood || "Manaus",
@@ -384,7 +384,6 @@ function getPublicPartners() {
         whatsapp: String(partner.whatsapp || "").replace(/\D/g, "") || "5592992097165",
         instagram: partner.instagram || "",
         flavors: String(partner.flavors || "").split(",").map((item) => item.trim()).filter(Boolean),
-        pin: [24 + ((index * 17) % 58), 24 + ((index * 13) % 48)],
       }));
   } catch {
     return partners;
@@ -552,16 +551,6 @@ function renderPartners() {
   const visible = filteredPartners();
   const hasPartners = getPublicPartners().length > 0;
   document.querySelector(".locator-layout")?.classList.toggle("no-partners", !hasPartners);
-  const pins = document.querySelector("#mapPins");
-  if (pins) pins.innerHTML = visible
-    .map(
-      (partner) => `
-        <span class="map-pin" style="left:${partner.pin[0]}%; top:${partner.pin[1]}%" title="${partner.name}">
-          <span class="material-symbols-outlined" aria-hidden="true">storefront</span>
-        </span>
-      `,
-    )
-    .join("");
   document.querySelector("#partnerList").innerHTML = visible.length
     ? visible
         .map(
