@@ -14,8 +14,7 @@ function isLocalPreview() {
 }
 
 const DEFAULT_PUBLIC_IMAGES = {
-  heroBottle:
-    "https://static.wixstatic.com/media/716adf_5b0b2489ee914e53b15b4a590915d974~mv2.png/v1/crop/x_6,y_0,w_1068,h_1920/fill/w_760,h_1367,al_c,q_90,usm_0.66_1.00_0.01,enc_auto/4_edited.png",
+  heroBottle: "",
   maracuja:
     "https://static.wixstatic.com/media/716adf_5b0b2489ee914e53b15b4a590915d974~mv2.png/v1/crop/x_6,y_0,w_1068,h_1920/fill/w_760,h_1367,al_c,q_92,usm_0.66_1.00_0.01,enc_auto/4_edited.png",
   imunidade:
@@ -31,6 +30,8 @@ const DEFAULT_PUBLIC_IMAGES = {
   rosasCardamomo:
     "https://static.wixstatic.com/media/716adf_4d2ae2c8e77d48ea8aa11ceffef05be4~mv2.png/v1/fill/w_760,h_1368,al_c,q_92,usm_0.66_1.00_0.01,enc_auto/3_edited.png",
 };
+
+let cmsImageLoadSequence = 0;
 
 const DEFAULT_FLAVOR_SETTINGS = [
   { slug: "maracuja", profile: "Frutados", order: 1, visible: true, imageUrl: DEFAULT_PUBLIC_IMAGES.maracuja },
@@ -239,6 +240,52 @@ function getCmsImage(key, fallback) {
   return image?.url?.trim() || DEFAULT_PUBLIC_IMAGES[key] || fallback;
 }
 
+function hydrateCmsImage(image, source) {
+  const url = String(source || "").trim();
+  const stage = image.closest(".bottle-stage");
+  const loadId = String(++cmsImageLoadSequence);
+
+  image.dataset.loadId = loadId;
+  image.classList.remove("is-ready", "is-unavailable");
+  stage?.setAttribute("aria-busy", "true");
+
+  if (!url) {
+    image.removeAttribute("src");
+    image.classList.add("is-unavailable");
+    stage?.setAttribute("aria-busy", "false");
+    return;
+  }
+
+  const preload = new Image();
+  preload.addEventListener(
+    "load",
+    async () => {
+      try {
+        if (typeof preload.decode === "function") await preload.decode();
+      } catch {
+        // A loaded bitmap can still render when decode() is unavailable.
+      }
+
+      if (image.dataset.loadId !== loadId) return;
+      image.src = url;
+      image.classList.add("is-ready");
+      stage?.setAttribute("aria-busy", "false");
+    },
+    { once: true },
+  );
+  preload.addEventListener(
+    "error",
+    () => {
+      if (image.dataset.loadId !== loadId) return;
+      image.removeAttribute("src");
+      image.classList.add("is-unavailable");
+      stage?.setAttribute("aria-busy", "false");
+    },
+    { once: true },
+  );
+  preload.src = url;
+}
+
 function getFlavorOverrides() {
   const overrides = readAdminCms().flavors;
   const saved = Array.isArray(overrides) ? overrides : [];
@@ -347,7 +394,7 @@ function getPublicPartners() {
 function applyPublicCms() {
   const cms = readAdminCms();
   const heroImage = document.querySelector(".bottle-stage img");
-  if (heroImage) heroImage.src = getCmsImage("heroBottle", heroImage.src);
+  if (heroImage) hydrateCmsImage(heroImage, getCmsImage("heroBottle", ""));
   if (cms.headline) {
     const lines = cms.headline.split(/\s+/);
     const title = document.querySelector("#hero-title");

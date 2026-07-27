@@ -405,9 +405,27 @@ textarea:focus-visible {
 
 .bottle-stage img {
   max-height: 450px;
+  max-width: 100%;
+  width: auto;
+  height: auto;
   object-fit: contain;
   filter: drop-shadow(0 26px 30px rgba(25, 28, 28, 0.18));
   transform: rotate(-3deg);
+}
+
+.bottle-stage img[data-cms-image] {
+  opacity: 0;
+  transition: opacity 180ms ease;
+}
+
+.bottle-stage img[data-cms-image].is-ready {
+  opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bottle-stage img[data-cms-image] {
+    transition: none;
+  }
 }
 
 .ingredient-note {
