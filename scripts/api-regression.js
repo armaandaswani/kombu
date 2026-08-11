@@ -93,11 +93,59 @@ async function run() {
   assert.strictEqual(res.statusCode, 401);
   assert.strictEqual(jsonBody(res).error, "not_authenticated");
 
+  // --- optimistic concurrency on the shared state document -------------------
+  // A write without a version token must never be able to replace an existing
+  // production document, and a write with a stale token must be rejected.
+  const previousUrl = process.env.SUPABASE_URL;
+  const previousFetch = global.fetch;
+  process.env.SUPABASE_URL = "https://test-project.supabase.co";
+
+  let rowExists = true;
+  const calls = [];
+  const supabaseReply = (body) => ({ ok: true, status: 200, text: async () => JSON.stringify(body) });
+  global.fetch = async (url, options = {}) => {
+    const method = options.method || "GET";
+    calls.push(`${method} ${String(url).includes("updated_at=eq.") ? "patch-guarded" : "plain"}`);
+    if (method === "GET") {
+      return supabaseReply(rowExists ? [{ id: "production", state: {}, updated_at: "2026-08-11T00:00:00.000Z" }] : []);
+    }
+    if (method === "POST") return supabaseReply([{ updated_at: "2026-08-11T01:00:00.000Z" }]);
+    if (method === "PATCH") {
+      const matched = String(url).includes(encodeURIComponent("2026-08-11T00:00:00.000Z"));
+      return supabaseReply(matched ? [{ updated_at: "2026-08-11T02:00:00.000Z" }] : []);
+    }
+    return supabaseReply([]);
+  };
+
+  await assert.rejects(
+    () => backend.replaceAppState({ products: [] }, "test", ""),
+    (error) => error.code === "state_conflict" && error.status === 409,
+    "a write with no version token must not overwrite an existing state document",
+  );
+
+  rowExists = false;
+  const created = await backend.replaceAppState({ products: [] }, "test", "");
+  assert.strictEqual(created.ok, true, "the very first state row must still be creatable");
+
+  rowExists = true;
+  const saved = await backend.replaceAppState({ products: [] }, "test", "2026-08-11T00:00:00.000Z");
+  assert.strictEqual(saved.ok, true, "a write carrying the current version token must succeed");
+
+  await assert.rejects(
+    () => backend.replaceAppState({ products: [] }, "test", "2026-08-10T00:00:00.000Z"),
+    (error) => error.code === "state_conflict" && error.status === 409,
+    "a write carrying a stale version token must be rejected",
+  );
+
+  global.fetch = previousFetch;
+  if (previousUrl === undefined) delete process.env.SUPABASE_URL;
+  else process.env.SUPABASE_URL = previousUrl;
+
   Object.entries(previous).forEach(([key, value]) => {
     if (value === undefined) delete process.env[key];
     else process.env[key] = value;
   });
-  console.log("API regression: fail-closed auth/cron, secure cookie and state validation passed.");
+  console.log("API regression: fail-closed auth/cron, secure cookie, state validation and state concurrency passed.");
 }
 
 run().catch((error) => {

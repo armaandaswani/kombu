@@ -216,7 +216,15 @@ async function upsertAppState(state, updatedBy = "system") {
 
 async function replaceAppState(state, updatedBy = "system", expectedUpdatedAt = "") {
   if (!hasSupabase()) return { ok: false, reason: "missing_supabase_env" };
-  if (!expectedUpdatedAt) return upsertAppState(state, updatedBy);
+  if (!expectedUpdatedAt) {
+    // A caller with no version token can only ever create the very first row.
+    // Without this check a client that momentarily believed no state existed
+    // (a transient empty read) would overwrite the entire production document
+    // with its local cache, with no concurrency check at all.
+    const existing = await getStateRow();
+    if (existing) throw requestError("state_conflict", 409);
+    return upsertAppState(state, updatedBy);
+  }
 
   const updatedAt = new Date().toISOString();
   const rows = await supabaseFetch(
