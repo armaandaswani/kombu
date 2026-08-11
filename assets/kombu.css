@@ -2135,6 +2135,22 @@ textarea:focus-visible {
   gap: 8px;
 }
 
+.cost-basis {
+  display: inline-block;
+  font-size: 0.72rem;
+  line-height: 1.2;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.cost-basis.is-estimated {
+  color: #9a6b1f;
+}
+
+.cost-basis.is-unknown {
+  color: #a33227;
+}
+
 .sale-compact-manual {
   display: flex;
   flex-wrap: wrap;

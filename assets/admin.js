@@ -1807,13 +1807,93 @@ function recipeCost(recipe) {
   };
 }
 
-function batchCost(batch) {
-  const recipe = byId("recipes", batch.recipeId) || state.recipes.find((item) => item.flavor === batch.flavor) || state.recipes[0];
-  if (!recipe) return { ...recipeCost(null), batchTotal: 0, batchCostPerBottle: 0 };
+// What a batch cost at the moment it was produced. Stored on the batch so later
+// ingredient price changes cannot rewrite the cost of stock already made.
+const BATCH_COST_SNAPSHOT_VERSION = 1;
+
+function buildBatchCostSnapshot(recipe) {
+  if (!recipe) return null;
   const cost = recipeCost(recipe);
-  const actual = Number(batchProducedQuantity(batch) || batch.expected || recipe.yieldBottles || 1);
-  const total = cost.costPerBottle * actual;
-  return { ...cost, batchTotal: total, batchCostPerBottle: total / actual };
+  return {
+    version: BATCH_COST_SNAPSHOT_VERSION,
+    at: new Date().toISOString(),
+    recipeId: recipe.id || "",
+    recipeVersion: recipe.version || "",
+    bottleMl: Number(recipe.bottleMl || BASE_BOTTLE_SIZE_ML),
+    yieldBottles: Number(recipe.yieldBottles || 1),
+    ingredientCost: cost.ingredientCost,
+    packagingCost: cost.packagingCost,
+    labor: Number(recipe.labor || 0),
+    utilities: Number(recipe.utilities || 0),
+    other: Number(recipe.other || 0),
+    wastePct: Number(recipe.wastePct || 0),
+    direct: cost.direct,
+    total: cost.total,
+    costPerBottle: cost.costPerBottle,
+    costPerLiter: cost.costPerLiter,
+  };
+}
+
+function batchCostSnapshot(batch) {
+  const snapshot = batch?.costSnapshot;
+  if (!snapshot || typeof snapshot !== "object") return null;
+  return Number.isFinite(Number(snapshot.costPerBottle)) ? snapshot : null;
+}
+
+// Priority: the cost recorded when the batch was produced, then the batch's own
+// recipe, then a same-flavour recipe. It used to fall back to state.recipes[0],
+// which costed a batch whose recipe had been deleted against a completely
+// unrelated product and reported the result as fact. An unknown cost is now
+// reported as unknown and flagged, rather than silently invented.
+function batchCost(batch) {
+  const bottles = Number(batchProducedQuantity(batch) || batch?.expected || 0);
+  const snapshot = batchCostSnapshot(batch);
+  if (snapshot) {
+    const recipe = byId("recipes", snapshot.recipeId) || byId("recipes", batch?.recipeId);
+    const costPerBottle = Number(snapshot.costPerBottle || 0);
+    const count = bottles || Number(snapshot.yieldBottles || 1);
+    return {
+      ingredientCost: Number(snapshot.ingredientCost || 0),
+      packagingCost: Number(snapshot.packagingCost || 0),
+      direct: Number(snapshot.direct || 0),
+      total: Number(snapshot.total || 0),
+      costPerBottle,
+      costPerLiter: Number(snapshot.costPerLiter || 0),
+      wholesaleProfit: Number(recipe?.wholesalePrice || 0) - costPerBottle,
+      wholesaleMargin: Number(recipe?.wholesalePrice || 0)
+        ? ((Number(recipe.wholesalePrice) - costPerBottle) / Number(recipe.wholesalePrice)) * 100
+        : 0,
+      retailProfit: Number(recipe?.retailPrice || 0) - costPerBottle,
+      retailMargin: Number(recipe?.retailPrice || 0)
+        ? ((Number(recipe.retailPrice) - costPerBottle) / Number(recipe.retailPrice)) * 100
+        : 0,
+      batchTotal: costPerBottle * count,
+      batchCostPerBottle: costPerBottle,
+      costBasis: "snapshot",
+      costAt: snapshot.at || "",
+    };
+  }
+
+  const recipe =
+    byId("recipes", batch?.recipeId) ||
+    state.recipes.find((item) => normalizeText(item.flavor) === normalizeText(batch?.flavor));
+  if (!recipe) {
+    return { ...recipeCost(null), batchTotal: 0, batchCostPerBottle: 0, costBasis: "unknown", costAt: "" };
+  }
+  const cost = recipeCost(recipe);
+  const count = bottles || Number(recipe.yieldBottles || 1);
+  return {
+    ...cost,
+    batchTotal: cost.costPerBottle * count,
+    batchCostPerBottle: cost.costPerBottle,
+    // Computed from today's prices because this batch predates cost snapshots.
+    costBasis: "estimated",
+    costAt: "",
+  };
+}
+
+function batchesWithoutCostSnapshot() {
+  return (state.batches || []).filter((batch) => !batchCostSnapshot(batch) && batchProducedQuantity(batch) > 0);
 }
 
 function soldFromBatch(code) {
@@ -4740,6 +4820,7 @@ function renderCosts() {
 function renderBatches() {
   const productionRows = orderProductionRows();
   const duplicateCodes = duplicateBatchCodes();
+  const estimatedBatches = batchesWithoutCostSnapshot();
   const rows = state.batches
     .filter((item) => matchesSearch(item))
     .map((batch) => {
@@ -4755,7 +4836,13 @@ function renderBatches() {
           <td>${batch.responsible}</td>
           <td class="num">${number(batch.expected)} / ${number(produced)}</td>
           <td class="num">${number(loss)}</td>
-          <td class="num">${brl(cost.batchCostPerBottle)}</td>
+          <td class="num">${brl(cost.batchCostPerBottle)}<br><small class="cost-basis is-${cost.costBasis}">${
+            cost.costBasis === "snapshot"
+              ? `registrado ${escapeHtml(shortDate(String(cost.costAt).slice(0, 10)))}`
+              : cost.costBasis === "unknown"
+                ? "sem receita"
+                : "estimado hoje"
+          }</small></td>
           <td>${batch.idealSellBy || "-"}</td>
           <td>${batch.sellBy || "-"}</td>
           <td>${batch.expiry}</td>
@@ -4770,6 +4857,21 @@ function renderBatches() {
       "Controle de lotes, versão da receita, rendimento real, vencimento, custo histórico e rastreabilidade.",
       `${actionButton("new-batch", "Novo lote", "add")} ${actionButton("stock-adjustment", "Ajuste de estoque", "tune", "btn-outline")}`,
     )}
+    ${estimatedBatches.length ? `
+      <section class="cloud-sync-notice warn">
+        <span class="material-symbols-outlined" aria-hidden="true">history</span>
+        <div>
+          <strong>${number(estimatedBatches.length)} lote(s) sem custo registrado na producao.</strong>
+          <p>
+            Lotes criados de agora em diante guardam o custo do momento em que foram produzidos.
+            Os lotes anteriores nao tem esse registro, entao o custo deles e recalculado com os
+            precos de hoje e aparece como "estimado". Mudar o preco de um ingrediente ainda altera
+            o custo historico desses lotes. Nada foi preenchido automaticamente porque os precos
+            atuais nao sao os precos da epoca.
+          </p>
+        </div>
+      </section>
+    ` : ""}
     ${duplicateCodes.length ? `
       <section class="cloud-sync-notice bad" aria-live="assertive">
         <span class="material-symbols-outlined" aria-hidden="true">error</span>
@@ -7265,6 +7367,9 @@ function newBatchForm() {
       inventoryQty: bottles,
       createdAt,
       updatedAt: createdAt,
+      // Freeze what this production actually cost. Later ingredient price
+      // changes must not rewrite the cost of stock that already exists.
+      costSnapshot: buildBatchCostSnapshot(recipe),
     };
     state.batches.unshift(batch);
     applyBatchInventory(recipe, bottles, -1);
@@ -8167,6 +8272,15 @@ function editBatchForm(batchId) {
     } else {
       batch.inventoryAdjusted = false;
       batch.inventoryQty = 0;
+    }
+    // A frozen cost belongs to the recipe it was taken from, so repointing the
+    // batch at a different recipe invalidates it and a new one is taken.
+    // A batch that never had a snapshot deliberately does not get one here:
+    // today's prices are not what it cost back then, and recording them as if
+    // they were would turn an honest estimate into a false historical fact.
+    const recipeChanged = String(original?.recipeId || "") !== String(batch.recipeId || "");
+    if (recipe && recipeChanged && batchCostSnapshot(original)) {
+      batch.costSnapshot = buildBatchCostSnapshot(recipe);
     }
     reconcileOrderReservations();
   });
