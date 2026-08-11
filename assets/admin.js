@@ -838,7 +838,15 @@ function setInputNumber(input, value, digits = 6) {
 }
 
 const pct = (value) => `${number(value, 1)}%`;
-const id = (prefix) => `${prefix}-${Math.random().toString(36).slice(2, 9)}`;
+// Math.random().toString(36) can return fewer characters than asked for, which
+// made some ids shorter and collision-prone. crypto.randomUUID is available in
+// every browser this admin supports.
+const id = (prefix) => {
+  const random = window.crypto?.randomUUID
+    ? window.crypto.randomUUID().replace(/-/g, "").slice(0, 10)
+    : Math.random().toString(36).slice(2).padEnd(10, "0").slice(0, 10);
+  return `${prefix}-${random}`;
+};
 const todayIso = () => new Date().toISOString().slice(0, 10);
 
 function clone(value) {
@@ -934,9 +942,28 @@ function proportionalRecipeQuantity(value) {
   return Number((Number(value || 0) * SMALL_BOTTLE_RECIPE_RATIO).toFixed(6));
 }
 
+// Auto-generated 300ml variants used to be recreated on every page load, so
+// deleting one you did not want was pointless: it came back on the next refresh.
+// Deleting one now records a tombstone that stops it being regenerated.
+function removedAutoVariants(data) {
+  const list = data?.settings?.removedAutoVariants;
+  return Array.isArray(list) ? list : [];
+}
+
+function rememberRemovedAutoVariant(recordId) {
+  const id = String(recordId || "");
+  if (!id) return;
+  state.settings = state.settings || {};
+  const list = Array.isArray(state.settings.removedAutoVariants) ? state.settings.removedAutoVariants : [];
+  if (!list.includes(id)) list.push(id);
+  state.settings.removedAutoVariants = list;
+}
+
 function ensure300MlProductVariants(data) {
+  const removed = removedAutoVariants(data);
   const baseProducts = data.products.filter((product) => Number(product.sizeMl || BASE_BOTTLE_SIZE_ML) === BASE_BOTTLE_SIZE_ML);
   baseProducts.forEach((product) => {
+    if (removed.includes(`${product.id}-300`)) return;
     const existing = data.products.find((candidate) =>
       Number(candidate.sizeMl) === SMALL_BOTTLE_SIZE_ML && normalizeText(candidate.flavor) === normalizeText(product.flavor),
     );
@@ -958,8 +985,10 @@ function ensure300MlProductVariants(data) {
 }
 
 function ensure300MlRecipeVariants(data) {
+  const removed = removedAutoVariants(data);
   const sourceRecipes = data.recipes.filter((recipe) => Number(recipe.bottleMl || BASE_BOTTLE_SIZE_ML) === BASE_BOTTLE_SIZE_ML);
   sourceRecipes.forEach((recipe) => {
+    if (removed.includes(`${recipe.id}-300`)) return;
     const sourceProduct = data.products.find((product) => product.id === recipe.productId);
     if (!sourceProduct) return;
     const targetProduct = data.products.find((product) =>
@@ -1096,9 +1125,13 @@ function normalizeState(savedState) {
         recipe.retailPrice = SMALL_RETAIL_PRICE;
         recipe.wholesalePrice = SMALL_WHOLESALE_PRICE;
       });
+    // costSources record what prices were assumed when a cost was captured, so
+    // a price rollout must not rewrite them. This used to overwrite every one
+    // unconditionally, restating history as if the new price had always applied.
+    // Only fill in a reference that was never recorded.
     merged.costSources.forEach((source) => {
-      source.retailPrice500 = GLOBAL_RETAIL_PRICE;
-      source.wholesalePrice500 = GLOBAL_WHOLESALE_PRICE;
+      if (!Number(source.retailPrice500)) source.retailPrice500 = GLOBAL_RETAIL_PRICE;
+      if (!Number(source.wholesalePrice500)) source.wholesalePrice500 = GLOBAL_WHOLESALE_PRICE;
     });
     merged.settings.pricesBySize[300].retailPrice = SMALL_RETAIL_PRICE;
     merged.settings.pricesBySize[300].wholesalePrice = SMALL_WHOLESALE_PRICE;
@@ -7990,6 +8023,11 @@ function deleteRecord(collection, recordId, label) {
     ? `\n\nEste registro ainda e usado por:\n${dependencies.map((row) => `- ${number(row.count)} ${row.label}`).join("\n")}\n\nEsses registros continuam existindo, mas ficam sem referencia. Custos, estoque e relatorios ligados a eles podem parar de bater.`
     : "";
   if (!window.confirm(`Excluir "${name}"? Esta acao remove o registro deste painel.${warning}`)) return;
+  // Auto-generated 300ml variants are regenerated on load unless we remember
+  // that this one was deliberately removed.
+  if ((collection === "products" || collection === "recipes") && /-300$/.test(String(recordId))) {
+    rememberRemovedAutoVariant(recordId);
+  }
   state[collection] = state[collection].filter((item) => item.id !== recordId);
   addAudit(
     "Registro excluído",

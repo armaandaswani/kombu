@@ -2,10 +2,48 @@ const {
   ADMIN_EMAIL,
   escapeHtml,
   getAppState,
+  hasSupabase,
   json,
   mutateAppState,
   sendEmail,
+  supabaseFetch,
 } = require("../_lib/kombu-backend");
+
+// A serverless invocation can be cut short. Sending an unbounded number of
+// emails and only recording them at the very end meant a timeout halfway through
+// lost every marker and sent the whole batch again the next day.
+const MAX_REMINDERS_PER_RUN = 25;
+
+// email_events existed in the schema but nothing ever wrote to it. Using it as
+// the record of what has been sent means a reminder survives even when the
+// state write afterwards fails, which is what made duplicates possible.
+async function reminderAlreadySent(referenceId) {
+  if (!hasSupabase()) return false;
+  const rows = await supabaseFetch(
+    `/rest/v1/email_events?event_type=eq.payment_reminder&reference_id=eq.${encodeURIComponent(referenceId)}&select=id&limit=1`,
+  ).catch(() => null);
+  return Array.isArray(rows) && rows.length > 0;
+}
+
+async function recordEmailEvent({ referenceId, recipient, subject, providerId }) {
+  if (!hasSupabase()) return;
+  await supabaseFetch("/rest/v1/email_events", {
+    method: "POST",
+    headers: { Prefer: "return=minimal" },
+    body: JSON.stringify({
+      event_type: "payment_reminder",
+      reference_id: referenceId,
+      recipient,
+      subject,
+      provider: "resend",
+      provider_id: providerId || null,
+      status: "sent",
+      payload: {},
+    }),
+  }).catch(() => {
+    // The state marker below is the fallback; never fail a run over bookkeeping.
+  });
+}
 
 function todayIso() {
   return new Date().toISOString().slice(0, 10);
@@ -64,9 +102,23 @@ module.exports = async function handler(req, res) {
   });
 
   const sent = [];
+  const alreadySent = [];
+  let deferred = 0;
   for (const order of dueOrders) {
+    if (sent.length >= MAX_REMINDERS_PER_RUN) {
+      deferred = dueOrders.length - sent.length - alreadySent.length;
+      break;
+    }
     const due = paymentDueDate(order);
-    const subject = `Cobrança Kombú: ${order.code} vence ${due <= today ? "hoje/está em aberto" : due}`;
+    const referenceId = `${order.id || order.code}:${due}`;
+    if (await reminderAlreadySent(referenceId)) {
+      // Backfill the state marker so the pre-filter catches it next time.
+      reminders[referenceId] = reminders[referenceId] || { sentAt: new Date().toISOString(), source: "email_events" };
+      alreadySent.push(order.code);
+      continue;
+    }
+    // dueOrders already excludes anything not yet due, so this is due or overdue.
+    const subject = `Cobrança Kombú: ${order.code} - vencimento ${due}`;
     const lines = [
       `Pedido: ${order.code}`,
       `Cliente: ${order.customerName || "-"}`,
@@ -86,12 +138,14 @@ module.exports = async function handler(req, res) {
       html: `<div style="font-family:Arial,sans-serif;line-height:1.5;color:#191c1c"><h1 style="font-size:22px;color:#2d4b28">${escapeHtml(subject)}</h1><pre style="white-space:pre-wrap;font-family:Arial,sans-serif">${escapeHtml(lines.join("\n"))}</pre></div>`,
     });
     if (email.ok) {
-      reminders[`${order.id || order.code}:${due}`] = { sentAt: new Date().toISOString(), emailId: email.id };
+      // Recorded before the state write so a later failure cannot cause a resend.
+      await recordEmailEvent({ referenceId, recipient: adminEmail, subject, providerId: email.id });
+      reminders[referenceId] = { sentAt: new Date().toISOString(), emailId: email.id };
       sent.push(order.code);
     }
   }
 
-  if (sent.length) {
+  if (sent.length || alreadySent.length) {
     await mutateAppState((latestState) => {
       const latestReminders = latestState.notifications?.paymentReminders || {};
       latestState.notifications = {
@@ -101,5 +155,7 @@ module.exports = async function handler(req, res) {
       return latestState;
     }, "payment-reminder-cron");
   }
-  return json(res, 200, { ok: true, due: dueOrders.length, sent });
+  // `deferred` is not an error: the remaining reminders go out on the next run,
+  // and email_events stops the ones already sent from going out twice.
+  return json(res, 200, { ok: true, due: dueOrders.length, sent, alreadySent, deferred });
 };
