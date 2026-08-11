@@ -3677,12 +3677,30 @@ function syncOrderPartner(order) {
     instagram: order.instagram || "",
     flavors,
     terms: "15 dias após entrega",
-    lastDelivery: order.lastDeliveryAt || order.deliveredAt || order.orderDate || "",
-    visible: existing?.visible ?? false,
-    sourceOrderId: order.id,
   };
-  if (existing) Object.assign(existing, payload);
-  else state.partners.unshift({ id: id("par"), ...payload });
+  const lastDelivery = order.lastDeliveryAt || order.deliveredAt || order.orderDate || "";
+
+  if (!existing) {
+    state.partners.unshift({ id: id("par"), ...payload, lastDelivery, visible: false, sourceOrderId: order.id });
+    return;
+  }
+
+  // This used to Object.assign the whole payload over the stored partner. Because
+  // runStartupIntegrations replays it for every order on every page load, anything
+  // an operator corrected on the partner - a tidied name, the real neighbourhood,
+  // a better contact - was overwritten from the order within one refresh.
+  // Descriptive fields now belong to whoever edited the partner; only fill blanks.
+  Object.entries(payload).forEach(([field, value]) => {
+    const current = existing[field];
+    const isBlank = current === undefined || current === null || String(current).trim() === "";
+    if (isBlank && String(value).trim() !== "") existing[field] = value;
+  });
+  // lastDelivery is genuinely derived, so keep it, but only ever move it forward.
+  // Taking the last order processed would make it flap between orders on every load.
+  if (lastDelivery && String(lastDelivery) > String(existing.lastDelivery || "")) {
+    existing.lastDelivery = lastDelivery;
+  }
+  if (!existing.sourceOrderId) existing.sourceOrderId = order.id;
 }
 
 function salePayloadFromOrderItem(order, item, delivery = {}) {
@@ -3876,19 +3894,30 @@ function updateOrderStatus(payload = "") {
 function syncPurchaseExpense(purchase) {
   if (!purchase || !Number(purchase.total || 0)) return;
   const existing = state.expenses.find((expense) => expense.purchaseId === purchase.id);
-  const description = purchase.kind === "operational" ? purchase.item : `Compra: ${purchase.item}`;
-  const payload = {
+  // The money is the purchase's, so it must keep following it: correcting a
+  // purchase total has to correct the expense or the accounts stop reconciling.
+  const financial = {
     date: purchase.date || todayIso(),
-    category: purchase.kind === "operational" ? "Compra operacional" : "Compra de estoque",
-    description,
     amount: Number(purchase.total || 0),
-    method: purchase.method || "Pix",
-    recurring: false,
     purchaseId: purchase.id,
     source: "purchase",
   };
-  if (existing) Object.assign(existing, payload);
-  else state.expenses.unshift({ id: id("exp"), ...payload });
+  // How the expense is described and classified is bookkeeping work. It used to
+  // be overwritten on every page load, so recategorising a purchase-backed
+  // expense never survived a refresh, and `recurring` was forced back to false.
+  // Set it when the expense is created, then leave it alone.
+  const descriptive = {
+    category: purchase.kind === "operational" ? "Compra operacional" : "Compra de estoque",
+    description: purchase.kind === "operational" ? purchase.item : `Compra: ${purchase.item}`,
+    method: purchase.method || "Pix",
+    recurring: false,
+  };
+
+  if (!existing) {
+    state.expenses.unshift({ id: id("exp"), ...descriptive, ...financial });
+    return;
+  }
+  Object.assign(existing, financial);
 }
 
 function allocateBatchToOrders(batch) {
