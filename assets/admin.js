@@ -5237,13 +5237,13 @@ function renderLeads() {
     .filter((lead) => matchesSearch(lead))
     .map((lead) => `
       <tr>
-        <td><strong>${lead.type === "revenda" ? "Revenda" : "Contato"}</strong><br><span>${new Date(lead.createdAt).toLocaleString("pt-BR")}</span></td>
-        <td><strong>${lead.name || "Sem nome"}</strong><br><span>${lead.whatsapp || "Sem WhatsApp"}</span></td>
-        <td>${lead.business || "-"}<br><span>${lead.businessType || ""}${lead.location ? ` | ${lead.location}` : ""}</span></td>
-        <td>${lead.instagram || "-"}</td>
-        <td>${lead.message || "-"}</td>
+        <td><strong>${lead.type === "revenda" ? "Revenda" : "Contato"}</strong><br><span>${escapeHtml(new Date(lead.createdAt).toLocaleString("pt-BR"))}</span></td>
+        <td><strong>${escapeHtml(lead.name || "Sem nome")}</strong><br><span>${escapeHtml(lead.whatsapp || "Sem WhatsApp")}</span></td>
+        <td>${escapeHtml(lead.business || "-")}<br><span>${escapeHtml(lead.businessType || "")}${lead.location ? ` | ${escapeHtml(lead.location)}` : ""}</span></td>
+        <td>${escapeHtml(lead.instagram || "-")}</td>
+        <td>${escapeHtml(lead.message || "-")}</td>
         <td>
-          <select class="admin-select compact-select" data-lead-status="${lead.id}">
+          <select class="admin-select compact-select" data-lead-status="${escapeHtml(lead.id)}">
             ${["novo", "contatado", "qualificado", "ganho", "perdido"].map((status) => `<option value="${status}" ${lead.status === status ? "selected" : ""}>${status}</option>`).join("")}
           </select>
         </td>
@@ -5287,13 +5287,13 @@ function renderPartners() {
         const stats = statsByName.get(normalizeText(partner.name));
         return `
         <tr>
-          <td><strong>${partner.name}</strong><br><span>${partner.type} | ${partner.neighborhood}</span></td>
-          <td>${partner.whatsapp}</td>
-          <td>${partner.instagram}</td>
-          <td>${partner.flavors}</td>
-          <td>${partner.terms}</td>
-          <td>${partner.lastDelivery || stats?.lastOrder || "-"}</td>
-          <td>${stats?.nextOrder || "Sem padrão ainda"}<br><span>${stats ? `${number(stats.qty)} garrafas no histórico` : ""}</span></td>
+          <td><strong>${escapeHtml(partner.name)}</strong><br><span>${escapeHtml(partner.type)} | ${escapeHtml(partner.neighborhood)}</span></td>
+          <td>${escapeHtml(partner.whatsapp)}</td>
+          <td>${escapeHtml(partner.instagram)}</td>
+          <td>${escapeHtml(partner.flavors)}</td>
+          <td>${escapeHtml(partner.terms)}</td>
+          <td>${escapeHtml(partner.lastDelivery || stats?.lastOrder || "-")}</td>
+          <td>${escapeHtml(stats?.nextOrder || "Sem padrão ainda")}<br><span>${stats ? `${number(stats.qty)} garrafas no histórico` : ""}</span></td>
           <td><span class="status ${partner.visible ? "good" : "warn"}">${partner.visible ? "público" : "oculto"}</span></td>
           <td>${rowActions([tableAction(`edit-partner:${partner.id}`, "Editar parceiro"), tableAction(`delete-partner:${partner.id}`, "Excluir parceiro", "delete", "danger")])}</td>
         </tr>

@@ -72,11 +72,21 @@ function normalizeBody(body) {
   return body;
 }
 
+function newLeadId() {
+  return `lead-${Date.now()}-${crypto.randomBytes(4).toString("hex")}`;
+}
+
+// Lead ids arrive from the public, unauthenticated endpoint and are later used as
+// dedupe keys and rendered into admin markup, so restrict them to a safe charset.
+function cleanId(value) {
+  return String(value || "").replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 64);
+}
+
 function normalizeLead(payload) {
   const body = normalizeBody(payload);
   const lead = body.lead || body;
   return {
-    id: lead.id || `lead-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    id: cleanId(lead.id) || newLeadId(),
     type: cleanText(lead.type || "contato", 40),
     status: cleanText(lead.status || "novo", 40),
     name: cleanText(lead.name || lead.nome, 120),
@@ -86,9 +96,9 @@ function normalizeLead(payload) {
     whatsapp: cleanText(lead.whatsapp, 40),
     instagram: cleanText(lead.instagram, 80),
     message: cleanText(lead.message || lead.mensagem, 4000),
-    emailTo: lead.emailTo || process.env.LEAD_NOTIFY_EMAIL || ADMIN_EMAIL,
-    source: lead.source || "site-publico",
-    createdAt: lead.createdAt || new Date().toISOString(),
+    emailTo: cleanText(lead.emailTo, 160) || process.env.LEAD_NOTIFY_EMAIL || ADMIN_EMAIL,
+    source: cleanText(lead.source, 80) || "site-publico",
+    createdAt: cleanText(lead.createdAt, 40) || new Date().toISOString(),
   };
 }
 

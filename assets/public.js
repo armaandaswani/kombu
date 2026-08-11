@@ -524,11 +524,11 @@ function renderPartnerFilters() {
   document.querySelector("#typeFilters").innerHTML = partnerTypes()
     .map(
       (type, index) =>
-        `<button type="button" class="${index === 0 ? "is-active" : ""}" data-partner-type="${type}">${type}</button>`,
+        `<button type="button" class="${index === 0 ? "is-active" : ""}" data-partner-type="${escapeHtml(type)}">${escapeHtml(type)}</button>`,
     )
     .join("");
   document.querySelector("#neighborhoodFilter").innerHTML = neighborhoods()
-    .map((neighborhood) => `<option value="${neighborhood}">${neighborhood}</option>`)
+    .map((neighborhood) => `<option value="${escapeHtml(neighborhood)}">${escapeHtml(neighborhood)}</option>`)
     .join("");
 }
 
@@ -556,13 +556,13 @@ function renderPartners() {
         .map(
           (partner) => `
             <article class="partner-card">
-              <span class="eyebrow">${partner.type} - ${partner.neighborhood}</span>
-              <h3>${partner.name}</h3>
-              <p>${partner.address}</p>
+              <span class="eyebrow">${escapeHtml(partner.type)} - ${escapeHtml(partner.neighborhood)}</span>
+              <h3>${escapeHtml(partner.name)}</h3>
+              <p>${escapeHtml(partner.address)}</p>
               <div class="partner-meta">
-                <span><span class="material-symbols-outlined" aria-hidden="true">schedule</span> ${partner.hours}</span>
-                <span><span class="material-symbols-outlined" aria-hidden="true">local_bar</span> ${partner.flavors.join(", ")}</span>
-                <span><span class="material-symbols-outlined" aria-hidden="true">alternate_email</span> ${partner.instagram}</span>
+                <span><span class="material-symbols-outlined" aria-hidden="true">schedule</span> ${escapeHtml(partner.hours)}</span>
+                <span><span class="material-symbols-outlined" aria-hidden="true">local_bar</span> ${escapeHtml(partner.flavors.join(", "))}</span>
+                <span><span class="material-symbols-outlined" aria-hidden="true">alternate_email</span> ${escapeHtml(partner.instagram)}</span>
               </div>
               <div class="partner-actions">
                 <a class="btn btn-primary" href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
