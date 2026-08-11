@@ -4424,14 +4424,14 @@ function renderDashboard() {
         <div class="alert-list">
           ${missingCostIngredients()
             .slice(0, 5)
-            .map((item) => `<div class="alert-item"><strong>Custo pendente: ${item.name}</strong><span>Complete o custo unitário para a receita calcular margem real.</span></div>`)
+            .map((item) => `<div class="alert-item"><strong>Custo pendente: ${escapeHtml(item.name)}</strong><span>Complete o custo unitário para a receita calcular margem real.</span></div>`)
             .join("")}
           ${[...lowStockIngredients(), ...lowStockPackaging()]
             .slice(0, 5)
-            .map((item) => `<div class="alert-item"><strong>Estoque baixo: ${item.name}</strong><span>Atual ${number(item.stock, 2)} | mínimo ${number(item.min, 2)}</span></div>`)
+            .map((item) => `<div class="alert-item"><strong>Estoque baixo: ${escapeHtml(item.name)}</strong><span>Atual ${number(item.stock, 2)} | mínimo ${number(item.min, 2)}</span></div>`)
             .join("")}
           ${nearExpiryBatches()
-            .map((batch) => `<div class="alert-item"><strong>Lote próximo ao vencimento: ${batch.code}</strong><span>${batch.stock} garrafas vencem em ${batch.expiry}</span></div>`)
+            .map((batch) => `<div class="alert-item"><strong>Lote próximo ao vencimento: ${escapeHtml(batch.code)}</strong><span>${number(batch.stock)} garrafas vencem em ${escapeHtml(batch.expiry)}</span></div>`)
             .join("")}
           ${missingCostIngredients().length || lowStockIngredients().length || lowStockPackaging().length || nearExpiryBatches().length ? "" : `<div class="empty-note">Nenhum alerta crítico no momento.</div>`}
         </div>
@@ -4462,7 +4462,7 @@ function renderDashboard() {
       <article class="admin-card">
         <h3>Parceiros com maior volume</h3>
         <div class="stack-list">
-          ${partnerRows.length ? partnerRows.map(([partner, qty]) => `<div class="report-row"><strong>${partner}</strong><span>${number(qty)} garrafas vendidas</span></div>`).join("") : `<p class="empty-note">Registre vendas para ver parceiros por volume.</p>`}
+          ${partnerRows.length ? partnerRows.map(([partner, qty]) => `<div class="report-row"><strong>${escapeHtml(partner)}</strong><span>${number(qty)} garrafas vendidas</span></div>`).join("") : `<p class="empty-note">Registre vendas para ver parceiros por volume.</p>`}
         </div>
       </article>
       <article class="admin-card">
@@ -4553,14 +4553,14 @@ function renderPurchases() {
     .map(
       (item) => `
         <tr>
-          <td>${item.date}</td>
-          <td><strong>${item.item}</strong><br><span>${item.supplier}</span><br><span>${item.kind === "operational" ? "Despesa operacional" : "Estoque/custo"}</span></td>
-          <td class="num">${item.kind === "operational" ? "-" : item.packageCount ? `${number(item.packageCount)} x ${number(item.packageSize, 3)} ${item.packageUnit}` : `${number(item.qty, 2)} ${item.unit}`}</td>
-          <td class="num"><strong>${item.kind === "operational" ? "-" : `${number(item.qty, 3)} ${item.unit}`}</strong></td>
+          <td>${escapeHtml(item.date)}</td>
+          <td><strong>${escapeHtml(item.item)}</strong><br><span>${escapeHtml(item.supplier)}</span><br><span>${item.kind === "operational" ? "Despesa operacional" : "Estoque/custo"}</span></td>
+          <td class="num">${item.kind === "operational" ? "-" : item.packageCount ? `${number(item.packageCount)} x ${number(item.packageSize, 3)} ${escapeHtml(item.packageUnit)}` : `${number(item.qty, 2)} ${escapeHtml(item.unit)}`}</td>
+          <td class="num"><strong>${item.kind === "operational" ? "-" : `${number(item.qty, 3)} ${escapeHtml(item.unit)}`}</strong></td>
           <td class="num">${brl(item.total)}</td>
-          <td class="num">${item.kind === "operational" ? "não entra" : `${brl(item.costPerUnit || Number(item.total || 0) / Math.max(Number(item.qty || 0), 0.000001))} / ${item.unit}`}</td>
-          <td>${item.method}</td>
-          <td>${item.buyer}</td>
+          <td class="num">${item.kind === "operational" ? "não entra" : `${brl(item.costPerUnit || Number(item.total || 0) / Math.max(Number(item.qty || 0), 0.000001))} / ${escapeHtml(item.unit)}`}</td>
+          <td>${escapeHtml(item.method)}</td>
+          <td>${escapeHtml(item.buyer)}</td>
           <td>${rowActions([tableAction(`edit-purchase:${item.id}`, "Editar compra"), tableAction(`delete-purchase:${item.id}`, "Excluir compra", "delete", "danger")])}</td>
         </tr>
       `,
@@ -4668,8 +4668,8 @@ function renderProducts() {
       const margin = wholesale ? ((wholesale - calculatedCost) / wholesale) * 100 : 0;
       return `
         <tr>
-          <td><strong>#${product.ean || "sem EAN"}</strong><br><span>${product.item}</span></td>
-          <td><strong>${product.flavor}</strong><br><span>${product.description}</span></td>
+          <td><strong>#${escapeHtml(product.ean || "sem EAN")}</strong><br><span>${escapeHtml(product.item)}</span></td>
+          <td><strong>${escapeHtml(product.flavor)}</strong><br><span>${escapeHtml(product.description)}</span></td>
           <td class="num">${number(product.sizeMl)}ml</td>
           <td class="num">${brl(product.retailPrice)}</td>
           <td class="num">${brl(product.wholesalePrice)}</td>
@@ -4767,15 +4767,15 @@ function renderRecipes() {
       const product = productForRecipe(recipe);
       return `
         <tr>
-          <td><strong>${recipe.flavor}</strong><br><span>${recipe.version} | ${recipe.bottleMl}ml</span></td>
-          <td>${product ? `<strong>${product.item}</strong><br><span>#${product.ean}</span>` : "Sem produto"}</td>
+          <td><strong>${escapeHtml(recipe.flavor)}</strong><br><span>${escapeHtml(recipe.version)} | ${number(recipe.bottleMl)}ml</span></td>
+          <td>${product ? `<strong>${escapeHtml(product.item)}</strong><br><span>#${escapeHtml(product.ean)}</span>` : "Sem produto"}</td>
           <td class="num">${number(recipe.yieldBottles)} garrafas</td>
           <td class="num">${brl(cost.ingredientCost)}</td>
           <td class="num">${brl(cost.packagingCost)}</td>
           <td class="num">${brl(cost.total)}</td>
           <td class="num"><strong>${brl(cost.costPerBottle)}</strong></td>
           <td class="num">${pct(cost.wholesaleMargin)}</td>
-          <td><span class="status ${statusClass(recipe.status, "general")}">${recipe.status}</span></td>
+          <td><span class="status ${statusClass(recipe.status, "general")}">${escapeHtml(recipe.status)}</span></td>
           <td>${rowActions([tableAction(`edit-recipe:${recipe.id}`, "Editar receita"), tableAction(`delete-recipe:${recipe.id}`, "Excluir receita", "delete", "danger")])}</td>
         </tr>
       `;
@@ -4870,7 +4870,7 @@ function renderCosts() {
           <label class="field" style="min-width:260px">
             <span>Receita ativa</span>
             <select id="recipeSelector" class="admin-select" aria-label="Receita ativa">
-              ${state.recipes.map((item) => `<option value="${item.id}" ${item.id === recipe.id ? "selected" : ""}>${recipeLabel(item)}</option>`).join("")}
+              ${state.recipes.map((item) => `<option value="${escapeHtml(item.id)}" ${item.id === recipe.id ? "selected" : ""}>${escapeHtml(recipeLabel(item))}</option>`).join("")}
             </select>
           </label>
           <div class="admin-actions">
@@ -4956,8 +4956,8 @@ function renderBatches() {
                 ? "sem receita"
                 : "estimado hoje"
           }</small></td>
-          <td>${batch.idealSellBy || "-"}</td>
-          <td>${batch.sellBy || "-"}</td>
+          <td>${escapeHtml(batch.idealSellBy || "-")}</td>
+          <td>${escapeHtml(batch.sellBy || "-")}</td>
           <td>${escapeHtml(batch.expiry)}</td>
           <td><span class="status ${statusClass(batch.status, "general")}">${escapeHtml(batch.status)}</span></td>
           <td>${rowActions([tableAction(`edit-batch:${batch.id}`, "Editar lote"), tableAction(`delete-batch:${batch.id}`, "Excluir lote", "delete", "danger")])}</td>
@@ -5223,9 +5223,9 @@ function stockBatchCard(row) {
         <div class="stock-stat"><span>Produzido</span><strong>${number(batchProducedQuantity(row))}</strong></div>
       </div>
       <div class="stock-card-meta">
-        <span>Ideal ${row.idealSellBy || "-"}</span>
-        <span>Vender até ${row.sellBy || "-"}</span>
-        <span>Validade ${row.expiry || "-"}</span>
+        <span>Ideal ${escapeHtml(row.idealSellBy || "-")}</span>
+        <span>Vender até ${escapeHtml(row.sellBy || "-")}</span>
+        <span>Validade ${escapeHtml(row.expiry || "-")}</span>
       </div>
       <div class="stock-flow-grid">
         <div class="stock-flow-box">
@@ -5263,10 +5263,10 @@ function renderStock() {
       const product = byId("products", item.productId);
       return `
         <tr>
-          <td><strong>${item.name}</strong><br><span>${product ? product.flavor : "Genérico"}</span></td>
-          <td>${item.supplier || "-"}</td>
-          <td class="num">${number(item.stock, 2)} ${item.unit}</td>
-          <td class="num">${number(item.min, 2)} ${item.unit}</td>
+          <td><strong>${escapeHtml(item.name)}</strong><br><span>${escapeHtml(product ? product.flavor : "Genérico")}</span></td>
+          <td>${escapeHtml(item.supplier || "-")}</td>
+          <td class="num">${number(item.stock, 2)} ${escapeHtml(item.unit)}</td>
+          <td class="num">${number(item.min, 2)} ${escapeHtml(item.unit)}</td>
           <td class="num">${brl(item.costEach)}</td>
           <td><span class="status ${hasMinimum ? statusClass(item.stock / item.min) : "warn"}">${hasMinimum ? (item.stock <= item.min ? "baixo" : "bom") : "sem mínimo"}</span></td>
         </tr>
@@ -5280,7 +5280,7 @@ function renderStock() {
       <h3>Alertas de estoque</h3>
       <div class="stack-list">
         ${[...lowStockIngredients(), ...lowStockPackaging()]
-          .map((item) => `<div class="stock-row"><strong>${item.name}</strong><span>Atual ${number(item.stock, 2)} | mínimo ${number(item.min, 2)}</span></div>`)
+          .map((item) => `<div class="stock-row"><strong>${escapeHtml(item.name)}</strong><span>Atual ${number(item.stock, 2)} | mínimo ${number(item.min, 2)}</span></div>`)
           .join("") || `<div class="empty-note">Sem alertas de mínimo.</div>`}
       </div>
     </article>
@@ -5313,12 +5313,12 @@ function renderStock() {
         state.ingredients.map((item) => {
           return `
             <tr>
-              <td><strong>${item.name}</strong><br><span>${item.location || ""}</span></td>
-              <td>${item.category || "-"}</td>
-              <td>${item.supplier || "-"}</td>
-              <td class="num">${number(item.stock, 3)} ${item.purchaseUnit}</td>
-              <td class="num">${number(item.min, 3)} ${item.purchaseUnit}</td>
-              <td class="num">${brl(item.costPerUnit)} / ${item.purchaseUnit}</td>
+              <td><strong>${escapeHtml(item.name)}</strong><br><span>${escapeHtml(item.location || "")}</span></td>
+              <td>${escapeHtml(item.category || "-")}</td>
+              <td>${escapeHtml(item.supplier || "-")}</td>
+              <td class="num">${number(item.stock, 3)} ${escapeHtml(item.purchaseUnit)}</td>
+              <td class="num">${number(item.min, 3)} ${escapeHtml(item.purchaseUnit)}</td>
+              <td class="num">${brl(item.costPerUnit)} / ${escapeHtml(item.purchaseUnit)}</td>
               <td>${ingredientStatusBadge(item)}</td>
             </tr>
           `;
@@ -5413,12 +5413,12 @@ function renderSales() {
     .slice(0, 8)
     .map((customer) => `
       <tr>
-        <td><strong>${customer.name}</strong></td>
+        <td><strong>${escapeHtml(customer.name)}</strong></td>
         <td class="num">${number(customer.orders)}</td>
         <td class="num">${number(customer.qty)}</td>
         <td class="num">${brl(customer.revenue)}</td>
-        <td>${customer.lastOrder || "-"}</td>
-        <td>${customer.nextOrder || "Sem padrão ainda"}</td>
+        <td>${escapeHtml(customer.lastOrder || "-")}</td>
+        <td>${escapeHtml(customer.nextOrder || "Sem padrão ainda")}</td>
       </tr>
     `);
   const salesCards = periodSales
@@ -5814,7 +5814,7 @@ function renderReports() {
   }, {});
   const reportRows = Object.entries(byFlavor)
     .sort((a, b) => b[1].profit - a[1].profit)
-    .map(([flavor, row]) => `<div class="report-row"><strong>${flavor}</strong><span>${number(row.qty)} un | ${brl(row.revenue)} receita | ${brl(row.profit)} lucro</span></div>`)
+    .map(([flavor, row]) => `<div class="report-row"><strong>${escapeHtml(flavor)}</strong><span>${number(row.qty)} un | ${brl(row.revenue)} receita | ${brl(row.profit)} lucro</span></div>`)
     .join("");
   return `
     ${pageHead("Relatórios", "Margem, lucro, despesas, estoque, sabores mais vendidos e custo médio ao longo do tempo.", actionButton("export-reports", "Exportar CSV", "download", "btn-outline", "reports"))}
@@ -9159,7 +9159,7 @@ function stockAdjustmentForm() {
     `
       <form id="adjustForm">
         <div class="input-grid">
-          <label class="field field-full"><span>Item de estoque</span><select name="stockKey">${options.map((item) => `<option value="${item.key}">${item.label} (${number(item.stock, 2)} ${item.unit})</option>`).join("")}</select></label>
+          <label class="field field-full"><span>Item de estoque</span><select name="stockKey">${options.map((item) => `<option value="${escapeHtml(item.key)}">${escapeHtml(item.label)} (${number(item.stock, 2)} ${escapeHtml(item.unit)})</option>`).join("")}</select></label>
           <label class="field"><span>Nova quantidade</span><input name="stock" type="number" step="0.01" required></label>
           <label class="field field-full"><span>Motivo obrigatório</span><input name="reason" required placeholder="Perda, inventário, devolução, correção..."></label>
         </div>

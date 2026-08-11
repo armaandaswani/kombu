@@ -29,9 +29,13 @@ module.exports = async function handler(req, res) {
   } catch (error) {
     return json(res, error.status || 400, { ok: false, error: error.code || "invalid_request" });
   }
-  const provided = Buffer.from(String(body.password || ""));
-  const expected = Buffer.from(configuredPassword);
-  if (provided.length !== expected.length || !require("crypto").timingSafeEqual(provided, expected)) {
+  // Compare fixed-length digests rather than the raw strings. The previous
+  // length check short-circuited before the constant-time compare, so a wrong
+  // guess of the wrong length was rejected measurably faster than one of the
+  // right length, leaking the password's length.
+  const crypto = require("crypto");
+  const digest = (value) => crypto.createHash("sha256").update(String(value), "utf8").digest();
+  if (!crypto.timingSafeEqual(digest(body.password || ""), digest(configuredPassword))) {
     return json(res, 401, { ok: false, error: "invalid_password" });
   }
 
