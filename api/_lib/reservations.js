@@ -165,9 +165,24 @@ function isOpenOrder(order) {
   return !CLOSED_ORDER_STATUSES.has(normalizeText(order?.status));
 }
 
+// A cleared numeric input arrives as "", which is neither null nor undefined, so
+// `??` accepts it and Number("") is 0. That made a batch with a blanked `actual`
+// report zero production, drop out of the eligible set, and silently release
+// every reservation held against it. Blank and non-numeric values mean "not
+// recorded on this field", so fall through to the next one instead.
+function firstNumber(...values) {
+  for (const value of values) {
+    if (value === null || value === undefined) continue;
+    if (typeof value === "string" && value.trim() === "") continue;
+    const parsed = Number(value);
+    if (Number.isFinite(parsed)) return parsed;
+  }
+  return 0;
+}
+
 function batchProducedQuantity(batch) {
   return nonNegative(
-    batch?.actual ?? batch?.inventoryQty ?? batch?.actualYield ?? batch?.quantity
+    firstNumber(batch?.actual, batch?.inventoryQty, batch?.actualYield, batch?.quantity)
   );
 }
 

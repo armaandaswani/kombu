@@ -384,6 +384,51 @@ function testInventoryQuantitySupportsReservations() {
   assert.equal(batchSummary(result).available, 1);
 }
 
+function testBlankActualFallsBackInsteadOfErasingStock() {
+  // A cleared "actual" field arrives as "". It must not be read as zero
+  // production, which would drop the batch and release its reservations.
+  const batch = makeBatch({ actual: "", inventoryQty: 11 });
+  const result = reconcile(
+    makeState({
+      batches: [batch],
+      orders: [makeOrder({ qty: 10 })],
+    })
+  );
+
+  assert.equal(reserved(result.state.orders[0]), 10, "a blank actual must fall back to inventoryQty");
+  assert.equal(batchSummary(result).produced, 11);
+  assert.equal(batchSummary(result).reserved, 10);
+  assert.equal(batchSummary(result).available, 1);
+}
+
+function testWhitespaceActualIsTreatedAsUnrecorded() {
+  const batch = makeBatch({ actual: "   ", inventoryQty: 8 });
+  const result = reconcile(
+    makeState({
+      batches: [batch],
+      orders: [makeOrder({ qty: 10 })],
+    })
+  );
+
+  assert.equal(reserved(result.state.orders[0]), 8);
+  assert.equal(batchSummary(result).produced, 8);
+}
+
+function testExplicitZeroActualStillMeansNoProduction() {
+  // Regression guard on the fallback itself: a real zero must stay zero and
+  // must not silently fall through to a stale inventoryQty.
+  const batch = makeBatch({ actual: 0, inventoryQty: 11 });
+  const result = reconcile(
+    makeState({
+      batches: [batch],
+      orders: [makeOrder({ qty: 10 })],
+    })
+  );
+
+  assert.equal(reserved(result.state.orders[0]), 0);
+  assert.equal(result.summary.batches.length, 0, "a batch producing zero is not eligible stock");
+}
+
 function testSupersededOverrideReconciliationIsIdempotent() {
   const first = reconcile(
     makeState({
@@ -437,6 +482,9 @@ const tests = [
   testManualCurrentReservationIsPreservedWithoutChangingOrder,
   testLaterProductionSupersedesManualCurrentReservation,
   testInventoryQuantitySupportsReservations,
+  testBlankActualFallsBackInsteadOfErasingStock,
+  testWhitespaceActualIsTreatedAsUnrecorded,
+  testExplicitZeroActualStillMeansNoProduction,
   testSupersededOverrideReconciliationIsIdempotent,
   testSalesReduceReservableCapacity,
 ];

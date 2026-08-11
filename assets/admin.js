@@ -1354,11 +1354,21 @@ function batchFlavorIdentity(batch = {}) {
   );
 }
 
+// Mirrors firstNumber in api/_lib/reservations.js: a cleared numeric input is ""
+// and `??` would accept it, reporting the batch as producing nothing and
+// releasing every reservation held against it. Blank means "not recorded".
+function firstNumber(...values) {
+  for (const value of values) {
+    if (value === null || value === undefined) continue;
+    if (typeof value === "string" && value.trim() === "") continue;
+    const parsed = Number(value);
+    if (Number.isFinite(parsed)) return parsed;
+  }
+  return 0;
+}
+
 function batchProducedQuantity(batch = {}) {
-  return Math.max(
-    0,
-    Number(batch.actual ?? batch.inventoryQty ?? batch.actualYield ?? batch.quantity ?? 0),
-  );
+  return Math.max(0, firstNumber(batch.actual, batch.inventoryQty, batch.actualYield, batch.quantity));
 }
 
 function productStockKey(product) {
