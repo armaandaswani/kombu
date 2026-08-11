@@ -623,7 +623,17 @@ let cloudStateUpdatedAt = "";
 // work done on another device. Only a successful reload from the cloud clears it.
 let cloudSaveBlocked = false;
 
+// Replays the derived-data syncs over everything already in state. This runs on
+// every page load, so it used to end in an unconditional saveState() and simply
+// opening the panel wrote the whole document back to production. Now that the
+// syncs are idempotent, only push when the replay actually changed something.
 function runStartupIntegrations() {
+  let before = "";
+  try {
+    before = JSON.stringify(state);
+  } catch (error) {
+    console.error("Falha ao inspecionar estado inicial do admin", error);
+  }
   try {
     (state.purchases || []).forEach((purchase) => {
       try {
@@ -640,7 +650,10 @@ function runStartupIntegrations() {
       }
     });
     reconcileOrderReservations();
-    saveState();
+    persistLocalState();
+    // If `before` could not be serialised we cannot prove nothing changed, so
+    // fall back to the old behaviour and save.
+    if (!before || JSON.stringify(state) !== before) scheduleCloudSave();
   } catch (error) {
     console.error("Falha ao preparar estado inicial do admin", error);
   }
@@ -1090,13 +1103,19 @@ function loadState() {
   }
 }
 
-function saveState() {
+// Writes only this browser's cache. Cheap and safe to call on every load, since
+// it never touches the shared production document.
+function persistLocalState() {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
   } catch (error) {
     console.error("Falha ao salvar estado local do admin.", error);
   }
   if (!cloudSyncReady) cloudSyncEnabled = false;
+}
+
+function saveState() {
+  persistLocalState();
   scheduleCloudSave();
 }
 
@@ -1226,10 +1245,19 @@ async function syncFromCloud() {
     cloudSaveBlocked = false;
     cloudStateUpdatedAt = payload.updatedAt || "";
     if (payload.exists && payload.state) {
+      // Compare against exactly what the cloud gave us, so a load that changes
+      // nothing does not write the whole document back to production.
+      let cloudJson = "";
+      try {
+        cloudJson = JSON.stringify(payload.state);
+      } catch (error) {
+        console.error("Falha ao inspecionar estado recebido da nuvem", error);
+      }
       state = normalizeState(payload.state);
       runStartupIntegrations();
       activeRecipeId = state.recipes.find((recipe) => recipe.id === activeRecipeId)?.id || state.recipes[0]?.id || "";
-      saveState();
+      persistLocalState();
+      if (!cloudJson || JSON.stringify(state) !== cloudJson) scheduleCloudSave();
     } else {
       await pushStateToCloud();
     }
