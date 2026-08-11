@@ -1031,7 +1031,21 @@ function normalizeState(savedState) {
         return {
           ...item,
           key,
-          deliveredQty: Math.max(Number(item.deliveredQty || 0), Number(deliveredByItem[key] || 0)),
+          // Taking the max here made deliveredQty a high-water mark: reducing a
+          // delivery left the old figure in place, so a mis-entered delivery
+          // could never be corrected and the outstanding balance stayed
+          // understated forever. Delivery records are the source of truth when
+          // the order has any; deliveredQty is only ever written alongside one.
+          //
+          // Tested on length, not on the array being present: this function
+          // gives every order a deliveries array, so after one pass presence no
+          // longer distinguishes an order that predates delivery records. If
+          // deleting a delivery is ever added, an order whose deliveries were
+          // all removed will look like a legacy order and keep its stored
+          // quantity; that needs an explicit marker to tell the two apart.
+          deliveredQty: deliveries.length
+            ? Number(deliveredByItem[key] || 0)
+            : Number(item.deliveredQty || 0),
         };
       }),
     };

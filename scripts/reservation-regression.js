@@ -483,6 +483,36 @@ function testLegacyConcluidoOrdersAreStillTreatedAsClosed() {
   assert.equal(batchSummary(result).available, 10);
 }
 
+function testClosedOrdersKeepTheirLotTraceability() {
+  const delivered = makeOrder({ qty: 10, deliveredQty: 10, status: "entregue" });
+  item(delivered).allocations = [
+    { batchCode: "KMB010-260727", qty: 10, date: "2026-07-27", manual: false, note: "" },
+  ];
+  const result = reconcile(
+    makeState({ batches: [makeBatch({ actual: 10 })], orders: [delivered] })
+  );
+
+  const closedItem = item(result.state.orders[0]);
+  assert.equal(closedItem.allocations.length, 1, "a closed order must keep the record of which batch filled it");
+  assert.equal(closedItem.allocations[0].batchCode, "KMB010-260727");
+  assert.equal(closedItem.batchCode, "KMB010-260727", "batchCode must survive on a closed order");
+  // ...but it must not hold stock any more.
+  assert.equal(closedItem.reservedQty, 0, "a closed order must not reserve stock");
+  assert.equal(batchSummary(result).available, 10, "a closed order must release its stock");
+  assert.equal(batchSummary(result).reserved, 0);
+}
+
+function testClosedOrderTraceabilitySurvivesRepeatedReconciliation() {
+  const delivered = makeOrder({ qty: 10, deliveredQty: 10, status: "entregue" });
+  item(delivered).allocations = [
+    { batchCode: "KMB010-260727", qty: 10, date: "2026-07-27", manual: false, note: "" },
+  ];
+  const first = reconcile(makeState({ batches: [makeBatch({ actual: 10 })], orders: [delivered] }));
+  const second = reconcile({ ...first.state });
+  assert.equal(item(second.state.orders[0]).batchCode, "KMB010-260727");
+  assert.equal(second.changed, false, "reconciling a settled state again must be a no-op");
+}
+
 function testSupersededOverrideReconciliationIsIdempotent() {
   const first = reconcile(
     makeState({
@@ -541,6 +571,8 @@ const tests = [
   testExplicitZeroActualStillMeansNoProduction,
   testServerWritesStatusesTheAdminUnderstands,
   testLegacyConcluidoOrdersAreStillTreatedAsClosed,
+  testClosedOrdersKeepTheirLotTraceability,
+  testClosedOrderTraceabilitySurvivesRepeatedReconciliation,
   testSupersededOverrideReconciliationIsIdempotent,
   testSalesReduceReservableCapacity,
 ];

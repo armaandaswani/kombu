@@ -518,7 +518,12 @@ function reconcileReservations(inputState, options = {}) {
           }
         });
       }
-      item.allocations = [];
+      // Only open orders are rebuilt. A closed order keeps its allocations as
+      // the record of which batch filled it: they are never re-applied so they
+      // hold no stock, but clearing them also cleared item.batchCode and
+      // item.readyDate, destroying the lot traceability of every delivered
+      // order the first time it was reconciled.
+      if (openOrderSet.has(order)) item.allocations = [];
       updateItemReservationFields(item, !openOrderSet.has(order));
     });
   });
