@@ -618,6 +618,10 @@ let cloudSyncLastError = "";
 let cloudSaveTimer = null;
 let lastCloudSaveAt = "";
 let cloudStateUpdatedAt = "";
+// Set when the server rejects a save because the cloud holds newer data. While
+// this is true every cloud save is refused, so this browser cannot overwrite
+// work done on another device. Only a successful reload from the cloud clears it.
+let cloudSaveBlocked = false;
 
 function runStartupIntegrations() {
   try {
@@ -1097,7 +1101,7 @@ function saveState() {
 }
 
 async function pushStateToCloud() {
-  if (!cloudSyncReady || !isAuthenticated()) return;
+  if (!cloudSyncReady || !isAuthenticated() || cloudSaveBlocked) return;
   const submittedState = clone(state);
   const submittedStateJson = JSON.stringify(submittedState);
   const submittedUpdatedAt = cloudStateUpdatedAt;
@@ -1133,11 +1137,15 @@ async function pushStateToCloud() {
       cloudSyncEnabled = false;
       cloudSyncLastError = "Sessão expirada. Entre novamente para salvar na nuvem.";
     } else if (response.status === 409) {
-      const payload = await readJsonSafe(response);
+      // Another device saved first. Deliberately keep the stale cloudStateUpdatedAt:
+      // adopting the server's newer token here would make the next save pass the
+      // optimistic-concurrency check and silently destroy the other device's work.
+      await readJsonSafe(response);
+      cloudSaveBlocked = true;
       cloudSyncEnabled = false;
       cloudSyncConfigured = true;
-      cloudSyncLastError = "Existem alterações mais recentes na nuvem. Recarregue o painel antes de continuar para não apagar dados de outro dispositivo.";
-      cloudStateUpdatedAt = payload.updatedAt || cloudStateUpdatedAt;
+      cloudSyncLastError = "Outro dispositivo salvou alterações mais recentes. Salvamento pausado para não apagar o trabalho dele.";
+      render();
     } else {
       const payload = await readJsonSafe(response);
       cloudSyncEnabled = false;
@@ -1151,7 +1159,7 @@ async function pushStateToCloud() {
 }
 
 function scheduleCloudSave() {
-  if (!cloudSyncReady || !isAuthenticated()) return;
+  if (!cloudSyncReady || !isAuthenticated() || cloudSaveBlocked) return;
   window.clearTimeout(cloudSaveTimer);
   cloudSaveTimer = window.setTimeout(pushStateToCloud, 800);
 }
@@ -1213,6 +1221,9 @@ async function syncFromCloud() {
     cloudSyncEnabled = true;
     cloudSyncConfigured = true;
     cloudSyncLastError = "";
+    // We are about to adopt the cloud's version of the truth, so it is safe to
+    // save again: this is the only place a save block may be lifted.
+    cloudSaveBlocked = false;
     cloudStateUpdatedAt = payload.updatedAt || "";
     if (payload.exists && payload.state) {
       state = normalizeState(payload.state);
@@ -3904,6 +3915,25 @@ function cloudSyncNotice() {
   if (!isAuthenticated()) return "";
   const local = isLocalPreview();
   const savedAt = lastCloudSaveAt ? new Date(lastCloudSaveAt).toLocaleString("pt-BR") : "";
+  if (cloudSaveBlocked) {
+    return `
+      <section class="cloud-sync-notice bad" aria-live="assertive">
+        <span class="material-symbols-outlined" aria-hidden="true">sync_problem</span>
+        <div>
+          <strong>Salvamento pausado: a nuvem tem dados mais recentes.</strong>
+          <p>
+            Outro dispositivo salvou depois que este painel carregou. Nada mais sera salvo daqui
+            ate voce recarregar os dados da nuvem, para nao apagar o trabalho do outro dispositivo.
+            Recarregar descarta as alteracoes feitas nesta tela desde entao, entao anote o que for
+            necessario antes de continuar.
+          </p>
+        </div>
+        <button class="btn btn-primary" type="button" data-action="sync-cloud">
+          <span class="material-symbols-outlined" aria-hidden="true">sync</span>Recarregar da nuvem
+        </button>
+      </section>
+    `;
+  }
   if (cloudSyncEnabled && cloudSyncConfigured) {
     return `
       <section class="cloud-sync-notice good" aria-live="polite">
