@@ -513,6 +513,30 @@ function testClosedOrderTraceabilitySurvivesRepeatedReconciliation() {
   assert.equal(second.changed, false, "reconciling a settled state again must be a no-op");
 }
 
+function testAManuallyChosenOrderStatusIsNotRecomputed() {
+  const chosen = makeOrder({ qty: 10, status: "produzido" });
+  chosen.statusManual = true;
+  const result = reconcile(
+    makeState({ batches: [makeBatch({ actual: 10 })], orders: [chosen] })
+  );
+  assert.equal(result.state.orders[0].status, "produzido", "an explicitly chosen status must survive reconciliation");
+  // The reservation itself must still be applied; only the label is left alone.
+  assert.equal(reserved(result.state.orders[0]), 10);
+
+  // Full delivery is a fact, not a judgement, so it still closes the order.
+  const delivered = makeOrder({ qty: 10, deliveredQty: 10, status: "produzido" });
+  delivered.statusManual = true;
+  const closed = reconcile(makeState({ batches: [], orders: [delivered] }));
+  assert.equal(closed.state.orders[0].status, "entregue");
+  assert.equal(closed.state.orders[0].statusManual, undefined, "the manual flag is cleared once the order closes");
+
+  // Without the flag the status is still derived as before.
+  const derived = reconcile(
+    makeState({ batches: [makeBatch({ actual: 10 })], orders: [makeOrder({ qty: 10, status: "confirmado" })] })
+  );
+  assert.equal(derived.state.orders[0].status, "pronto");
+}
+
 function testSupersededOverrideReconciliationIsIdempotent() {
   const first = reconcile(
     makeState({
@@ -573,6 +597,7 @@ const tests = [
   testLegacyConcluidoOrdersAreStillTreatedAsClosed,
   testClosedOrdersKeepTheirLotTraceability,
   testClosedOrderTraceabilitySurvivesRepeatedReconciliation,
+  testAManuallyChosenOrderStatusIsNotRecomputed,
   testSupersededOverrideReconciliationIsIdempotent,
   testSalesReduceReservableCapacity,
 ];

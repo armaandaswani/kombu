@@ -1284,9 +1284,14 @@ async function syncFromCloud() {
   }
 }
 
+// Kept in step with the cap in api/_lib/reservations.js. It used to be 80 here
+// and 100 there, and a single reconciliation can push one entry per changed
+// order line, so a busy day erased the trail of the days before it.
+const AUDIT_LIMIT = 500;
+
 function addAudit(action, detail = "") {
   state.audit.unshift({ at: new Date().toISOString(), user: currentRole, action, detail });
-  state.audit = state.audit.slice(0, 80);
+  state.audit = state.audit.slice(0, AUDIT_LIMIT);
   saveState();
 }
 
@@ -2513,9 +2518,14 @@ function refreshOrderReservationStatus(order) {
   });
   if (items.length && items.every((item) => orderItemOutstandingQty(item) <= 0)) {
     order.status = "entregue";
+    delete order.statusManual;
     return;
   }
   if (!isOpenOrder(order)) return;
+  // A status the operator chose deliberately is theirs to keep. Everything
+  // being delivered, handled above, is a fact rather than a judgement, so that
+  // still wins.
+  if (order.statusManual) return;
   if (allReserved) order.status = "pronto";
   else if (anyReserved) order.status = "em produção";
   else if (!["recebido", "confirmado"].includes(order.status)) order.status = "confirmado";
@@ -4015,6 +4025,9 @@ function updateOrderStatus(payload = "") {
     return;
   }
   order.status = status;
+  // Records that this status was chosen by a person, so the reservation engine
+  // stops recomputing it out from under them on the next save.
+  order.statusManual = true;
   if (status === "entregue" && !order.deliveredAt) {
     order.deliveredAt = todayIso();
     order.paymentDueDate = order.paymentDueDate || addDaysIso(order.deliveredAt, 15);
@@ -7929,13 +7942,59 @@ function editRecordForm(collection, recordId, title, fields, afterSave) {
   });
 }
 
+// Records reference each other by id and by code, but nothing enforced that, so
+// deleting a product, recipe, ingredient or material silently orphaned every
+// order line, sale, batch and recipe line pointing at it. Deletion is still
+// allowed - sometimes it is the right call - but the operator is now told
+// exactly what will be left dangling.
+function recordDependencies(collection, recordId) {
+  const record = byId(collection, recordId);
+  if (!record) return [];
+  const counts = [];
+  const add = (label, count) => {
+    if (count > 0) counts.push({ label, count });
+  };
+  const code = String(record.code || "");
+
+  if (collection === "products") {
+    add("pedidos com este produto", (state.orders || []).filter((order) => orderItems(order).some((item) => item.productId === recordId)).length);
+    add("vendas", (state.sales || []).filter((sale) => sale.productId === recordId).length);
+    add("lotes", (state.batches || []).filter((batch) => batch.productId === recordId).length);
+    add("receitas", (state.recipes || []).filter((recipe) => recipe.productId === recordId).length);
+    add("embalagens vinculadas", (state.packaging || []).filter((item) => item.productId === recordId).length);
+  } else if (collection === "recipes") {
+    add("lotes produzidos com esta receita", (state.batches || []).filter((batch) => batch.recipeId === recordId).length);
+  } else if (collection === "batches") {
+    add("vendas deste lote", (state.sales || []).filter((sale) => String(sale.batchCode || "") === code).length);
+    add(
+      "reservas de pedidos",
+      (state.orders || []).filter((order) =>
+        orderItems(order).some((item) => orderItemAllocations(item).some((allocation) => allocation.batchCode === code)),
+      ).length,
+    );
+  } else if (collection === "ingredients") {
+    add("receitas que usam este ingrediente", (state.recipes || []).filter((recipe) => (recipe.ingredients || []).some((line) => line.ingredientId === recordId)).length);
+    add("compras", (state.purchases || []).filter((purchase) => purchase.ingredientId === recordId).length);
+  } else if (collection === "packaging") {
+    add("receitas que usam este material", (state.recipes || []).filter((recipe) => (recipe.packaging || []).some((line) => line.itemId === recordId)).length);
+  }
+  return counts;
+}
+
 function deleteRecord(collection, recordId, label) {
   const record = byId(collection, recordId);
   if (!record) return;
   const name = label || record.name || record.flavor || record.code || record.description || record.item || record.id;
-  if (!window.confirm(`Excluir "${name}"? Esta ação remove o registro deste painel.`)) return;
+  const dependencies = recordDependencies(collection, recordId);
+  const warning = dependencies.length
+    ? `\n\nEste registro ainda e usado por:\n${dependencies.map((row) => `- ${number(row.count)} ${row.label}`).join("\n")}\n\nEsses registros continuam existindo, mas ficam sem referencia. Custos, estoque e relatorios ligados a eles podem parar de bater.`
+    : "";
+  if (!window.confirm(`Excluir "${name}"? Esta acao remove o registro deste painel.${warning}`)) return;
   state[collection] = state[collection].filter((item) => item.id !== recordId);
-  addAudit("Registro excluído", `${collection}: ${name}`);
+  addAudit(
+    "Registro excluído",
+    `${collection}: ${name}${dependencies.length ? ` | deixou sem referencia: ${dependencies.map((row) => `${row.count} ${row.label}`).join(", ")}` : ""}`,
+  );
   render();
 }
 
@@ -8319,7 +8378,11 @@ function editBatchForm(batchId) {
 function deleteBatch(batchId) {
   const batch = byId("batches", batchId);
   if (!batch) return;
-  if (!window.confirm(`Excluir lote "${batch.code}"? O estoque de ingredientes e materiais será restaurado quando este lote já tiver dado baixa.`)) return;
+  const dependencies = recordDependencies("batches", batchId);
+  const warning = dependencies.length
+    ? `\n\nEste lote ainda e usado por:\n${dependencies.map((row) => `- ${number(row.count)} ${row.label}`).join("\n")}\n\nAs vendas continuam existindo apontando para um lote que nao existe mais, e as reservas ligadas a ele serao liberadas.`
+    : "";
+  if (!window.confirm(`Excluir lote "${batch.code}"? O estoque de ingredientes e materiais sera restaurado quando este lote ja tiver dado baixa.${warning}`)) return;
   const recipe = byId("recipes", batch.recipeId);
   if (batch.inventoryAdjusted && recipe) applyBatchInventory(recipe, batchProducedQuantity(batch), 1);
   state.batches = state.batches.filter((item) => item.id !== batchId);

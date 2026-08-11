@@ -10,6 +10,11 @@ const CLOSED_ORDER_STATUSES = new Set([
   "delivered",
 ]);
 
+// Kept in step with AUDIT_LIMIT in assets/admin.js. It used to be 100 here and
+// 80 there, and a single reconciliation can push one entry per changed order
+// line, so a busy day erased the trail of the days before it.
+const AUDIT_LIMIT = 500;
+
 const INELIGIBLE_BATCH_STATUSES = new Set([
   "bloqueado",
   "blocked",
@@ -363,7 +368,14 @@ function updateOrderStatus(order) {
   // "concluido" never produced a payment reminder.
   if (outstanding === 0) {
     order.status = "entregue";
-  } else if (reserved >= outstanding) {
+    delete order.statusManual;
+    return;
+  }
+  // A status the operator chose deliberately is theirs to keep; this used to
+  // recompute it out from under them on every save. Everything being delivered,
+  // handled above, is a fact rather than a judgement, so that still wins.
+  if (order.statusManual) return;
+  if (reserved >= outstanding) {
     order.status = "pronto";
   } else if (reserved > 0) {
     order.status = "em produção";
@@ -603,7 +615,7 @@ function reconcileReservations(inputState, options = {}) {
       detail:
         "Reservas automáticas recalculadas por produto, sabor, tamanho e prioridade FIFO dos pedidos.",
     });
-    state.audit = state.audit.slice(0, 100);
+    state.audit = state.audit.slice(0, AUDIT_LIMIT);
   }
 
   const batches = eligibleBatches.map((batch) => {
