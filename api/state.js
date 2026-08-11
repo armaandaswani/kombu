@@ -1,30 +1,17 @@
 const { backendErrorPayload, getStateRow, hasSupabase, json, readBody, replaceAppState, requireAdmin, validateAppState } = require("./_lib/kombu-backend");
 const { reconcileReservations } = require("./_lib/reservations");
 
-async function getReconciledState(updatedBy = "reservation-reconciler", retries = 4) {
-  for (let attempt = 0; attempt < retries; attempt += 1) {
-    const row = await getStateRow();
-    if (!row) return { row: null, reconciled: null };
-
-    const reconciled = reconcileReservations(row.state, { updatedBy });
-    if (!reconciled.changed) return { row, reconciled };
-
-    try {
-      const saved = await replaceAppState(reconciled.state, updatedBy, row.updated_at || "");
-      return {
-        row: {
-          ...row,
-          state: reconciled.state,
-          updated_at: saved.updatedAt || row.updated_at,
-        },
-        reconciled,
-      };
-    } catch (error) {
-      if (error.code !== "state_conflict" || attempt === retries - 1) throw error;
-    }
-  }
-
-  return { row: null, reconciled: null };
+// Reconciles for the response only. This used to persist the reconciled state and
+// retry on conflict, so every authenticated read rewrote the whole production
+// document and competed with real saves for the optimistic lock. Reads must not
+// write: the next genuine save persists the same reconciliation.
+// audit:false because entries generated on a read would otherwise be handed to
+// the client and written back later, filling the capped audit log with noise.
+async function getReconciledState(updatedBy = "reservation-reconciler") {
+  const row = await getStateRow();
+  if (!row) return { row: null, reconciled: null };
+  const reconciled = reconcileReservations(row.state, { updatedBy, audit: false });
+  return { row: { ...row, state: reconciled.state }, reconciled };
 }
 
 module.exports = async function handler(req, res) {

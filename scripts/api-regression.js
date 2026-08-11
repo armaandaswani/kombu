@@ -137,6 +137,46 @@ async function run() {
     "a write carrying a stale version token must be rejected",
   );
 
+  // --- GET /api/state must never write -------------------------------------
+  // Reading the panel used to reconcile and then persist, so every page load
+  // rewrote the production document and competed for the optimistic lock.
+  const writeMethods = [];
+  global.fetch = async (url, options = {}) => {
+    const method = options.method || "GET";
+    if (method !== "GET") writeMethods.push(method);
+    if (method === "GET") {
+      return supabaseReply([
+        {
+          id: "production",
+          updated_at: "2026-08-11T00:00:00.000Z",
+          // an order with stock available to reserve, so reconciliation has work to do
+          state: {
+            products: [{ id: "p1", flavor: "Maracuja", sizeMl: 500 }],
+            recipes: [{ id: "r1", productId: "p1", sizeMl: 500 }],
+            batches: [{ id: "b1", code: "B-1", productId: "p1", recipeId: "r1", actual: 20, status: "aprovado", date: "2026-08-01" }],
+            orders: [{ id: "o1", code: "PED-1", status: "confirmado", createdAt: "2026-08-01T00:00:00.000Z",
+                       items: [{ id: "i1", productId: "p1", flavor: "Maracuja", sizeMl: 500, qty: 10 }] }],
+            sales: [],
+          },
+        },
+      ]);
+    }
+    return supabaseReply([{ updated_at: "2026-08-11T02:00:00.000Z" }]);
+  };
+
+  const signed = require("../api/_lib/kombu-backend");
+  process.env.ADMIN_SESSION_SECRET = "a-long-test-session-secret";
+  res = responseMock();
+  await signed.setSessionCookie({ headers: { host: "kombukombucha.com.br" } }, res, { sub: "kombu-admin", role: "admin", exp: Date.now() + 60000 });
+  const cookie = String(res.headers["set-cookie"]).split(";")[0];
+
+  req = { method: "GET", headers: { host: "kombukombucha.com.br", cookie } };
+  res = responseMock();
+  await stateHandler(req, res);
+  assert.strictEqual(res.statusCode, 200, "an authenticated read must succeed");
+  assert.ok(jsonBody(res).state, "the read must return reconciled state");
+  assert.deepStrictEqual(writeMethods, [], "GET /api/state must not write to Supabase");
+
   global.fetch = previousFetch;
   if (previousUrl === undefined) delete process.env.SUPABASE_URL;
   else process.env.SUPABASE_URL = previousUrl;
