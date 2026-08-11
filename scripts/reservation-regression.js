@@ -429,6 +429,60 @@ function testExplicitZeroActualStillMeansNoProduction() {
   assert.equal(result.summary.batches.length, 0, "a batch producing zero is not eligible stock");
 }
 
+// The server writes these straight into records the admin renders and edits, so
+// they have to stay inside ORDER_STATUSES / ORDER_ITEM_STATUSES in assets/admin.js.
+const ADMIN_ORDER_STATUSES = ["recebido", "confirmado", "em produção", "produzido", "pronto", "entregue", "cancelado"];
+const ADMIN_ORDER_ITEM_STATUSES = ["pendente", "em produção", "produzido", "reservado", "entregue"];
+
+function testServerWritesStatusesTheAdminUnderstands() {
+  const pending = reconcile(makeState({ batches: [], orders: [makeOrder({ qty: 10 })] }));
+  assert.equal(item(pending.state.orders[0]).productionStatus, "pendente");
+
+  const partial = reconcile(
+    makeState({ batches: [makeBatch({ actual: 4 })], orders: [makeOrder({ qty: 10 })] })
+  );
+  assert.equal(item(partial.state.orders[0]).productionStatus, "em produção");
+  assert.equal(partial.state.orders[0].status, "em produção");
+
+  const full = reconcile(
+    makeState({ batches: [makeBatch({ actual: 10 })], orders: [makeOrder({ qty: 10 })] })
+  );
+  assert.equal(item(full.state.orders[0]).productionStatus, "reservado");
+  assert.equal(full.state.orders[0].status, "pronto");
+
+  // Fully delivered: must close as "entregue", never "concluido". The payment
+  // reminder cron only bills orders whose status is exactly "entregue".
+  const delivered = reconcile(
+    makeState({ batches: [], orders: [makeOrder({ qty: 10, deliveredQty: 10 })] })
+  );
+  assert.equal(delivered.state.orders[0].status, "entregue");
+  assert.equal(item(delivered.state.orders[0]).productionStatus, "entregue");
+
+  [pending, partial, full, delivered].forEach((result) => {
+    const order = result.state.orders[0];
+    assert.ok(
+      ADMIN_ORDER_STATUSES.includes(order.status),
+      `order status "${order.status}" is not offered by the admin`
+    );
+    assert.ok(
+      ADMIN_ORDER_ITEM_STATUSES.includes(item(order).productionStatus),
+      `item status "${item(order).productionStatus}" is not offered by the admin`
+    );
+  });
+}
+
+function testLegacyConcluidoOrdersAreStillTreatedAsClosed() {
+  // Records written before the vocabulary was aligned still carry "concluido".
+  const result = reconcile(
+    makeState({
+      batches: [makeBatch({ actual: 10 })],
+      orders: [makeOrder({ qty: 10, status: "concluido" })],
+    })
+  );
+  assert.equal(reserved(result.state.orders[0]), 0, "a closed legacy order must not hold stock");
+  assert.equal(batchSummary(result).available, 10);
+}
+
 function testSupersededOverrideReconciliationIsIdempotent() {
   const first = reconcile(
     makeState({
@@ -485,6 +539,8 @@ const tests = [
   testBlankActualFallsBackInsteadOfErasingStock,
   testWhitespaceActualIsTreatedAsUnrecorded,
   testExplicitZeroActualStillMeansNoProduction,
+  testServerWritesStatusesTheAdminUnderstands,
+  testLegacyConcluidoOrdersAreStillTreatedAsClosed,
   testSupersededOverrideReconciliationIsIdempotent,
   testSalesReduceReservableCapacity,
 ];

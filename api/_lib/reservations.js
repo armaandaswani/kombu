@@ -336,12 +336,15 @@ function updateItemReservationFields(item, closed = false) {
   item.batchCode = [...new Set(allocations.map((allocation) => allocation.batchCode).filter(Boolean))].join(", ");
   item.readyDate = allocations.at(-1)?.date || "";
 
+  // These must stay inside ORDER_ITEM_STATUSES in assets/admin.js. The server
+  // used to write "concluido" and "parcial", which the admin's item status
+  // <select> has no option for, so editing such an item silently reset it.
   if (closed || outstanding === 0) {
-    item.productionStatus = "concluido";
+    item.productionStatus = "entregue";
   } else if (reserved >= outstanding) {
     item.productionStatus = "reservado";
   } else if (reserved > 0) {
-    item.productionStatus = "parcial";
+    item.productionStatus = "em produção";
   } else {
     item.productionStatus = "pendente";
   }
@@ -354,8 +357,12 @@ function updateOrderStatus(order) {
 
   const outstanding = items.reduce((total, item) => total + outstandingQuantity(item), 0);
   const reserved = items.reduce((total, item) => total + reservedQuantity(item), 0);
+  // "entregue", not "concluido": ORDER_STATUSES in assets/admin.js has no
+  // "concluido" option, and the payment reminder cron only treats an order as
+  // receivable when status === "entregue", so an order closed here as
+  // "concluido" never produced a payment reminder.
   if (outstanding === 0) {
-    order.status = "concluido";
+    order.status = "entregue";
   } else if (reserved >= outstanding) {
     order.status = "pronto";
   } else if (reserved > 0) {

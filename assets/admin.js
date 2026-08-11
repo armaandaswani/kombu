@@ -1762,12 +1762,22 @@ function adjustBatchInventoryTo(batch, nextActual) {
   return { ok: true, delta };
 }
 
-function shouldConsumeBatch(batch) {
-  const status = normalizeText(batch?.status).trim();
+// Mirrors INELIGIBLE_BATCH_STATUSES in api/_lib/reservations.js. The two sides
+// used to disagree: the stock view excluded only "planejado" and "descartado",
+// compared as raw strings, so a blocked batch was shown as sellable stock the
+// server would never reserve from, and a batch stored as "Planejado" counted as
+// stock here but not there.
+const INELIGIBLE_BATCH_STATUSES = ["planejado", "planned", "bloqueado", "blocked", "descartado", "discarded"];
+
+function isBatchEligibleForStock(batch) {
   return (
     batchProducedQuantity(batch) > 0 &&
-    !["planejado", "planned", "bloqueado", "blocked", "descartado", "discarded"].includes(status)
+    !INELIGIBLE_BATCH_STATUSES.includes(normalizeText(batch?.status).trim())
   );
+}
+
+function shouldConsumeBatch(batch) {
+  return isBatchEligibleForStock(batch);
 }
 
 function recipeCost(recipe) {
@@ -1902,7 +1912,7 @@ function soldFromBatch(code) {
 
 function finishedStockRows() {
   return state.batches
-    .filter((batch) => batch.status !== "planejado" && batch.status !== "descartado")
+    .filter(isBatchEligibleForStock)
     .map((batch) => {
       const sold = soldFromBatch(batch.code);
       const reserved = reservedFromBatch(batch.code);
@@ -2154,19 +2164,23 @@ function orderFinancialSummaryMarkup(order) {
   `;
 }
 
+// Mirrors CLOSED_ORDER_STATUSES in api/_lib/reservations.js. "concluido" is kept
+// here because older records written by the server still carry it, even though
+// nothing writes it any more.
+const CLOSED_ORDER_STATUSES = [
+  "entregue",
+  "cancelado",
+  "cancelada",
+  "concluido",
+  "concluida",
+  "delivered",
+  "cancelled",
+  "canceled",
+  "completed",
+];
+
 function isOpenOrder(order) {
-  const status = normalizeText(order?.status).trim();
-  return ![
-    "entregue",
-    "cancelado",
-    "cancelada",
-    "concluido",
-    "concluida",
-    "delivered",
-    "cancelled",
-    "canceled",
-    "completed",
-  ].includes(status);
+  return !CLOSED_ORDER_STATUSES.includes(normalizeText(order?.status).trim());
 }
 
 function orderReservationTimestamp(order = {}) {
@@ -2508,7 +2522,9 @@ function reserveBatchForOrderItem(batchCode, order, item, qty, note = "", manual
 function orderProductionRows() {
   const rows = new Map();
   (state.orders || [])
-    .filter((order) => !["entregue", "cancelado"].includes(order.status))
+    // Was ["entregue","cancelado"], which missed every other closed status and
+    // kept server-closed orders showing as outstanding production demand.
+    .filter(isOpenOrder)
     .forEach((order) => {
       orderItems(order).forEach((item) => {
         const key = item.productId || item.flavor || item.productName;
