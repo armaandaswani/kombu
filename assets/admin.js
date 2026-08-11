@@ -1641,13 +1641,31 @@ function applyIngredientPackageCost(ingredient, data = {}, { usePackageQtyAsStoc
   return ingredient;
 }
 
+// Batch code is the join key for sales, allocations and stock, so it has to be
+// unique. Counting existing codes is not enough: deleting a batch lowers the
+// count and hands the next batch a code that is already in use, after which the
+// two batches collide and one of them stops being counted as stock. Probe for a
+// free suffix instead, so deletions can never produce a duplicate.
 function nextBatchCode(recipe, dateIso) {
   const product = productForRecipe(recipe);
   const base = product?.item || recipe?.flavor || "KMB";
   const compactDate = String(dateIso || todayIso()).slice(2).replaceAll("-", "");
   const prefix = `${base}-${compactDate}`.toUpperCase().replace(/[^A-Z0-9-]/g, "");
-  const existing = state.batches.filter((batch) => String(batch.code || "").startsWith(prefix)).length;
-  return existing ? `${prefix}-${existing + 1}` : prefix;
+  const taken = new Set((state.batches || []).map((batch) => String(batch.code || "")));
+  if (!taken.has(prefix)) return prefix;
+  let suffix = 2;
+  while (taken.has(`${prefix}-${suffix}`)) suffix += 1;
+  return `${prefix}-${suffix}`;
+}
+
+function duplicateBatchCodes() {
+  const seen = new Map();
+  (state.batches || []).forEach((batch) => {
+    const code = String(batch.code || "").trim();
+    if (!code) return;
+    seen.set(code, (seen.get(code) || 0) + 1);
+  });
+  return [...seen.entries()].filter(([, count]) => count > 1).map(([code]) => code);
 }
 
 function batchDatePlan(dateIso) {
@@ -1948,11 +1966,16 @@ function deliveryProductsTotal(delivery = {}) {
   return (delivery.items || []).reduce((sum, item) => sum + Number(item.qty || 0) * Number(item.unitPrice || 0), 0);
 }
 
+// Same collision hazard as nextBatchCode: counting produces a repeat number as
+// soon as any receipt is removed, and a receipt number identifies a document
+// given to a customer.
 function nextReceiptNumber(dateIso = todayIso()) {
   const compactDate = String(dateIso || todayIso()).slice(0, 10).replaceAll("-", "");
   const prefix = `REC-${compactDate}`;
-  const existing = (state.receipts || []).filter((receipt) => String(receipt.number || "").startsWith(prefix)).length;
-  return `${prefix}-${String(existing + 1).padStart(3, "0")}`;
+  const taken = new Set((state.receipts || []).map((receipt) => String(receipt.number || "")));
+  let sequence = 1;
+  while (taken.has(`${prefix}-${String(sequence).padStart(3, "0")}`)) sequence += 1;
+  return `${prefix}-${String(sequence).padStart(3, "0")}`;
 }
 
 function receiptCustomerLabel(receipt = {}) {
@@ -4587,6 +4610,7 @@ function renderCosts() {
 
 function renderBatches() {
   const productionRows = orderProductionRows();
+  const duplicateCodes = duplicateBatchCodes();
   const rows = state.batches
     .filter((item) => matchesSearch(item))
     .map((batch) => {
@@ -4617,6 +4641,19 @@ function renderBatches() {
       "Controle de lotes, versão da receita, rendimento real, vencimento, custo histórico e rastreabilidade.",
       `${actionButton("new-batch", "Novo lote", "add")} ${actionButton("stock-adjustment", "Ajuste de estoque", "tune", "btn-outline")}`,
     )}
+    ${duplicateCodes.length ? `
+      <section class="cloud-sync-notice bad" aria-live="assertive">
+        <span class="material-symbols-outlined" aria-hidden="true">error</span>
+        <div>
+          <strong>Codigos de lote repetidos: ${escapeHtml(duplicateCodes.join(", "))}.</strong>
+          <p>
+            O codigo do lote e a chave que liga producao, vendas e reservas. Enquanto houver
+            repetidos, o estoque de um dos lotes pode nao ser contado. Renomeie um deles para um
+            codigo unico. Nada e alterado automaticamente.
+          </p>
+        </div>
+      </section>
+    ` : ""}
     <section class="admin-card order-production-card">
       <h3>O que precisa ser produzido</h3>
       <div class="production-chip-grid">
