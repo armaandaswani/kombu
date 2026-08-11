@@ -1,4 +1,4 @@
-const { backendErrorPayload, getStateRow, hasSupabase, json, readBody, replaceAppState, requireAdmin, validateAppState } = require("./_lib/kombu-backend");
+const { backendErrorPayload, getStateRow, hasSupabase, invariantRegressions, json, readBody, replaceAppState, requireAdmin, stateInvariantViolations, validateAppState } = require("./_lib/kombu-backend");
 const { reconcileReservations } = require("./_lib/reservations");
 
 // Reconciles for the response only. This used to persist the reconciled state and
@@ -50,6 +50,29 @@ module.exports = async function handler(req, res) {
     });
     const validationError = validateAppState(reconciled.state);
     if (validationError) return json(res, validationError === "state_too_large" ? 413 : 422, { ok: false, error: validationError });
+
+    // validateAppState only checks shapes and size, so until now a browser bug
+    // could write any business nonsense it liked. Compare the incoming document
+    // against the stored one and refuse a write that makes a rule worse than it
+    // already is. Existing data may already violate some of these, so this is a
+    // non-regression check, not a gate: it never blocks on pre-existing damage.
+    // If the stored state cannot be read we cannot prove a regression, so the
+    // write proceeds rather than blocking the company out of its own system.
+    try {
+      const current = await getStateRow();
+      if (current?.state) {
+        const regressions = invariantRegressions(
+          stateInvariantViolations(current.state),
+          stateInvariantViolations(reconciled.state),
+        );
+        if (regressions.length) {
+          return json(res, 422, { ok: false, error: "state_invariants_regressed", regressions });
+        }
+      }
+    } catch {
+      // Fall through: a failed comparison must not stop a legitimate save.
+    }
+
     try {
       const result = await replaceAppState(reconciled.state, session.role || "admin", String(body.updatedAt || ""));
       return json(res, result.ok ? 200 : 202, {

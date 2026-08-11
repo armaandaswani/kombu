@@ -180,6 +180,72 @@ async function run() {
     "a write carrying a stale version token must be rejected",
   );
 
+  // --- business invariants ---------------------------------------------------
+  const cleanState = () => ({
+    batches: [{ code: "B-1", actual: 10 }],
+    orders: [{ id: "o1", status: "confirmado", items: [{ qty: 6, deliveredQty: 0, reservedQty: 0, allocations: [{ batchCode: "B-1", qty: 6 }] }] }],
+    sales: [],
+    ingredients: [{ id: "ing", stock: 5 }],
+  });
+
+  assert.strictEqual(backend.stateInvariantViolations(cleanState()).total, 0, "a consistent document has no violations");
+  assert.strictEqual(backend.stateInvariantViolations(null).total, 0, "a missing document must not throw");
+
+  const overAllocated = cleanState();
+  overAllocated.orders[0].items[0].allocations[0].qty = 25;
+  assert.strictEqual(backend.stateInvariantViolations(overAllocated).byRule.batch_over_allocated, 1);
+
+  const overDelivered = cleanState();
+  overDelivered.orders[0].items[0].deliveredQty = 99;
+  assert.strictEqual(backend.stateInvariantViolations(overDelivered).byRule.delivered_over_ordered, 1);
+
+  const unknownBatch = cleanState();
+  unknownBatch.orders[0].items[0].allocations[0].batchCode = "DOES-NOT-EXIST";
+  assert.strictEqual(backend.stateInvariantViolations(unknownBatch).byRule.allocation_unknown_batch, 1);
+
+  const negativeStock = cleanState();
+  negativeStock.ingredients[0].stock = -3;
+  assert.strictEqual(backend.stateInvariantViolations(negativeStock).byRule.negative_material_stock, 1);
+
+  const notANumber = cleanState();
+  notANumber.orders[0].items[0].qty = "abc";
+  assert.ok(backend.stateInvariantViolations(notANumber).byRule.non_finite_quantity > 0);
+
+  // A closed order keeps its allocations as history and must not count as held stock.
+  const closedOrder = cleanState();
+  closedOrder.orders[0].status = "entregue";
+  closedOrder.orders[0].items[0].deliveredQty = 6;
+  closedOrder.batches[0].actual = 6;
+  closedOrder.sales = [{ batchCode: "B-1", qty: 6 }];
+  assert.strictEqual(
+    backend.stateInvariantViolations(closedOrder).byRule.batch_over_allocated,
+    0,
+    "historical allocations on a closed order must not be counted against the batch",
+  );
+
+  // Regression detection, which is what actually gates a write.
+  assert.deepStrictEqual(
+    backend.invariantRegressions(backend.stateInvariantViolations(cleanState()), backend.stateInvariantViolations(cleanState())),
+    [],
+    "an unchanged document is not a regression",
+  );
+  assert.strictEqual(
+    backend.invariantRegressions(backend.stateInvariantViolations(cleanState()), backend.stateInvariantViolations(overAllocated)).length,
+    1,
+    "introducing an over-allocation is a regression",
+  );
+  // The critical property: pre-existing damage must never block a save.
+  assert.deepStrictEqual(
+    backend.invariantRegressions(backend.stateInvariantViolations(overAllocated), backend.stateInvariantViolations(overAllocated)),
+    [],
+    "a document that was already broken must still be saveable",
+  );
+  assert.deepStrictEqual(
+    backend.invariantRegressions(backend.stateInvariantViolations(overAllocated), backend.stateInvariantViolations(cleanState())),
+    [],
+    "repairing a broken document must be allowed",
+  );
+
   // --- GET /api/state must never write -------------------------------------
   // Reading the panel used to reconcile and then persist, so every page load
   // rewrote the production document and competed for the optimistic lock.
@@ -230,7 +296,7 @@ async function run() {
   });
   console.log(
     "API regression: fail-closed auth/cron, secure cookie, state validation, state concurrency, " +
-      "no-write-on-read, lead retention and login throttling passed.",
+      "no-write-on-read, lead retention, login throttling and business invariants passed.",
   );
 }
 

@@ -622,6 +622,8 @@ let cloudStateUpdatedAt = "";
 // this is true every cloud save is refused, so this browser cannot overwrite
 // work done on another device. Only a successful reload from the cloud clears it.
 let cloudSaveBlocked = false;
+// Rules the server said this browser's state would break, if it refused a save.
+let cloudInvariantRegressions = [];
 
 // Replays the derived-data syncs over everything already in state. This runs on
 // every page load, so it used to end in an unconditional saveState() and simply
@@ -1214,6 +1216,18 @@ async function pushStateToCloud() {
       render();
     } else {
       const payload = await readJsonSafe(response);
+      if (payload.error === "state_invariants_regressed") {
+        // The server refused because this save would break a stock or order
+        // rule. Continuing to retry would just hammer it, and the local state
+        // is the corrupt one, so stop and make the operator reload.
+        cloudSaveBlocked = true;
+        cloudSyncEnabled = false;
+        cloudSyncConfigured = true;
+        cloudInvariantRegressions = Array.isArray(payload.regressions) ? payload.regressions : [];
+        cloudSyncLastError = "O servidor recusou este salvamento porque ele quebraria uma regra de estoque ou de pedidos.";
+        render();
+        return;
+      }
       cloudSyncEnabled = false;
       cloudSyncConfigured = payload.configured === true;
       cloudSyncLastError = syncErrorMessage(payload, "A API não aceitou o salvamento na nuvem.");
@@ -1290,6 +1304,7 @@ async function syncFromCloud() {
     // We are about to adopt the cloud's version of the truth, so it is safe to
     // save again: this is the only place a save block may be lifted.
     cloudSaveBlocked = false;
+    cloudInvariantRegressions = [];
     cloudStateUpdatedAt = payload.updatedAt || "";
     if (payload.exists && payload.state) {
       // Compare against exactly what the cloud gave us, so a load that changes
@@ -4269,6 +4284,34 @@ function cloudSyncNotice() {
   if (!isAuthenticated()) return "";
   const local = isLocalPreview();
   const savedAt = lastCloudSaveAt ? new Date(lastCloudSaveAt).toLocaleString("pt-BR") : "";
+  if (cloudSaveBlocked && cloudInvariantRegressions.length) {
+    const RULE_LABELS = {
+      delivered_over_ordered: "entrega maior que a quantidade pedida",
+      reserved_over_ordered: "reserva maior que a quantidade pedida",
+      negative_quantity: "quantidade negativa",
+      non_finite_quantity: "quantidade invalida",
+      allocation_unknown_batch: "reserva apontando para um lote inexistente",
+      batch_over_allocated: "lote com mais reservas e vendas do que foi produzido",
+      negative_material_stock: "estoque de insumo negativo",
+    };
+    return `
+      <section class="cloud-sync-notice bad" aria-live="assertive">
+        <span class="material-symbols-outlined" aria-hidden="true">rule</span>
+        <div>
+          <strong>Salvamento recusado: esta alteracao quebraria uma regra de estoque.</strong>
+          <p>
+            O servidor bloqueou o salvamento para nao gravar dados inconsistentes:
+            ${escapeHtml(cloudInvariantRegressions.map((row) => RULE_LABELS[row.rule] || row.rule).join("; "))}.
+            Recarregue os dados da nuvem para voltar ao ultimo estado valido. Se isso se repetir,
+            anote o que voce estava fazendo: e um erro do sistema, nao seu.
+          </p>
+        </div>
+        <button class="btn btn-primary" type="button" data-action="sync-cloud">
+          <span class="material-symbols-outlined" aria-hidden="true">sync</span>Recarregar da nuvem
+        </button>
+      </section>
+    `;
+  }
   if (cloudSaveBlocked) {
     return `
       <section class="cloud-sync-notice bad" aria-live="assertive">

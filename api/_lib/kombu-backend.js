@@ -324,6 +324,115 @@ function validateAppState(state) {
   return "";
 }
 
+// The server has never enforced a single business rule: validateAppState checks
+// shapes and size, so every invariant is upheld only by browser JavaScript and a
+// bug there writes straight through. These are the rules that are unambiguous
+// enough to check cheaply on the server.
+//
+// The counts are used as a NON-REGRESSION check rather than a gate. Existing
+// production data may already violate some of these, and refusing every save
+// until it is clean would lock the company out of its own system. A write is
+// rejected only when it makes some rule worse than the stored state already is.
+function stateInvariantViolations(state) {
+  const byRule = {
+    delivered_over_ordered: 0,
+    reserved_over_ordered: 0,
+    negative_quantity: 0,
+    non_finite_quantity: 0,
+    allocation_unknown_batch: 0,
+    batch_over_allocated: 0,
+    negative_material_stock: 0,
+  };
+  if (!state || typeof state !== "object") return { byRule, total: 0 };
+
+  const list = (value) => (Array.isArray(value) ? value : []);
+  const orders = list(state.orders);
+  const batches = list(state.batches);
+  const sales = list(state.sales);
+
+  const isBadNumber = (value) => value !== undefined && value !== null && value !== "" && !Number.isFinite(Number(value));
+  const negative = (value) => Number.isFinite(Number(value)) && Number(value) < 0;
+
+  const producedByCode = new Map();
+  batches.forEach((batch) => {
+    const code = String(batch?.code || batch?.id || "");
+    const produced = Number(
+      [batch?.actual, batch?.inventoryQty, batch?.actualYield, batch?.quantity].find(
+        (value) => value !== undefined && value !== null && String(value).trim() !== "" && Number.isFinite(Number(value)),
+      ) ?? 0,
+    );
+    if (isBadNumber(batch?.actual)) byRule.non_finite_quantity += 1;
+    if (negative(produced)) byRule.negative_quantity += 1;
+    if (code) producedByCode.set(code, (producedByCode.get(code) || 0) + Math.max(0, produced));
+  });
+
+  const soldByCode = new Map();
+  sales.forEach((sale) => {
+    const code = String(sale?.batchCode || "");
+    if (!code) return;
+    const qty = Number(sale?.qty || sale?.quantity || 0);
+    if (isBadNumber(sale?.qty)) byRule.non_finite_quantity += 1;
+    if (Number.isFinite(qty)) soldByCode.set(code, (soldByCode.get(code) || 0) + qty);
+  });
+
+  const closed = new Set(["entregue", "cancelado", "cancelada", "concluido", "concluida", "delivered", "cancelled", "canceled", "completed"]);
+  const isOpen = (order) =>
+    !closed.has(
+      String(order?.status || "")
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .toLowerCase()
+        .trim(),
+    );
+
+  const allocatedByCode = new Map();
+  orders.forEach((order) => {
+    const open = isOpen(order);
+    list(order?.items).forEach((item) => {
+      const qty = Number(item?.qty || 0);
+      if (isBadNumber(item?.qty) || isBadNumber(item?.deliveredQty) || isBadNumber(item?.reservedQty)) {
+        byRule.non_finite_quantity += 1;
+      }
+      if (negative(item?.qty) || negative(item?.deliveredQty)) byRule.negative_quantity += 1;
+      if (Number.isFinite(qty) && Number(item?.deliveredQty || 0) > qty) byRule.delivered_over_ordered += 1;
+      if (Number.isFinite(qty) && Number(item?.reservedQty || 0) > qty) byRule.reserved_over_ordered += 1;
+
+      list(item?.allocations).forEach((allocation) => {
+        const code = String(allocation?.batchCode || "");
+        const allocated = Number(allocation?.qty || allocation?.quantity || 0);
+        if (isBadNumber(allocation?.qty)) byRule.non_finite_quantity += 1;
+        if (negative(allocated)) byRule.negative_quantity += 1;
+        if (code && !producedByCode.has(code)) byRule.allocation_unknown_batch += 1;
+        // Only open orders hold stock; a closed order keeps its allocations as
+        // a historical record and must not count against the batch.
+        if (open && code && Number.isFinite(allocated)) {
+          allocatedByCode.set(code, (allocatedByCode.get(code) || 0) + Math.max(0, allocated));
+        }
+      });
+    });
+  });
+
+  producedByCode.forEach((produced, code) => {
+    const committed = (allocatedByCode.get(code) || 0) + Math.max(0, soldByCode.get(code) || 0);
+    // Rounded to avoid flagging floating point dust as a real over-allocation.
+    if (Math.round((committed - produced) * 1000) / 1000 > 0) byRule.batch_over_allocated += 1;
+  });
+
+  [...list(state.ingredients), ...list(state.packaging)].forEach((item) => {
+    if (isBadNumber(item?.stock)) byRule.non_finite_quantity += 1;
+    if (negative(item?.stock)) byRule.negative_material_stock += 1;
+  });
+
+  return { byRule, total: Object.values(byRule).reduce((sum, count) => sum + count, 0) };
+}
+
+// Which rules the incoming state makes worse than the stored state already is.
+function invariantRegressions(before, after) {
+  return Object.keys(after?.byRule || {})
+    .filter((rule) => Number(after.byRule[rule] || 0) > Number(before?.byRule?.[rule] || 0))
+    .map((rule) => ({ rule, was: Number(before?.byRule?.[rule] || 0), now: Number(after.byRule[rule] || 0) }));
+}
+
 function sanitizePublicState(state = {}) {
   return {
     cms: state.cms || {},
@@ -488,7 +597,9 @@ module.exports = {
   capLeads,
   clearSessionCookie,
   clientIp,
+  invariantRegressions,
   rateLimit,
+  stateInvariantViolations,
   emailProviderReady,
   escapeHtml,
   getAppState,
