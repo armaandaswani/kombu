@@ -3709,8 +3709,11 @@ function salePayloadFromOrderItem(order, item, delivery = {}) {
   };
 }
 
-function syncOrderSales(order) {
-  state.sales = state.sales.filter((sale) => sale.orderId !== order.id);
+// Builds the sales an order implies, without touching state. orderItemKey is the
+// stable identity of each derived sale, so a later rebuild can update the same
+// record instead of deleting it and inserting a new one.
+function derivedSalesForOrder(order) {
+  const rows = [];
   const deliveries = orderDeliveries(order);
   if (deliveries.length) {
     deliveries.forEach((delivery) => {
@@ -3730,8 +3733,7 @@ function syncOrderSales(order) {
             qty,
             unitPrice: Number(deliveryItem.unitPrice || 0),
           };
-          state.sales.unshift({
-            id: id("sale"),
+          rows.push({
             ...salePayloadFromOrderItem(order, item, { ...delivery, deliveryFee: deliveryFeePending }),
             orderItemKey: `${deliveryItem.orderItemKey}-${delivery.id}-${allocation.batchCode || "sem-lote"}`,
           });
@@ -3739,33 +3741,103 @@ function syncOrderSales(order) {
         });
       });
     });
-    return;
+    return rows;
   }
-  if (order.status !== "entregue") return;
+  if (order.status !== "entregue") return rows;
   orderItems(order).forEach((item) => {
     if (Number(item.qty || 0) <= 0) return;
     const allocations = orderItemAllocations(item);
     if (allocations.length) {
       const allocatedQty = allocations.reduce((sum, allocation) => sum + Number(allocation.qty || 0), 0);
       allocations.forEach((allocation) => {
-        state.sales.unshift({
-          id: id("sale"),
+        rows.push({
           ...salePayloadFromOrderItem(order, { ...item, qty: allocation.qty, batchCode: allocation.batchCode }),
           orderItemKey: `${item.key || item.productId || item.flavor}-${allocation.batchCode}`,
         });
       });
       const remainingQty = Math.max(0, Number(item.qty || 0) - allocatedQty);
       if (remainingQty > 0) {
-        state.sales.unshift({
-          id: id("sale"),
+        rows.push({
           ...salePayloadFromOrderItem(order, { ...item, qty: remainingQty, batchCode: "" }),
           orderItemKey: `${item.key || item.productId || item.flavor}-sem-lote`,
         });
       }
       return;
     }
-    state.sales.unshift({ id: id("sale"), ...salePayloadFromOrderItem(order, item) });
+    rows.push(salePayloadFromOrderItem(order, item));
   });
+  return rows;
+}
+
+// Two derived sales can share an orderItemKey when one delivery item holds two
+// allocations from the same batch. Suffix repeats so identity stays 1:1.
+function uniqueDerivedSaleKeys(rows) {
+  const used = new Map();
+  return rows.map((row) => {
+    const base = String(row.orderItemKey || "");
+    const seen = used.get(base) || 0;
+    used.set(base, seen + 1);
+    return seen ? { ...row, orderItemKey: `${base}#${seen + 1}` } : row;
+  });
+}
+
+// syncOrderSales used to delete every sale belonging to the order and rebuild it
+// with fresh random ids. Because runStartupIntegrations calls it for every order
+// on every page load, any correction an operator made to an order-derived sale
+// was silently reverted the next time the panel opened, and sale ids churned so
+// nothing could reference them. Reconcile by stable key instead:
+//   - a sale edited by hand is the operator's and is never rewritten
+//   - an untouched derived sale keeps its id and is updated in place
+//   - state.sales is only reassigned when something actually changed
+function syncOrderSales(order) {
+  const manualKeys = new Set(
+    state.sales
+      .filter((sale) => sale.orderId === order.id && sale.manuallyEdited)
+      .map((sale) => String(sale.orderItemKey || "")),
+  );
+
+  const generated = uniqueDerivedSaleKeys(derivedSalesForOrder(order))
+    // A hand-edited sale already covers this slice of the order. Regenerating it
+    // as well would double count the quantity against the batch.
+    .filter((row) => !manualKeys.has(String(row.orderItemKey || "")));
+
+  const generatedByKey = new Map(generated.map((row) => [String(row.orderItemKey || ""), row]));
+
+  // Walk the existing array so surviving records keep their position; only
+  // genuinely new sales go to the front, which is where they used to appear.
+  const next = [];
+  state.sales.forEach((sale) => {
+    if (sale.orderId !== order.id) return next.push(sale);
+    if (sale.manuallyEdited) return next.push(sale);
+    const key = String(sale.orderItemKey || "");
+    const row = generatedByKey.get(key);
+    if (!row) return; // the order no longer implies this sale
+    generatedByKey.delete(key);
+    next.push({ ...sale, ...row, id: sale.id });
+  });
+  [...generatedByKey.values()].reverse().forEach((row) => next.unshift({ id: id("sale"), ...row }));
+
+  if (JSON.stringify(state.sales) === JSON.stringify(next)) return;
+  state.sales = next;
+}
+
+// Undoes the manual pin, so the sale goes back to tracking its order. Explicit
+// because it discards whatever was typed by hand.
+function resyncSaleWithOrder(saleId) {
+  const sale = byId("sales", saleId);
+  if (!sale || !sale.orderId) return;
+  const order = byId("orders", sale.orderId);
+  if (!order) {
+    window.alert("O pedido desta venda nao existe mais, entao ela nao pode voltar a acompanha-lo.");
+    return;
+  }
+  if (!window.confirm("Esta venda volta a ser calculada pelo pedido. As alteracoes manuais feitas nela serao descartadas. Continuar?")) return;
+  delete sale.manuallyEdited;
+  delete sale.manuallyEditedAt;
+  delete sale.manuallyEditedBy;
+  syncOrderSales(order);
+  addAudit("Venda voltou a acompanhar o pedido", `${orderClientDisplayName(order)} | ${sale.flavor || sale.batchCode || ""}`);
+  render();
 }
 
 function syncOrderIntegrations(order) {
@@ -5083,11 +5155,21 @@ function renderSales() {
             <strong>${escapeHtml(product ? product.flavor : sale.flavor || "Produto")}</strong>
             <span>${escapeHtml(sale.batchCode || "Sem lote")}${sale.note ? ` | ${escapeHtml(sale.note)}` : ""}</span>
           </div>
+          ${sale.manuallyEdited && sale.orderId ? `
+            <p class="sale-compact-manual">
+              <span class="status warn">editada manualmente</span>
+              Nao acompanha mais alteracoes do pedido ${escapeHtml(sale.orderCode || "")}.
+            </p>
+          ` : ""}
           <div class="sale-compact-totals">
             <span><small>Valor</small><strong>${brl(revenue)}</strong></span>
             <span><small>Lucro</small><strong>${brl(revenue - cogs)}</strong></span>
           </div>
-          <div class="sale-compact-actions">${rowActions([tableAction(`edit-sale:${sale.id}`, "Editar venda"), tableAction(`delete-sale:${sale.id}`, "Excluir venda", "delete", "danger")])}</div>
+          <div class="sale-compact-actions">${rowActions([
+            tableAction(`edit-sale:${sale.id}`, "Editar venda"),
+            ...(sale.manuallyEdited && sale.orderId ? [tableAction(`resync-sale:${sale.id}`, "Voltar a acompanhar o pedido", "sync")] : []),
+            tableAction(`delete-sale:${sale.id}`, "Excluir venda", "delete", "danger"),
+          ])}</div>
         </article>
       `;
     })
@@ -8072,6 +8154,13 @@ function editSaleForm(saleId) {
     sale.productId = product?.id || sale.productId || "";
     sale.partner = sale.customerName || sale.partner;
     sale.channel = sale.movementType === "venda" ? sale.priceType : sale.movementType;
+    // Marks the record as owned by the operator so syncOrderSales stops
+    // regenerating over it. Only meaningful for order-derived sales.
+    if (sale.orderId) {
+      sale.manuallyEdited = true;
+      sale.manuallyEditedAt = new Date().toISOString();
+      sale.manuallyEditedBy = currentRole;
+    }
   });
 }
 
@@ -8991,6 +9080,7 @@ function handleAction(action) {
     "edit-batch": editBatchForm,
     "delete-batch": deleteBatch,
     "edit-sale": editSaleForm,
+    "resync-sale": resyncSaleWithOrder,
     "delete-sale": (itemId) => deleteRecord("sales", itemId),
     "correct-batch-qty": correctBatchQuantityForm,
     "adjust-flavor-stock": adjustFlavorStockForm,
