@@ -178,12 +178,18 @@
               <button class="is-active" type="button" data-locale="pt">PT</button>
               <button type="button" data-locale="en">EN</button>
             </div>
-            <select class="role-pill" id="roleSelector" aria-label="Perfil de acesso">
-              <option value="Owner / Admin">Owner / Admin</option>
-              <option value="Produção">Produção</option>
-              <option value="Financeiro">Financeiro</option>
-              <option value="Vendas">Vendas</option>
-              <option value="Viewer">Viewer</option>
+            <!--
+              This selector only simplifies the screen: it is chosen in the
+              browser and the server issues a single role, so it is not access
+              control. Everyone who knows the password has full access. Real
+              per-user permissions need accounts on the server.
+            -->
+            <select class="role-pill" id="roleSelector" aria-label="Modo de visualização (não é controle de acesso)" title="Simplifica a tela para cada função. Não restringe acesso: quem tem a senha tem acesso total.">
+              <option value="Owner / Admin">Visão: Owner / Admin</option>
+              <option value="Produção">Visão: Produção</option>
+              <option value="Financeiro">Visão: Financeiro</option>
+              <option value="Vendas">Visão: Vendas</option>
+              <option value="Viewer">Visão: Viewer</option>
             </select>
             <button class="btn btn-outline" id="logoutButton" type="button">
               <span class="material-symbols-outlined" aria-hidden="true">logout</span>

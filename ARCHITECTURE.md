@@ -59,9 +59,11 @@ The cost engine in `assets/admin.js` already models:
 - Sales COGS by batch.
 - Gross profit, gross margin and estimated net result.
 
-Historical costing rule for a real backend:
+Historical costing rule:
 
-Each production batch must store a snapshot of recipe version, ingredient costs, packaging costs and assumptions at the time of production. Future price changes must update future estimates only.
+Each production batch stores a snapshot of recipe version, ingredient costs, packaging costs and assumptions at the time of production. Future price changes update future estimates only.
+
+Implemented as `batch.costSnapshot` (see `buildBatchCostSnapshot` in `assets/admin.js`), for batches created from 2026-08-11 onwards. Batches created before that have no such record; their cost is still recomputed from current prices, is labelled "estimado hoje" in Produção, and does move when ingredient prices change. They were deliberately not backfilled, because writing today's prices into them would present an estimate as historical fact.
 
 ## Suggested Database Entities
 

@@ -1328,6 +1328,10 @@ function addAudit(action, detail = "") {
   saveState();
 }
 
+// NOT a security boundary. currentRole is picked in this browser and the server
+// issues exactly one role with full access, so this only tidies the screen for
+// whoever is using it. Anyone with the password can write everything regardless
+// of what is selected here. Real per-user permissions need server-side accounts.
 function canWrite(module = currentModule) {
   if (currentRole === "Viewer") return false;
   if (currentRole === "Produção") return ["dashboard", "products", "ingredients", "recipes", "costs", "batches", "stock", "packaging", "orders"].includes(module);
@@ -1372,6 +1376,29 @@ function batchSizeMl(batch) {
       sizeMlFromText(batch?.flavor, batch?.productName, batch?.code) ||
       BASE_BOTTLE_SIZE_ML
   );
+}
+
+// batchSizeMl and orderItemSizeMl fall back to 500ml when nothing records the
+// real size, and size has to match exactly for stock to be reserved. A legacy
+// 300ml batch with no sizeMl is therefore treated as 500ml and quietly reserved
+// against the wrong orders. The default stays, because changing it would move
+// existing reservations, but the guesses are now visible so the data can be
+// corrected deliberately.
+function batchSizeIsGuessed(batch) {
+  const product = batch?.product || productForBatch(batch);
+  const recipe = byId("recipes", batch?.recipeId);
+  return !(
+    batch?.sizeMl ||
+    batch?.size ||
+    batch?.bottleMl ||
+    product?.sizeMl ||
+    recipe?.bottleMl ||
+    sizeMlFromText(batch?.flavor, batch?.productName, batch?.code)
+  );
+}
+
+function batchesWithGuessedSize() {
+  return (state.batches || []).filter((batch) => batchProducedQuantity(batch) > 0 && batchSizeIsGuessed(batch));
 }
 
 function normalizeFlavorIdentity(value = "") {
@@ -1994,8 +2021,17 @@ function totals() {
   const openOrderQty = openOrders.reduce((sum, order) => sum + orderQuantity(order), 0);
   const receivable = (state.orders || []).reduce((sum, order) => sum + orderReceivableValue(order), 0);
   const productionMissing = orderProductionRows().reduce((sum, row) => sum + row.missing, 0);
+  // Delivery fees are stored on each sale but saleRevenue has never counted
+  // them, so money actually charged to customers appears nowhere in any report.
+  // Reported separately rather than folded into revenue, because whether freight
+  // is revenue or a recovered cost is an accounting decision, not mine to make.
+  const deliveryFees = state.sales.reduce(
+    (sum, sale) => sum + (!sale.movementType || sale.movementType === "venda" ? Number(sale.delivery || 0) : 0),
+    0,
+  );
   return {
     salesRevenue,
+    deliveryFees,
     cogs,
     grossProfit: salesRevenue - cogs,
     grossMargin: salesRevenue ? ((salesRevenue - cogs) / salesRevenue) * 100 : 0,
@@ -4477,13 +4513,13 @@ function renderIngredients() {
     .map((item) => {
       return `
         <tr>
-          <td><strong>${item.name}</strong><br><span>${item.location}</span></td>
-          <td>${item.category}</td>
-          <td>${item.supplier}</td>
-          <td class="num">${number(item.stock, 2)} ${item.purchaseUnit}</td>
-          <td class="num">${brl(item.costPerUnit)} / ${item.purchaseUnit}</td>
+          <td><strong>${escapeHtml(item.name)}</strong><br><span>${escapeHtml(item.location)}</span></td>
+          <td>${escapeHtml(item.category)}</td>
+          <td>${escapeHtml(item.supplier)}</td>
+          <td class="num">${number(item.stock, 2)} ${escapeHtml(item.purchaseUnit)}</td>
+          <td class="num">${brl(item.costPerUnit)} / ${escapeHtml(item.purchaseUnit)}</td>
           <td>${ingredientStatusBadge(item)}</td>
-          <td>${item.expires}</td>
+          <td>${escapeHtml(item.expires)}</td>
           <td>${rowActions([tableAction(`edit-ingredient:${item.id}`, "Editar ingrediente"), tableAction(`delete-ingredient:${item.id}`, "Excluir ingrediente", "delete", "danger")])}</td>
         </tr>
       `;
@@ -4559,13 +4595,13 @@ function renderSuppliers() {
     .map(
       (item) => `
         <tr>
-          <td><strong>${item.name}</strong><br><span>${item.categories}</span></td>
-          <td>${item.contact}</td>
-          <td>${item.whatsapp}</td>
-          <td>${item.email}</td>
-          <td>${item.city}</td>
-          <td>${item.leadTime}</td>
-          <td><span class="status ${statusClass(item.status, "general")}">${item.status}</span></td>
+          <td><strong>${escapeHtml(item.name)}</strong><br><span>${escapeHtml(item.categories)}</span></td>
+          <td>${escapeHtml(item.contact)}</td>
+          <td>${escapeHtml(item.whatsapp)}</td>
+          <td>${escapeHtml(item.email)}</td>
+          <td>${escapeHtml(item.city)}</td>
+          <td>${escapeHtml(item.leadTime)}</td>
+          <td><span class="status ${statusClass(item.status, "general")}">${escapeHtml(item.status)}</span></td>
           <td>${rowActions([tableAction(`edit-supplier:${item.id}`, "Editar fornecedor"), tableAction(`delete-supplier:${item.id}`, "Excluir fornecedor", "delete", "danger")])}</td>
         </tr>
       `,
@@ -4897,6 +4933,7 @@ function renderBatches() {
   const productionRows = orderProductionRows();
   const duplicateCodes = duplicateBatchCodes();
   const estimatedBatches = batchesWithoutCostSnapshot();
+  const guessedSizeBatches = batchesWithGuessedSize();
   const rows = state.batches
     .filter((item) => matchesSearch(item))
     .map((batch) => {
@@ -4906,10 +4943,10 @@ function renderBatches() {
       const product = productForBatch(batch);
       return `
         <tr>
-          <td><strong>${batch.code}</strong><br><span>${batch.flavor}</span></td>
-          <td>${product ? `<strong>${product.item}</strong><br><span>#${product.ean}</span>` : "Sem produto"}</td>
-          <td>${batch.date}</td>
-          <td>${batch.responsible}</td>
+          <td><strong>${escapeHtml(batch.code)}</strong><br><span>${escapeHtml(batch.flavor)}</span></td>
+          <td>${product ? `<strong>${escapeHtml(product.item)}</strong><br><span>#${escapeHtml(product.ean)}</span>` : "Sem produto"}</td>
+          <td>${escapeHtml(batch.date)}</td>
+          <td>${escapeHtml(batch.responsible)}</td>
           <td class="num">${number(batch.expected)} / ${number(produced)}</td>
           <td class="num">${number(loss)}</td>
           <td class="num">${brl(cost.batchCostPerBottle)}<br><small class="cost-basis is-${cost.costBasis}">${
@@ -4921,8 +4958,8 @@ function renderBatches() {
           }</small></td>
           <td>${batch.idealSellBy || "-"}</td>
           <td>${batch.sellBy || "-"}</td>
-          <td>${batch.expiry}</td>
-          <td><span class="status ${statusClass(batch.status, "general")}">${batch.status}</span></td>
+          <td>${escapeHtml(batch.expiry)}</td>
+          <td><span class="status ${statusClass(batch.status, "general")}">${escapeHtml(batch.status)}</span></td>
           <td>${rowActions([tableAction(`edit-batch:${batch.id}`, "Editar lote"), tableAction(`delete-batch:${batch.id}`, "Excluir lote", "delete", "danger")])}</td>
         </tr>
       `;
@@ -4933,6 +4970,19 @@ function renderBatches() {
       "Controle de lotes, versão da receita, rendimento real, vencimento, custo histórico e rastreabilidade.",
       `${actionButton("new-batch", "Novo lote", "add")} ${actionButton("stock-adjustment", "Ajuste de estoque", "tune", "btn-outline")}`,
     )}
+    ${guessedSizeBatches.length ? `
+      <section class="cloud-sync-notice bad" aria-live="assertive">
+        <span class="material-symbols-outlined" aria-hidden="true">straighten</span>
+        <div>
+          <strong>${number(guessedSizeBatches.length)} lote(s) sem tamanho de garrafa registrado: ${escapeHtml(guessedSizeBatches.map((batch) => batch.code || batch.id).join(", "))}.</strong>
+          <p>
+            A reserva so acontece quando o tamanho do lote e o do item do pedido sao iguais, e quando
+            o tamanho nao esta registrado o sistema assume 500ml. Se algum desses lotes for de 300ml,
+            ele pode estar sendo reservado para os pedidos errados. Abra o lote e informe o tamanho.
+          </p>
+        </div>
+      </section>
+    ` : ""}
     ${estimatedBatches.length ? `
       <section class="cloud-sync-notice warn">
         <span class="material-symbols-outlined" aria-hidden="true">history</span>
@@ -5321,11 +5371,11 @@ function renderPackaging() {
       const product = byId("products", item.productId);
       return `
         <tr>
-          <td><strong>${item.name}</strong><br><span>${item.location}</span></td>
-          <td>${inferPackagingType(item)}<br><span>${product ? product.flavor : "Genérico"}</span></td>
-          <td>${item.supplier}</td>
-          <td class="num">${number(item.stock)} ${item.unit}</td>
-          <td class="num">${number(item.min)} ${item.unit}</td>
+          <td><strong>${escapeHtml(item.name)}</strong><br><span>${escapeHtml(item.location)}</span></td>
+          <td>${escapeHtml(inferPackagingType(item))}<br><span>${escapeHtml(product ? product.flavor : "Genérico")}</span></td>
+          <td>${escapeHtml(item.supplier)}</td>
+          <td class="num">${number(item.stock)} ${escapeHtml(item.unit)}</td>
+          <td class="num">${number(item.min)} ${escapeHtml(item.unit)}</td>
           <td class="num">${brl(item.costEach)}</td>
           <td><span class="status ${hasMinimum ? statusClass(item.stock / item.min) : "warn"}">${hasMinimum ? (item.stock <= item.min ? "baixo" : "bom") : "sem mínimo"}</span></td>
           <td>${rowActions([tableAction(`edit-packaging:${item.id}`, "Editar material"), tableAction(`delete-packaging:${item.id}`, "Excluir material", "delete", "danger")])}</td>
@@ -5720,11 +5770,11 @@ function renderExpenses() {
     .map(
       (expense) => `
         <tr>
-          <td>${expense.date}</td>
-          <td>${expense.category}</td>
-          <td><strong>${expense.description}</strong></td>
+          <td>${escapeHtml(expense.date)}</td>
+          <td>${escapeHtml(expense.category)}</td>
+          <td><strong>${escapeHtml(expense.description)}</strong></td>
           <td class="num">${brl(expense.amount)}</td>
-          <td>${expense.method}</td>
+          <td>${escapeHtml(expense.method)}</td>
           <td><span class="status ${expense.recurring ? "warn" : "good"}">${expense.recurring ? "recorrente" : "avulsa"}</span></td>
           <td>${rowActions([tableAction(`edit-expense:${expense.id}`, "Editar despesa"), tableAction(`delete-expense:${expense.id}`, "Excluir despesa", "delete", "danger")])}</td>
         </tr>
@@ -5769,10 +5819,11 @@ function renderReports() {
   return `
     ${pageHead("Relatórios", "Margem, lucro, despesas, estoque, sabores mais vendidos e custo médio ao longo do tempo.", actionButton("export-reports", "Exportar CSV", "download", "btn-outline", "reports"))}
     <section class="metric-grid">
-      ${metric("Receita", brl(total.salesRevenue), "Vendas registradas", "payments")}
+      ${metric("Receita", brl(total.salesRevenue), "Vendas registradas (sem frete)", "payments")}
       ${metric("COGS", brl(total.cogs), "Custo dos produtos vendidos", "inventory")}
       ${metric("Lucro bruto", brl(total.grossProfit), pct(total.grossMargin), "trending_up")}
       ${metric("Resultado líquido estimado", brl(total.net), `Despesas: ${brl(total.expenses)}`, "query_stats")}
+      ${metric("Frete cobrado", brl(total.deliveryFees), "Cobrado nas entregas e ainda fora da receita", "local_shipping")}
     </section>
     <section class="admin-grid">
       <article class="admin-card chart-card">
@@ -9514,7 +9565,7 @@ function handleAction(action) {
     "export-orders": () => exportCSV("kombu-pedidos", [["Código", "Data", "Tipo cliente", "Status", "Cliente", "Negócio", "WhatsApp", "Previsão pronto", "Entrega", "Receber até", "Pagamento", "Precisa até", "Qtd", "Valor", "Itens", "Observações"], ...(state.orders || []).map((order) => [order.code, order.orderDate, orderClientTypeLabel(order.clientType), order.status, order.customerName, order.businessName, order.whatsapp, order.estimatedReadyDate, order.deliveredAt || "", orderPaymentDueDate(order), orderReceivableStatus(order), order.neededBy, orderQuantity(order), orderTotal(order), orderItems(order).map((item) => `${item.qty}x ${orderProductText(item)} | ${item.productionStatus || "pendente"} | reservado ${orderItemReservedQty(item)} | lotes ${orderItemBatchCodes(item).join(" + ") || "-"} @ ${brl(item.unitPrice)}`).join("; "), order.notes || ""])]),
     "export-receipts": () => exportCSV("kombu-recibos", [["Recibo", "Status", "Data recebimento", "Cliente", "Negócio", "Valor", "Método", "Referência", "Pedido", "Entregas", "Emitido por", "Motivo cancelamento"], ...(state.receipts || []).map((receipt) => [receipt.number, receipt.status, receipt.receivedAt, receipt.customerName, receipt.businessName, receipt.amount, receipt.method, receipt.reference, receipt.orderCode, (receipt.deliveryIds || []).join(" + "), receipt.createdBy, receipt.cancelReason || ""])]),
     "export-leads": () => exportCSV("kombu-leads-crm", [["Criado em", "Tipo", "Status", "Nome", "Negócio", "Tipo negócio", "Local", "WhatsApp", "Instagram", "Mensagem"], ...state.leads.map((lead) => [lead.createdAt, lead.type, lead.status, lead.name, lead.business, lead.businessType, lead.location, lead.whatsapp, lead.instagram, lead.message])]),
-    "export-reports": () => exportCSV("kombu-relatorio", [["Métrica", "Valor"], ["Receita", totals().salesRevenue], ["COGS", totals().cogs], ["Lucro bruto", totals().grossProfit], ["Despesas", totals().expenses], ["Líquido", totals().net], ["Pedidos em aberto", totals().openOrderValue], ["A receber", totals().receivable], ["Produção faltante", totals().productionMissing]]),
+    "export-reports": () => exportCSV("kombu-relatorio", [["Métrica", "Valor"], ["Receita (sem frete)", totals().salesRevenue], ["Frete cobrado", totals().deliveryFees], ["COGS", totals().cogs], ["Lucro bruto", totals().grossProfit], ["Despesas", totals().expenses], ["Líquido", totals().net], ["Pedidos em aberto", totals().openOrderValue], ["A receber", totals().receivable], ["Produção faltante", totals().productionMissing]]),
     "export-costs": () => {
       const recipe = byId("recipes", activeRecipeId);
       exportCSV("kombu-custo-garrafa", [["Receita", recipe.flavor, recipe.version], ["Custo lote", recipeCost(recipe).total], ["Custo garrafa", recipeCost(recipe).costPerBottle]]);

@@ -22,9 +22,34 @@ Then open:
 - http://127.0.0.1:4173/
 - http://127.0.0.1:4173/admin.html
 
+A plain static server does not run the `/api` routes and does not apply the
+headers in `vercel.json`, so the admin falls back to local-only data and the
+Content-Security-Policy is not exercised.
+
+## Tests
+
+```bash
+npm test
+```
+
+Runs the two offline suites: `scripts/api-regression.js` (auth, cron
+authorisation, cookie flags, state validation, optimistic concurrency,
+no-write-on-read, lead retention, login throttling) and
+`scripts/reservation-regression.js` (the server reservation engine).
+
+`npm run check` syntax-checks every source file.
+
+`scripts/admin-regression.js`, `scripts/public-regression.js` and
+`scripts/ui-audit.js` need Playwright, which is deliberately **not** a declared
+dependency: Vercel installs dependencies on every deploy and Playwright's
+postinstall downloads browsers, which can fail a build. Install it manually
+(`npm i -D playwright && npx playwright install chromium`) when you want them.
+
 ## Vercel
 
-This is currently a static site with no build step. The root `index.html` can be deployed directly, and Vercel will also serve the serverless function in `api/lead.js`.
+Static site with no build step. Vercel serves the repo root and compiles every
+file under `api/` as a Node serverless function. `vercel.json` sets the security
+headers (including CSP), cache rules, the `/admin` rewrite and the daily cron.
 
 `vercel.json` adds clean routes:
 

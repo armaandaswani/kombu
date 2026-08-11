@@ -1,4 +1,14 @@
-# Kombú Platform Audit
+# Kombú Platform Audit (2026-07-14) — SUPERSEDED
+
+> **Superseded by [AUDIT-2026-08-11.md](AUDIT-2026-08-11.md).** Kept for history.
+>
+> Several statements below were not accurate when written, or are no longer accurate:
+>
+> - lead persistence is described as "atomic"; it was a read-modify-write of the whole state document, and the public endpoint had no rate limiting and could evict the entire CRM
+> - the role selector is presented as a permission model; it is chosen in the browser and the server issues one role with full access
+> - it does not mention that reading `/api/state` wrote to production, that opening the panel rewrote the whole document, or that costs were recomputed from current prices
+>
+> Read the 2026-08-11 audit instead, and treat this file as a record of what was believed in July.
 
 Audit completed on 2026-07-14 across the public website, admin portal, Vercel API routes, Supabase integration and Resend notification path.
 
