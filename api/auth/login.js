@@ -1,4 +1,4 @@
-const { adminPassword, hasSessionSecret, json, readBody, setSessionCookie } = require("../_lib/kombu-backend");
+const { adminPassword, clientIp, hasSessionSecret, json, rateLimit, readBody, setSessionCookie } = require("../_lib/kombu-backend");
 
 module.exports = async function handler(req, res) {
   if (req.method !== "POST") {
@@ -14,6 +14,15 @@ module.exports = async function handler(req, res) {
   if (missing.length) {
     return json(res, 503, { ok: false, error: "admin_auth_not_configured", missing });
   }
+  // The whole platform sits behind one shared password, so an unlimited number
+  // of guesses is the only thing standing between a guesser and every record.
+  // Generous enough that a real admin mistyping is never locked out.
+  const attempt = rateLimit(`login:${clientIp(req)}`, { limit: 10, windowMs: 15 * 60 * 1000 });
+  if (!attempt.allowed) {
+    res.setHeader("Retry-After", String(attempt.retryAfterSeconds));
+    return json(res, 429, { ok: false, error: "too_many_attempts", retryAfterSeconds: attempt.retryAfterSeconds });
+  }
+
   let body;
   try {
     body = await readBody(req, { maxBytes: 4096 });

@@ -106,6 +106,52 @@ function cleanText(value, maxLength) {
   return String(value || "").trim().slice(0, maxLength);
 }
 
+// Per-instance sliding window. Vercel runs several instances and recycles them,
+// so this is a speed bump rather than a guarantee: it stops one source hammering
+// a warm instance, which is what actually happens. A strict limit would need
+// shared storage, and the only shared store here is the production state
+// document, which is the thing being protected.
+const rateBuckets = new Map();
+
+function clientIp(req) {
+  const forwarded = String(req?.headers?.["x-forwarded-for"] || "");
+  return forwarded.split(",")[0].trim() || req?.socket?.remoteAddress || "unknown";
+}
+
+function rateLimit(key, { limit, windowMs, now = Date.now() }) {
+  if (rateBuckets.size > 5000) rateBuckets.clear();
+  const hits = (rateBuckets.get(key) || []).filter((at) => now - at < windowMs);
+  if (hits.length >= limit) {
+    rateBuckets.set(key, hits);
+    return { allowed: false, retryAfterSeconds: Math.max(1, Math.ceil((windowMs - (now - hits[0])) / 1000)) };
+  }
+  hits.push(now);
+  rateBuckets.set(key, hits);
+  return { allowed: true, retryAfterSeconds: 0 };
+}
+
+const MAX_LEADS = 500;
+
+// Leads someone has already worked are not disposable. The old cap kept the
+// newest 500 and dropped the rest, so roughly 500 submissions to the public
+// form would silently flush the entire CRM. Only untouched "novo" leads are
+// evicted now, oldest first, and the original ordering is preserved.
+function capLeads(leads) {
+  if (!Array.isArray(leads) || leads.length <= MAX_LEADS) return leads;
+  const worked = [];
+  const untouched = [];
+  leads.forEach((lead) => {
+    const status = String(lead?.status || "novo").trim().toLowerCase();
+    (status === "novo" ? untouched : worked).push(lead);
+  });
+  if (worked.length >= MAX_LEADS) {
+    const keep = new Set(worked.slice(0, MAX_LEADS));
+    return leads.filter((lead) => keep.has(lead));
+  }
+  const keep = new Set([...worked, ...untouched.slice(0, MAX_LEADS - worked.length)]);
+  return leads.filter((lead) => keep.has(lead));
+}
+
 function supabaseConfig() {
   return {
     url: (process.env.SUPABASE_URL || "").replace(/\/$/, ""),
@@ -294,7 +340,7 @@ async function appendLeadToState(leadPayload) {
   await mutateAppState((state) => {
     const leads = Array.isArray(state.leads) ? state.leads : [];
     if (!leads.some((item) => item.id === lead.id)) leads.unshift(lead);
-    state.leads = leads.slice(0, 500);
+    state.leads = capLeads(leads);
     state.notifications = {
       ...(state.notifications || {}),
       adminEmail: process.env.LEAD_NOTIFY_EMAIL || ADMIN_EMAIL,
@@ -439,7 +485,10 @@ module.exports = {
   adminPassword,
   hasSessionSecret,
   appendLeadToState,
+  capLeads,
   clearSessionCookie,
+  clientIp,
+  rateLimit,
   emailProviderReady,
   escapeHtml,
   getAppState,

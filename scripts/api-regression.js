@@ -93,6 +93,49 @@ async function run() {
   assert.strictEqual(res.statusCode, 401);
   assert.strictEqual(jsonBody(res).error, "not_authenticated");
 
+  // --- lead retention --------------------------------------------------------
+  // Roughly 500 submissions to the public form used to flush the whole CRM.
+  const workedLead = (n) => ({ id: `worked-${n}`, status: "qualificado" });
+  const freshLead = (n) => ({ id: `novo-${n}`, status: "novo" });
+  const flooded = [
+    ...Array.from({ length: 600 }, (_, n) => freshLead(n)),
+    workedLead(1),
+    workedLead(2),
+  ];
+  const capped = backend.capLeads(flooded);
+  assert.strictEqual(capped.length, 500, "the cap itself still applies");
+  assert.ok(
+    capped.some((lead) => lead.id === "worked-1") && capped.some((lead) => lead.id === "worked-2"),
+    "a lead someone has already worked must never be evicted by new submissions",
+  );
+  assert.ok(
+    capped.indexOf(capped.find((lead) => lead.id === "novo-0")) <
+      capped.indexOf(capped.find((lead) => lead.id === "novo-1")),
+    "surviving leads keep their original order",
+  );
+  assert.strictEqual(backend.capLeads([freshLead(1)]).length, 1, "a short list is returned untouched");
+
+  // --- brute force protection on the shared admin password -------------------
+  const attackerIp = { "x-forwarded-for": "203.0.113.9" };
+  let lastLoginStatus = 0;
+  let sawTooMany = false;
+  for (let attempt = 0; attempt < 14; attempt += 1) {
+    req = { method: "POST", headers: { host: "kombukombucha.com.br", ...attackerIp }, body: { password: "guess" } };
+    res = responseMock();
+    await login(req, res);
+    lastLoginStatus = res.statusCode;
+    if (res.statusCode === 429) sawTooMany = true;
+  }
+  assert.ok(sawTooMany, "repeated password guesses from one source must start being refused");
+  assert.strictEqual(lastLoginStatus, 429);
+  assert.strictEqual(jsonBody(res).error, "too_many_attempts");
+
+  // A different source is unaffected by the attacker's attempts.
+  req = { method: "POST", headers: { host: "kombukombucha.com.br", "x-forwarded-for": "198.51.100.4" }, body: { password: "test-password" } };
+  res = responseMock();
+  await login(req, res);
+  assert.strictEqual(res.statusCode, 200, "throttling must be per source, not global");
+
   // --- optimistic concurrency on the shared state document -------------------
   // A write without a version token must never be able to replace an existing
   // production document, and a write with a stale token must be rejected.
@@ -185,7 +228,10 @@ async function run() {
     if (value === undefined) delete process.env[key];
     else process.env[key] = value;
   });
-  console.log("API regression: fail-closed auth/cron, secure cookie, state validation and state concurrency passed.");
+  console.log(
+    "API regression: fail-closed auth/cron, secure cookie, state validation, state concurrency, " +
+      "no-write-on-read, lead retention and login throttling passed.",
+  );
 }
 
 run().catch((error) => {

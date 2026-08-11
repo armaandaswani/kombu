@@ -1,8 +1,10 @@
 const {
   ADMIN_EMAIL,
   appendLeadToState,
+  clientIp,
   escapeHtml,
   normalizeLead,
+  rateLimit,
   sendEmail,
 } = require("./_lib/kombu-backend");
 
@@ -74,6 +76,14 @@ module.exports = async function handler(req, res) {
   if (req.method !== "POST") {
     res.setHeader("Allow", "POST, OPTIONS");
     return res.status(405).json({ ok: false, error: "method_not_allowed" });
+  }
+
+  // This endpoint is public and every call does a read-modify-write of the whole
+  // production state document plus an email send, so it is worth throttling.
+  const throttle = rateLimit(`lead:${clientIp(req)}`, { limit: 5, windowMs: 60 * 1000 });
+  if (!throttle.allowed) {
+    res.setHeader("Retry-After", String(throttle.retryAfterSeconds));
+    return res.status(429).json({ ok: false, error: "rate_limited" });
   }
 
   const lead = normalizeLead(req.body);
