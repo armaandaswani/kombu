@@ -5846,13 +5846,21 @@ function renderReports() {
   const monthlyRows = monthlySalesRows();
   const monthlyMax = Math.max(1, ...monthlyRows.map((row) => row.revenue));
   const byFlavor = state.sales.reduce((acc, sale) => {
-    acc[sale.flavor] = acc[sale.flavor] || { qty: 0, revenue: 0, profit: 0 };
+    // A sale with no flavour used to key this object on the string "undefined",
+    // so the profit-by-flavour report showed a row literally called "undefined".
+    // Fall back through the product and the batch before giving up.
     const batch = state.batches.find((item) => item.code === sale.batchCode);
+    const label =
+      sale.flavor ||
+      byId("products", sale.productId)?.flavor ||
+      batch?.flavor ||
+      (sale.batchCode ? `Lote ${sale.batchCode}` : "Sem sabor informado");
+    acc[label] = acc[label] || { qty: 0, revenue: 0, profit: 0 };
     const cogs = Number(sale.qty) * (batch ? batchCost(batch).batchCostPerBottle : 0);
     const revenue = Number(sale.qty) * Number(sale.unitPrice) - Number(sale.discount || 0);
-    acc[sale.flavor].qty += Number(sale.qty);
-    acc[sale.flavor].revenue += revenue;
-    acc[sale.flavor].profit += revenue - cogs;
+    acc[label].qty += Number(sale.qty);
+    acc[label].revenue += revenue;
+    acc[label].profit += revenue - cogs;
     return acc;
   }, {});
   const reportRows = Object.entries(byFlavor)
@@ -5889,6 +5897,9 @@ function renderReports() {
       <article class="admin-card">
         <h3>Audit log</h3>
         <div class="stack-list">${renderAuditRows(10)}</div>
+        <button class="btn btn-outline" type="button" data-action="audit-history">
+          <span class="material-symbols-outlined" aria-hidden="true">history</span>Ver histórico completo
+        </button>
       </article>
     </section>
   `;
@@ -6007,6 +6018,107 @@ function auditDetailWithFlavor(detail) {
     const withLabeledBatch = result.replace(new RegExp(`lote\\s+${escapedCode}`, "gi"), `sabor ${flavor} | lote ${code}`);
     return withLabeledBatch === result ? result.split(code).join(`${flavor} | lote ${code}`) : withLabeledBatch;
   }, String(detail || ""));
+}
+
+// The trail inside the state document is capped, so it only ever shows the most
+// recent activity. audit_events keeps everything; this reads it back.
+let auditHistory = { entries: [], nextBefore: null, search: "", loading: false, error: "", unavailable: false };
+
+function auditHistoryMarkup() {
+  const rows = auditHistory.entries
+    .map(
+      (entry) => `
+        <div class="audit-row">
+          <strong>${escapeHtml(entry.action || "-")}</strong>
+          <span>${escapeHtml(entry.at ? new Date(entry.at).toLocaleString("pt-BR") : "-")} | ${escapeHtml(entry.user || "-")}</span>
+          <span>${escapeHtml(auditDetailWithFlavor(entry.detail || ""))}</span>
+        </div>
+      `,
+    )
+    .join("");
+
+  return `
+    <div class="input-grid">
+      <label class="field field-full">
+        <span>Buscar no histórico</span>
+        <input id="auditHistorySearch" type="search" value="${escapeHtml(auditHistory.search)}" placeholder="Sabor, cliente, lote, acao..." autocomplete="off">
+      </label>
+    </div>
+    ${auditHistory.unavailable ? `<p class="empty-note">O histórico permanente ainda não está disponível nesta base.</p>` : ""}
+    ${auditHistory.error ? `<p class="empty-note">${escapeHtml(auditHistory.error)}</p>` : ""}
+    <div class="stack-list" id="auditHistoryList">${rows || (auditHistory.loading ? "" : `<p class="empty-note">Nenhum registro encontrado.</p>`)}</div>
+    ${auditHistory.loading ? `<p class="empty-note">Carregando...</p>` : ""}
+    ${auditHistory.nextBefore && !auditHistory.loading ? `
+      <button class="btn btn-outline" type="button" data-action="audit-history-more">
+        <span class="material-symbols-outlined" aria-hidden="true">expand_more</span>Carregar mais
+      </button>
+    ` : ""}
+  `;
+}
+
+function renderAuditHistory() {
+  // Renders into the mount inside the modal, not the modal body, so the
+  // explanatory intro survives every refresh.
+  const mount = document.querySelector("#auditHistoryMount");
+  if (!mount) return;
+  mount.innerHTML = auditHistoryMarkup();
+  const input = mount.querySelector("#auditHistorySearch");
+  if (input) {
+    input.addEventListener("input", () => {
+      window.clearTimeout(renderAuditHistory.timer);
+      const value = input.value;
+      renderAuditHistory.timer = window.setTimeout(() => {
+        auditHistory.search = value;
+        loadAuditHistory({ reset: true });
+      }, 350);
+    });
+  }
+}
+
+async function loadAuditHistory({ reset = false } = {}) {
+  if (auditHistory.loading) return;
+  if (reset) {
+    auditHistory.entries = [];
+    auditHistory.nextBefore = null;
+    auditHistory.error = "";
+    auditHistory.unavailable = false;
+  }
+  auditHistory.loading = true;
+  renderAuditHistory();
+  try {
+    const params = new URLSearchParams({ limit: "50" });
+    if (auditHistory.nextBefore) params.set("before", auditHistory.nextBefore);
+    if (auditHistory.search) params.set("search", auditHistory.search);
+    const response = await fetch(`/api/audit?${params.toString()}`, { credentials: "same-origin" });
+    const payload = await readJsonSafe(response);
+    if (!response.ok || !payload.ok) {
+      auditHistory.error = syncErrorMessage(payload, "Não foi possível carregar o histórico permanente.");
+    } else {
+      auditHistory.entries = [...auditHistory.entries, ...(payload.entries || [])];
+      auditHistory.nextBefore = payload.nextBefore || null;
+      auditHistory.unavailable = payload.unavailable === true;
+    }
+  } catch {
+    auditHistory.error = "Não foi possível conectar para carregar o histórico permanente.";
+  } finally {
+    auditHistory.loading = false;
+    renderAuditHistory();
+    const input = document.querySelector("#auditHistorySearch");
+    if (input && document.activeElement !== input && auditHistory.search) {
+      input.focus();
+      input.setSelectionRange(input.value.length, input.value.length);
+    }
+  }
+}
+
+function openAuditHistory() {
+  auditHistory = { entries: [], nextBefore: null, search: "", loading: false, error: "", unavailable: false };
+  openModal(
+    "Histórico completo",
+    "Auditoria",
+    `<p class="lead" style="font-size:1rem">O painel mostra apenas a atividade recente. Este histórico é permanente e fica guardado fora do documento principal.</p><div id="auditHistoryMount"></div>`,
+  );
+  loadAuditHistory({ reset: true });
 }
 
 function renderAuditRows(limit) {
@@ -9571,6 +9683,8 @@ function handleAction(action) {
     "new-recipe": newRecipeForm,
     "new-cms-flavor": newCmsFlavorForm,
     "sync-cloud": () => syncFromCloud().then(render),
+    "audit-history": openAuditHistory,
+    "audit-history-more": () => loadAuditHistory(),
     "go-costs": () => setModule("costs"),
     "save-costs": () => {
       addAudit("Simulação de custos salva", byId("recipes", activeRecipeId)?.flavor);
