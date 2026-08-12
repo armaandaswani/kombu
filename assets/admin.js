@@ -9176,6 +9176,35 @@ function orderItemRowTemplate(item = {}, clientType = "novo_cliente") {
 // to the editor, replace the flavour it guessed, set the quantity. The picker
 // lets the whole order be chosen at once, grouped by bottle size, with the free
 // stock of each flavour visible while choosing.
+// Spec section 5. Past orders of the same client, newest first.
+function previousOrdersForClient(customerName, businessName) {
+  const keys = [normalizeText(customerName), normalizeText(businessName)].filter(Boolean);
+  if (!keys.length) return [];
+  return (state.orders || [])
+    .filter((order) => keys.includes(normalizeText(order.customerName)) || keys.includes(normalizeText(order.businessName)))
+    .filter((order) => orderItems(order).some((item) => Number(item.qty || 0) > 0))
+    .sort((a, b) => String(b.orderDate || b.createdAt || "").localeCompare(String(a.orderDate || a.createdAt || "")));
+}
+
+// Copies only what describes WHAT was bought. Everything about how that order was
+// fulfilled is deliberately left behind: its code, its dates, payment, production
+// and delivery status, reservations and batches. Prices come from the current
+// table rather than from what was charged last time.
+function orderItemsFromPreviousOrder(order, clientType) {
+  return orderItems(order)
+    .filter((item) => Number(item.qty || 0) > 0)
+    .map((item) => {
+      const product = byId("products", item.productId);
+      return {
+        productId: item.productId || "",
+        qty: Number(item.qty || 0),
+        note: item.note || "",
+        unitPrice: product ? priceForOrderClientType(product, clientType) : Number(item.unitPrice || 0),
+      };
+    })
+    .filter((item) => item.productId);
+}
+
 function orderFlavorPickerMarkup(clientType) {
   const choices = productVariantChoices().filter((choice) => choice.id);
   if (!choices.length) return "";
@@ -9497,7 +9526,87 @@ function bindOrderForm(form) {
     }
   });
   updatePickSummary();
+
+  // --- repeat a previous order ----------------------------------------------
+  const clientOrders = () =>
+    previousOrdersForClient(form.elements.customerName?.value, form.elements.businessName?.value).filter(
+      (order) => order.id !== form.dataset.editingOrderId,
+    );
+
+  const refreshRepeatActions = () => {
+    const actions = form.querySelector("#repeatOrderActions");
+    if (actions) actions.hidden = clientOrders().length === 0;
+  };
+
+  const applyPreviousOrder = (order) => {
+    const clientType = form.elements.clientType?.value || "novo_cliente";
+    const copied = orderItemsFromPreviousOrder(order, clientType);
+    if (!copied.length) {
+      window.alert("Esse pedido não tem sabores que ainda existam no cadastro.");
+      return;
+    }
+    // Drop the empty placeholder line, keep anything already chosen.
+    [...rows.querySelectorAll(".order-item-row")].forEach((row) => {
+      if (!row.querySelector("[data-variant-choice]")?.value) row.remove();
+    });
+    copied.forEach((item) => {
+      rows.insertAdjacentHTML("beforeend", orderItemRowTemplate(item, clientType));
+      enhanceSelectSearch(rows);
+      bindProductPicker(rows.lastElementChild);
+    });
+    const panel = form.querySelector("#previousOrdersPanel");
+    if (panel) panel.hidden = true;
+    updateOrderPreview(form);
+    renderOrderItemNavigator(form, orderItemEditorKey(rows.lastElementChild));
+  };
+
+  form.addEventListener("input", (event) => {
+    if (event.target === form.elements.customerName || event.target === form.elements.businessName) refreshRepeatActions();
+  });
+  form.addEventListener("change", (event) => {
+    if (event.target === form.elements.partnerId || event.target === form.elements.clientType) {
+      window.setTimeout(refreshRepeatActions, 0);
+    }
+  });
+  refreshRepeatActions();
+
   form.addEventListener("click", (event) => {
+    if (event.target.closest("[data-repeat-last-order]")) {
+      const [latest] = clientOrders();
+      if (!latest) {
+        window.alert("Este cliente ainda não tem pedidos anteriores.");
+        return;
+      }
+      applyPreviousOrder(latest);
+      return;
+    }
+    if (event.target.closest("[data-choose-previous-order]")) {
+      const panel = form.querySelector("#previousOrdersPanel");
+      const orders = clientOrders();
+      panel.innerHTML = orders.length
+        ? `<div class="stack-list">${orders
+            .slice(0, 12)
+            .map(
+              (order) => `
+                <div class="audit-row">
+                  <strong>${escapeHtml(order.code || "sem código")} · ${escapeHtml(shortDate(order.orderDate || order.createdAt?.slice(0, 10) || ""))}</strong>
+                  <span>${number(orderQuantity(order))} garrafa(s) · ${brl(orderTotal(order))}</span>
+                  <span>${escapeHtml(orderItems(order).map((item) => `${number(item.qty)}x ${orderFlavorText(item)}`).join(", "))}</span>
+                  <button class="btn btn-outline" type="button" data-use-previous-order="${escapeHtml(order.id)}">Usar este pedido</button>
+                </div>
+              `,
+            )
+            .join("")}</div>`
+        : `<p class="empty-note">Este cliente ainda não tem pedidos anteriores.</p>`;
+      panel.hidden = !panel.hidden;
+      return;
+    }
+    const use = event.target.closest("[data-use-previous-order]");
+    if (use) {
+      const order = byId("orders", use.dataset.usePreviousOrder);
+      if (order) applyPreviousOrder(order);
+      return;
+    }
     const itemSelector = event.target.closest("[data-order-item-select]");
     if (itemSelector) {
       renderOrderItemNavigator(form, itemSelector.dataset.orderItemSelect);
@@ -9579,7 +9688,12 @@ function orderForm(orderId) {
           <h3>Sabores do pedido</h3>
           <p>Toque em um sabor para ver e editar somente aquele item.</p>
         </div>
+        <div class="table-toolbar-actions" id="repeatOrderActions" hidden>
+          <button class="btn btn-outline" type="button" data-repeat-last-order><span class="material-symbols-outlined" aria-hidden="true">history</span>Repetir último pedido</button>
+          <button class="btn btn-outline" type="button" data-choose-previous-order><span class="material-symbols-outlined" aria-hidden="true">list</span>Escolher outro pedido anterior</button>
+        </div>
       </div>
+      <div id="previousOrdersPanel" hidden></div>
       <div class="order-item-navigator" id="orderItemNavigator" aria-label="Sabores do pedido"></div>
       <div class="result-card field-full" id="orderItemsSummary"></div>
       <button class="btn btn-outline order-add-item" type="button" data-add-order-item>
@@ -9597,7 +9711,7 @@ function orderForm(orderId) {
     existing ? "Editar pedido" : "Novo pedido",
     "Pedidos",
     `
-      <form id="orderForm">
+      <form id="orderForm" data-editing-order-id="${escapeHtml(existing?.id || "")}">
         ${existing ? orderItemsSection : ""}
 
         <details class="form-section" ${existing ? "" : "open"}>
