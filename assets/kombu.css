@@ -2971,6 +2971,16 @@ textarea:focus-visible {
   box-shadow: 0 12px 28px rgba(25, 28, 28, 0.14);
 }
 
+.quick-sale-warning {
+  display: block;
+  margin-top: 6px;
+  border-radius: 8px;
+  background: #fff3f1;
+  padding: 8px 10px;
+  color: #a33227;
+  font-weight: 600;
+}
+
 .flavor-pick-group h4 {
   margin: 12px 0 6px;
   font-size: 0.86rem;

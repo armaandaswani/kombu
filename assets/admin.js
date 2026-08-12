@@ -6579,7 +6579,14 @@ function populateSaleBatchOptions(form, stockRows, productId, preferredBatchCode
   const batchSelect = form.elements.batchCode;
   const matches = stockRows.filter((row) => row.product?.id === productId || row.productId === productId);
   const selectedCode = matches.some((row) => row.code === preferredBatchCode) ? preferredBatchCode : matches[0]?.code || "";
-  batchSelect.innerHTML = matches.map((row) => `<option value="${escapeHtml(row.code)}" data-retail="${productRetailPrice(row.product)}" data-wholesale="${productWholesalePrice(row.product)}" data-stock="${row.stock}" ${row.code === selectedCode ? "selected" : ""}>${escapeHtml(row.code)} (${number(row.stock)} disp.)</option>`).join("");
+  batchSelect.innerHTML = matches
+    .map((row) => {
+      const stock = batchStockBreakdown(row.code) || { physical: 0, free: 0, reserved: 0 };
+      // A batch with everything reserved stays selectable, and says so.
+      const label = stock.free > 0 ? `${number(stock.free)} livre(s)` : `sem livre · ${number(stock.reserved)} reservada(s)`;
+      return `<option value="${escapeHtml(row.code)}" data-retail="${productRetailPrice(row.product)}" data-wholesale="${productWholesalePrice(row.product)}" data-stock="${stock.free}" data-physical="${stock.physical}" data-reserved="${stock.reserved}" ${row.code === selectedCode ? "selected" : ""}>${escapeHtml(row.code)} (${label})</option>`;
+    })
+    .join("");
   batchSelect.disabled = !matches.length;
   return selectedCode;
 }
@@ -7838,15 +7845,121 @@ function reverseStockForm(batchCode) {
   });
 }
 
+// Spec section 6. Physical bottles versus free bottles. Quick sale used to list
+// only free stock, so a flavour whose whole production was reserved simply
+// disappeared as a sale option even though the bottles were sitting there.
+function batchStockBreakdown(code) {
+  const row = finishedStockRows().find((item) => item.code === code);
+  if (!row) return null;
+  const produced = batchProducedQuantity(row);
+  const sold = soldFromBatch(code);
+  const reserved = reservedFromBatch(code);
+  const physical = Math.max(0, produced - sold);
+  return { code, row, produced, sold, reserved, physical, free: Math.max(0, physical - reserved) };
+}
+
+// Spec section 7. Free bottles first; then reserves are taken from the orders
+// that need them latest, and on a tie from the most recently created order - the
+// one least likely to be hurt by waiting.
+function planReservedStockWithdrawal(batchCode, qty) {
+  const breakdown = batchStockBreakdown(batchCode);
+  if (!breakdown) return { fromFree: 0, takes: [], shortfall: qty, breakdown: null };
+  const fromFree = Math.min(qty, breakdown.free);
+  let remaining = qty - fromFree;
+
+  const holders = [];
+  (state.orders || [])
+    .filter(isOpenOrder)
+    .forEach((order) => {
+      orderItems(order).forEach((item) => {
+        const held = orderItemAllocations(item)
+          .filter((allocation) => allocation.batchCode === batchCode)
+          .reduce((sum, allocation) => sum + Number(allocation.qty || 0), 0);
+        if (held > 0) holders.push({ order, item, held });
+      });
+    });
+
+  const dueOf = (order) => order.neededBy || order.estimatedReadyDate || "9999-12-31";
+  holders.sort(
+    (a, b) =>
+      String(dueOf(b.order)).localeCompare(String(dueOf(a.order))) ||
+      String(b.order.createdAt || "").localeCompare(String(a.order.createdAt || "")),
+  );
+
+  const takes = [];
+  holders.forEach((holder) => {
+    if (remaining <= 0) return;
+    const take = Math.min(remaining, holder.held);
+    if (take <= 0) return;
+    const reservedBefore = orderItemReservedQty(holder.item);
+    const outstanding = orderItemOutstandingQty(holder.item);
+    takes.push({
+      ...holder,
+      take,
+      due: orderDueLabel(holder.order),
+      reservedBefore,
+      reservedAfter: Math.max(0, reservedBefore - take),
+      missingBefore: Math.max(0, outstanding - reservedBefore),
+      missingAfter: Math.max(0, outstanding - Math.max(0, reservedBefore - take)),
+    });
+    remaining -= take;
+  });
+
+  return { fromFree, takes, shortfall: Math.max(0, remaining), breakdown };
+}
+
+function orderDueLabel(order) {
+  const due = order.neededBy || order.estimatedReadyDate || "";
+  return due ? shortDate(due) : "sem data";
+}
+
+// Removes bottles of one batch from one order line, leaving other batches alone.
+function removeAllocationFromItem(item, batchCode, qty) {
+  let remaining = Math.max(0, Number(qty || 0));
+  const allocations = orderItemAllocations(item).map((allocation) => ({ ...allocation }));
+  allocations.forEach((allocation) => {
+    if (remaining <= 0 || allocation.batchCode !== batchCode) return;
+    const cut = Math.min(remaining, Number(allocation.qty || 0));
+    allocation.qty = Number(allocation.qty || 0) - cut;
+    remaining -= cut;
+  });
+  item.allocations = allocations.filter((allocation) => Number(allocation.qty || 0) > 0);
+  // The legacy mirror fields must be rewritten here. orderItemAllocations falls
+  // back to batchCode + reservedQty when the array is empty, so leaving them set
+  // would resurrect the allocation that was just removed and the sold bottle
+  // would reappear as reserved.
+  const reserved = item.allocations.reduce((sum, allocation) => sum + Number(allocation.qty || 0), 0);
+  item.reservedQty = reserved;
+  item.producedQty = reserved;
+  item.batchCode = orderItemBatchCodes(item).join(", ");
+  return Math.max(0, Number(qty || 0)) - remaining;
+}
+
+// Spec section 8. One operation: the reservation leaves the affected orders, the
+// sale is recorded, and the history explains where each bottle came from.
+function applyReservedStockWithdrawal(plan, saleNote) {
+  plan.takes.forEach((take) => {
+    const removed = removeAllocationFromItem(take.item, plan.breakdown.code, take.take);
+    // The bottle is gone, so the manual target must not try to hold it again.
+    if (take.item.reservationOverride) take.item.reservationOverride = null;
+    addAudit(
+      "Reserva retirada para venda",
+      `${orderClientDisplayName(take.order)} | ${orderFlavorText(take.item)} | lote ${plan.breakdown.code} | reservado ${number(take.reservedBefore)} → ${number(take.reservedBefore - removed)}; faltando ${number(take.missingBefore)} → ${number(take.missingBefore + removed)} | Motivo: ${saleNote}`,
+    );
+  });
+}
+
 function quickSaleForm() {
+  // Physical stock, not free stock: a flavour whose whole production is reserved
+  // is still on the shelf and must remain sellable.
   const stockRows = finishedStockRows()
-    .filter((row) => row.stock > 0 && row.product)
+    .filter((row) => row.product && Math.max(0, batchProducedQuantity(row) - soldFromBatch(row.code)) > 0)
     .sort((a, b) => (a.flavor || "").localeCompare(b.flavor || "") || a.code.localeCompare(b.code));
   if (!stockRows.length) {
     openModal(
       "Sem estoque disponível",
       "Vendas",
-      `<p class="empty-note">Não há garrafas livres para venda agora. Registre um lote aprovado ou confira se o estoque está reservado para pedidos.</p>
+      `<p class="empty-note">Não há garrafas em estoque agora. Registre um lote aprovado para poder vender.</p>
        <button class="btn btn-primary" type="button" data-action="new-batch"><span class="material-symbols-outlined" aria-hidden="true">science</span>Criar lote</button>`,
     );
     return;
@@ -7888,10 +8001,16 @@ function quickSaleForm() {
       form.elements.unitPrice.value = Number.isFinite(price) ? String(price) : "0";
     }
     const unit = form.elements.unitPrice.value === "" ? 0 : Number(form.elements.unitPrice.value || 0);
+    const physical = Number(option?.dataset.physical || 0);
+    const reserved = Number(option?.dataset.reserved || 0);
+    const holders = option ? batchReservationRows(option.value) : [];
+    const takesReserved = qty > available && qty <= physical;
     preview.innerHTML = `
       <small>Resumo</small>
       <strong>${number(qty)} garrafa(s) | ${brl(qty * unit)}</strong>
-      <span>${number(available)} disponível(is) neste lote.</span>
+      <span>Estoque físico: ${number(physical)} · livre: ${number(available)} · reservado: ${number(reserved)}.
+      ${holders.length ? `Vinculadas a: ${escapeHtml(holders.map((row) => `${orderClientDisplayName(row.order)} (${number(row.qty)})`).join(", "))}.` : "Nenhuma reserva neste lote."}</span>
+      ${takesReserved ? `<span class="quick-sale-warning">Esta venda vai usar ${number(qty - available)} garrafa(s) hoje reservada(s) para outro pedido. Você poderá revisar antes de confirmar.</span>` : ""}
     `;
   };
   populateSaleBatchOptions(form, stockRows, form.elements.productId.value);
@@ -7906,17 +8025,13 @@ function quickSaleForm() {
     form.elements.priceType.value = "custom";
     updateQuickSale(false);
   });
-  form.addEventListener("submit", (event) => {
-    event.preventDefault();
-    const data = Object.fromEntries(new FormData(form).entries());
+  const commitQuickSale = (data, plan) => {
     const batch = state.batches.find((item) => item.code === data.batchCode);
     const product = productForBatch(batch);
     const qty = Number(data.qty || 0);
-    const available = finishedStockRows().find((row) => row.code === data.batchCode)?.stock || 0;
-    if (qty > available) {
-      window.alert(`Estoque insuficiente neste lote. Disponível: ${number(available)} garrafas.`);
-      return;
-    }
+    const note = `Venda rápida para ${data.customerName}`;
+    // Reservations are released first so the sale never double-counts a bottle.
+    if (plan.takes.length) applyReservedStockWithdrawal(plan, note);
     state.sales.unshift({
       id: id("sale"),
       date: data.date,
@@ -7934,12 +8049,78 @@ function quickSaleForm() {
       delivery: 0,
       note: "Venda rápida pelo dashboard",
     });
+    // Recomputes each order's derived fields and its production need without
+    // moving anything between orders.
+    refreshAllOrderReservations();
     addAudit(
       data.priceType === "gratis" ? "Saída registrada" : "Venda registrada",
-      `${number(qty)} garrafa(s) de ${batch?.flavor || product?.name || "sabor não identificado"} | lote ${data.batchCode} | ${data.customerName}`,
+      `${number(qty)} garrafa(s) de ${batch?.flavor || product?.name || "sabor não identificado"} | lote ${data.batchCode} | ${data.customerName}${plan.takes.length ? ` | ${number(qty - plan.fromFree)} retirada(s) de reserva` : ""}`,
     );
     closeModal();
     render();
+  };
+
+  form.addEventListener("submit", (event) => {
+    event.preventDefault();
+    const data = Object.fromEntries(new FormData(form).entries());
+    const qty = Number(data.qty || 0);
+    const plan = planReservedStockWithdrawal(data.batchCode, qty);
+    if (!plan.breakdown) {
+      window.alert("Lote não encontrado. Atualize a página e tente novamente.");
+      return;
+    }
+    if (plan.shortfall > 0) {
+      window.alert(`Estoque insuficiente neste lote. Físico: ${number(plan.breakdown.physical)} garrafa(s).`);
+      return;
+    }
+    if (!plan.takes.length) {
+      commitQuickSale(data, plan);
+      return;
+    }
+
+    // Spec section 7: never take a reserved bottle without saying whose it is.
+    const rows = plan.takes
+      .map(
+        (take) => `
+          <div class="audit-row">
+            <strong>${escapeHtml(orderClientDisplayName(take.order))}</strong>
+            <span>${escapeHtml(orderFlavorText(take.item))} · cliente precisa até ${escapeHtml(take.due)}</span>
+            <span>Reservado: ${number(take.reservedBefore)} → ${number(take.reservedAfter)} · Faltando: ${number(take.missingBefore)} → ${number(take.missingAfter)}</span>
+          </div>
+        `,
+      )
+      .join("");
+    openModal(
+      "Esta venda usa estoque reservado",
+      "Venda rápida",
+      `
+        <p class="lead" style="font-size:1rem">Não há garrafas livres suficientes de ${escapeHtml(plan.breakdown.row.flavor || "")} neste lote. A venda vai usar ${number(qty - plan.fromFree)} garrafa(s) hoje reservada(s) para outro pedido.</p>
+        <div class="order-detail-summary">
+          <span><small>Venda</small><strong>${number(qty)}</strong></span>
+          <span><small>Estoque livre usado</small><strong>${number(plan.fromFree)}</strong></span>
+          <span><small>Reserva usada</small><strong>${number(qty - plan.fromFree)}</strong></span>
+        </div>
+        <p class="empty-note">Pedidos afetados (a reserva sai primeiro de quem precisa mais tarde):</p>
+        <div class="stack-list">${rows}</div>
+        <div class="modal-action-row">
+          <button class="btn btn-primary" type="button" id="confirmReservedSale"><span class="material-symbols-outlined" aria-hidden="true">point_of_sale</span>Vender mesmo assim</button>
+          <button class="btn btn-outline" type="button" id="cancelReservedSale">Cancelar</button>
+        </div>
+      `,
+    );
+    document.querySelector("#cancelReservedSale")?.addEventListener("click", closeModal);
+    document.querySelector("#confirmReservedSale")?.addEventListener("click", () => {
+      // Recomputed at confirmation time in case anything moved while the warning
+      // was on screen.
+      const fresh = planReservedStockWithdrawal(data.batchCode, qty);
+      if (fresh.shortfall > 0) {
+        window.alert("O estoque mudou enquanto a confirmação estava aberta. Abra a venda rápida novamente.");
+        closeModal();
+        render();
+        return;
+      }
+      commitQuickSale(data, fresh);
+    });
   });
   updateQuickSale(true);
 }
