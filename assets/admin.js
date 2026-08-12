@@ -2857,6 +2857,7 @@ function orderReadyCard(row, view = "summary") {
             ${actionButton(`delivery-proof:${row.order.id}`, "PDF da entrega", "picture_as_pdf", "btn-outline")}
             ${orderDeliveries(row.order).length ? actionButton(`order-receipt:${row.order.id}`, "Emitir recibo", "request_quote", "btn-outline") : ""}
             ${row.partner ? actionButton(`dashboard-edit-partner:${row.partner.id}`, "Editar parceiro", "edit", "btn-outline") : ""}
+            ${actionButton(`order-history:${row.order.id}`, "Histórico", "history", "btn-outline")}
           </div>
         </details>
       </div>
@@ -2917,6 +2918,7 @@ function orderDetailMarkup() {
     )}
     <div class="order-ready-actions">
       ${actionButton(`adjust-order-reservation:${order.id}`, "Ajustar reserva", "tune", "btn-primary")}
+      ${actionButton(`order-history:${order.id}`, "Histórico", "history", "btn-outline")}
       ${actionButton(`delivery-proof:${order.id}`, "PDF da entrega", "picture_as_pdf", "btn-outline")}
       ${actionButton(`edit-order:${order.id}`, "Editar pedido", "edit", "btn-outline")}
     </div>
@@ -5538,6 +5540,7 @@ function stockBatchCard(row) {
         ${actionButton(`write-off-stock:${row.code}`, "Dar baixa", "remove_circle", "btn-outline")}
         ${actionButton(`stock-sale:${row.code}`, "Venda/saída", "point_of_sale", "btn-outline")}
         ${actionButton(`reverse-stock:${row.code}`, "Devolução", "undo", "btn-outline")}
+        ${actionButton(`batch-history:${row.code}`, "Histórico", "history", "btn-outline")}
       </div>
     </article>
   `;
@@ -6297,6 +6300,7 @@ function auditHistoryMarkup() {
       </label>
     </div>
     ${auditHistory.unavailable ? `<p class="empty-note">O histórico permanente ainda não está disponível nesta base.</p>` : ""}
+    ${auditHistory.localOnly ? `<p class="empty-note">Mostrando apenas a atividade recente guardada no painel; o histórico permanente não respondeu.</p>` : ""}
     ${auditHistory.error ? `<p class="empty-note">${escapeHtml(auditHistory.error)}</p>` : ""}
     <div class="stack-list" id="auditHistoryList">${rows || (auditHistory.loading ? "" : `<p class="empty-note">Nenhum registro encontrado.</p>`)}</div>
     ${auditHistory.loading ? `<p class="empty-note">Carregando...</p>` : ""}
@@ -6353,6 +6357,21 @@ async function loadAuditHistory({ reset = false } = {}) {
   } catch {
     auditHistory.error = "Não foi possível conectar para carregar o histórico permanente.";
   } finally {
+    // The archive only holds entries written since it was created, and it may be
+    // unreachable. Fall back to the trail inside the document so a scoped
+    // history is never simply empty when the data is sitting right there.
+    if (!auditHistory.entries.length && (auditHistory.unavailable || auditHistory.error)) {
+      const term = normalizeText(auditHistory.search);
+      auditHistory.entries = (state.audit || [])
+        .filter((entry) => !term || normalizeText(`${entry.action || ""} ${entry.detail || ""}`).includes(term))
+        .slice(0, 50)
+        .map((entry) => ({ at: entry.at, user: entry.user, action: entry.action, detail: entry.detail }));
+      if (auditHistory.entries.length) {
+        auditHistory.error = "";
+        auditHistory.unavailable = false;
+        auditHistory.localOnly = true;
+      }
+    }
     auditHistory.loading = false;
     renderAuditHistory();
     const input = document.querySelector("#auditHistorySearch");
@@ -6363,14 +6382,43 @@ async function loadAuditHistory({ reset = false } = {}) {
   }
 }
 
-function openAuditHistory() {
-  auditHistory = { entries: [], nextBefore: null, search: "", loading: false, error: "", unavailable: false };
+function openAuditHistory({ search = "", title = "Histórico completo", eyebrow = "Auditoria", intro = "" } = {}) {
+  auditHistory = { entries: [], nextBefore: null, search, loading: false, error: "", unavailable: false };
   openModal(
-    "Histórico completo",
-    "Auditoria",
-    `<p class="lead" style="font-size:1rem">O painel mostra apenas a atividade recente. Este histórico é permanente e fica guardado fora do documento principal.</p><div id="auditHistoryMount"></div>`,
+    title,
+    eyebrow,
+    `<p class="lead" style="font-size:1rem">${escapeHtml(
+      intro || "O painel mostra apenas a atividade recente. Este histórico é permanente e fica guardado fora do documento principal.",
+    )}</p><div id="auditHistoryMount"></div>`,
   );
   loadAuditHistory({ reset: true });
+}
+
+// Spec section 9. The same permanent history, scoped to one order or one batch,
+// so the movements that touched it can be read where the problem is noticed
+// instead of only in a global list.
+function openOrderHistory(orderId) {
+  const order = byId("orders", orderId);
+  if (!order) return;
+  // The order code appears in every entry the reservation and delivery flows
+  // write, so it is the reliable handle; the client name is the fallback.
+  const term = order.code || orderClientDisplayName(order);
+  openAuditHistory({
+    search: term,
+    title: `Histórico do pedido ${order.code || ""}`.trim(),
+    eyebrow: orderClientDisplayName(order),
+    intro: "Movimentações de reserva, entrega e cobrança registradas para este pedido.",
+  });
+}
+
+function openBatchHistory(batchCode) {
+  if (!batchCode) return;
+  openAuditHistory({
+    search: batchCode,
+    title: `Histórico do lote ${batchCode}`,
+    eyebrow: "Estoque",
+    intro: "Reservas, retiradas, correções e vendas registradas para este lote.",
+  });
 }
 
 // The CRM inside the state document is a rolling 500-lead window; crm_leads
@@ -10611,8 +10659,10 @@ function handleAction(action) {
     "new-recipe": newRecipeForm,
     "new-cms-flavor": newCmsFlavorForm,
     "sync-cloud": () => syncFromCloud().then(render),
-    "audit-history": openAuditHistory,
+    "audit-history": () => openAuditHistory(),
     "audit-history-more": () => loadAuditHistory(),
+    "order-history": openOrderHistory,
+    "batch-history": openBatchHistory,
     "lead-archive": openLeadArchive,
     "lead-archive-more": () => loadLeadArchive(),
     "recalculate-reservations": recalculateReservationsForm,
