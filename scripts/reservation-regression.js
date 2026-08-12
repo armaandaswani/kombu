@@ -117,10 +117,15 @@ function batchSummary(result, code = "KMB010-260727") {
   return result.summary.batches.find((batch) => batch.code === code);
 }
 
-function reconcile(state) {
+// Most scenarios below exercise the allocation engine itself, which is what the
+// explicit recalculation does. Everyday saves use "preserve" and are covered
+// separately by testPreserveDoesNotMoveReservationsBetweenOrders and friends.
+function reconcile(state, options = {}) {
   return reconcileReservations(state, {
     updatedBy: "Regression",
     now: "2026-07-27T12:00:00.000Z",
+    reservationMode: "recalculate",
+    ...options,
   });
 }
 
@@ -358,8 +363,10 @@ function testLaterProductionSupersedesManualCurrentReservation() {
   assert.equal(reconciledItem.reservationOverride.active, false);
   assert.equal(reconciledItem.reservationOverride.supersededByBatch, "KMB010-260727");
   assert.equal(batchSummary(result).available, 1);
+  // The audit action names the mode that produced the change, so a recalculation
+  // reads differently from new production arriving.
   const allocationAudit = result.state.audit.find(
-    (record) => record.action === "Reserva automática aplicada" && record.orderId === "PED-260702-01"
+    (record) => record.action === "Reserva recalculada automaticamente" && record.orderId === "PED-260702-01"
   );
   assert.ok(allocationAudit);
   assert.equal(allocationAudit.flavor, "Manga & Jasmim");
@@ -537,6 +544,72 @@ function testAManuallyChosenOrderStatusIsNotRecomputed() {
   assert.equal(derived.state.orders[0].status, "pronto");
 }
 
+// --- reservation modes -------------------------------------------------------
+// The point of these: an ordinary save must never move a bottle from one order
+// to another. That silent movement is what made the numbers jump.
+
+function testPreserveDoesNotMoveReservationsBetweenOrders() {
+  const older = makeOrder({ id: "order-old", code: "PED-A", createdAt: "2026-07-01T10:00:00.000Z", qty: 10 });
+  const newer = makeOrder({ id: "order-new", code: "PED-B", createdAt: "2026-07-20T10:00:00.000Z", qty: 10 });
+  // The newer order is holding the stock even though FIFO would favour the older.
+  item(newer).allocations = [{ batchCode: "KMB010-260727", qty: 6, date: "2026-07-27", manual: false, note: "" }];
+
+  const result = reconcileReservations(
+    makeState({ batches: [makeBatch({ actual: 6 })], orders: [older, newer] }),
+    { updatedBy: "Regression", now: "2026-07-27T12:00:00.000Z", reservationMode: "preserve" },
+  );
+
+  const [keptOld, keptNew] = result.state.orders;
+  assert.equal(reserved(keptNew), 6, "an ordinary save must leave an existing reservation alone");
+  assert.equal(reserved(keptOld), 0, "an ordinary save must not hand stock to another order");
+  assert.equal(result.mode, "preserve");
+}
+
+function testPreserveIsTheDefault() {
+  const holder = makeOrder({ id: "order-holder", qty: 10 });
+  item(holder).allocations = [{ batchCode: "KMB010-260727", qty: 4, date: "2026-07-27", manual: false, note: "" }];
+  const result = reconcileReservations(
+    makeState({ batches: [makeBatch({ actual: 10 })], orders: [holder] }),
+    { updatedBy: "Regression", now: "2026-07-27T12:00:00.000Z" },
+  );
+  assert.equal(result.mode, "preserve", "a save that asks for nothing must not redistribute");
+  assert.equal(reserved(result.state.orders[0]), 4, "free stock is not handed out by an ordinary save");
+}
+
+function testAllocateNewStockOnlyDistributesTheNamedBatch() {
+  const waiting = makeOrder({ qty: 10 });
+  const existing = makeBatch({ id: "batch-old", code: "KMB010-260701", actual: 5, date: "2026-07-01" });
+  const arriving = makeBatch({ id: "batch-new", code: "KMB010-260727", actual: 4, date: "2026-07-27" });
+
+  const result = reconcileReservations(
+    makeState({ batches: [existing, arriving], orders: [waiting] }),
+    {
+      updatedBy: "Regression",
+      now: "2026-07-27T12:00:00.000Z",
+      reservationMode: "allocate-new-stock",
+      batchCodes: ["KMB010-260727"],
+    },
+  );
+
+  assert.equal(reserved(result.state.orders[0]), 4, "only the batch that just arrived is handed out");
+  assert.equal(batchSummary(result, "KMB010-260727").available, 0);
+  assert.equal(batchSummary(result, "KMB010-260701").available, 5, "older free stock stays free until asked for");
+  assert.equal(result.mode, "allocate-new-stock");
+}
+
+function testRecalculateAppliesFifoAcrossOrders() {
+  const older = makeOrder({ id: "order-old", code: "PED-A", createdAt: "2026-07-01T10:00:00.000Z", qty: 10 });
+  const newer = makeOrder({ id: "order-new", code: "PED-B", createdAt: "2026-07-20T10:00:00.000Z", qty: 10 });
+  item(newer).allocations = [{ batchCode: "KMB010-260727", qty: 6, date: "2026-07-27", manual: false, note: "" }];
+
+  const result = reconcile(makeState({ batches: [makeBatch({ actual: 6 })], orders: [older, newer] }));
+
+  const [rebuiltOld, rebuiltNew] = result.state.orders;
+  assert.equal(reserved(rebuiltOld), 6, "an explicit recalculation applies FIFO");
+  assert.equal(reserved(rebuiltNew), 0);
+  assert.equal(result.mode, "recalculate");
+}
+
 function testSupersededOverrideReconciliationIsIdempotent() {
   const first = reconcile(
     makeState({
@@ -598,6 +671,10 @@ const tests = [
   testClosedOrdersKeepTheirLotTraceability,
   testClosedOrderTraceabilitySurvivesRepeatedReconciliation,
   testAManuallyChosenOrderStatusIsNotRecomputed,
+  testPreserveDoesNotMoveReservationsBetweenOrders,
+  testPreserveIsTheDefault,
+  testAllocateNewStockOnlyDistributesTheNamedBatch,
+  testRecalculateAppliesFifoAcrossOrders,
   testSupersededOverrideReconciliationIsIdempotent,
   testSalesReduceReservableCapacity,
 ];

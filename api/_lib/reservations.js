@@ -450,7 +450,7 @@ function reservationAuditState(state, maps) {
   return rows;
 }
 
-function reservationAuditChanges(beforeRows, afterRows, reconciledAt, user) {
+function reservationAuditChanges(beforeRows, afterRows, reconciledAt, user, mode) {
   const records = [];
   const keys = new Set([...beforeRows.keys(), ...afterRows.keys()]);
   keys.forEach((key) => {
@@ -463,13 +463,22 @@ function reservationAuditChanges(beforeRows, afterRows, reconciledAt, user) {
     const row = after || before;
     const quantityChanged = newQty - previousQty;
     const direction = quantityChanged > 0 ? "recebeu" : "liberou";
+    const action =
+      mode === "recalculate"
+        ? "Reserva recalculada automaticamente"
+        : mode === "allocate-new-stock"
+          ? "Nova produção reservada automaticamente"
+          : "Reserva normalizada";
+    const reason =
+      mode === "recalculate"
+        ? "Recálculo automático solicitado pelo usuário, respeitando a prioridade FIFO."
+        : mode === "allocate-new-stock"
+          ? "Nova produção alocada aos pedidos abertos por prioridade FIFO."
+          : "Reserva existente preservada e limitada ao estoque físico disponível.";
     records.push({
       at: reconciledAt,
       user,
-      action:
-        quantityChanged > 0
-          ? "Reserva automática aplicada"
-          : "Reserva automática reduzida",
+      action,
       entity: "reservation",
       flavor: row.flavor,
       sizeMl: row.sizeMl,
@@ -478,8 +487,8 @@ function reservationAuditChanges(beforeRows, afterRows, reconciledAt, user) {
       previousQty,
       newQty,
       quantityChanged,
-      reason: "Reconciliação automática de estoque e pedidos por prioridade FIFO.",
-      detail: `${row.flavor} ${row.sizeMl}ml | ${row.client} | ${previousQty} -> ${newQty} (${direction} ${Math.abs(quantityChanged)}) | prioridade FIFO`,
+      reason,
+      detail: `${row.flavor} ${row.sizeMl}ml | ${row.client} | ${previousQty} -> ${newQty} (${direction} ${Math.abs(quantityChanged)})`,
     });
   });
   return records;
@@ -495,6 +504,15 @@ function reconcileReservations(inputState, options = {}) {
   state.audit = Array.isArray(state.audit) ? state.audit : [];
 
   const reconciledAt = options.now || new Date().toISOString();
+  const requestedMode = String(options.reservationMode || options.mode || "preserve");
+  const mode = ["preserve", "allocate-new-stock", "recalculate"].includes(requestedMode)
+    ? requestedMode
+    : "preserve";
+  const requestedBatchCodes = new Set(
+    (Array.isArray(options.batchCodes) ? options.batchCodes : [])
+      .map((value) => String(value || ""))
+      .filter(Boolean)
+  );
   const before = reservationSnapshot(state);
   const maps = stateMaps(state);
   const beforeAuditRows = reservationAuditState(state, maps);
@@ -512,21 +530,23 @@ function reconcileReservations(inputState, options = {}) {
 
   const openOrders = state.orders.filter(isOpenOrder).sort(compareOrders);
   const openOrderSet = new Set(openOrders);
-  releaseSupersededReservationOverrides(
-    openOrders,
-    eligibleBatches,
-    maps,
-    reconciledAt
-  );
-  const manualCandidates = [];
+  if (mode === "recalculate") {
+    releaseSupersededReservationOverrides(
+      openOrders,
+      eligibleBatches,
+      maps,
+      reconciledAt
+    );
+  }
+  const retainedCandidates = [];
 
   state.orders.forEach((order) => {
     orderItems(order).forEach((item, itemIndex) => {
       const originalAllocations = Array.isArray(item.allocations) ? item.allocations : [];
       if (openOrderSet.has(order)) {
         originalAllocations.forEach((allocation, allocationIndex) => {
-          if (allocation?.manual) {
-            manualCandidates.push({ order, item, itemIndex, allocation, allocationIndex });
+          if (mode !== "recalculate" || allocation?.manual) {
+            retainedCandidates.push({ order, item, itemIndex, allocation, allocationIndex });
           }
         });
       }
@@ -540,7 +560,7 @@ function reconcileReservations(inputState, options = {}) {
     });
   });
 
-  manualCandidates
+  retainedCandidates
     .sort(
       (a, b) =>
         compareOrders(a.order, b.order) ||
@@ -562,12 +582,21 @@ function reconcileReservations(inputState, options = {}) {
         batchCode: code,
         qty: quantity,
         date: allocation.date || batch.date || batch.productionDate || "",
-        manual: true,
+        manual: Boolean(allocation.manual),
       });
       remainingByBatch.set(code, available - quantity);
     });
 
-  eligibleBatches.forEach((batch) => {
+  const autoAllocationBatches =
+    mode === "recalculate"
+      ? eligibleBatches
+      : mode === "allocate-new-stock"
+        ? eligibleBatches.filter((batch) =>
+            requestedBatchCodes.has(String(batch.code || batch.id || ""))
+          )
+        : [];
+
+  autoAllocationBatches.forEach((batch) => {
     const code = String(batch.code || batch.id || "");
     let available = remainingByBatch.get(code) || 0;
     if (!available) return;
@@ -606,14 +635,24 @@ function reconcileReservations(inputState, options = {}) {
       beforeAuditRows,
       reservationAuditState(state, maps),
       reconciledAt,
-      auditUser
+      auditUser,
+      mode
     );
     state.audit.unshift(...detailedRecords, {
       at: reconciledAt,
       user: auditUser,
-      action: "Reservas reconciliadas",
+      action:
+        mode === "recalculate"
+          ? "Reservas recalculadas"
+          : mode === "allocate-new-stock"
+            ? "Nova produção distribuída"
+            : "Reservas preservadas",
       detail:
-        "Reservas automáticas recalculadas por produto, sabor, tamanho e prioridade FIFO dos pedidos.",
+        mode === "recalculate"
+          ? "Reservas recalculadas por produto, sabor, tamanho e prioridade FIFO dos pedidos."
+          : mode === "allocate-new-stock"
+            ? "Somente os novos lotes informados foram distribuídos entre pedidos por prioridade FIFO."
+            : "Reservas existentes foram preservadas sem redistribuição entre pedidos.",
     });
     state.audit = state.audit.slice(0, AUDIT_LIMIT);
   }
@@ -635,6 +674,7 @@ function reconcileReservations(inputState, options = {}) {
   return {
     state,
     changed,
+    mode,
     summary: {
       batches,
       reserved: batches.reduce((total, batch) => total + batch.reserved, 0),

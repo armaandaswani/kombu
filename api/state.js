@@ -1,17 +1,20 @@
 const { backendErrorPayload, getStateRow, hasSupabase, invariantRegressions, json, readBody, replaceAppState, requireAdmin, stateInvariantViolations, validateAppState } = require("./_lib/kombu-backend");
 const { reconcileReservations } = require("./_lib/reservations");
 
-// Reconciles for the response only. This used to persist the reconciled state and
-// retry on conflict, so every authenticated read rewrote the whole production
-// document and competed with real saves for the optimistic lock. Reads must not
-// write: the next genuine save persists the same reconciliation.
-// audit:false because entries generated on a read would otherwise be handed to
-// the client and written back later, filling the capped audit log with noise.
-async function getReconciledState(updatedBy = "reservation-reconciler") {
+async function getReconciledState() {
   const row = await getStateRow();
   if (!row) return { row: null, reconciled: null };
-  const reconciled = reconcileReservations(row.state, { updatedBy, audit: false });
-  return { row: { ...row, state: reconciled.state }, reconciled };
+  const reconciled = reconcileReservations(row.state, {
+    reservationMode: "preserve",
+    audit: false,
+  });
+  return {
+    row: {
+      ...row,
+      state: reconciled.state,
+    },
+    reconciled,
+  };
 }
 
 module.exports = async function handler(req, res) {
@@ -47,6 +50,8 @@ module.exports = async function handler(req, res) {
     }
     const reconciled = reconcileReservations(body.state, {
       updatedBy: session.role || "admin",
+      reservationMode: body.reservationMode || "preserve",
+      batchCodes: Array.isArray(body.batchCodes) ? body.batchCodes : [],
     });
     const validationError = validateAppState(reconciled.state);
     if (validationError) return json(res, validationError === "state_too_large" ? 413 : 422, { ok: false, error: validationError });

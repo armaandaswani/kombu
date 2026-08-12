@@ -625,6 +625,23 @@ let cloudSaveBlocked = false;
 // Rules the server said this browser's state would break, if it refused a save.
 let cloudInvariantRegressions = [];
 
+// How the server should treat reservations on the next save. Default is
+// "preserve": keep what each order already holds and move nothing between
+// orders. Only two things may redistribute - new production arriving, which is
+// additive, and an explicit recalculation the operator asked for.
+let pendingReservationRequest = null;
+
+function requestReservationMode(mode, batchCodes = []) {
+  const codes = batchCodes.map((code) => String(code || "")).filter(Boolean);
+  if (pendingReservationRequest && pendingReservationRequest.mode === "recalculate") return;
+  if (mode === "allocate-new-stock" && pendingReservationRequest?.mode === "allocate-new-stock") {
+    // Several batches can be created before the debounced save fires.
+    pendingReservationRequest.batchCodes = [...new Set([...pendingReservationRequest.batchCodes, ...codes])];
+    return;
+  }
+  pendingReservationRequest = { mode, batchCodes: codes };
+}
+
 // Replays the derived-data syncs over everything already in state. This runs on
 // every page load, so it used to end in an unconditional saveState() and simply
 // opening the panel wrote the whole document back to production. Now that the
@@ -651,7 +668,7 @@ function runStartupIntegrations() {
         console.error("Falha ao sincronizar pedido no boot do admin", error);
       }
     });
-    reconcileOrderReservations();
+    refreshAllOrderReservations();
     persistLocalState();
     // If `before` could not be serialised we cannot prove nothing changed, so
     // fall back to the old behaviour and save.
@@ -1173,12 +1190,21 @@ async function pushStateToCloud() {
   const submittedState = clone(state);
   const submittedStateJson = JSON.stringify(submittedState);
   const submittedUpdatedAt = cloudStateUpdatedAt;
+  // Consumed by this save. Cleared up front so a failure cannot replay a
+  // redistribution the operator only asked for once.
+  const reservationRequest = pendingReservationRequest;
+  pendingReservationRequest = null;
   try {
     const response = await fetch("/api/state", {
       method: "PUT",
       credentials: "same-origin",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ state: submittedState, updatedAt: submittedUpdatedAt }),
+      body: JSON.stringify({
+        state: submittedState,
+        updatedAt: submittedUpdatedAt,
+        reservationMode: reservationRequest?.mode || "preserve",
+        batchCodes: reservationRequest?.batchCodes || [],
+      }),
     });
     if (response.ok || response.status === 202) {
       const payload = await readJsonSafe(response);
@@ -2986,7 +3012,7 @@ function registerOrderDelivery(order, delivery) {
     order.deliveredAt = "";
   }
   syncOrderIntegrations(order);
-  reconcileOrderReservations();
+  refreshAllOrderReservations();
   refreshOrderReservationStatus(order);
 }
 
@@ -4198,6 +4224,110 @@ function resetOpenOrderReservations() {
   });
 }
 
+// Recomputes each order's derived reservation fields from the allocations it
+// already holds. It never moves a reservation between orders, which is what made
+// the numbers jump whenever something unrelated was saved: releasing a bottle
+// from one order silently handed it to another. Freed stock now simply returns
+// to free stock until someone asks for it to be redistributed.
+function refreshAllOrderReservations() {
+  (state.orders || []).forEach((order) => {
+    if (isOpenOrder(order)) {
+      orderItems(order).forEach((item) => {
+        trimItemAllocationsTo(item, orderItemAutomaticReservationLimit(item));
+      });
+    }
+    refreshOrderReservationStatus(order);
+  });
+}
+
+// New production is additive: it hands out only this batch's own free stock and
+// leaves every existing reservation untouched. The server is told which batch so
+// it applies the same rule rather than reshuffling everything.
+function allocateNewBatchToOrders(batch) {
+  if (!batch) return 0;
+  const reserved = allocateBatchToOrders(batch);
+  requestReservationMode("allocate-new-stock", [String(batch.code || batch.id || "")]);
+  refreshAllOrderReservations();
+  return reserved;
+}
+
+// Runs a full recalculation against a copy of the state and reports what would
+// change, so the operator sees which orders gain and lose before anything moves.
+function reservationRecalculationPreview() {
+  const label = (order, item) => ({
+    key: `${order.id}::${item.key || ""}`,
+    client: orderClientDisplayName(order),
+    flavor: orderFlavorText(item),
+  });
+  const before = new Map();
+  (state.orders || []).filter(isOpenOrder).forEach((order) => {
+    orderItems(order).forEach((item) => {
+      const row = label(order, item);
+      before.set(row.key, { ...row, before: orderItemReservedQty(item), after: 0 });
+    });
+  });
+
+  const live = state;
+  try {
+    // Every helper reads the module-level state, so simulate on a clone and
+    // put the real one back before anything can observe the swap.
+    state = clone(live);
+    reconcileOrderReservations();
+    (state.orders || []).filter(isOpenOrder).forEach((order) => {
+      orderItems(order).forEach((item) => {
+        const key = `${order.id}::${item.key || ""}`;
+        const row = before.get(key);
+        if (row) row.after = orderItemReservedQty(item);
+      });
+    });
+  } finally {
+    state = live;
+  }
+  return [...before.values()].filter((row) => row.after !== row.before);
+}
+
+function recalculateReservationsForm() {
+  const changes = reservationRecalculationPreview();
+  const rows = changes
+    .map(
+      (row) => `
+        <div class="audit-row">
+          <strong>${escapeHtml(row.client)}</strong>
+          <span>${escapeHtml(row.flavor)}</span>
+          <span>${number(row.before)} → ${number(row.after)} reservada(s) ${row.after > row.before ? "(recebe)" : "(libera)"}</span>
+        </div>
+      `,
+    )
+    .join("");
+  openModal(
+    "Recalcular reservas automaticamente",
+    "Pedidos",
+    `
+      <p class="lead" style="font-size:1rem">Redistribui todo o estoque livre entre os pedidos abertos por ordem de chegada. Reservas ajustadas manualmente são mantidas.</p>
+      ${changes.length
+        ? `<p class="empty-note">${number(changes.length)} linha(s) mudam:</p><div class="stack-list">${rows}</div>`
+        : `<p class="empty-note">Nada mudaria: as reservas já estão como o cálculo automático faria.</p>`}
+      ${changes.length
+        ? `<button class="btn btn-primary" type="button" data-action="recalculate-reservations-confirm"><span class="material-symbols-outlined" aria-hidden="true">autorenew</span>Aplicar recálculo</button>`
+        : ""}
+    `,
+  );
+}
+
+function applyReservationRecalculation() {
+  const changes = reservationRecalculationPreview();
+  reconcileOrderReservations();
+  requestReservationMode("recalculate");
+  addAudit(
+    "Reservas recalculadas automaticamente",
+    `${number(changes.length)} linha(s) alteradas por redistribuição solicitada pelo usuário.`,
+  );
+  closeModal();
+  render();
+}
+
+// Full teardown and rebuild by FIFO priority. Only ever runs when the operator
+// explicitly asks for it, because it can move reservations between orders.
 function reconcileOrderReservations() {
   const eligibleBatches = (state.batches || [])
     .filter(shouldConsumeBatch)
@@ -5698,7 +5828,7 @@ function renderOrders() {
     ${pageHead(
       "Pedidos",
       "Acompanhe pedidos por cliente e atualize status em poucos toques.",
-      `${actionButton("new-order", "Novo pedido", "add")} ${actionButton("export-orders", "CSV", "download", "btn-outline")}`,
+      `${actionButton("new-order", "Novo pedido", "add")} ${actionButton("recalculate-reservations", "Recalcular reservas", "autorenew", "btn-outline")} ${actionButton("export-orders", "CSV", "download", "btn-outline")}`,
     )}
     <section class="order-list order-compact-list">
       ${filteredOrders.length ? filteredOrders.map(orderCompactCard).join("") : `<article class="admin-card"><p class="empty-note">Nenhum pedido ainda. Use “Novo pedido” para começar.</p></article>`}
@@ -7127,7 +7257,7 @@ function adjustOrderReservationForm(orderId) {
       updatedBy: currentRole,
     };
     trimItemAllocationsTo(item, reservedNow);
-    reconcileOrderReservations();
+    refreshAllOrderReservations();
     const after = orderItemReservedQty(item);
     addAudit(
       "Reserva ajustada manualmente",
@@ -7148,7 +7278,7 @@ function adjustOrderReservationForm(orderId) {
     }
     item.reservationTarget = null;
     item.reservationOverride = null;
-    reconcileOrderReservations();
+    refreshAllOrderReservations();
     const after = orderItemReservedQty(item);
     addAudit("Reserva automática restaurada", `${orderClientDisplayName(order)} | ${orderFlavorText(item)}: ${number(before)} -> ${number(after)}. Motivo: ${reason}`);
     closeModal();
@@ -7327,7 +7457,7 @@ function adjustFlavorStockForm(productId) {
       change.batch.correctedAt = change.batch.updatedAt;
       change.batch.correctionReason = data.reason;
     });
-    reconcileOrderReservations();
+    refreshAllOrderReservations();
     addAudit(
       "Estoque disponível ajustado",
       `${selectedProduct.flavor || selectedProduct.item} ${sizeMl} ml: ${number(currentAvailable)} -> ${number(nextAvailable)} disponível(is). Motivo: ${data.reason}`,
@@ -7409,8 +7539,9 @@ function correctBatchQuantityForm(batchId) {
     batch.correctedAt = batch.updatedAt;
     batch.correctionReason = data.reason;
     const beforeReserved = Number(row.reserved || 0);
-    const reservationReport = reconcileOrderReservations();
-    const afterReserved = reservationReport.byBatch[batch.code] || 0;
+    // Correcting a quantity upwards is new production: hand out only this
+    // batch's own free stock. Correcting downwards just clamps.
+    const afterReserved = allocateNewBatchToOrders(batch);
     addAudit("Quantidade do lote corrigida", `${batch.code}: ${number(currentActual)} -> ${number(nextActual)}. ${inventoryResult.delta < 0 ? "Insumos devolvidos" : inventoryResult.delta > 0 ? "Insumos baixados" : "Sem mudança de insumos"}. Motivo: ${data.reason}`);
     closeModal();
     render();
@@ -7761,8 +7892,9 @@ function newBatchForm() {
     };
     state.batches.unshift(batch);
     applyBatchInventory(recipe, bottles, -1);
-    const reservationReport = reconcileOrderReservations();
-    const reserved = reservationReport.byBatch[batch.code] || 0;
+    // Additive: this batch's bottles go to open orders by FIFO and no existing
+    // reservation on any other order is touched.
+    const reserved = allocateNewBatchToOrders(batch);
     addAudit("Lote criado", `${data.code}: ${number(bottles)} garrafas de ${recipe?.flavor || "receita"}; ${number(reserved)} reservadas para pedidos.`);
     closeModal();
     render();
@@ -8366,7 +8498,7 @@ function deleteOrder(recordId) {
   if (!window.confirm(`Excluir pedido de ${orderClientDisplayName(order)}? Vendas automáticas vinculadas a ele também serão removidas.`)) return;
   state.orders = state.orders.filter((item) => item.id !== recordId);
   state.sales = state.sales.filter((sale) => sale.orderId !== recordId);
-  reconcileOrderReservations();
+  refreshAllOrderReservations();
   addAudit("Pedido excluído", orderClientDisplayName(order));
   render();
 }
@@ -8721,7 +8853,7 @@ function editBatchForm(batchId) {
     if (recipe && recipeChanged && batchCostSnapshot(original)) {
       batch.costSnapshot = buildBatchCostSnapshot(recipe);
     }
-    reconcileOrderReservations();
+    refreshAllOrderReservations();
   });
 }
 
@@ -8736,7 +8868,7 @@ function deleteBatch(batchId) {
   const recipe = byId("recipes", batch.recipeId);
   if (batch.inventoryAdjusted && recipe) applyBatchInventory(recipe, batchProducedQuantity(batch), 1);
   state.batches = state.batches.filter((item) => item.id !== batchId);
-  reconcileOrderReservations();
+  refreshAllOrderReservations();
   addAudit("Lote excluído", batch.code);
   render();
 }
@@ -9161,13 +9293,13 @@ function orderForm(orderId) {
     if (existing) {
       Object.assign(existing, payload);
       syncOrderIntegrations(existing);
-      reconcileOrderReservations();
+      refreshAllOrderReservations();
       addAudit("Pedido atualizado", `${payload.code}: ${payload.customerName}`);
     } else {
       const order = { id: id("ord"), createdAt: new Date().toISOString(), ...payload };
       syncOrderIntegrations(order);
       state.orders.unshift(order);
-      reconcileOrderReservations();
+      refreshAllOrderReservations();
       addAudit("Pedido criado", `${payload.code}: ${payload.customerName} | ${number(totalQty)} garrafas`);
     }
     closeModal();
@@ -9793,6 +9925,8 @@ function handleAction(action) {
     "audit-history-more": () => loadAuditHistory(),
     "lead-archive": openLeadArchive,
     "lead-archive-more": () => loadLeadArchive(),
+    "recalculate-reservations": recalculateReservationsForm,
+    "recalculate-reservations-confirm": applyReservationRecalculation,
     "go-costs": () => setModule("costs"),
     "save-costs": () => {
       addAudit("Simulação de custos salva", byId("recipes", activeRecipeId)?.flavor);
