@@ -7293,118 +7293,217 @@ function reserveStockForm(batchCode) {
   });
 }
 
+// Free bottles that could still be reserved for this line, matched the same way
+// the reservation engine matches: same flavour identity and the same size.
+function freeStockForOrderItem(item) {
+  return finishedStockRows()
+    .filter((row) => batchMatchesOrderItem(row, item))
+    .reduce((sum, row) => sum + Math.max(0, Number(row.stock || 0)), 0);
+}
+
+// Moves one order line to an exact reserved quantity. Reducing releases bottles
+// back to free stock and stops there - it never hands them to another order.
+// Increasing takes only from batches that match this line, oldest first.
+function setOrderItemReservation(order, item, targetQty, reason) {
+  const ordered = orderItemOutstandingQty(item);
+  const current = orderItemReservedQty(item);
+  const ceiling = Math.min(ordered, current + freeStockForOrderItem(item));
+  const target = Math.max(0, Math.min(Math.round(Number(targetQty) || 0), ceiling));
+  if (target === current) return { changed: false, from: current, to: current };
+
+  if (target < current) {
+    trimItemAllocationsTo(item, target);
+  } else {
+    let need = target - current;
+    finishedStockRows()
+      .filter((row) => batchMatchesOrderItem(row, item) && Number(row.stock || 0) > 0)
+      .sort((a, b) => String(a.date || "").localeCompare(String(b.date || "")) || String(a.code || "").localeCompare(String(b.code || "")))
+      .forEach((row) => {
+        if (need <= 0) return;
+        const take = Math.min(need, Number(row.stock || 0));
+        if (take <= 0) return;
+        reserveBatchForOrderItem(row.code, order, item, take, reason || "", true);
+        need -= take;
+      });
+  }
+
+  const after = orderItemReservedQty(item);
+  // Records that a person chose this number, so automatic passes respect it.
+  item.reservationOverride = {
+    active: true,
+    reservedNow: after,
+    previousQty: current,
+    orderedQty: ordered,
+    reason: reason || "",
+    updatedAt: new Date().toISOString(),
+    updatedBy: currentRole,
+  };
+  return { changed: true, from: current, to: after };
+}
+
+// Spec section 2. The old screen pre-selected one flavour, hid the rest behind a
+// dropdown and demanded a reason per flavour, so adjusting an order meant
+// repeating the whole cycle once per sabor. Every line is now on one screen and
+// the whole order is saved in one go.
 function adjustOrderReservationForm(orderId) {
   const order = byId("orders", orderId);
   if (!order || !isOpenOrder(order)) return;
-  const items = orderItems(order).filter((item) => Number(item.qty || 0) > 0);
-  if (!items.length) {
-    window.alert("Este pedido não tem itens para ajustar.");
+  const lines = orderLineRows(order).filter((line) => line.outstanding > 0);
+  if (!lines.length) {
+    window.alert("Este pedido não tem itens em aberto para ajustar.");
     return;
   }
+  const byKey = new Map(orderItems(order).map((item) => [item.key || "", item]));
+
+  const rows = lines.map((line) => {
+    const item = byKey.get(line.key);
+    const free = freeStockForOrderItem(item);
+    const max = Math.min(line.outstanding, line.reserved + free);
+    return `
+      <tr data-reserve-row="${escapeHtml(line.key)}" data-current="${line.reserved}" data-max="${max}">
+        <td>
+          <strong>${escapeHtml(line.product)}</strong>
+          ${line.batches.length ? `<br><span>${escapeHtml(line.batches.join(", "))}</span>` : ""}
+        </td>
+        <td class="num">${number(line.ordered)}</td>
+        <td class="num">${number(line.reserved)}</td>
+        <td class="num">${number(line.missing)}</td>
+        <td class="num">${number(free)}</td>
+        <td>
+          <div class="reserve-stepper">
+            <button type="button" class="icon-btn" data-reserve-step="-1" aria-label="Diminuir">−</button>
+            <input type="number" inputmode="numeric" min="0" max="${max}" step="1" value="${line.reserved}" data-reserve-input aria-label="Nova reserva de ${escapeHtml(line.product)}">
+            <button type="button" class="icon-btn" data-reserve-step="1" aria-label="Aumentar">+</button>
+          </div>
+          <div class="reserve-quick">
+            <button type="button" class="link-btn" data-reserve-set="max">tudo (${number(max)})</button>
+            <button type="button" class="link-btn" data-reserve-set="0">zerar</button>
+          </div>
+        </td>
+      </tr>
+    `;
+  });
+
   openModal(
     "Ajustar reserva",
-    "Pedidos",
+    orderClientDisplayName(order),
     `
       <form id="adjustOrderReservationForm">
-        <div class="input-grid">
-          <div class="result-card field-full">
-            <small>Cliente</small>
-            <strong>${escapeHtml(orderClientDisplayName(order))}</strong>
-            <span>Este ajuste altera somente as garrafas separadas agora. A quantidade pedida não será modificada.</span>
-          </div>
-          <label class="field field-full"><span>Sabor</span><select name="itemIndex" class="admin-select" data-force-search="true">${items
-            .map((item) => {
-              const index = orderItems(order).indexOf(item);
-              return `<option value="${index}">${escapeHtml(orderFlavorText(item))} | ${number(orderItemReservedQty(item))} de ${number(item.qty || 0)} reservada(s)</option>`;
-            })
-            .join("")}</select></label>
-          <div class="result-card field-full" id="reservationCurrentSummary"></div>
-          <label class="field"><span>Reservada agora</span><input name="reservedNow" type="number" min="0" step="1" inputmode="numeric" required></label>
-          <label class="field field-full"><span>Motivo do ajuste</span><input name="reason" required maxlength="240" placeholder="Ex: liberar 1 garrafa para venda, avaria identificada..."></label>
-          <div class="result-card field-full" id="reservationAdjustmentPreview"></div>
-        </div>
+        <p class="lead" style="font-size:1rem">Altera somente o que está separado agora. A quantidade pedida não muda.</p>
         <div class="modal-action-row">
-          <button class="btn btn-primary" type="submit">Salvar ajuste</button>
-          <button class="btn btn-outline" type="button" id="restoreAutomaticReservation">Voltar ao automático</button>
+          <button class="btn btn-outline" type="button" data-reserve-all="max"><span class="material-symbols-outlined" aria-hidden="true">done_all</span>Reservar tudo disponível</button>
+          <button class="btn btn-outline" type="button" data-reserve-all="0"><span class="material-symbols-outlined" aria-hidden="true">backspace</span>Remover todas as reservas</button>
+        </div>
+        ${table(
+          [
+            { label: "Sabor" },
+            { label: "Pedido", num: true },
+            { label: "Reservado", num: true },
+            { label: "Faltando", num: true },
+            { label: "Estoque livre", num: true },
+            { label: "Nova reserva" },
+          ],
+          rows,
+        )}
+        <div class="result-card field-full" id="reserveChangeSummary"></div>
+        <label class="field field-full"><span>Motivo do ajuste (opcional)</span><input name="reason" maxlength="240" placeholder="Ex: liberar garrafas para venda, avaria identificada..."></label>
+        <div class="modal-action-row">
+          <button class="btn btn-primary" type="submit"><span class="material-symbols-outlined" aria-hidden="true">save</span>Salvar alterações</button>
         </div>
       </form>
     `,
   );
+
   const form = document.querySelector("#adjustOrderReservationForm");
-  const preview = document.querySelector("#reservationAdjustmentPreview");
-  const summary = document.querySelector("#reservationCurrentSummary");
-  const selectedItem = () => orderItems(order)[Number(form.elements.itemIndex.value)];
-  const updatePreview = (resetValue = false) => {
-    const item = selectedItem();
-    if (!item) return;
-    const current = orderItemReservedQty(item);
-    const ordered = Number(item.qty || 0);
-    const available = availableStockForProduct(item.productId);
-    const maximumNow = Math.min(ordered, current + available);
-    if (resetValue) form.elements.reservedNow.value = String(current);
-    form.elements.reservedNow.max = String(maximumNow);
-    const reservedNow = Number(form.elements.reservedNow.value || 0);
-    const delta = reservedNow - current;
-    const missingAfter = Math.max(0, ordered - reservedNow);
-    summary.innerHTML = `<small>Situação atual</small><strong>Pedido: ${number(ordered)} | Reservada: ${number(current)} | Disponível: ${number(available)}</strong><span>Você pode separar agora entre 0 e ${number(maximumNow)} garrafa(s), sem alterar o pedido.</span>`;
-    preview.innerHTML = `<small>Impacto imediato</small><strong>${number(current)} reservada(s) agora -> ${number(reservedNow)}</strong><span>O pedido continua com ${number(ordered)} garrafa(s); ${number(missingAfter)} continuarão faltando. ${delta < 0 ? `${number(Math.abs(delta))} garrafa(s) voltarão ao estoque disponível.` : delta > 0 ? `${number(delta)} garrafa(s) disponíveis serão separadas agora.` : "Nenhuma mudança na separação."}</span>`;
+  const summary = document.querySelector("#reserveChangeSummary");
+  const rowEls = () => [...form.querySelectorAll("[data-reserve-row]")];
+  const readRow = (row) => {
+    const input = row.querySelector("[data-reserve-input]");
+    const max = Number(row.dataset.max || 0);
+    const value = Math.max(0, Math.min(max, Math.round(Number(input.value) || 0)));
+    if (String(value) !== input.value) input.value = String(value);
+    return { key: row.dataset.reserveRow, current: Number(row.dataset.current || 0), value, max };
   };
-  form.elements.itemIndex.addEventListener("change", () => updatePreview(true));
-  form.elements.reservedNow.addEventListener("input", () => updatePreview(false));
-  updatePreview(true);
+
+  const updateSummary = () => {
+    const changes = rowEls().map(readRow).filter((row) => row.value !== row.current);
+    const totals = rowEls().map(readRow).reduce(
+      (acc, row) => {
+        acc.before += row.current;
+        acc.after += row.value;
+        return acc;
+      },
+      { before: 0, after: 0 },
+    );
+    const ordered = lines.reduce((sum, line) => sum + line.outstanding, 0);
+    const nameOf = (key) => lines.find((line) => line.key === key)?.product || key;
+    summary.innerHTML = changes.length
+      ? `<small>Resumo das alterações</small>
+         <strong>${number(changes.length)} sabor(es) alterado(s)</strong>
+         <span>${changes.map((row) => `${escapeHtml(nameOf(row.key))}: ${number(row.current)} → ${number(row.value)}`).join("; ")}.
+         Total reservado do pedido: ${number(totals.before)} → ${number(totals.after)}. Faltando: ${number(Math.max(0, ordered - totals.before))} → ${number(Math.max(0, ordered - totals.after))}.</span>`
+      : `<small>Resumo das alterações</small><strong>Nenhuma alteração ainda</strong><span>Ajuste as quantidades acima para ver o resumo.</span>`;
+  };
+
+  form.addEventListener("input", (event) => {
+    if (event.target.matches("[data-reserve-input]")) updateSummary();
+  });
+  form.addEventListener("click", (event) => {
+    const step = event.target.closest("[data-reserve-step]");
+    const set = event.target.closest("[data-reserve-set]");
+    const all = event.target.closest("[data-reserve-all]");
+    if (step) {
+      const row = step.closest("[data-reserve-row]");
+      const input = row.querySelector("[data-reserve-input]");
+      input.value = String(Math.max(0, Math.min(Number(row.dataset.max || 0), Number(input.value || 0) + Number(step.dataset.reserveStep))));
+      updateSummary();
+    } else if (set) {
+      const row = set.closest("[data-reserve-row]");
+      const input = row.querySelector("[data-reserve-input]");
+      input.value = set.dataset.reserveSet === "max" ? String(row.dataset.max || 0) : "0";
+      updateSummary();
+    } else if (all) {
+      rowEls().forEach((row) => {
+        const input = row.querySelector("[data-reserve-input]");
+        input.value = all.dataset.reserveAll === "max" ? String(row.dataset.max || 0) : "0";
+      });
+      updateSummary();
+    }
+  });
+  updateSummary();
+
   form.addEventListener("submit", (event) => {
     event.preventDefault();
-    const item = selectedItem();
-    const reservedNow = Number(form.elements.reservedNow.value);
-    const ordered = Number(item?.qty || 0);
-    const before = orderItemReservedQty(item);
-    const maximumNow = Math.min(ordered, before + availableStockForProduct(item?.productId));
     const reason = String(form.elements.reason.value || "").trim();
-    if (!item || !Number.isInteger(reservedNow) || reservedNow < 0 || reservedNow > maximumNow) {
-      window.alert(`Informe quantas estão reservadas agora, entre 0 e ${number(maximumNow)}.`);
+    const requested = rowEls().map(readRow).filter((row) => row.value !== row.current);
+    if (!requested.length) {
+      closeModal();
       return;
     }
-    if (!reason) {
-      window.alert("Informe o motivo do ajuste para manter o histórico confiável.");
-      return;
-    }
-    item.reservationTarget = null;
-    item.reservationOverride = {
-      active: true,
-      reservedNow,
-      previousQty: before,
-      orderedQty: ordered,
-      reason,
-      updatedAt: new Date().toISOString(),
-      updatedBy: currentRole,
-    };
-    trimItemAllocationsTo(item, reservedNow);
+    // Reductions first, so bottles they release are available to the increases
+    // in this same operation.
+    const applied = [];
+    [...requested].sort((a, b) => a.value - a.current - (b.value - b.current)).forEach((row) => {
+      const item = byKey.get(row.key);
+      if (!item) return;
+      const result = setOrderItemReservation(order, item, row.value, reason);
+      if (result.changed) applied.push({ key: row.key, ...result });
+    });
+
     refreshAllOrderReservations();
-    const after = orderItemReservedQty(item);
-    addAudit(
-      "Reserva ajustada manualmente",
-      `${orderClientDisplayName(order)} | ${orderFlavorText(item)}: ${number(before)} -> ${number(after)} reservada(s) agora; pedido permanece em ${number(ordered)}. Motivo: ${reason}`,
-    );
+    const nameOf = (key) => lines.find((line) => line.key === key)?.product || key;
+    if (applied.length) {
+      addAudit(
+        "Reserva ajustada manualmente",
+        `${orderClientDisplayName(order)} | ${applied.map((row) => `${nameOf(row.key)}: ${number(row.from)} → ${number(row.to)}`).join("; ")}${reason ? ` | Motivo: ${reason}` : ""}`,
+      );
+    }
     closeModal();
     render();
-    if (after !== reservedNow) window.alert(`Não foi possível separar ${number(reservedNow)} agora. A reserva atual ficou em ${number(after)} garrafa(s).`);
-  });
-  document.querySelector("#restoreAutomaticReservation")?.addEventListener("click", () => {
-    const item = selectedItem();
-    if (!item) return;
-    const before = orderItemReservedQty(item);
-    const reason = String(form.elements.reason.value || "").trim();
-    if (!reason) {
-      window.alert("Informe o motivo antes de restaurar a reserva automática.");
-      return;
+    const missed = applied.filter((row, index) => row.to !== requested[index]?.value);
+    if (applied.length < requested.length || missed.length) {
+      window.alert("Algumas quantidades foram limitadas pelo estoque disponível. Confira os valores salvos.");
     }
-    item.reservationTarget = null;
-    item.reservationOverride = null;
-    refreshAllOrderReservations();
-    const after = orderItemReservedQty(item);
-    addAudit("Reserva automática restaurada", `${orderClientDisplayName(order)} | ${orderFlavorText(item)}: ${number(before)} -> ${number(after)}. Motivo: ${reason}`);
-    closeModal();
-    render();
   });
 }
 

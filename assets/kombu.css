@@ -2971,6 +2971,46 @@ textarea:focus-visible {
   box-shadow: 0 12px 28px rgba(25, 28, 28, 0.14);
 }
 
+.reserve-stepper {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.reserve-stepper input {
+  width: 74px;
+  text-align: center;
+}
+
+.reserve-stepper .icon-btn {
+  width: 34px;
+  height: 34px;
+  font-size: 1.05rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.reserve-quick {
+  display: flex;
+  gap: 10px;
+  margin-top: 6px;
+}
+
+.link-btn {
+  border: 0;
+  background: none;
+  padding: 0;
+  cursor: pointer;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--brand, #2d4b28);
+  text-decoration: underline;
+}
+
+.link-btn:hover {
+  opacity: 0.75;
+}
+
 .order-detail-summary {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
