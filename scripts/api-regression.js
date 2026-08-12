@@ -261,6 +261,65 @@ async function run() {
     "an empty trail is not archived",
   );
 
+  // --- lead archive ----------------------------------------------------------
+  const leadRequests = [];
+  let leadTableExists = true;
+  global.fetch = async (url, options = {}) => {
+    const path = String(url);
+    if (path.includes("crm_leads")) {
+      leadRequests.push(JSON.parse(options.body || "[]"));
+      if (!leadTableExists) {
+        throw Object.assign(new Error("supabase_request_failed"), { code: "supabase_request_failed", status: 404 });
+      }
+      return supabaseReply([]);
+    }
+    if (path.includes("audit_events") || path.includes("app_state_backups")) return supabaseReply([]);
+    if ((options.method || "GET") === "GET") {
+      return supabaseReply([{ id: "production", state: {}, updated_at: "2026-08-11T00:00:00.000Z" }]);
+    }
+    return supabaseReply([{ updated_at: "2026-08-11T02:00:00.000Z" }]);
+  };
+
+  const makeLeads = (count) =>
+    Array.from({ length: count }, (_, n) => ({
+      id: `lead-${n}`,
+      status: "novo",
+      name: `Cliente ${n}`,
+      createdAt: new Date(Date.UTC(2026, 7, 11, 0, 0, n)).toISOString(),
+    }));
+
+  const first = await backend.archiveLeads({ leads: makeLeads(250) });
+  assert.strictEqual(first.ok, true);
+  assert.strictEqual(first.synced, 100, "a cold start syncs in bounded batches, not all at once");
+
+  // Nothing changed for those, so the next pass moves on to the rest.
+  const second = await backend.archiveLeads({ leads: makeLeads(250) });
+  assert.strictEqual(second.synced, 100, "successive saves work through the backlog");
+
+  const third = await backend.archiveLeads({ leads: makeLeads(250) });
+  assert.strictEqual(third.synced, 50, "the backlog drains");
+
+  const settled = await backend.archiveLeads({ leads: makeLeads(250) });
+  assert.strictEqual(settled.ok, false, "an unchanged set costs nothing once synced");
+
+  // A lead being worked must resync.
+  const worked = makeLeads(250);
+  worked[7].status = "qualificado";
+  const afterEdit = await backend.archiveLeads({ leads: worked });
+  assert.strictEqual(afterEdit.synced, 1, "only the lead that changed is resent");
+  assert.strictEqual(leadRequests.at(-1)[0].lead_id, "lead-7");
+  assert.strictEqual(leadRequests.at(-1)[0].status, "qualificado");
+
+  // And a missing table must not break the save.
+  leadTableExists = false;
+  const brokenTable = await backend.archiveLeads({ leads: [{ id: "lead-new", status: "novo", name: "X" }] });
+  assert.strictEqual(brokenTable.ok, false, "a missing crm_leads table is reported, not thrown");
+  leadTableExists = true;
+  const retried = await backend.archiveLeads({ leads: [{ id: "lead-new", status: "novo", name: "X" }] });
+  assert.strictEqual(retried.synced, 1, "a lead that failed to sync is retried on the next save");
+
+  assert.strictEqual((await backend.archiveLeads({ leads: [] })).ok, false, "no leads means no request");
+
   // --- business invariants ---------------------------------------------------
   const cleanState = () => ({
     batches: [{ code: "B-1", actual: 10 }],
@@ -377,7 +436,8 @@ async function run() {
   });
   console.log(
     "API regression: fail-closed auth/cron, secure cookie, state validation, state concurrency, " +
-      "no-write-on-read, lead retention, login throttling, business invariants, snapshots and audit archive passed.",
+      "no-write-on-read, lead retention, login throttling, business invariants, snapshots, " +
+      "audit archive and lead archive passed.",
   );
 }
 

@@ -383,6 +383,73 @@ async function archiveAuditEntries(state) {
   }
 }
 
+// Second slice out of the state document. Leads are capped at 500 there and the
+// oldest untouched ones are evicted as new submissions arrive, so a burst of
+// traffic to the public form can push real leads out of the CRM entirely. This
+// table keeps them: a lead leaving the document does not remove its row.
+//
+// Unlike the audit trail, leads mutate as they are worked, so this upserts on the
+// lead's own id rather than appending. The in-memory fingerprint map means a
+// steady state costs nothing: only leads whose contents actually changed are
+// sent. A cold instance syncs in batches over successive saves rather than
+// pushing the whole set at once.
+const LEAD_SYNC_BATCH = 100;
+const leadFingerprints = new Map();
+
+function leadFingerprint(lead) {
+  return crypto.createHash("sha256").update(JSON.stringify(lead || {}), "utf8").digest("hex");
+}
+
+async function archiveLeads(state) {
+  if (!hasSupabase()) return { ok: false, reason: "missing_supabase_env" };
+  const leads = Array.isArray(state?.leads) ? state.leads : [];
+  if (!leads.length) return { ok: false, reason: "nothing_to_archive" };
+
+  const changed = [];
+  for (const lead of leads) {
+    const leadId = String(lead?.id || "");
+    if (!leadId) continue;
+    const fingerprint = leadFingerprint(lead);
+    if (leadFingerprints.get(leadId) === fingerprint) continue;
+    changed.push({ leadId, fingerprint, lead });
+    if (changed.length >= LEAD_SYNC_BATCH) break;
+  }
+  if (!changed.length) return { ok: false, reason: "nothing_new" };
+
+  const createdAt = (value) => (Number.isFinite(Date.parse(value || "")) ? new Date(value).toISOString() : null);
+  const rows = changed.map(({ leadId, lead }) => ({
+    state_id: STATE_ID,
+    lead_id: leadId,
+    type: cleanText(lead?.type, 40) || null,
+    status: cleanText(lead?.status, 40) || null,
+    name: cleanText(lead?.name, 120) || null,
+    business: cleanText(lead?.business, 160) || null,
+    business_type: cleanText(lead?.businessType, 80) || null,
+    location: cleanText(lead?.location, 160) || null,
+    whatsapp: cleanText(lead?.whatsapp, 40) || null,
+    instagram: cleanText(lead?.instagram, 80) || null,
+    message: cleanText(lead?.message, 4000) || null,
+    source: cleanText(lead?.source, 80) || null,
+    lead_created_at: createdAt(lead?.createdAt),
+    entry: lead,
+    synced_at: new Date().toISOString(),
+  }));
+
+  try {
+    await supabaseFetch("/rest/v1/crm_leads?on_conflict=lead_id", {
+      method: "POST",
+      headers: { Prefer: "resolution=merge-duplicates,return=minimal" },
+      body: JSON.stringify(rows),
+    });
+    // Only remember what actually landed, so a failed batch is retried next save.
+    changed.forEach(({ leadId, fingerprint }) => leadFingerprints.set(leadId, fingerprint));
+    if (leadFingerprints.size > 5000) leadFingerprints.clear();
+    return { ok: true, synced: rows.length };
+  } catch (error) {
+    return { ok: false, reason: error?.code || "archive_failed" };
+  }
+}
+
 async function replaceAppState(state, updatedBy = "system", expectedUpdatedAt = "") {
   if (!hasSupabase()) return { ok: false, reason: "missing_supabase_env" };
   if (!expectedUpdatedAt) {
@@ -409,6 +476,7 @@ async function replaceAppState(state, updatedBy = "system", expectedUpdatedAt = 
   // can affect whether this save succeeded.
   await snapshotAppStateIfDue(state, `snapshot after write by ${updatedBy}`);
   await archiveAuditEntries(state);
+  await archiveLeads(state);
   return { ok: true, updatedAt: rows[0]?.updated_at || updatedAt };
 }
 
@@ -722,6 +790,7 @@ module.exports = {
   hasSessionSecret,
   appendLeadToState,
   archiveAuditEntries,
+  archiveLeads,
   auditDedupeKey,
   capLeads,
   clearSessionCookie,

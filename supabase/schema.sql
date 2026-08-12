@@ -56,6 +56,34 @@ create index if not exists audit_events_at_idx on public.audit_events (state_id,
 
 alter table public.audit_events enable row level security;
 
+-- Durable copy of the CRM leads. Inside the state document leads are capped at
+-- 500 and the oldest untouched ones are evicted as new submissions arrive, so a
+-- burst of traffic to the public form can push real leads out. This table keeps
+-- them: rows are never removed when a lead leaves the document. Leads mutate as
+-- they are worked, so this is an upsert keyed on the lead's own id.
+create table if not exists public.crm_leads (
+  id bigint generated always as identity primary key,
+  state_id text not null default 'production',
+  lead_id text not null unique,
+  type text,
+  status text,
+  name text,
+  business text,
+  business_type text,
+  location text,
+  whatsapp text,
+  instagram text,
+  message text,
+  source text,
+  lead_created_at timestamptz,
+  entry jsonb not null default '{}'::jsonb,
+  synced_at timestamptz not null default now()
+);
+
+create index if not exists crm_leads_created_idx on public.crm_leads (state_id, lead_created_at desc);
+
+alter table public.crm_leads enable row level security;
+
 create table if not exists public.email_events (
   id uuid primary key default gen_random_uuid(),
   event_type text not null,
