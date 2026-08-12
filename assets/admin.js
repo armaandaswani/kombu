@@ -2732,115 +2732,239 @@ function renderProductionClientList(row, limit = 4) {
   `;
 }
 
+// Every line of an order with what was ordered, what is actually reserved to
+// THIS order, and what is still missing. "reserved" only ever counts bottles
+// allocated to this order - stock merely existing is not a reservation.
+function orderLineRows(order) {
+  return orderItems(order).map((item) => {
+    const ordered = Math.max(0, Number(item.qty || 0));
+    const delivered = orderItemDeliveredQty(item);
+    const outstanding = Math.max(0, ordered - delivered);
+    const reserved = orderItemReservedQty(item);
+    const missing = Math.max(0, outstanding - reserved);
+    return {
+      key: item.key || "",
+      product: orderFlavorText(item),
+      ordered,
+      delivered,
+      outstanding,
+      reserved,
+      missing,
+      batches: orderItemBatchCodes(item),
+      status: outstanding === 0 ? "entregue" : missing === 0 ? "reservado" : reserved > 0 ? "parcial" : "faltando",
+    };
+  });
+}
+
+// Pendente: nothing reserved. Parcial: some reserved, some still missing.
+// Completo: nothing missing.
+function orderReadyStatus(reserved, missing) {
+  if (missing === 0) return "completo";
+  return reserved > 0 ? "parcial" : "pendente";
+}
+
 function orderReadyRows() {
   return (state.orders || [])
     .filter(isOpenOrder)
     .map((order) => {
-      const items = orderItems(order)
-        .map((item) => {
-          const qty = orderItemOutstandingQty(item);
-          const ready = orderItemReservedQty(item);
-          return {
-            product: orderFlavorText(item),
-            qty,
-            originalQty: Number(item.qty || 0),
-            delivered: orderItemDeliveredQty(item),
-            ready,
-            missing: Math.max(0, qty - ready),
-          };
-        })
-        .filter((item) => item.qty > 0);
-      const qty = items.reduce((sum, item) => sum + item.qty, 0);
-      const ready = items.reduce((sum, item) => sum + item.ready, 0);
-      const missing = Math.max(0, qty - ready);
-      const delivered = orderDeliveredQuantity(order);
+      const items = orderLineRows(order);
+      const outstanding = items.reduce((sum, item) => sum + item.outstanding, 0);
+      const reserved = items.reduce((sum, item) => sum + item.reserved, 0);
+      const missing = items.reduce((sum, item) => sum + item.missing, 0);
       return {
         order,
         partner: selectedPartnerForOrder(order),
         client: orderClientDisplayName(order),
+        code: order.code || "",
         date: order.orderDate || order.createdAt?.slice(0, 10) || "",
         due: order.neededBy || order.estimatedReadyDate || "",
-        qty,
+        qty: outstanding,
         originalQty: orderQuantity(order),
-        delivered,
-        ready,
+        delivered: orderDeliveredQuantity(order),
+        ready: reserved,
         missing,
-        percent: qty ? Math.min(100, (ready / qty) * 100) : 0,
+        percent: outstanding ? Math.min(100, (reserved / outstanding) * 100) : 100,
+        status: orderReadyStatus(reserved, missing),
         items,
       };
     })
     .filter((row) => row.qty > 0)
     .sort((a, b) => {
-      const status = (row) => (row.ready >= row.qty ? 0 : row.ready > 0 ? 1 : 2);
-      return status(a) - status(b) || String(a.due || "9999-99-99").localeCompare(String(b.due || "9999-99-99")) || a.client.localeCompare(b.client);
+      const rank = (row) => (row.status === "completo" ? 0 : row.status === "parcial" ? 1 : 2);
+      return rank(a) - rank(b) || String(a.due || "9999-99-99").localeCompare(String(b.due || "9999-99-99")) || a.client.localeCompare(b.client);
     });
 }
 
+const ORDER_STATUS_LABELS = { completo: "Completo", parcial: "Parcial", pendente: "Pendente" };
+
+// The card used to pick ONE list: missing items if anything was missing, reserved
+// items otherwise. So an order with 4 of 48 reserved showed only the 44 missing
+// and hid the 4 that were already separated, which made it impossible to see what
+// the order actually consisted of. It now always leads with the totals and shows
+// a short preview, with the full composition one click away.
 function orderReadyCard(row, view = "summary") {
-  const status = row.ready >= row.qty ? "completo" : row.ready > 0 ? "parcial" : "aguardando";
-  const readyItems = row.items.filter((item) => item.ready > 0);
-  const missingItems = row.items.filter((item) => item.missing > 0);
-  const selectedItems = row.missing > 0 || view === "missing" ? missingItems : readyItems;
-  const visibleItems = row.missing > 0 || view === "missing" ? selectedItems : selectedItems.slice(0, 4);
-  const extra = selectedItems.length - visibleItems.length;
-  const itemListLabel = row.missing > 0 ? "Sabores que faltam" : "Sabores separados";
+  const preview =
+    view === "missing"
+      ? row.items.filter((item) => item.missing > 0)
+      : view === "reserved"
+        ? row.items.filter((item) => item.reserved > 0)
+        : row.items.filter((item) => item.outstanding > 0);
+  const visible = preview.slice(0, 4);
+  const extra = preview.length - visible.length;
+  const emptyNote =
+    view === "missing" ? "Nada faltando neste pedido." : view === "reserved" ? "Nada reservado ainda." : "Sem itens em aberto.";
+
   return `
-    <article class="order-ready-card is-${status}" data-order-ready-card="${row.order.id}">
+    <article class="order-ready-card is-${row.status}" data-order-ready-card="${escapeHtml(row.order.id)}" data-action="view-order:${escapeHtml(row.order.id)}" role="button" tabindex="0" aria-label="Ver pedido de ${escapeHtml(row.client)}">
       <div class="order-ready-head">
         <div>
           <strong>${escapeHtml(row.client)}</strong>
-          <small>${row.date ? `Pedido ${escapeHtml(shortDate(row.date))}` : "Pedido aberto"}${row.due ? ` | precisa ${escapeHtml(shortDate(row.due))}` : ""}</small>
+          <small>${row.code ? `${escapeHtml(row.code)} | ` : ""}${row.date ? `${escapeHtml(shortDate(row.date))}` : "pedido aberto"}${row.due ? ` | precisa ${escapeHtml(shortDate(row.due))}` : ""}</small>
         </div>
-        <span>${status}</span>
+        <span class="order-ready-status">${escapeHtml(ORDER_STATUS_LABELS[row.status] || row.status)}</span>
       </div>
       <div class="order-ready-total">
-        <strong>${number(row.ready)}/${number(row.qty)}</strong>
+        <strong>${number(row.ready)} de ${number(row.qty)} reservadas</strong>
         <span>${row.missing ? `${number(row.missing)} faltando` : "pronto para entregar"}</span>
       </div>
       ${row.delivered ? `<p class="order-ready-delivered">${number(row.delivered)} já entregue(s) de ${number(row.originalQty)} no pedido</p>` : ""}
-      <div class="order-ready-meter" aria-label="${number(row.ready)} de ${number(row.qty)} garrafas separadas">
+      <div class="order-ready-meter" aria-label="${number(row.ready)} de ${number(row.qty)} garrafas reservadas">
         <i style="width:${row.percent}%"></i>
       </div>
-      <div class="order-ready-items ${row.missing > 0 ? "is-missing" : "is-ready"}">
-        <div class="order-ready-items-title">
-          <strong>${itemListLabel}</strong>
-          <span>${row.missing > 0 ? `${number(missingItems.length)} sabor(es)` : "pedido completo"}</span>
-        </div>
+      <div class="order-ready-items">
         ${
-          visibleItems.length
-            ? visibleItems
+          visible.length
+            ? visible
                 .map(
                   (item) => `
                     <div>
                       <strong>${escapeHtml(item.product)}</strong>
-                      <span>${
-                        row.missing > 0 || view === "missing"
-                          ? `<b>${number(item.missing)} faltando</b> de ${number(item.qty)}`
-                          : item.ready
-                            ? `${number(item.ready)} pronta(s) de ${number(item.qty)}`
-                            : `${number(item.missing)} faltando`
-                      }</span>
+                      <span class="is-${item.status}">${number(item.reserved)} reservada(s) · ${number(item.missing)} faltando <small>de ${number(item.outstanding)}</small></span>
                     </div>
                   `,
                 )
                 .join("")
-            : `<p class="mini-empty">Sem itens neste pedido.</p>`
+            : `<p class="mini-empty">${emptyNote}</p>`
         }
-        ${extra > 0 ? `<div class="order-ready-more">+${extra} sabor(es)</div>` : ""}
+        ${extra > 0 ? `<div class="order-ready-more">+${number(extra)} sabor(es)</div>` : ""}
       </div>
       <div class="order-ready-actions">
-        ${actionButton(`delivery-proof:${row.order.id}`, "PDF da entrega", "picture_as_pdf", "btn-primary")}
-        ${orderDeliveries(row.order).length ? actionButton(`order-receipt:${row.order.id}`, "Emitir recibo", "request_quote", "btn-outline") : ""}
+        ${actionButton(`view-order:${row.order.id}`, "Ver pedido", "receipt_long", "btn-primary")}
         ${actionButton(`adjust-order-reservation:${row.order.id}`, "Ajustar reserva", "tune", "btn-outline")}
-        ${row.partner ? actionButton(`dashboard-edit-partner:${row.partner.id}`, "Editar parceiro", "edit", "btn-outline") : ""}
+        <details class="order-ready-menu">
+          <summary data-action="noop" aria-label="Mais ações"><span class="material-symbols-outlined" aria-hidden="true">more_horiz</span></summary>
+          <div class="order-ready-menu-list">
+            ${actionButton(`delivery-proof:${row.order.id}`, "PDF da entrega", "picture_as_pdf", "btn-outline")}
+            ${orderDeliveries(row.order).length ? actionButton(`order-receipt:${row.order.id}`, "Emitir recibo", "request_quote", "btn-outline") : ""}
+            ${row.partner ? actionButton(`dashboard-edit-partner:${row.partner.id}`, "Editar parceiro", "edit", "btn-outline") : ""}
+          </div>
+        </details>
       </div>
     </article>
   `;
 }
 
+// Full composition of one order. "Todos" always shows every line, including the
+// ones already reserved and the ones already delivered, so nothing is hidden.
+let orderDetail = { orderId: "", filter: "all" };
+
+function orderDetailMarkup() {
+  const order = byId("orders", orderDetail.orderId);
+  if (!order) return `<p class="empty-note">Este pedido não existe mais.</p>`;
+  const items = orderLineRows(order);
+  const outstanding = items.reduce((sum, item) => sum + item.outstanding, 0);
+  const reserved = items.reduce((sum, item) => sum + item.reserved, 0);
+  const missing = items.reduce((sum, item) => sum + item.missing, 0);
+  const status = orderReadyStatus(reserved, missing);
+  const shown =
+    orderDetail.filter === "reserved"
+      ? items.filter((item) => item.reserved > 0)
+      : orderDetail.filter === "missing"
+        ? items.filter((item) => item.missing > 0)
+        : items;
+
+  const rows = shown.map(
+    (item) => `
+      <tr>
+        <td><strong>${escapeHtml(item.product)}</strong>${item.batches.length ? `<br><span>${escapeHtml(item.batches.join(", "))}</span>` : ""}</td>
+        <td class="num">${number(item.ordered)}</td>
+        <td class="num">${number(item.reserved)}</td>
+        <td class="num">${number(item.missing)}</td>
+        <td><span class="status ${item.status === "reservado" || item.status === "entregue" ? "good" : item.status === "parcial" ? "warn" : "bad"}">${escapeHtml(item.status)}</span></td>
+      </tr>
+    `,
+  );
+
+  return `
+    <div class="order-detail-summary">
+      <span><small>Pedido</small><strong>${number(orderQuantity(order))}</strong></span>
+      <span><small>Reservado</small><strong>${number(reserved)}</strong></span>
+      <span><small>Faltando</small><strong>${number(missing)}</strong></span>
+      <span><small>Situação</small><strong>${escapeHtml(ORDER_STATUS_LABELS[status] || status)}</strong></span>
+    </div>
+    <div class="order-ready-meter" aria-label="${number(reserved)} de ${number(outstanding)} reservadas"><i style="width:${outstanding ? Math.min(100, (reserved / outstanding) * 100) : 100}%"></i></div>
+    <div class="segmented" role="group" aria-label="Filtrar itens do pedido">
+      ${["all", "reserved", "missing"]
+        .map(
+          (key) =>
+            `<button type="button" data-action="order-detail-filter:${key}" class="${orderDetail.filter === key ? "is-active" : ""}">${key === "all" ? "Todos" : key === "reserved" ? "Reservados" : "Faltantes"}</button>`,
+        )
+        .join("")}
+    </div>
+    ${table(
+      [{ label: "Sabor" }, { label: "Pedido", num: true }, { label: "Reservado", num: true }, { label: "Faltando", num: true }, { label: "Situação" }],
+      rows,
+    )}
+    <div class="order-ready-actions">
+      ${actionButton(`adjust-order-reservation:${order.id}`, "Ajustar reserva", "tune", "btn-primary")}
+      ${actionButton(`delivery-proof:${order.id}`, "PDF da entrega", "picture_as_pdf", "btn-outline")}
+      ${actionButton(`edit-order:${order.id}`, "Editar pedido", "edit", "btn-outline")}
+    </div>
+  `;
+}
+
+function renderOrderDetail() {
+  const mount = document.querySelector("#orderDetailMount");
+  if (mount) mount.innerHTML = orderDetailMarkup();
+}
+
+function openOrderDetail(orderId) {
+  const order = byId("orders", orderId);
+  if (!order) return;
+  orderDetail = { orderId, filter: "all" };
+  openModal(
+    orderClientDisplayName(order),
+    `Pedido ${order.code || ""}`.trim(),
+    `<div id="orderDetailMount"></div>`,
+  );
+  renderOrderDetail();
+}
+
+function setOrderDetailFilter(filter) {
+  orderDetail.filter = ["all", "reserved", "missing"].includes(filter) ? filter : "all";
+  renderOrderDetail();
+}
+
+const DASHBOARD_ORDER_VIEWS = [
+  { key: "summary", label: "Resumo" },
+  { key: "missing", label: "Faltantes" },
+  { key: "reserved", label: "Reservados" },
+];
+
 function dashboardReadyOrders() {
   const allRows = orderReadyRows();
-  const rows = currentDashboardOrderView === "missing" ? allRows.filter((row) => row.missing > 0) : allRows;
+  const rows =
+    currentDashboardOrderView === "missing"
+      ? allRows.filter((row) => row.missing > 0)
+      : currentDashboardOrderView === "reserved"
+        ? allRows.filter((row) => row.ready > 0)
+        : allRows;
+  const emptyNote =
+    currentDashboardOrderView === "missing"
+      ? "Nenhuma garrafa faltando nos pedidos abertos."
+      : currentDashboardOrderView === "reserved"
+        ? "Nenhum pedido com garrafas já reservadas."
+        : "Nenhum pedido aberto com garrafas para separar.";
   return `
     <section class="admin-card dashboard-ready-card">
       <div class="dashboard-card-head">
@@ -2849,16 +2973,14 @@ function dashboardReadyOrders() {
           <span>${tr("Separado para entrega")}</span>
         </div>
         <div class="segmented dashboard-order-view" aria-label="Filtrar pedidos do dashboard">
-          <button type="button" data-dashboard-order-view="summary" class="${currentDashboardOrderView === "summary" ? "is-active" : ""}">Resumo</button>
-          <button type="button" data-dashboard-order-view="missing" class="${currentDashboardOrderView === "missing" ? "is-active" : ""}">Só faltantes</button>
+          ${DASHBOARD_ORDER_VIEWS.map(
+            (view) =>
+              `<button type="button" data-dashboard-order-view="${view.key}" class="${currentDashboardOrderView === view.key ? "is-active" : ""}">${view.label}</button>`,
+          ).join("")}
         </div>
       </div>
       <div class="order-ready-grid">
-        ${
-          rows.length
-            ? rows.slice(0, 6).map((row) => orderReadyCard(row, currentDashboardOrderView)).join("")
-            : `<p class="empty-note">${currentDashboardOrderView === "missing" ? "Nenhuma garrafa faltando nos pedidos abertos." : "Nenhum pedido aberto com garrafas para separar."}</p>`
-        }
+        ${rows.length ? rows.slice(0, 6).map((row) => orderReadyCard(row, currentDashboardOrderView)).join("") : `<p class="empty-note">${emptyNote}</p>`}
       </div>
     </section>
   `;
@@ -9702,7 +9824,8 @@ function fieldValue(input) {
 function bindModuleEvents() {
   document.querySelectorAll("[data-dashboard-order-view]").forEach((button) => {
     button.addEventListener("click", () => {
-      currentDashboardOrderView = button.dataset.dashboardOrderView === "missing" ? "missing" : "summary";
+      const requested = button.dataset.dashboardOrderView;
+      currentDashboardOrderView = DASHBOARD_ORDER_VIEWS.some((view) => view.key === requested) ? requested : "summary";
       render();
     });
   });
@@ -9927,6 +10050,10 @@ function handleAction(action) {
     "lead-archive-more": () => loadLeadArchive(),
     "recalculate-reservations": recalculateReservationsForm,
     "recalculate-reservations-confirm": applyReservationRecalculation,
+    "view-order": openOrderDetail,
+    "order-detail-filter": setOrderDetailFilter,
+    // The order cards are clickable, so controls inside them opt out of that.
+    noop: () => {},
     "go-costs": () => setModule("costs"),
     "save-costs": () => {
       addAudit("Simulação de custos salva", byId("recipes", activeRecipeId)?.flavor);
