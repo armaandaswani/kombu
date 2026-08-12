@@ -5741,7 +5741,7 @@ function renderLeads() {
     ${pageHead(
       "Leads CRM",
       `Leads capturados no site público e notificações enviadas para ${state.notifications.adminEmail}.`,
-      `${actionButton("export-leads", "Exportar CSV", "download", "btn-outline")}`,
+      `${actionButton("lead-archive", "Arquivo completo", "inventory_2", "btn-outline")} ${actionButton("export-leads", "Exportar CSV", "download", "btn-outline")}`,
     )}
     <section class="metric-grid">
       ${metric("Leads novos", number(state.leads.filter((lead) => lead.status === "novo").length), "Ainda sem contato", "mark_email_unread")}
@@ -6119,6 +6119,112 @@ function openAuditHistory() {
     `<p class="lead" style="font-size:1rem">O painel mostra apenas a atividade recente. Este histórico é permanente e fica guardado fora do documento principal.</p><div id="auditHistoryMount"></div>`,
   );
   loadAuditHistory({ reset: true });
+}
+
+// The CRM inside the state document is a rolling 500-lead window; crm_leads
+// keeps everything. This reads it back and, more usefully, marks the leads that
+// are no longer in the panel at all - those are the ones eviction removed.
+let leadArchive = { leads: [], nextBefore: null, search: "", loading: false, error: "", unavailable: false };
+
+function leadArchiveMarkup() {
+  const present = new Set((state.leads || []).map((lead) => String(lead.id || "")));
+  const rows = leadArchive.leads
+    .map((lead) => {
+      const evicted = !present.has(String(lead.id || ""));
+      return `
+        <div class="audit-row">
+          <strong>${escapeHtml(lead.name || lead.business || "Sem nome")}${evicted ? ` <span class="status warn">fora do painel</span>` : ""}</strong>
+          <span>${escapeHtml(lead.createdAt ? new Date(lead.createdAt).toLocaleString("pt-BR") : "-")} | ${escapeHtml(lead.status || "-")} | ${escapeHtml(lead.type || "-")}</span>
+          <span>${escapeHtml([lead.business, lead.location, lead.whatsapp, lead.instagram].filter(Boolean).join(" | ") || "-")}</span>
+          ${lead.message ? `<span>${escapeHtml(lead.message)}</span>` : ""}
+        </div>
+      `;
+    })
+    .join("");
+
+  const evictedCount = leadArchive.leads.filter((lead) => !present.has(String(lead.id || ""))).length;
+
+  return `
+    <div class="input-grid">
+      <label class="field field-full">
+        <span>Buscar no arquivo</span>
+        <input id="leadArchiveSearch" type="search" value="${escapeHtml(leadArchive.search)}" placeholder="Nome, negocio, WhatsApp, bairro..." autocomplete="off">
+      </label>
+    </div>
+    ${leadArchive.unavailable ? `<p class="empty-note">O arquivo permanente ainda não está disponível nesta base.</p>` : ""}
+    ${leadArchive.error ? `<p class="empty-note">${escapeHtml(leadArchive.error)}</p>` : ""}
+    ${evictedCount ? `<p class="empty-note">${number(evictedCount)} lead(s) desta lista já saíram do painel e só existem no arquivo.</p>` : ""}
+    <div class="stack-list">${rows || (leadArchive.loading ? "" : `<p class="empty-note">Nenhum lead encontrado.</p>`)}</div>
+    ${leadArchive.loading ? `<p class="empty-note">Carregando...</p>` : ""}
+    ${leadArchive.nextBefore && !leadArchive.loading ? `
+      <button class="btn btn-outline" type="button" data-action="lead-archive-more">
+        <span class="material-symbols-outlined" aria-hidden="true">expand_more</span>Carregar mais
+      </button>
+    ` : ""}
+  `;
+}
+
+function renderLeadArchive() {
+  const mount = document.querySelector("#leadArchiveMount");
+  if (!mount) return;
+  mount.innerHTML = leadArchiveMarkup();
+  const input = mount.querySelector("#leadArchiveSearch");
+  if (input) {
+    input.addEventListener("input", () => {
+      window.clearTimeout(renderLeadArchive.timer);
+      const value = input.value;
+      renderLeadArchive.timer = window.setTimeout(() => {
+        leadArchive.search = value;
+        loadLeadArchive({ reset: true });
+      }, 350);
+    });
+  }
+}
+
+async function loadLeadArchive({ reset = false } = {}) {
+  if (leadArchive.loading) return;
+  if (reset) {
+    leadArchive.leads = [];
+    leadArchive.nextBefore = null;
+    leadArchive.error = "";
+    leadArchive.unavailable = false;
+  }
+  leadArchive.loading = true;
+  renderLeadArchive();
+  try {
+    const params = new URLSearchParams({ limit: "50" });
+    if (leadArchive.nextBefore) params.set("before", leadArchive.nextBefore);
+    if (leadArchive.search) params.set("search", leadArchive.search);
+    const response = await fetch(`/api/leads?${params.toString()}`, { credentials: "same-origin" });
+    const payload = await readJsonSafe(response);
+    if (!response.ok || !payload.ok) {
+      leadArchive.error = syncErrorMessage(payload, "Não foi possível carregar o arquivo de leads.");
+    } else {
+      leadArchive.leads = [...leadArchive.leads, ...(payload.leads || [])];
+      leadArchive.nextBefore = payload.nextBefore || null;
+      leadArchive.unavailable = payload.unavailable === true;
+    }
+  } catch {
+    leadArchive.error = "Não foi possível conectar para carregar o arquivo de leads.";
+  } finally {
+    leadArchive.loading = false;
+    renderLeadArchive();
+    const input = document.querySelector("#leadArchiveSearch");
+    if (input && document.activeElement !== input && leadArchive.search) {
+      input.focus();
+      input.setSelectionRange(input.value.length, input.value.length);
+    }
+  }
+}
+
+function openLeadArchive() {
+  leadArchive = { leads: [], nextBefore: null, search: "", loading: false, error: "", unavailable: false };
+  openModal(
+    "Arquivo de leads",
+    "Leads CRM",
+    `<p class="lead" style="font-size:1rem">O painel guarda os leads mais recentes. Este arquivo é permanente e mantém tambem os que já saíram da lista.</p><div id="leadArchiveMount"></div>`,
+  );
+  loadLeadArchive({ reset: true });
 }
 
 function renderAuditRows(limit) {
@@ -9685,6 +9791,8 @@ function handleAction(action) {
     "sync-cloud": () => syncFromCloud().then(render),
     "audit-history": openAuditHistory,
     "audit-history-more": () => loadAuditHistory(),
+    "lead-archive": openLeadArchive,
+    "lead-archive-more": () => loadLeadArchive(),
     "go-costs": () => setModule("costs"),
     "save-costs": () => {
       addAudit("Simulação de custos salva", byId("recipes", activeRecipeId)?.flavor);
