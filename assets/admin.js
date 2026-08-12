@@ -6519,15 +6519,20 @@ function enhanceSelectSearch(container = document) {
   });
 }
 
-function variantPickerTemplate(choices, selectedId, fieldAttribute = 'name="productId"') {
-  const selected = choices.find((choice) => choice.id === selectedId) || choices[0] || {};
+// allowEmpty exists so a brand new order line starts with nothing chosen. It used
+// to fall back to choices[0], which is why every new item arrived pre-set to
+// whichever flavour happened to be first and had to be corrected by hand.
+function variantPickerTemplate(choices, selectedId, fieldAttribute = 'name="productId"', { allowEmpty = false } = {}) {
+  const match = choices.find((choice) => choice.id === selectedId);
+  const selected = match || (allowEmpty ? {} : choices[0] || {});
   const flavors = [...new Set(choices.map((choice) => choice.flavor).filter(Boolean))];
   const sizes = choices
     .filter((choice) => choice.flavor === selected.flavor)
     .sort((a, b) => Number(a.sizeMl || 0) - Number(b.sizeMl || 0));
+  const placeholder = allowEmpty && !match ? `<option value="" selected>Escolha o sabor</option>` : "";
   return `
     <div class="variant-picker" data-variant-picker>
-      <label class="field"><span>Sabor</span><select data-variant-flavor data-force-search="true">${flavors.map((flavor) => `<option value="${escapeHtml(flavor)}" ${flavor === selected.flavor ? "selected" : ""}>${escapeHtml(flavor)}</option>`).join("")}</select></label>
+      <label class="field"><span>Sabor</span><select data-variant-flavor data-force-search="true">${placeholder}${flavors.map((flavor) => `<option value="${escapeHtml(flavor)}" ${flavor === selected.flavor ? "selected" : ""}>${escapeHtml(flavor)}</option>`).join("")}</select></label>
       <label class="field"><span>Tamanho</span><select data-variant-size>${sizes.map((choice) => `<option value="${choice.sizeMl}" ${choice.id === selected.id ? "selected" : ""}>${number(choice.sizeMl)}ml</option>`).join("")}</select></label>
       <input type="hidden" ${fieldAttribute} data-variant-choice value="${escapeHtml(selected.id || "")}">
     </div>
@@ -9132,15 +9137,17 @@ function editSaleForm(saleId) {
 }
 
 function orderItemRowTemplate(item = {}, clientType = "novo_cliente") {
-  const selectedProductId = item.productId || state.products[0]?.id || "";
-  const selectedProduct = byId("products", selectedProductId) || state.products[0];
-  const defaultPrice = item.unitPrice ?? priceForOrderClientType(selectedProduct, clientType);
+  // A new line starts with nothing chosen. Only an existing line resolves to a
+  // product, so nobody has to notice and undo an arbitrary pre-selection.
+  const selectedProductId = item.productId || "";
+  const selectedProduct = byId("products", selectedProductId);
+  const defaultPrice = item.unitPrice ?? (selectedProduct ? priceForOrderClientType(selectedProduct, clientType) : 0);
   const status = item.productionStatus || "pendente";
   const allocationsJson = JSON.stringify(orderItemAllocations(item));
   const reservationOverrideJson = JSON.stringify(item.reservationOverride || null);
   return `
     <div class="builder-row order-item-row" hidden>
-      ${variantPickerTemplate(productVariantChoices(), selectedProductId, 'data-field="productId"')}
+      ${variantPickerTemplate(productVariantChoices(), selectedProductId, 'data-field="productId"', { allowEmpty: true })}
       <label class="field"><span>Qtd. garrafas</span><input data-field="qty" type="number" min="${Math.max(1, orderItemDeliveredQty(item))}" step="1" value="${item.qty || 1}"></label>
       <label class="field"><span>Preço unitário</span><input data-field="unitPrice" type="number" min="0" step="0.01" value="${defaultPrice}"></label>
       <label class="field"><span>Status produção</span><select data-field="productionStatus">${ORDER_ITEM_STATUSES.map((option) => `<option value="${option}" ${status === option ? "selected" : ""}>${option}</option>`).join("")}</select></label>
@@ -9161,6 +9168,71 @@ function orderItemRowTemplate(item = {}, clientType = "novo_cliente") {
       <button class="icon-btn" type="button" data-remove-builder-row aria-label="Remover item">
         <span class="material-symbols-outlined" aria-hidden="true">delete</span>
       </button>
+    </div>
+  `;
+}
+
+// Spec section 4. Adding eight flavours meant eight rounds of: add a row, scroll
+// to the editor, replace the flavour it guessed, set the quantity. The picker
+// lets the whole order be chosen at once, grouped by bottle size, with the free
+// stock of each flavour visible while choosing.
+function orderFlavorPickerMarkup(clientType) {
+  const choices = productVariantChoices().filter((choice) => choice.id);
+  if (!choices.length) return "";
+  const bySize = new Map();
+  choices.forEach((choice) => {
+    const size = Number(choice.sizeMl || BASE_BOTTLE_SIZE_ML);
+    if (!bySize.has(size)) bySize.set(size, []);
+    bySize.get(size).push(choice);
+  });
+
+  const groups = [...bySize.entries()]
+    .sort((a, b) => a[0] - b[0])
+    .map(([size, list]) => {
+      const cards = list
+        .sort((a, b) => String(a.flavor || "").localeCompare(String(b.flavor || "")))
+        .map((choice) => {
+          const product = byId("products", choice.id);
+          const price = priceForOrderClientType(product, clientType);
+          const free = availableStockForProduct(choice.id);
+          return `
+            <label class="flavor-pick" data-flavor-pick="${escapeHtml(choice.id)}">
+              <input type="checkbox" data-pick-check>
+              <span class="flavor-pick-name">
+                <strong>${escapeHtml(choice.flavor || product?.item || "Sabor")}</strong>
+                <small>${number(size)}ml · ${brl(price)} · ${free > 0 ? `${number(free)} em estoque` : "sem estoque livre"}</small>
+              </span>
+              <span class="reserve-stepper">
+                <button type="button" class="icon-btn" data-pick-step="-1" aria-label="Diminuir">−</button>
+                <input type="number" min="0" step="1" value="0" data-pick-qty aria-label="Quantidade de ${escapeHtml(choice.flavor || "")} ${number(size)}ml">
+                <button type="button" class="icon-btn" data-pick-step="1" aria-label="Aumentar">+</button>
+              </span>
+            </label>
+          `;
+        })
+        .join("");
+      return `<div class="flavor-pick-group"><h4>${number(size)}ml</h4><div class="flavor-pick-grid">${cards}</div></div>`;
+    })
+    .join("");
+
+  return `
+    <div class="builder-section flavor-picker-section">
+      <div class="table-toolbar">
+        <div>
+          <h3>Selecionar sabores do pedido</h3>
+          <p>Marque os sabores, defina as quantidades e adicione tudo de uma vez.</p>
+        </div>
+      </div>
+      <div class="input-grid">
+        <label class="field"><span>Quantidade para os sabores selecionados</span><input type="number" min="0" step="1" value="4" id="bulkPickQty"></label>
+        <div class="field">
+          <span>&nbsp;</span>
+          <button class="btn btn-outline" type="button" data-pick-apply><span class="material-symbols-outlined" aria-hidden="true">done_all</span>Aplicar aos selecionados</button>
+        </div>
+      </div>
+      ${groups}
+      <div class="result-card field-full" id="flavorPickSummary"></div>
+      <button class="btn btn-primary" type="button" data-pick-add><span class="material-symbols-outlined" aria-hidden="true">playlist_add</span>Adicionar ao pedido</button>
     </div>
   `;
 }
@@ -9281,6 +9353,19 @@ function updateOrderPreview(form) {
       <span>Pedido alimenta produção; ao marcar entregue, vira venda e cobrança automaticamente.</span>
     `;
   }
+  // Always-visible composition, so what has been added is never hidden behind
+  // the one-item-at-a-time editor.
+  const itemsSummary = form.querySelector("#orderItemsSummary");
+  if (itemsSummary) {
+    const inStock = items.filter((item) => availableStockForProduct(item.productId) >= Number(item.qty || 0)).length;
+    itemsSummary.innerHTML = items.length
+      ? `<small>Sabores no pedido</small>
+         <strong>${number(items.length)} sabor(es) · ${number(totalQty)} garrafa(s) · ${brl(totalValue)}</strong>
+         <span>${items
+           .map((item) => `${escapeHtml(item.productName || item.flavor || "Sabor")}: ${number(item.qty)}`)
+           .join("; ")}. ${number(inStock)} com estoque suficiente, ${number(items.length - inStock)} dependem de produção.</span>`
+      : `<small>Sabores no pedido</small><strong>Nenhum sabor adicionado</strong><span>Use o seletor acima para escolher os sabores.</span>`;
+  }
   return { items, totalQty, totalValue };
 }
 
@@ -9326,6 +9411,92 @@ function bindOrderForm(form) {
     updateOrderPreview(form);
     renderOrderItemNavigator(form, orderItemEditorKey(rows.lastElementChild));
   });
+
+  // --- flavour picker -------------------------------------------------------
+  const picks = () => [...form.querySelectorAll("[data-flavor-pick]")];
+  const pickState = (label) => ({
+    productId: label.dataset.flavorPick,
+    checked: label.querySelector("[data-pick-check]").checked,
+    qty: Math.max(0, Math.round(Number(label.querySelector("[data-pick-qty]").value) || 0)),
+  });
+  const chosenPicks = () => picks().map(pickState).filter((pick) => pick.checked && pick.qty > 0);
+
+  const updatePickSummary = () => {
+    const summary = form.querySelector("#flavorPickSummary");
+    if (!summary) return;
+    const chosen = chosenPicks();
+    const clientType = form.elements.clientType?.value || "novo_cliente";
+    const bottles = chosen.reduce((sum, pick) => sum + pick.qty, 0);
+    const value = chosen.reduce((sum, pick) => sum + pick.qty * priceForOrderClientType(byId("products", pick.productId), clientType), 0);
+    const withStock = chosen.filter((pick) => availableStockForProduct(pick.productId) >= pick.qty).length;
+    summary.innerHTML = chosen.length
+      ? `<small>Seleção atual</small>
+         <strong>${number(chosen.length)} sabor(es) · ${number(bottles)} garrafa(s) · ${brl(value)}</strong>
+         <span>${chosen
+           .map((pick) => `${escapeHtml(productLabel(byId("products", pick.productId)))}: ${number(pick.qty)}`)
+           .join("; ")}. ${number(withStock)} com estoque suficiente, ${number(chosen.length - withStock)} dependem de produção.</span>`
+      : `<small>Seleção atual</small><strong>Nenhum sabor selecionado</strong><span>Marque os sabores e informe as quantidades.</span>`;
+  };
+
+  form.addEventListener("input", (event) => {
+    if (event.target.closest("[data-flavor-pick]")) updatePickSummary();
+  });
+  form.addEventListener("change", (event) => {
+    const label = event.target.closest("[data-flavor-pick]");
+    if (!label) return;
+    // Ticking a flavour with no quantity yet adopts the bulk quantity, so one
+    // tick is enough in the common case.
+    if (event.target.matches("[data-pick-check]") && event.target.checked) {
+      const qtyInput = label.querySelector("[data-pick-qty]");
+      if (!Number(qtyInput.value)) qtyInput.value = String(Math.max(1, Number(form.querySelector("#bulkPickQty")?.value) || 1));
+    }
+    updatePickSummary();
+  });
+  form.addEventListener("click", (event) => {
+    const step = event.target.closest("[data-pick-step]");
+    if (step) {
+      const label = step.closest("[data-flavor-pick]");
+      const qtyInput = label.querySelector("[data-pick-qty]");
+      qtyInput.value = String(Math.max(0, Number(qtyInput.value || 0) + Number(step.dataset.pickStep)));
+      if (Number(qtyInput.value) > 0) label.querySelector("[data-pick-check]").checked = true;
+      updatePickSummary();
+      return;
+    }
+    if (event.target.closest("[data-pick-apply]")) {
+      const bulk = Math.max(0, Math.round(Number(form.querySelector("#bulkPickQty")?.value) || 0));
+      picks().forEach((label) => {
+        if (label.querySelector("[data-pick-check]").checked) label.querySelector("[data-pick-qty]").value = String(bulk);
+      });
+      updatePickSummary();
+      return;
+    }
+    if (event.target.closest("[data-pick-add]")) {
+      const chosen = chosenPicks();
+      if (!chosen.length) {
+        window.alert("Marque ao menos um sabor e informe a quantidade.");
+        return;
+      }
+      const clientType = form.elements.clientType?.value || "novo_cliente";
+      chosen.forEach((pick) => {
+        const product = byId("products", pick.productId);
+        rows.insertAdjacentHTML(
+          "beforeend",
+          orderItemRowTemplate({ productId: pick.productId, qty: pick.qty, unitPrice: priceForOrderClientType(product, clientType) }, clientType),
+        );
+        enhanceSelectSearch(rows);
+        bindProductPicker(rows.lastElementChild);
+      });
+      // Leave the picker clean so a second batch can be added straight away.
+      picks().forEach((label) => {
+        label.querySelector("[data-pick-check]").checked = false;
+        label.querySelector("[data-pick-qty]").value = "0";
+      });
+      updatePickSummary();
+      updateOrderPreview(form);
+      renderOrderItemNavigator(form, orderItemEditorKey(rows.lastElementChild));
+    }
+  });
+  updatePickSummary();
   form.addEventListener("click", (event) => {
     const itemSelector = event.target.closest("[data-order-item-select]");
     if (itemSelector) {
@@ -9401,6 +9572,7 @@ function orderForm(orderId) {
         .join("")}`
     : `<option value="">Nenhum parceiro cadastrado ainda</option>`;
   const orderItemsSection = `
+    ${orderFlavorPickerMarkup(clientType)}
     <div class="builder-section order-items-editor">
       <div class="table-toolbar">
         <div>
@@ -9409,6 +9581,7 @@ function orderForm(orderId) {
         </div>
       </div>
       <div class="order-item-navigator" id="orderItemNavigator" aria-label="Sabores do pedido"></div>
+      <div class="result-card field-full" id="orderItemsSummary"></div>
       <button class="btn btn-outline order-add-item" type="button" data-add-order-item>
         <span class="material-symbols-outlined" aria-hidden="true">add</span>
         Adicionar sabor

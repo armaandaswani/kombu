@@ -2971,6 +2971,52 @@ textarea:focus-visible {
   box-shadow: 0 12px 28px rgba(25, 28, 28, 0.14);
 }
 
+.flavor-pick-group h4 {
+  margin: 12px 0 6px;
+  font-size: 0.86rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+}
+
+.flavor-pick-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 8px;
+}
+
+.flavor-pick {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: #fff;
+  padding: 10px 12px;
+  cursor: pointer;
+}
+
+.flavor-pick:has(input[data-pick-check]:checked) {
+  border-color: rgba(45, 75, 40, 0.45);
+  background: #f5ffe7;
+}
+
+.flavor-pick-name {
+  display: grid;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+
+.flavor-pick-name small {
+  color: var(--muted);
+  font-size: 0.76rem;
+}
+
+.flavor-pick .reserve-stepper input {
+  width: 62px;
+}
+
 .reserve-stepper {
   display: flex;
   align-items: center;
