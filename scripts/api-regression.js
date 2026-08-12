@@ -215,6 +215,52 @@ async function run() {
     Date.now = realNow;
   }
 
+  // --- audit archive ---------------------------------------------------------
+  // Same rule as snapshots: a failing archive must never break a save.
+  assert.strictEqual(
+    backend.auditDedupeKey({ at: "2026-08-11T00:00:00.000Z", user: "a", action: "b", detail: "c" }),
+    backend.auditDedupeKey({ at: "2026-08-11T00:00:00.000Z", user: "a", action: "b", detail: "c" }),
+    "the same entry must always produce the same dedupe key",
+  );
+  assert.notStrictEqual(
+    backend.auditDedupeKey({ at: "2026-08-11T00:00:00.000Z", user: "a", action: "b", detail: "c" }),
+    backend.auditDedupeKey({ at: "2026-08-11T00:00:00.000Z", user: "a", action: "b", detail: "different" }),
+    "different entries must produce different dedupe keys",
+  );
+
+  const archiveCalls = [];
+  global.fetch = async (url, options = {}) => {
+    const method = options.method || "GET";
+    const path = String(url);
+    if (path.includes("audit_events")) {
+      archiveCalls.push(JSON.parse(options.body || "[]").length);
+      throw Object.assign(new Error("supabase_request_failed"), { code: "supabase_request_failed", status: 404 });
+    }
+    if (path.includes("app_state_backups")) return supabaseReply([]);
+    if (method === "GET") return supabaseReply([{ id: "production", state: {}, updated_at: "2026-08-11T00:00:00.000Z" }]);
+    return supabaseReply([{ updated_at: "2026-08-11T02:00:00.000Z" }]);
+  };
+
+  const withAudit = {
+    products: [],
+    audit: Array.from({ length: 120 }, (_, n) => ({
+      at: new Date(Date.UTC(2026, 7, 11, 0, 0, n)).toISOString(),
+      user: "admin",
+      action: "acao",
+      detail: `entrada ${n}`,
+    })),
+  };
+  const savedDespiteArchiveFailure = await backend.replaceAppState(withAudit, "test", "2026-08-11T00:00:00.000Z");
+  assert.strictEqual(savedDespiteArchiveFailure.ok, true, "a missing audit_events table must not break saving");
+  assert.strictEqual(archiveCalls.length, 1, "the archive is attempted once per save");
+  assert.ok(archiveCalls[0] <= 50, "the archive must batch rather than send the whole trail");
+
+  assert.strictEqual(
+    (await backend.archiveAuditEntries({ audit: [] })).ok,
+    false,
+    "an empty trail is not archived",
+  );
+
   // --- business invariants ---------------------------------------------------
   const cleanState = () => ({
     batches: [{ code: "B-1", actual: 10 }],
@@ -331,7 +377,7 @@ async function run() {
   });
   console.log(
     "API regression: fail-closed auth/cron, secure cookie, state validation, state concurrency, " +
-      "no-write-on-read, lead retention, login throttling, business invariants and snapshots passed.",
+      "no-write-on-read, lead retention, login throttling, business invariants, snapshots and audit archive passed.",
   );
 }
 

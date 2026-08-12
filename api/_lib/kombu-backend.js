@@ -308,6 +308,81 @@ async function snapshotAppStateIfDue(state, note = "") {
   }
 }
 
+// First slice of moving data out of the single state document, and deliberately
+// the safest one: the audit trail is append-only, nothing computes from it, and
+// losing a write is not a business error. It is also the one that is actively
+// losing data - the trail is capped inside the document, and one reconciliation
+// can push an entry per changed order line, so a busy day erases the days before.
+//
+// This is a shadow write. The document stays the source of truth and nothing
+// reads from the table yet; it is a durable archive written alongside. Failure
+// is swallowed, exactly like the snapshots.
+const AUDIT_ARCHIVE_BATCH = 50;
+let lastArchivedAuditAt = 0;
+
+function auditDedupeKey(entry) {
+  return crypto
+    .createHash("sha256")
+    .update(
+      JSON.stringify([
+        String(entry?.at || ""),
+        String(entry?.user || ""),
+        String(entry?.action || ""),
+        String(entry?.detail || ""),
+        String(entry?.orderId || ""),
+        String(entry?.flavor || ""),
+        String(entry?.previousQty ?? ""),
+        String(entry?.newQty ?? ""),
+      ]),
+      "utf8",
+    )
+    .digest("hex");
+}
+
+async function archiveAuditEntries(state) {
+  if (!hasSupabase()) return { ok: false, reason: "missing_supabase_env" };
+  const entries = Array.isArray(state?.audit) ? state.audit : [];
+  if (!entries.length) return { ok: false, reason: "nothing_to_archive" };
+
+  // Entries are newest-first. On a warm instance only the ones newer than the
+  // last archived timestamp are new; on a cold one take the most recent batch
+  // and let dedupe_key absorb the overlap.
+  const candidates = lastArchivedAuditAt
+    ? entries.filter((entry) => {
+        const at = Date.parse(entry?.at || "");
+        return Number.isFinite(at) && at > lastArchivedAuditAt;
+      })
+    : entries.slice(0, AUDIT_ARCHIVE_BATCH);
+  if (!candidates.length) return { ok: false, reason: "nothing_new" };
+
+  const rows = candidates.slice(0, AUDIT_ARCHIVE_BATCH).map((entry) => ({
+    state_id: STATE_ID,
+    dedupe_key: auditDedupeKey(entry),
+    at: Date.parse(entry?.at || "") ? new Date(entry.at).toISOString() : null,
+    actor: String(entry?.user || "").slice(0, 200) || null,
+    action: String(entry?.action || "").slice(0, 400) || null,
+    detail: String(entry?.detail || "").slice(0, 4000) || null,
+    entry,
+  }));
+
+  try {
+    await supabaseFetch("/rest/v1/audit_events?on_conflict=dedupe_key", {
+      method: "POST",
+      headers: { Prefer: "resolution=ignore-duplicates,return=minimal" },
+      body: JSON.stringify(rows),
+    });
+    const newest = candidates.reduce((max, entry) => {
+      const at = Date.parse(entry?.at || "");
+      return Number.isFinite(at) && at > max ? at : max;
+    }, lastArchivedAuditAt);
+    lastArchivedAuditAt = newest;
+    return { ok: true, archived: rows.length };
+  } catch (error) {
+    // Most likely the table does not exist yet. Never surface this to the caller.
+    return { ok: false, reason: error?.code || "archive_failed" };
+  }
+}
+
 async function replaceAppState(state, updatedBy = "system", expectedUpdatedAt = "") {
   if (!hasSupabase()) return { ok: false, reason: "missing_supabase_env" };
   if (!expectedUpdatedAt) {
@@ -330,8 +405,10 @@ async function replaceAppState(state, updatedBy = "system", expectedUpdatedAt = 
     },
   );
   if (!Array.isArray(rows) || rows.length === 0) throw requestError("state_conflict", 409);
-  // Best effort and already-written: a snapshot failure cannot affect this save.
+  // Both are best effort and run after the write has already landed, so neither
+  // can affect whether this save succeeded.
   await snapshotAppStateIfDue(state, `snapshot after write by ${updatedBy}`);
+  await archiveAuditEntries(state);
   return { ok: true, updatedAt: rows[0]?.updated_at || updatedAt };
 }
 
@@ -644,6 +721,8 @@ module.exports = {
   adminPassword,
   hasSessionSecret,
   appendLeadToState,
+  archiveAuditEntries,
+  auditDedupeKey,
   capLeads,
   clearSessionCookie,
   clientIp,

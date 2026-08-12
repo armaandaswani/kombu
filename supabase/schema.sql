@@ -34,6 +34,28 @@ create index if not exists app_state_backups_created_idx on public.app_state_bac
 
 alter table public.app_state_backups enable row level security;
 
+-- Durable archive of the audit trail. The trail lives inside the app_state
+-- document and is capped there, so entries are lost as soon as the cap is
+-- reached; a single reconciliation can push one entry per changed order line.
+-- This table keeps them permanently. The document remains the source of truth
+-- for the admin UI; this is written alongside it, never instead of it.
+-- dedupe_key makes re-sending the same entries a no-op.
+create table if not exists public.audit_events (
+  id bigint generated always as identity primary key,
+  state_id text not null default 'production',
+  dedupe_key text not null unique,
+  at timestamptz,
+  actor text,
+  action text,
+  detail text,
+  entry jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists audit_events_at_idx on public.audit_events (state_id, at desc);
+
+alter table public.audit_events enable row level security;
+
 create table if not exists public.email_events (
   id uuid primary key default gen_random_uuid(),
   event_type text not null,
