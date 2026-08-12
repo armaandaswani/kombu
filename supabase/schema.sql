@@ -17,6 +17,23 @@ alter table public.app_state enable row level security;
 -- The application reads/writes this table only through Vercel serverless functions
 -- using SUPABASE_SERVICE_ROLE_KEY. No browser/client policy is intentionally added.
 
+-- Periodic snapshots of app_state. Written automatically by replaceAppState at
+-- most once a day; pruned to the last 30 days. This is the only automated backup
+-- the application has, and it exists because the single app_state row holds the
+-- entire business: one bad write with no snapshot is unrecoverable.
+create table if not exists public.app_state_backups (
+  id bigint generated always as identity primary key,
+  state_id text not null,
+  state jsonb not null,
+  source_updated_at timestamptz,
+  note text,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists app_state_backups_created_idx on public.app_state_backups (state_id, created_at desc);
+
+alter table public.app_state_backups enable row level security;
+
 create table if not exists public.email_events (
   id uuid primary key default gen_random_uuid(),
   event_type text not null,

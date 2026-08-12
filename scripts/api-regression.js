@@ -180,6 +180,41 @@ async function run() {
     "a write carrying a stale version token must be rejected",
   );
 
+  // --- automatic snapshots ---------------------------------------------------
+  // The snapshot is a side effect of a real save, so the one thing that must
+  // never happen is a snapshot problem breaking the save.
+  const snapshotCalls = [];
+  global.fetch = async (url, options = {}) => {
+    const method = options.method || "GET";
+    const path = String(url);
+    if (path.includes("app_state_backups")) {
+      snapshotCalls.push(method);
+      throw Object.assign(new Error("supabase_request_failed"), { code: "supabase_request_failed", status: 404 });
+    }
+    if (method === "GET") {
+      return supabaseReply([{ id: "production", state: {}, updated_at: "2026-08-11T00:00:00.000Z" }]);
+    }
+    return supabaseReply([{ updated_at: "2026-08-11T02:00:00.000Z" }]);
+  };
+
+  // Earlier saves in this suite already primed the throttle, so move the clock
+  // past the interval rather than reaching into module state.
+  const realNow = Date.now;
+  Date.now = () => realNow() + 25 * 60 * 60 * 1000;
+  try {
+    const savedDespiteSnapshotFailure = await backend.replaceAppState({ products: [] }, "test", "2026-08-11T00:00:00.000Z");
+    assert.strictEqual(savedDespiteSnapshotFailure.ok, true, "a missing backups table must not break saving");
+    assert.ok(snapshotCalls.length > 0, "a snapshot should have been attempted once the interval passed");
+
+    // Having just attempted one, the next save must not attempt another.
+    const callsAfterFirst = snapshotCalls.length;
+    const secondSave = await backend.replaceAppState({ products: [] }, "test", "2026-08-11T00:00:00.000Z");
+    assert.strictEqual(secondSave.ok, true);
+    assert.strictEqual(snapshotCalls.length, callsAfterFirst, "snapshots must be throttled, not taken on every save");
+  } finally {
+    Date.now = realNow;
+  }
+
   // --- business invariants ---------------------------------------------------
   const cleanState = () => ({
     batches: [{ code: "B-1", actual: 10 }],
@@ -296,7 +331,7 @@ async function run() {
   });
   console.log(
     "API regression: fail-closed auth/cron, secure cookie, state validation, state concurrency, " +
-      "no-write-on-read, lead retention, login throttling and business invariants passed.",
+      "no-write-on-read, lead retention, login throttling, business invariants and snapshots passed.",
   );
 }
 

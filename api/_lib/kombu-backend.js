@@ -260,6 +260,54 @@ async function upsertAppState(state, updatedBy = "system") {
   return { ok: true, updatedAt: rows?.[0]?.updated_at || payload.updated_at };
 }
 
+// The entire business lives in one app_state row, so a single bad write with no
+// snapshot is unrecoverable. There is no automated backup otherwise: the daily
+// cron cannot help because CRON_SECRET is not configured, and it would be the
+// wrong place anyway - a backup that depends on a job nobody has switched on is
+// not a backup. Snapshots are therefore taken as a side effect of real use.
+//
+// Everything here is best-effort. A snapshot must never slow down or fail a
+// save, so the common path is an in-memory timestamp comparison and every
+// failure is swallowed.
+const SNAPSHOT_INTERVAL_MS = 24 * 60 * 60 * 1000;
+const SNAPSHOT_RETENTION_DAYS = 30;
+let lastSnapshotAttemptAt = 0;
+
+async function snapshotAppStateIfDue(state, note = "") {
+  if (!hasSupabase()) return { ok: false, reason: "missing_supabase_env" };
+  const now = Date.now();
+  if (now - lastSnapshotAttemptAt < SNAPSHOT_INTERVAL_MS) return { ok: false, reason: "not_due" };
+  // Set before the work so a failing table cannot cause a request-per-save storm.
+  lastSnapshotAttemptAt = now;
+  try {
+    // This instance may be newly started, so confirm against the table rather
+    // than trusting the in-memory marker alone.
+    const recent = await supabaseFetch(
+      `/rest/v1/app_state_backups?state_id=eq.${encodeURIComponent(STATE_ID)}&select=created_at&order=created_at.desc&limit=1`,
+    );
+    const lastAt = Array.isArray(recent) && recent[0]?.created_at ? Date.parse(recent[0].created_at) : 0;
+    if (Number.isFinite(lastAt) && lastAt > 0 && now - lastAt < SNAPSHOT_INTERVAL_MS) {
+      return { ok: false, reason: "not_due" };
+    }
+
+    await supabaseFetch("/rest/v1/app_state_backups", {
+      method: "POST",
+      headers: { Prefer: "return=minimal" },
+      body: JSON.stringify({ state_id: STATE_ID, state, note: note || "automatic daily snapshot" }),
+    });
+
+    const cutoff = new Date(now - SNAPSHOT_RETENTION_DAYS * 24 * 60 * 60 * 1000).toISOString();
+    await supabaseFetch(
+      `/rest/v1/app_state_backups?state_id=eq.${encodeURIComponent(STATE_ID)}&created_at=lt.${encodeURIComponent(cutoff)}`,
+      { method: "DELETE", headers: { Prefer: "return=minimal" } },
+    ).catch(() => {});
+    return { ok: true };
+  } catch (error) {
+    // Most likely the table does not exist yet. Never surface this to the caller.
+    return { ok: false, reason: error?.code || "snapshot_failed" };
+  }
+}
+
 async function replaceAppState(state, updatedBy = "system", expectedUpdatedAt = "") {
   if (!hasSupabase()) return { ok: false, reason: "missing_supabase_env" };
   if (!expectedUpdatedAt) {
@@ -282,6 +330,8 @@ async function replaceAppState(state, updatedBy = "system", expectedUpdatedAt = 
     },
   );
   if (!Array.isArray(rows) || rows.length === 0) throw requestError("state_conflict", 409);
+  // Best effort and already-written: a snapshot failure cannot affect this save.
+  await snapshotAppStateIfDue(state, `snapshot after write by ${updatedBy}`);
   return { ok: true, updatedAt: rows[0]?.updated_at || updatedAt };
 }
 
@@ -599,6 +649,7 @@ module.exports = {
   clientIp,
   invariantRegressions,
   rateLimit,
+  snapshotAppStateIfDue,
   stateInvariantViolations,
   emailProviderReady,
   escapeHtml,
