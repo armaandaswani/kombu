@@ -320,6 +320,112 @@ async function run() {
 
   assert.strictEqual((await backend.archiveLeads({ leads: [] })).ok, false, "no leads means no request");
 
+  // --- sales ledger ----------------------------------------------------------
+  const salesRequests = [];
+  let salesTableExists = true;
+  global.fetch = async (url, options = {}) => {
+    const path = String(url);
+    if (path.includes("sales_ledger")) {
+      salesRequests.push(JSON.parse(options.body || "[]"));
+      if (!salesTableExists) {
+        throw Object.assign(new Error("supabase_request_failed"), { code: "supabase_request_failed", status: 404 });
+      }
+      return supabaseReply([]);
+    }
+    if (path.includes("crm_leads") || path.includes("audit_events") || path.includes("app_state_backups")) {
+      return supabaseReply([]);
+    }
+    if ((options.method || "GET") === "GET") {
+      return supabaseReply([{ id: "production", state: {}, updated_at: "2026-08-11T00:00:00.000Z" }]);
+    }
+    return supabaseReply([{ updated_at: "2026-08-11T02:00:00.000Z" }]);
+  };
+
+  const makeSales = (count) =>
+    Array.from({ length: count }, (_, n) => ({
+      id: `sale-${n}`,
+      date: "2026-08-11",
+      customerName: `Cliente ${n}`,
+      movementType: "venda",
+      batchCode: "B-1",
+      qty: 2,
+      unitPrice: 10,
+      discount: 0,
+      delivery: 5,
+    }));
+
+  const firstSales = await backend.archiveSales({ sales: makeSales(250) });
+  assert.strictEqual(firstSales.ok, true);
+  assert.strictEqual(firstSales.synced, 100, "a cold start syncs in bounded batches");
+  assert.strictEqual((await backend.archiveSales({ sales: makeSales(250) })).synced, 100);
+  assert.strictEqual((await backend.archiveSales({ sales: makeSales(250) })).synced, 50, "the backlog drains");
+  assert.strictEqual(
+    (await backend.archiveSales({ sales: makeSales(250) })).ok,
+    false,
+    "an unchanged ledger costs nothing once synced",
+  );
+
+  // Revenue is frozen at write time and freight stays out of it.
+  const firstRow = salesRequests[0][0];
+  assert.strictEqual(firstRow.revenue, 20, "revenue is qty * unitPrice - discount");
+  assert.strictEqual(firstRow.delivery, 5, "freight is recorded separately");
+  assert.strictEqual(firstRow.sale_date, "2026-08-11");
+
+  // A loss, a return or a gift moves stock without earning anything. These ids
+  // are new, so they sync regardless of what the batching above left behind.
+  const movements = await backend.archiveSales({
+    sales: [
+      { id: "s-perda", movementType: "perda", qty: 3, unitPrice: 0, date: "2026-08-12" },
+      { id: "s-dev", movementType: "devolucao", qty: -2, unitPrice: 10, date: "2026-08-12" },
+      { id: "s-gift", movementType: "presente", qty: 1, unitPrice: 10, date: "2026-08-12" },
+      { id: "s-venda", movementType: "venda", qty: 4, unitPrice: 10, discount: 5, date: "2026-08-12" },
+    ],
+  });
+  assert.strictEqual(movements.synced, 4);
+  const byId = Object.fromEntries(salesRequests.at(-1).map((row) => [row.sale_id, row]));
+  assert.strictEqual(byId["s-perda"].revenue, 0, "a write-off is not income");
+  assert.strictEqual(byId["s-dev"].revenue, 0, "a return is not negative income here");
+  assert.strictEqual(byId["s-dev"].qty, -2, "but the negative movement is still recorded");
+  assert.strictEqual(byId["s-gift"].revenue, 0, "a gift is not income");
+  assert.strictEqual(byId["s-venda"].revenue, 35, "a discount comes off the revenue");
+
+  // A corrected sale must resync; an untouched one must not.
+  const corrected = makeSales(250);
+  corrected[3].unitPrice = 12;
+  assert.strictEqual((await backend.archiveSales({ sales: corrected })).synced, 1, "only the corrected sale is resent");
+  assert.strictEqual(salesRequests.at(-1)[0].sale_id, "sale-3");
+  assert.strictEqual(salesRequests.at(-1)[0].revenue, 24, "the corrected revenue is stored");
+
+  // And a missing table must never break a save.
+  salesTableExists = false;
+  const brokenSales = await backend.archiveSales({ sales: [{ id: "sale-new", qty: 1, unitPrice: 9 }] });
+  assert.strictEqual(brokenSales.ok, false, "a missing sales_ledger table is reported, not thrown");
+  salesTableExists = true;
+  assert.strictEqual(
+    (await backend.archiveSales({ sales: [{ id: "sale-new", qty: 1, unitPrice: 9 }] })).synced,
+    1,
+    "a sale that failed to sync is retried on the next save",
+  );
+  assert.strictEqual((await backend.archiveSales({ sales: [] })).ok, false, "no sales means no request");
+
+  // A sale with no id cannot be addressed in the ledger, so it is skipped rather
+  // than written under a key that would collide with the next one.
+  assert.strictEqual(
+    (await backend.archiveSales({ sales: [{ qty: 1, unitPrice: 9 }] })).ok,
+    false,
+    "an id-less sale is skipped, not written",
+  );
+
+  // The whole point of the table: the save still succeeds when it is missing.
+  salesTableExists = false;
+  const savedWithoutLedger = await backend.replaceAppState(
+    { sales: makeSales(3) },
+    "test",
+    "2026-08-11T00:00:00.000Z",
+  );
+  assert.strictEqual(savedWithoutLedger.ok, true, "a missing sales_ledger table must not break saving");
+  salesTableExists = true;
+
   // --- business invariants ---------------------------------------------------
   const cleanState = () => ({
     batches: [{ code: "B-1", actual: 10 }],
@@ -437,7 +543,7 @@ async function run() {
   console.log(
     "API regression: fail-closed auth/cron, secure cookie, state validation, state concurrency, " +
       "no-write-on-read, lead retention, login throttling, business invariants, snapshots, " +
-      "audit archive and lead archive passed.",
+      "audit archive, lead archive and sales ledger passed.",
   );
 }
 

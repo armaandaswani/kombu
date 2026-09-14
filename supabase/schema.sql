@@ -101,6 +101,41 @@ create index if not exists email_events_reference_idx on public.email_events (ev
 
 alter table public.email_events enable row level security;
 
+-- Permanent financial ledger. Sales live in the state document, but deleting an
+-- order deletes the sales attached to it, so revenue that was really earned can
+-- leave the document. A row here outlives that. revenue is frozen at write time
+-- rather than recomputed, so a later price correction cannot change what an
+-- earlier month earned; delivery is kept separate and is NOT part of revenue.
+create table if not exists public.sales_ledger (
+  id bigint generated always as identity primary key,
+  state_id text not null default 'production',
+  sale_id text not null unique,
+  sale_date date,
+  movement_type text not null default 'venda',
+  channel text,
+  price_type text,
+  customer_name text,
+  flavor text,
+  product_id text,
+  batch_code text,
+  order_id text,
+  reference_sale_id text,
+  qty numeric not null default 0,
+  unit_price numeric not null default 0,
+  discount numeric not null default 0,
+  delivery numeric not null default 0,
+  revenue numeric not null default 0,
+  note text,
+  entry jsonb not null default '{}'::jsonb,
+  synced_at timestamptz not null default now()
+);
+
+create index if not exists sales_ledger_date_idx on public.sales_ledger (state_id, sale_date desc);
+create index if not exists sales_ledger_batch_idx on public.sales_ledger (state_id, batch_code);
+create index if not exists sales_ledger_order_idx on public.sales_ledger (state_id, order_id);
+
+alter table public.sales_ledger enable row level security;
+
 insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
 values (
   'public-media',

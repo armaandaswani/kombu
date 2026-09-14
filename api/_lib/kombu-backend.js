@@ -450,6 +450,90 @@ async function archiveLeads(state) {
   }
 }
 
+// Third slice out of the state document, and the first financial one. Sales are
+// never evicted the way leads are, but they are not safe either: deleting an
+// order deletes the sales attached to it, so revenue that was really earned can
+// leave the document entirely. This table keeps the row.
+//
+// Revenue is computed here and stored, rather than left to be recalculated from
+// the entry later. It is the same arithmetic the admin uses, frozen at the
+// moment of the write, so a price correction made in March cannot quietly change
+// what January earned. Freight is kept in its own column and deliberately NOT
+// added to revenue: whether it counts as revenue is still the owner's call
+// (M14), and this keeps both readings available instead of settling it here.
+const SALES_SYNC_BATCH = 100;
+const saleFingerprints = new Map();
+
+function saleFingerprint(sale) {
+  return crypto.createHash("sha256").update(JSON.stringify(sale || {}), "utf8").digest("hex");
+}
+
+// Mirrors saleRevenue in assets/admin.js: a loss, a return or a gift is a stock
+// movement, not income, so only a plain sale carries money.
+function saleLedgerRevenue(sale) {
+  const movement = String(sale?.movementType || "").trim();
+  if (movement && movement !== "venda") return 0;
+  return Number(sale?.qty || 0) * Number(sale?.unitPrice || 0) - Number(sale?.discount || 0);
+}
+
+async function archiveSales(state) {
+  if (!hasSupabase()) return { ok: false, reason: "missing_supabase_env" };
+  const sales = Array.isArray(state?.sales) ? state.sales : [];
+  if (!sales.length) return { ok: false, reason: "nothing_to_archive" };
+
+  const changed = [];
+  for (const sale of sales) {
+    const saleId = String(sale?.id || "");
+    if (!saleId) continue;
+    const fingerprint = saleFingerprint(sale);
+    if (saleFingerprints.get(saleId) === fingerprint) continue;
+    changed.push({ saleId, fingerprint, sale });
+    if (changed.length >= SALES_SYNC_BATCH) break;
+  }
+  if (!changed.length) return { ok: false, reason: "nothing_new" };
+
+  const numeric = (value) => {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : 0;
+  };
+  const isoDate = (value) => (/^\d{4}-\d{2}-\d{2}$/.test(String(value || "")) ? String(value) : null);
+  const rows = changed.map(({ saleId, sale }) => ({
+    state_id: STATE_ID,
+    sale_id: saleId,
+    sale_date: isoDate(sale?.date),
+    movement_type: cleanText(sale?.movementType, 40) || "venda",
+    channel: cleanText(sale?.channel, 80) || null,
+    price_type: cleanText(sale?.priceType, 40) || null,
+    customer_name: cleanText(sale?.customerName || sale?.partner, 200) || null,
+    flavor: cleanText(sale?.flavor, 160) || null,
+    product_id: cleanText(sale?.productId, 80) || null,
+    batch_code: cleanText(sale?.batchCode, 80) || null,
+    order_id: cleanText(sale?.orderId, 80) || null,
+    reference_sale_id: cleanText(sale?.referenceSaleId, 80) || null,
+    qty: numeric(sale?.qty),
+    unit_price: numeric(sale?.unitPrice),
+    discount: numeric(sale?.discount),
+    delivery: numeric(sale?.delivery),
+    revenue: saleLedgerRevenue(sale),
+    note: cleanText(sale?.note, 4000) || null,
+    entry: sale,
+    synced_at: new Date().toISOString(),
+  }));
+
+  try {
+    await supabaseFetch("/rest/v1/sales_ledger?on_conflict=sale_id", {
+      method: "POST",
+      headers: { Prefer: "resolution=merge-duplicates,return=minimal" },
+      body: JSON.stringify(rows),
+    });
+    changed.forEach(({ saleId, fingerprint }) => saleFingerprints.set(saleId, fingerprint));
+    if (saleFingerprints.size > 5000) saleFingerprints.clear();
+    return { ok: true, synced: rows.length };
+  } catch (error) {
+    return { ok: false, reason: error?.code || "archive_failed" };
+  }
+}
+
 async function replaceAppState(state, updatedBy = "system", expectedUpdatedAt = "") {
   if (!hasSupabase()) return { ok: false, reason: "missing_supabase_env" };
   if (!expectedUpdatedAt) {
@@ -477,6 +561,7 @@ async function replaceAppState(state, updatedBy = "system", expectedUpdatedAt = 
   await snapshotAppStateIfDue(state, `snapshot after write by ${updatedBy}`);
   await archiveAuditEntries(state);
   await archiveLeads(state);
+  await archiveSales(state);
   return { ok: true, updatedAt: rows[0]?.updated_at || updatedAt };
 }
 
@@ -791,6 +876,7 @@ module.exports = {
   appendLeadToState,
   archiveAuditEntries,
   archiveLeads,
+  archiveSales,
   auditDedupeKey,
   capLeads,
   clearSessionCookie,
