@@ -589,6 +589,56 @@ function testTheLedgerNamesEachKindOfMovement() {
   assert.ok(!/80,00/.test(totalLine), "a write-off must not be counted as income");
 }
 
+// With the server figure in hand the panel must show the PERIOD, not the page.
+function testTheLedgerShowsTheServerPeriodTotalNotThePage() {
+  loadLedger({
+    sales: [ledgerSale({ revenue: 20 })],
+    nextCursor: "2026-08-11|2",
+    totals: {
+      count: 5,
+      qty: 12,
+      revenue: 100,
+      freight: 5,
+      discount: 2,
+      byMovement: {
+        venda: { count: 2, qty: 10, revenue: 100 },
+        perda: { count: 1, qty: 3, revenue: 0 },
+        devolucao: { count: 1, qty: -2, revenue: 0 },
+      },
+    },
+  });
+  const html = admin.__eval("salesLedgerMarkup()");
+  // Match the period line itself: the breakdown below it also prints 100,00, so
+  // searching the whole document would pass even if the header were wrong.
+  const periodLine = html.split("\n").find((line) => line.includes("Receita do período")) || "";
+  assert.ok(periodLine, "the period is named as such");
+  assert.ok(/100,00/.test(periodLine), "and carries the server total");
+  assert.ok(!/105,00/.test(periodLine), "with freight kept out of it");
+  assert.ok(!html.includes("vendas carregadas"), "the page-only line gives way to the real figure");
+  assert.ok(html.includes("não incluído na receita"), "freight is shown apart from revenue");
+  assert.ok(html.includes("Baixa: 1 (3 un)"), "write-offs are visible in the breakdown");
+  assert.ok(html.includes("Devolução: 1 (-2 un)"), "a return shows as negative");
+}
+
+function testAPeriodTooBigToSumSaysSo() {
+  loadLedger({
+    totals: { count: 5000, qty: 5000, revenue: 50000, freight: 0, discount: 0, byMovement: { venda: { count: 5000, qty: 5000, revenue: 50000 } } },
+    totalsPartial: true,
+  });
+  const html = admin.__eval("salesLedgerMarkup()");
+  assert.ok(html.includes("muito grande"), "a capped total must not pass as complete");
+  assert.ok(html.includes("Estreite as datas"), "and must say how to get an exact one");
+}
+
+// If the server figure cannot be had, the honest page-only line comes back
+// rather than a blank or, worse, a page sum labelled as the period.
+function testTheLedgerFallsBackHonestlyWithoutServerTotals() {
+  loadLedger({ sales: [ledgerSale({ revenue: 20 })], totals: null });
+  const html = admin.__eval("salesLedgerMarkup()");
+  assert.ok(html.includes("Total da 1 venda carregada"), "one row reads as one venda, not '1 vendas'");
+  assert.ok(!html.includes("Receita do período"), "and never claims to be the period");
+}
+
 function testTheLedgerSaysWhenItIsNotAvailableYet() {
   loadLedger({ sales: [], unavailable: true });
   const html = admin.__eval("salesLedgerMarkup()");
@@ -628,6 +678,9 @@ const tests = [
   testTheLedgerTotalOnlyClaimsTheRowsItLoaded,
   testTheLedgerNamesEachKindOfMovement,
   testTheLedgerSaysWhenItIsNotAvailableYet,
+  testTheLedgerShowsTheServerPeriodTotalNotThePage,
+  testAPeriodTooBigToSumSaysSo,
+  testTheLedgerFallsBackHonestlyWithoutServerTotals,
 ];
 
 tests.forEach((test) => test());

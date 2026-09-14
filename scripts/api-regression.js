@@ -629,7 +629,68 @@ async function run() {
   assert.strictEqual(res.statusCode, 200);
   assert.ok(!ledgerUrl.includes("nonsense"), "unparseable input must never reach the query");
 
+  // --- period totals ---------------------------------------------------------
+  // The point of the ledger: a period figure that covers every matching sale,
+  // not just the rows that happen to be on screen.
+  ledgerRows = [
+    { movement_type: "venda", qty: 4, revenue: 40, delivery: 5, discount: 2 },
+    { movement_type: "venda", qty: 6, revenue: 60, delivery: 0, discount: 0 },
+    { movement_type: "perda", qty: 3, revenue: 0, delivery: 0, discount: 0 },
+    { movement_type: "devolucao", qty: -2, revenue: 0, delivery: 0, discount: 0 },
+    { movement_type: "presente", qty: 1, revenue: 0, delivery: 0, discount: 0 },
+  ];
+  req = { method: "GET", headers: { host: "kombukombucha.com.br", cookie }, url: "/api/sales?totals=1" };
+  res = responseMock();
+  await salesHandler(req, res);
+  assert.strictEqual(res.statusCode, 200);
+  payload = jsonBody(res);
+  assert.strictEqual(payload.totals.count, 5, "every movement is counted");
+  assert.strictEqual(payload.totals.revenue, 100, "only sales carry revenue");
+  assert.strictEqual(payload.totals.freight, 5, "freight is totalled separately from revenue");
+  assert.strictEqual(payload.totals.discount, 2);
+  assert.strictEqual(payload.totals.qty, 12, "a return subtracts from the bottle count");
+  assert.strictEqual(payload.totals.byMovement.venda.revenue, 100);
+  assert.strictEqual(payload.totals.byMovement.venda.count, 2);
+  assert.strictEqual(payload.totals.byMovement.perda.qty, 3, "write-offs are reported, not hidden");
+  assert.strictEqual(payload.totals.byMovement.devolucao.qty, -2);
+  assert.strictEqual(payload.partial, false);
+  assert.ok(!Object.hasOwn(payload, "sales"), "the totals call does not also ship the rows");
+
+  // Totals must be scoped exactly like the list, or the figure describes a
+  // different set of sales than the ones underneath it.
+  req = {
+    method: "GET",
+    headers: { host: "kombukombucha.com.br", cookie },
+    url: "/api/sales?totals=1&from=2026-08-01&to=2026-08-31&search=Divina",
+  };
+  res = responseMock();
+  await salesHandler(req, res);
+  assert.ok(ledgerUrl.includes("sale_date=gte.2026-08-01"), "the period filter reaches the totals query");
+  assert.ok(ledgerUrl.includes("sale_date=lte.2026-08-31"));
+  assert.ok(ledgerUrl.includes("customer_name.ilike"), "so does the search");
+  assert.ok(!ledgerUrl.includes("order=sale_date"), "totals need no ordering");
+
+  // Beyond the cap the answer says it is partial rather than under-reporting.
+  ledgerRows = Array.from({ length: 5001 }, () => ({ movement_type: "venda", qty: 1, revenue: 10 }));
+  req = { method: "GET", headers: { host: "kombukombucha.com.br", cookie }, url: "/api/sales?totals=1" };
+  res = responseMock();
+  await salesHandler(req, res);
+  payload = jsonBody(res);
+  assert.strictEqual(payload.partial, true, "a period larger than one pass must admit it");
+  assert.strictEqual(payload.totals.count, 5000, "and report only what it actually summed");
+
+  ledgerRows = [{ movement_type: "venda", qty: 1, revenue: 10 }];
+
   // And before the SQL is run the endpoint says so instead of erroring.
+  ledgerTableExists = false;
+  req = { method: "GET", headers: { host: "kombukombucha.com.br", cookie }, url: "/api/sales?totals=1" };
+  res = responseMock();
+  await salesHandler(req, res);
+  assert.strictEqual(res.statusCode, 200, "missing table is not an error for the totals either");
+  assert.strictEqual(jsonBody(res).unavailable, true);
+  assert.strictEqual(jsonBody(res).totals, null, "and no figure is invented");
+  ledgerTableExists = true;
+
   ledgerTableExists = false;
   req = { method: "GET", headers: { host: "kombukombucha.com.br", cookie }, url: "/api/sales" };
   res = responseMock();

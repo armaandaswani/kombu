@@ -36,6 +36,54 @@ function cursorFilter(cursor) {
   return [`or=(sale_date.lt.${rawDate},and(sale_date.eq.${rawDate},id.lt.${id}),sale_date.is.null)`];
 }
 
+// The period filter, shared by the list and the totals. They MUST be built from
+// one place: a total computed over a different scope than the rows underneath it
+// is worse than no total at all.
+function scopeFilters({ from, to, search }) {
+  const filters = ["state_id=eq.production"];
+  if (isIsoDate(from)) filters.push(`sale_date=gte.${from}`);
+  if (isIsoDate(to)) filters.push(`sale_date=lte.${to}`);
+  if (search) {
+    const safe = search.replace(/[(),*]/g, " ").trim();
+    if (safe) {
+      const like = `*${encodeURIComponent(safe)}*`;
+      filters.push(
+        `or=(customer_name.ilike.${like},flavor.ilike.${like},batch_code.ilike.${like},order_id.ilike.${like},note.ilike.${like})`,
+      );
+    }
+  }
+  return filters;
+}
+
+// Summed here rather than in the browser, so the figure covers the whole period
+// instead of whatever happened to be scrolled into view. Supabase is asked for
+// one row more than the cap: getting it back means the period is larger than a
+// single pass, and the answer is reported as partial rather than as a total that
+// quietly omits the rest.
+const TOTALS_CAP = 5000;
+
+function summarise(rows) {
+  const number = (value) => {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : 0;
+  };
+  const totals = { count: 0, qty: 0, revenue: 0, freight: 0, discount: 0, byMovement: {} };
+  rows.forEach((row) => {
+    const movement = String(row.movement_type || "venda");
+    const bucket = totals.byMovement[movement] || { count: 0, qty: 0, revenue: 0 };
+    bucket.count += 1;
+    bucket.qty += number(row.qty);
+    bucket.revenue += number(row.revenue);
+    totals.byMovement[movement] = bucket;
+    totals.count += 1;
+    totals.qty += number(row.qty);
+    totals.revenue += number(row.revenue);
+    totals.freight += number(row.delivery);
+    totals.discount += number(row.discount);
+  });
+  return totals;
+}
+
 module.exports = async function handler(req, res) {
   const session = requireAdmin(req, res);
   if (!session) return;
@@ -52,26 +100,39 @@ module.exports = async function handler(req, res) {
   const search = String(url.searchParams.get("search") || "").trim().slice(0, 120);
   const from = String(url.searchParams.get("from") || "").trim();
   const to = String(url.searchParams.get("to") || "").trim();
+  const wantsTotals = url.searchParams.get("totals") === "1";
+
+  if (wantsTotals) {
+    const totalsFilters = [
+      ...scopeFilters({ from, to, search }),
+      "select=movement_type,qty,revenue,delivery,discount",
+      `limit=${TOTALS_CAP + 1}`,
+    ];
+    try {
+      const rows = await supabaseFetch(`/rest/v1/sales_ledger?${totalsFilters.join("&")}`);
+      const list = Array.isArray(rows) ? rows : [];
+      const partial = list.length > TOTALS_CAP;
+      return json(res, 200, {
+        ok: true,
+        totals: summarise(partial ? list.slice(0, TOTALS_CAP) : list),
+        partial,
+      });
+    } catch (error) {
+      if (Number(error?.status) === 404 || error?.detail?.code === "PGRST205" || error?.detail?.code === "42P01") {
+        return json(res, 200, { ok: true, totals: null, unavailable: true });
+      }
+      return json(res, 503, backendErrorPayload(error));
+    }
+  }
 
   const filters = [
-    "state_id=eq.production",
+    ...scopeFilters({ from, to, search }),
     "select=id,sale_id,sale_date,movement_type,channel,price_type,customer_name,flavor,product_id,batch_code,order_id,qty,unit_price,discount,delivery,revenue,note",
     "order=sale_date.desc.nullslast,id.desc",
     `limit=${limit + 1}`,
   ];
-  if (isIsoDate(from)) filters.push(`sale_date=gte.${from}`);
-  if (isIsoDate(to)) filters.push(`sale_date=lte.${to}`);
   const paging = cursorFilter(cursor);
   if (paging) filters.push(...paging);
-  if (search) {
-    const safe = search.replace(/[(),*]/g, " ").trim();
-    if (safe) {
-      const like = `*${encodeURIComponent(safe)}*`;
-      filters.push(
-        `or=(customer_name.ilike.${like},flavor.ilike.${like},batch_code.ilike.${like},order_id.ilike.${like},note.ilike.${like})`,
-      );
-    }
-  }
 
   try {
     const rows = await supabaseFetch(`/rest/v1/sales_ledger?${filters.join("&")}`);

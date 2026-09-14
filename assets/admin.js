@@ -6432,7 +6432,7 @@ function openBatchHistory(batchCode) {
 // belongs to and its revenue is recomputed from today's prices. sales_ledger
 // keeps the row and the figure that was true when it was written. This reads it
 // back, so the permanent record can be checked against the panel.
-let salesLedger = { sales: [], nextCursor: null, search: "", from: "", to: "", loading: false, error: "", unavailable: false };
+let salesLedger = { sales: [], nextCursor: null, search: "", from: "", to: "", loading: false, error: "", unavailable: false, totals: null, totalsPartial: false, totalsLoading: false };
 
 const SALES_MOVEMENT_LABELS = {
   venda: "Venda",
@@ -6440,6 +6440,45 @@ const SALES_MOVEMENT_LABELS = {
   devolucao: "Devolução",
   presente: "Cortesia",
 };
+
+// The total covers the whole filtered period, summed on the server, not the rows
+// that happen to be on screen. When that figure cannot be had, the fallback sums
+// what was loaded and says exactly that - it never lets a partial number wear
+// the label of a period total.
+function salesLedgerTotalsMarkup() {
+  const totals = salesLedger.totals;
+  if (salesLedger.totalsLoading && !totals) return `<p class="empty-note">Somando o período...</p>`;
+
+  if (!totals) {
+    if (!salesLedger.sales.length) return "";
+    const loaded = salesLedger.sales.reduce((sum, sale) => sum + Number(sale.revenue || 0), 0);
+    const count = salesLedger.sales.length;
+    const label = count === 1 ? "da 1 venda carregada" : `das ${number(count)} vendas carregadas`;
+    return `<p class="empty-note">Total ${label}: <strong>${escapeHtml(brl(loaded))}</strong>${
+      salesLedger.nextCursor ? " (há mais registros a carregar)" : ""
+    }</p>`;
+  }
+
+  const movements = Object.entries(totals.byMovement || {})
+    .filter(([, figures]) => figures.count)
+    .sort((a, b) => b[1].count - a[1].count)
+    .map(([movement, figures]) => {
+      const label = SALES_MOVEMENT_LABELS[movement] || movement;
+      const money = movement === "venda" ? ` | ${escapeHtml(brl(figures.revenue))}` : "";
+      return `<span>${escapeHtml(label)}: ${number(figures.count)} (${number(figures.qty)} un)${money}</span>`;
+    })
+    .join("");
+
+  return `
+    <div class="result-card">
+      <strong>Receita do período: ${escapeHtml(brl(totals.revenue))}</strong>
+      <span>${number(totals.count)} movimentações | ${number(totals.qty)} garrafas líquidas</span>
+      <span>Frete ${escapeHtml(brl(totals.freight))} (não incluído na receita) | Descontos ${escapeHtml(brl(totals.discount))}</span>
+      ${movements}
+      ${salesLedger.totalsPartial ? `<span>Período muito grande para somar de uma vez: este total cobre apenas as ${number(totals.count)} vendas mais recentes do filtro. Estreite as datas para um número exato.</span>` : ""}
+    </div>
+  `;
+}
 
 function salesLedgerMarkup() {
   const rows = salesLedger.sales
@@ -6463,15 +6502,7 @@ function salesLedgerMarkup() {
     })
     .join("");
 
-  // Deliberately "das vendas carregadas" and not "do período": only the rows
-  // already fetched are summed, and saying otherwise would read as a period
-  // total that is simply wrong whenever there is another page.
-  const loadedRevenue = salesLedger.sales.reduce((sum, sale) => sum + Number(sale.revenue || 0), 0);
-  const totalLine = salesLedger.sales.length
-    ? `<p class="empty-note">Total das ${number(salesLedger.sales.length)} vendas carregadas: <strong>${escapeHtml(brl(loadedRevenue))}</strong>${
-        salesLedger.nextCursor ? " (há mais registros a carregar)" : ""
-      }</p>`
-    : "";
+  const totalLine = salesLedgerTotalsMarkup();
 
   return `
     <div class="input-grid">
@@ -6520,6 +6551,34 @@ function renderSalesLedger() {
   });
 }
 
+// Only refetched when the filter changes: paging through the same period does
+// not change its total, so "Carregar mais" must not pay for it again.
+async function loadSalesLedgerTotals() {
+  salesLedger.totalsLoading = true;
+  try {
+    const params = new URLSearchParams({ totals: "1" });
+    if (salesLedger.search) params.set("search", salesLedger.search);
+    if (salesLedger.from) params.set("from", salesLedger.from);
+    if (salesLedger.to) params.set("to", salesLedger.to);
+    const response = await fetch(`/api/sales?${params.toString()}`, { credentials: "same-origin" });
+    const payload = await response.json().catch(() => ({}));
+    if (response.ok && payload.ok !== false && payload.totals) {
+      salesLedger.totals = payload.totals;
+      salesLedger.totalsPartial = payload.partial === true;
+    } else {
+      // Fall back to the loaded-rows line rather than showing a wrong period.
+      salesLedger.totals = null;
+      salesLedger.totalsPartial = false;
+    }
+  } catch {
+    salesLedger.totals = null;
+    salesLedger.totalsPartial = false;
+  } finally {
+    salesLedger.totalsLoading = false;
+    renderSalesLedger();
+  }
+}
+
 async function loadSalesLedger({ reset = false } = {}) {
   if (salesLedger.loading) return;
   if (reset) {
@@ -6527,6 +6586,9 @@ async function loadSalesLedger({ reset = false } = {}) {
     salesLedger.nextCursor = null;
     salesLedger.error = "";
     salesLedger.unavailable = false;
+    salesLedger.totals = null;
+    salesLedger.totalsPartial = false;
+    loadSalesLedgerTotals();
   }
   salesLedger.loading = true;
   renderSalesLedger();
@@ -6559,7 +6621,7 @@ async function loadSalesLedger({ reset = false } = {}) {
 }
 
 function openSalesLedger({ search = "", from = "", to = "", title = "Ledger de vendas", eyebrow = "Relatórios" } = {}) {
-  salesLedger = { sales: [], nextCursor: null, search, from, to, loading: false, error: "", unavailable: false };
+  salesLedger = { sales: [], nextCursor: null, search, from, to, loading: false, error: "", unavailable: false, totals: null, totalsPartial: false, totalsLoading: false };
   openModal(
     title,
     eyebrow,
