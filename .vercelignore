@@ -1,0 +1,21 @@
+# Vercel serves every uploaded file at its own path, so anything committed at the
+# repo root was reachable on the live domain: the technical audit (a 51KB list of
+# known weaknesses with file:line references), the database schema, and the test
+# suites were all readable by anyone who guessed the filename.
+#
+# None of them contain secrets, but the audit in particular is a map of where to
+# push. These stay in git for whoever works on the code and are simply not
+# uploaded to the deployment.
+#
+# Do NOT add package.json here: Vercel reads it to pick the Node version.
+# Everything the site actually needs at runtime - api/, assets/, the HTML pages,
+# vercel.json, favicon.svg, manifest.webmanifest, robots.txt - must stay.
+
+*.md
+scripts/
+supabase/
+
+# Design mockups of the admin screens. cleanUrls made them reachable without the
+# .html, so /stitch_komb_operational_suite/admin_dashboard_komb/code served a
+# full picture of the admin UI to anyone. Nothing at runtime references them.
+stitch_komb_operational_suite/
