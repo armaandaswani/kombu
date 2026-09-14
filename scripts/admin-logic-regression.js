@@ -496,6 +496,106 @@ function testACancelledBatchIsNotSellableStock() {
   assert.equal(call("freeStockForOrderItem", admin.__getState().orders[0].items[0]), 0);
 }
 
+// --- sales ledger viewer ---------------------------------------------------
+
+function loadLedger(ledger) {
+  admin.__incoming = {
+    sales: [],
+    nextCursor: null,
+    search: "",
+    from: "",
+    to: "",
+    loading: false,
+    error: "",
+    unavailable: false,
+    ...ledger,
+  };
+  admin.__eval("salesLedger = __incoming;");
+}
+
+const ledgerSale = (extra = {}) => ({
+  id: "s1",
+  date: "2026-08-12",
+  movementType: "venda",
+  customerName: "Divina Terra",
+  flavor: "Frutas Vermelhas",
+  batchCode: "L-001",
+  qty: 2,
+  unitPrice: 10,
+  discount: 0,
+  delivery: 5,
+  revenue: 20,
+  note: "",
+  ...extra,
+});
+
+// Everything here came from a text field somebody typed, so it has to be escaped
+// on the way out exactly like the rest of the admin.
+function testTheLedgerEscapesEverythingItRenders() {
+  loadLedger({
+    sales: [
+      ledgerSale({
+        customerName: '<img src=x onerror=alert(1)>',
+        flavor: "Frutas <b>Vermelhas</b>",
+        note: '"><script>alert(2)</script>',
+      }),
+    ],
+  });
+  const html = admin.__eval("salesLedgerMarkup()");
+  assert.ok(!html.includes("<img"), "an injected img must not survive");
+  assert.ok(!html.includes("<script"), "an injected script must not survive");
+  assert.ok(!html.includes("<b>"), "injected markup must not survive");
+  assert.ok(html.includes("&lt;img") && html.includes("&lt;script"), "it is escaped, not stripped");
+}
+
+// The figure is the sum of what is on screen. Calling it a period total would be
+// simply wrong whenever another page is waiting.
+function testTheLedgerTotalOnlyClaimsTheRowsItLoaded() {
+  loadLedger({
+    sales: [ledgerSale({ revenue: 20 }), ledgerSale({ id: "s2", revenue: 15 })],
+    nextCursor: "2026-08-11|2",
+  });
+  const html = admin.__eval("salesLedgerMarkup()");
+  assert.ok(html.includes("Total das 2 vendas carregadas"), "the total names what it counted");
+  assert.ok(html.includes("35,00"), "it sums the stored revenue of the loaded rows");
+  assert.ok(html.includes("há mais registros a carregar"), "and says when the figure is partial");
+
+  loadLedger({ sales: [ledgerSale({ revenue: 20 })], nextCursor: null });
+  assert.ok(
+    !admin.__eval("salesLedgerMarkup()").includes("há mais registros"),
+    "a complete page does not warn about more",
+  );
+}
+
+function testTheLedgerNamesEachKindOfMovement() {
+  loadLedger({
+    sales: [
+      ledgerSale({ movementType: "venda" }),
+      ledgerSale({ id: "s2", movementType: "perda", revenue: 0 }),
+      ledgerSale({ id: "s3", movementType: "devolucao", qty: -2, revenue: 0 }),
+      ledgerSale({ id: "s4", movementType: "presente", revenue: 0 }),
+    ],
+  });
+  const html = admin.__eval("salesLedgerMarkup()");
+  ["Venda", "Baixa", "Devolução", "Cortesia"].forEach((label) => {
+    assert.ok(html.includes(label), `${label} must be named rather than shown as a raw code`);
+  });
+  // Only the sale earned anything, so the total must not count the rest.
+  // (Intl's pt-BR currency puts a non-breaking space after R$, so match the
+  // number rather than the whole string.)
+  const totalLine = html.split("\n").find((line) => line.includes("Total das")) || "";
+  assert.ok(totalLine.includes("Total das 4 vendas carregadas"), "every movement is listed");
+  assert.ok(/20,00/.test(totalLine), "but only the sale contributes revenue");
+  assert.ok(!/80,00/.test(totalLine), "a write-off must not be counted as income");
+}
+
+function testTheLedgerSaysWhenItIsNotAvailableYet() {
+  loadLedger({ sales: [], unavailable: true });
+  const html = admin.__eval("salesLedgerMarkup()");
+  assert.ok(html.includes("ainda não está disponível"), "a missing table is explained, not silent");
+  assert.ok(!html.includes("Total das"), "and no total is claimed when there is nothing");
+}
+
 const tests = [
   testACardReportsReservedAndMissingSeparately,
   testOrderStatusFollowsWhatIsStillMissing,
@@ -524,6 +624,10 @@ const tests = [
   testVolumesAreNeverMixed,
   testClosedOrdersDoNotHoldStockBackFromNewSales,
   testACancelledBatchIsNotSellableStock,
+  testTheLedgerEscapesEverythingItRenders,
+  testTheLedgerTotalOnlyClaimsTheRowsItLoaded,
+  testTheLedgerNamesEachKindOfMovement,
+  testTheLedgerSaysWhenItIsNotAvailableYet,
 ];
 
 tests.forEach((test) => test());

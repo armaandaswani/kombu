@@ -6156,6 +6156,13 @@ function renderReports() {
           <span class="material-symbols-outlined" aria-hidden="true">history</span>Ver histórico completo
         </button>
       </article>
+      <article class="admin-card">
+        <h3>Ledger de vendas</h3>
+        <p class="lead" style="font-size:1rem">Registro permanente de cada venda, com o valor que valia no dia. Sobrevive à exclusão de um pedido e não muda quando um preço é corrigido.</p>
+        <button class="btn btn-outline" type="button" data-action="sales-ledger">
+          <span class="material-symbols-outlined" aria-hidden="true">receipt_long</span>Abrir ledger de vendas
+        </button>
+      </article>
     </section>
   `;
 }
@@ -6418,6 +6425,155 @@ function openBatchHistory(batchCode) {
     title: `Histórico do lote ${batchCode}`,
     eyebrow: "Estoque",
     intro: "Reservas, retiradas, correções e vendas registradas para este lote.",
+  });
+}
+
+// Sales live in the state document, but a sale disappears with the order it
+// belongs to and its revenue is recomputed from today's prices. sales_ledger
+// keeps the row and the figure that was true when it was written. This reads it
+// back, so the permanent record can be checked against the panel.
+let salesLedger = { sales: [], nextCursor: null, search: "", from: "", to: "", loading: false, error: "", unavailable: false };
+
+const SALES_MOVEMENT_LABELS = {
+  venda: "Venda",
+  perda: "Baixa",
+  devolucao: "Devolução",
+  presente: "Cortesia",
+};
+
+function salesLedgerMarkup() {
+  const rows = salesLedger.sales
+    .map((sale) => {
+      const movement = SALES_MOVEMENT_LABELS[sale.movementType] || sale.movementType || "Venda";
+      const parts = [
+        sale.flavor || "sabor não informado",
+        sale.batchCode ? `lote ${sale.batchCode}` : "",
+        `${number(sale.qty)} un`,
+        sale.delivery ? `frete ${brl(sale.delivery)}` : "",
+        sale.discount ? `desconto ${brl(sale.discount)}` : "",
+      ].filter(Boolean);
+      return `
+        <div class="audit-row">
+          <strong>${escapeHtml(sale.customerName || "Cliente não informado")} | ${escapeHtml(movement)}</strong>
+          <span>${escapeHtml(sale.date ? shortDate(sale.date) : "sem data")} | ${escapeHtml(brl(sale.revenue))}</span>
+          <span>${escapeHtml(parts.join(" | "))}</span>
+          ${sale.note ? `<span>${escapeHtml(sale.note)}</span>` : ""}
+        </div>
+      `;
+    })
+    .join("");
+
+  // Deliberately "das vendas carregadas" and not "do período": only the rows
+  // already fetched are summed, and saying otherwise would read as a period
+  // total that is simply wrong whenever there is another page.
+  const loadedRevenue = salesLedger.sales.reduce((sum, sale) => sum + Number(sale.revenue || 0), 0);
+  const totalLine = salesLedger.sales.length
+    ? `<p class="empty-note">Total das ${number(salesLedger.sales.length)} vendas carregadas: <strong>${escapeHtml(brl(loadedRevenue))}</strong>${
+        salesLedger.nextCursor ? " (há mais registros a carregar)" : ""
+      }</p>`
+    : "";
+
+  return `
+    <div class="input-grid">
+      <label class="field field-full">
+        <span>Buscar no ledger</span>
+        <input id="salesLedgerSearch" type="search" value="${escapeHtml(salesLedger.search)}" placeholder="Cliente, sabor, lote, pedido..." autocomplete="off">
+      </label>
+      <label class="field"><span>De</span><input id="salesLedgerFrom" type="date" value="${escapeHtml(salesLedger.from)}"></label>
+      <label class="field"><span>Até</span><input id="salesLedgerTo" type="date" value="${escapeHtml(salesLedger.to)}"></label>
+    </div>
+    ${salesLedger.unavailable ? `<p class="empty-note">O ledger permanente ainda não está disponível nesta base.</p>` : ""}
+    ${salesLedger.error ? `<p class="empty-note">${escapeHtml(salesLedger.error)}</p>` : ""}
+    ${totalLine}
+    <div class="stack-list" id="salesLedgerList">${rows || (salesLedger.loading ? "" : `<p class="empty-note">Nenhuma venda encontrada.</p>`)}</div>
+    ${salesLedger.loading ? `<p class="empty-note">Carregando...</p>` : ""}
+    ${salesLedger.nextCursor && !salesLedger.loading ? `
+      <button class="btn btn-outline" type="button" data-action="sales-ledger-more">
+        <span class="material-symbols-outlined" aria-hidden="true">expand_more</span>Carregar mais
+      </button>
+    ` : ""}
+  `;
+}
+
+function renderSalesLedger() {
+  const mount = document.querySelector("#salesLedgerMount");
+  if (!mount) return;
+  mount.innerHTML = salesLedgerMarkup();
+  const search = mount.querySelector("#salesLedgerSearch");
+  if (search) {
+    search.addEventListener("input", () => {
+      window.clearTimeout(renderSalesLedger.timer);
+      const value = search.value;
+      renderSalesLedger.timer = window.setTimeout(() => {
+        salesLedger.search = value;
+        loadSalesLedger({ reset: true });
+      }, 350);
+    });
+  }
+  ["From", "To"].forEach((which) => {
+    const field = mount.querySelector(`#salesLedger${which}`);
+    if (!field) return;
+    field.addEventListener("change", () => {
+      salesLedger[which.toLowerCase()] = field.value;
+      loadSalesLedger({ reset: true });
+    });
+  });
+}
+
+async function loadSalesLedger({ reset = false } = {}) {
+  if (salesLedger.loading) return;
+  if (reset) {
+    salesLedger.sales = [];
+    salesLedger.nextCursor = null;
+    salesLedger.error = "";
+    salesLedger.unavailable = false;
+  }
+  salesLedger.loading = true;
+  renderSalesLedger();
+  try {
+    const params = new URLSearchParams({ limit: "50" });
+    if (salesLedger.nextCursor) params.set("cursor", salesLedger.nextCursor);
+    if (salesLedger.search) params.set("search", salesLedger.search);
+    if (salesLedger.from) params.set("from", salesLedger.from);
+    if (salesLedger.to) params.set("to", salesLedger.to);
+    const response = await fetch(`/api/sales?${params.toString()}`, { credentials: "same-origin" });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok || payload.ok === false) {
+      salesLedger.error = syncErrorMessage(payload, "Não foi possível carregar o ledger de vendas.");
+    } else {
+      salesLedger.sales = [...salesLedger.sales, ...(payload.sales || [])];
+      salesLedger.nextCursor = payload.nextCursor || null;
+      salesLedger.unavailable = payload.unavailable === true;
+    }
+  } catch {
+    salesLedger.error = "Não foi possível conectar para carregar o ledger de vendas.";
+  } finally {
+    salesLedger.loading = false;
+    renderSalesLedger();
+    const input = document.querySelector("#salesLedgerSearch");
+    if (input && document.activeElement !== input && salesLedger.search) {
+      input.focus();
+      input.setSelectionRange(input.value.length, input.value.length);
+    }
+  }
+}
+
+function openSalesLedger({ search = "", from = "", to = "", title = "Ledger de vendas", eyebrow = "Relatórios" } = {}) {
+  salesLedger = { sales: [], nextCursor: null, search, from, to, loading: false, error: "", unavailable: false };
+  openModal(
+    title,
+    eyebrow,
+    `<p class="lead" style="font-size:1rem">Registro permanente de cada venda, guardado fora do documento principal. O valor de cada linha é o que valia quando a venda foi feita, então uma correção de preço hoje não muda o que um mês passado faturou. O frete aparece separado e não entra na receita.</p><div id="salesLedgerMount"></div>`,
+  );
+  loadSalesLedger({ reset: true });
+}
+
+function openBatchSalesLedger(batchCode) {
+  if (!batchCode) return;
+  openSalesLedger({
+    search: batchCode,
+    title: `Vendas do lote ${batchCode}`,
+    eyebrow: "Estoque",
   });
 }
 
@@ -10661,6 +10817,8 @@ function handleAction(action) {
     "sync-cloud": () => syncFromCloud().then(render),
     "audit-history": () => openAuditHistory(),
     "audit-history-more": () => loadAuditHistory(),
+    "sales-ledger": () => openSalesLedger(),
+    "sales-ledger-more": () => loadSalesLedger(),
     "order-history": openOrderHistory,
     "batch-history": openBatchHistory,
     "lead-archive": openLeadArchive,

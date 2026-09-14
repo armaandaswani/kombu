@@ -532,6 +532,113 @@ async function run() {
   assert.ok(jsonBody(res).state, "the read must return reconciled state");
   assert.deepStrictEqual(writeMethods, [], "GET /api/state must not write to Supabase");
 
+  // --- sales ledger read path ------------------------------------------------
+  const salesHandler = require("../api/sales");
+
+  // Unauthenticated first: the ledger is every sale the business ever made.
+  req = { method: "GET", headers: { host: "kombukombucha.com.br" }, url: "/api/sales" };
+  res = responseMock();
+  await salesHandler(req, res);
+  assert.strictEqual(res.statusCode, 401, "the sales ledger must not be readable without a session");
+
+  req = { method: "POST", headers: { host: "kombukombucha.com.br", cookie }, url: "/api/sales" };
+  res = responseMock();
+  await salesHandler(req, res);
+  assert.strictEqual(res.statusCode, 405, "the ledger is read-only");
+
+  let ledgerUrl = "";
+  let ledgerRows = [];
+  let ledgerTableExists = true;
+  global.fetch = async (url) => {
+    ledgerUrl = String(url);
+    if (!ledgerTableExists) {
+      throw Object.assign(new Error("supabase_request_failed"), {
+        code: "supabase_request_failed",
+        status: 404,
+        detail: { code: "PGRST205" },
+      });
+    }
+    return supabaseReply(ledgerRows);
+  };
+
+  const ledgerRow = (id, saleDate, extra = {}) => ({
+    id,
+    sale_id: `sale-${id}`,
+    sale_date: saleDate,
+    movement_type: "venda",
+    customer_name: "Divina Terra",
+    flavor: "Frutas Vermelhas",
+    batch_code: "L-001",
+    qty: 2,
+    unit_price: 10,
+    discount: 0,
+    delivery: 5,
+    revenue: 20,
+    ...extra,
+  });
+
+  ledgerRows = [ledgerRow(3, "2026-08-12"), ledgerRow(2, "2026-08-11")];
+  req = { method: "GET", headers: { host: "kombukombucha.com.br", cookie }, url: "/api/sales" };
+  res = responseMock();
+  await salesHandler(req, res);
+  assert.strictEqual(res.statusCode, 200);
+  let payload = jsonBody(res);
+  assert.strictEqual(payload.sales.length, 2);
+  assert.strictEqual(payload.sales[0].id, "sale-3");
+  assert.strictEqual(payload.sales[0].revenue, 20, "the stored revenue is returned, not recomputed");
+  assert.strictEqual(payload.sales[0].delivery, 5, "freight stays its own figure");
+  assert.strictEqual(payload.nextCursor, null, "a short page has no cursor");
+
+  // Three sales on ONE day with limit=2: the page must hand back a cursor that
+  // still includes the third, or a day's takings silently lose rows.
+  ledgerRows = [ledgerRow(5, "2026-08-12"), ledgerRow(4, "2026-08-12"), ledgerRow(3, "2026-08-12")];
+  req = { method: "GET", headers: { host: "kombukombucha.com.br", cookie }, url: "/api/sales?limit=2" };
+  res = responseMock();
+  await salesHandler(req, res);
+  payload = jsonBody(res);
+  assert.strictEqual(payload.sales.length, 2, "limit is respected");
+  assert.strictEqual(payload.nextCursor, "2026-08-12|4", "the cursor carries both the date and the row id");
+
+  req = { method: "GET", headers: { host: "kombukombucha.com.br", cookie }, url: "/api/sales?limit=2&cursor=2026-08-12%7C4" };
+  res = responseMock();
+  await salesHandler(req, res);
+  assert.ok(
+    ledgerUrl.includes("and(sale_date.eq.2026-08-12,id.lt.4)"),
+    "paging within one date must compare the id too, not just the date",
+  );
+  assert.ok(ledgerUrl.includes("sale_date.lt.2026-08-12"), "and must still move on to earlier dates");
+  assert.ok(ledgerUrl.includes("sale_date.is.null"), "undated ledger rows must not be stranded");
+
+  // Once past the dated rows the cursor works inside the undated block.
+  req = { method: "GET", headers: { host: "kombukombucha.com.br", cookie }, url: "/api/sales?cursor=%7C9" };
+  res = responseMock();
+  await salesHandler(req, res);
+  assert.ok(ledgerUrl.includes("sale_date=is.null"), "an undated cursor stays in the undated block");
+  assert.ok(ledgerUrl.includes("id=lt.9"));
+
+  // A period filter, which is the point of a financial ledger.
+  req = { method: "GET", headers: { host: "kombukombucha.com.br", cookie }, url: "/api/sales?from=2026-08-01&to=2026-08-31" };
+  res = responseMock();
+  await salesHandler(req, res);
+  assert.ok(ledgerUrl.includes("sale_date=gte.2026-08-01") && ledgerUrl.includes("sale_date=lte.2026-08-31"));
+
+  // Junk in the date or cursor must be ignored rather than sent to PostgREST.
+  req = { method: "GET", headers: { host: "kombukombucha.com.br", cookie }, url: "/api/sales?from=nonsense&cursor=nonsense" };
+  res = responseMock();
+  await salesHandler(req, res);
+  assert.strictEqual(res.statusCode, 200);
+  assert.ok(!ledgerUrl.includes("nonsense"), "unparseable input must never reach the query");
+
+  // And before the SQL is run the endpoint says so instead of erroring.
+  ledgerTableExists = false;
+  req = { method: "GET", headers: { host: "kombukombucha.com.br", cookie }, url: "/api/sales" };
+  res = responseMock();
+  await salesHandler(req, res);
+  assert.strictEqual(res.statusCode, 200, "a missing sales_ledger table is not an error for the reader");
+  assert.strictEqual(jsonBody(res).unavailable, true);
+  assert.deepStrictEqual(jsonBody(res).sales, []);
+  ledgerTableExists = true;
+
   global.fetch = previousFetch;
   if (previousUrl === undefined) delete process.env.SUPABASE_URL;
   else process.env.SUPABASE_URL = previousUrl;
