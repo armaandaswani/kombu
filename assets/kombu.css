@@ -6094,3 +6094,28 @@ textarea:focus-visible {
     grid-column: 1 / -1;
   }
 }
+
+/* Keep the overview readable while detailed operational tools stay in their modules. */
+.admin-nav-heading { margin: 16px 12px 4px; color: #526052; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .06em; }
+.dashboard-period { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px; margin-bottom: 16px; }
+.dashboard-period label { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; font-weight: 800; }
+.dashboard-period input { min-height: 44px; padding: 8px 12px; border: 1px solid var(--line); border-radius: 8px; font: inherit; background: white; color: #253c29; }
+.dashboard-period p { flex-basis: 100%; margin: 0; color: #526052; line-height: 1.6; }
+.dashboard-key-metrics { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.dashboard-key-metrics .metric-card { min-height: 160px; }
+.dashboard-key-metrics .metric-card span { line-height: 1.6; color: #526052; }
+.dashboard-details { margin-top: 16px; }
+.dashboard-details summary { cursor: pointer; padding: 8px 0; min-height: 44px; font-weight: 800; color: #28552a; }
+.dashboard-details p { color: #526052; line-height: 1.65; }
+.dashboard-details .btn, [data-dashboard-module] { margin: 6px 8px 6px 0; min-height: 44px; }
+.admin-content .report-row { gap: 12px; line-height: 1.6; }
+.admin-content .report-row span { overflow-wrap: anywhere; }
+.admin-content :focus-visible, .admin-nav :focus-visible { outline: 3px solid #a76b14; outline-offset: 3px; }
+@media (min-width: 761px) and (max-width: 1100px) { .admin-nav-heading { font-size: 0; margin: 8px; border-top: 1px solid var(--line); } }
+@media (max-width: 760px) {
+  .dashboard-key-metrics { grid-template-columns: 1fr; }
+  .dashboard-key-metrics .metric-card { min-height: 120px; }
+  .dashboard-period label, .dashboard-period input { width: 100%; }
+}
+
+.admin-content .dashboard-stock-card { min-height: 0; }

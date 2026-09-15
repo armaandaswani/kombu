@@ -118,7 +118,7 @@ const ADMIN_I18N = {
 };
 
 const MODULE_LABELS = {
-  dashboard: "Dashboard",
+  dashboard: "Início",
   products: "Produtos",
   ingredients: "Ingredientes",
   purchases: "Compras",
@@ -607,6 +607,7 @@ let currentKombuchaStockSize = BASE_BOTTLE_SIZE_ML;
 let currentLocale = localStorage.getItem(LOCALE_KEY) || "pt";
 let currentSalesPeriod = "month";
 let currentDashboardOrderView = "summary";
+let dashboardMonth = new Date().toLocaleDateString("sv-SE").slice(0, 7);
 let receiptDraft = null;
 let receiptWizardStep = 1;
 let salesCustomStart = "";
@@ -678,7 +679,6 @@ function runStartupIntegrations() {
   }
 }
 
-runStartupIntegrations();
 
 function isAuthenticated() {
   return sessionStorage.getItem("kombuAdminAuthenticated") === "true";
@@ -2047,13 +2047,19 @@ function finishedStockRows() {
     });
 }
 
+function isOperatingExpense(expense) {
+  const purchase = expense.purchaseId && state.purchases.find((row) => row.id === expense.purchaseId);
+  // Inventory purchases enter batch costs; operational purchases remain expenses.
+  return !(purchase && purchase.kind !== "operational");
+}
+
 function totals() {
   const salesRevenue = state.sales.reduce((sum, sale) => sum + saleRevenue(sale), 0);
   const cogs = state.sales.reduce((sum, sale) => {
     const batch = state.batches.find((item) => item.code === sale.batchCode);
     return sum + Number(sale.qty || 0) * (batch ? batchCost(batch).batchCostPerBottle : 0);
   }, 0);
-  const expenses = state.expenses.reduce((sum, expense) => sum + Number(expense.amount || 0), 0);
+  const expenses = state.expenses.filter(isOperatingExpense).reduce((sum, expense) => sum + Number(expense.amount || 0), 0);
   const finishedStock = finishedStockRows().reduce((sum, row) => sum + row.stock, 0);
   const produced = state.batches.reduce((sum, batch) => sum + batchProducedQuantity(batch), 0);
   const sold = state.sales.reduce((sum, sale) => sum + Number(sale.qty || 0), 0);
@@ -4668,7 +4674,7 @@ function dashboardStockChart() {
           return `
             <div class="dashboard-stock-row ${row.available + row.reserved <= 0 ? "is-empty" : ""}">
               <div class="dashboard-stock-head">
-                <strong>${escapeHtml(row.flavor)}</strong>
+                <strong>${escapeHtml(row.flavor)} · ${number(row.sizeMl)} ml</strong>
                 <span>${number(row.available)} disp.${row.reserved ? ` | ${number(row.reserved)} res.` : ""}</span>
               </div>
               <div class="dashboard-stock-track" aria-label="${escapeHtml(row.flavor)}: ${number(row.available)} disponível, ${number(row.reserved)} reservado">
@@ -4687,13 +4693,52 @@ function dashboardStockChart() {
   `;
 }
 
+// Financial dates follow the recorded transaction date; stock and open orders
+// remain a live snapshot so a historical month never suggests old stock is sellable.
+function dashboardFinancials(month = dashboardMonth) {
+  const range = { start: `${month}-01`, end: addDaysIso(addMonthsIso(`${month}-01`, 1), -1) };
+  const movements = state.sales.filter((sale) => saleDateInRange(sale.date, range));
+  const revenue = movements.reduce((sum, sale) => sum + saleRevenue(sale), 0);
+  let unknownCosts = 0;
+  const cogs = movements.reduce((sum, sale) => {
+    const batch = state.batches.find((item) => item.code === sale.batchCode);
+    const cost = batch ? batchCost(batch) : null;
+    if (!cost || cost.costBasis === "unknown") unknownCosts += 1;
+    return sum + Number(sale.qty || 0) * Number(cost?.batchCostPerBottle || 0);
+  }, 0);
+  const expenses = state.expenses.filter((item) => saleDateInRange(item.date, range) && isOperatingExpense(item))
+    .reduce((sum, item) => sum + Number(item.amount || 0), 0);
+  return { revenue, cogs, expenses, net: revenue - cogs - expenses, unknownCosts, range };
+}
+
+function dashboardLink(module, label) {
+  return `<button type="button" class="btn btn-outline" data-dashboard-module="${module}">${label}<span class="material-symbols-outlined" aria-hidden="true">arrow_forward</span></button>`;
+}
+
+function dashboardWorkflows() {
+  return `<details class="admin-card dashboard-details" data-dashboard-panel="workflow">
+    <summary>Registrar informações · por onde começar</summary>
+    <div class="admin-grid">
+      <article><h3>1. Preparar a produção</h3><p>Cadastre produtos e ingredientes, registre compras e monte a receita com seus custos.</p>${dashboardLink("products", "Produtos")}${dashboardLink("purchases", "Registrar compras")}${dashboardLink("recipes", "Receitas")}</article>
+      <article><h3>2. Produzir e conferir</h3><p>Abra um lote, acompanhe a produção e confira o estoque disponível antes de reservar pedidos.</p>${dashboardLink("batches", "Produção")}${dashboardLink("stock", "Estoque e reservas")}</article>
+      <article><h3>3. Vender e entregar</h3><p>Use pedidos para encomendas; venda rápida para saídas imediatas. Acompanhe entrega e pagamento no pedido.</p>${dashboardLink("orders", "Pedidos")}${dashboardLink("sales", "Vendas")}</article>
+      <article><h3>4. Fechar o resultado</h3><p>Registre despesas com a data correta e revise custos para que o resultado do mês seja útil.</p>${dashboardLink("expenses", "Despesas")}${dashboardLink("reports", "Relatórios")}</article>
+      <article><h3>Atualizar o site</h3><p>Envie imagens nos campos de upload e revise os textos e parceiros nas telas específicas.</p>${dashboardLink("cms", "Conteúdo e imagens")}${dashboardLink("partners", "Parceiros")}</article>
+    </div>
+  </details>`;
+}
+
 function renderDashboard() {
   const total = totals();
-  const productionRows = orderProductionRows();
+  const financial = dashboardFinancials();
+  const stockRows = stockByFlavorRows();
+  const availableStock = stockRows.reduce((sum, row) => sum + row.available, 0);
+  const reservedStock = stockRows.reduce((sum, row) => sum + row.reserved, 0);
+  const productionRows = orderProductionRows().filter((row) => row.missing > 0);
   const receivableRows = paymentReminderRows();
   const partnerRows = Object.entries(
     state.sales
-      .filter((sale) => !sale.movementType || sale.movementType === "venda")
+      .filter((sale) => (!sale.movementType || sale.movementType === "venda") && saleDateInRange(sale.date, financial.range))
       .reduce((acc, sale) => {
         const partner = sale.customerName || sale.partner || "Cliente sem nome";
         acc[partner] = (acc[partner] || 0) + Number(sale.qty || 0);
@@ -4702,22 +4747,41 @@ function renderDashboard() {
   ).sort((a, b) => b[1] - a[1]);
   return `
     ${pageHead(
-      "Visão Geral",
-      "Controle operacional e financeiro da Kombú: produção, estoque, custo por garrafa, vendas e alertas.",
-      `${actionButton("quick-sale", "Venda rápida", "point_of_sale")} ${actionButton("new-order", "Novo pedido", "assignment", "btn-outline")} ${actionButton("new-batch", "Novo lote", "science", "btn-outline")} ${actionButton("new-purchase", "Registrar compra", "shopping_bag", "btn-outline")}`,
+      "Início",
+      "Seu negócio em um olhar: resultado do mês, estoque de hoje e próximos passos.",
+      `${actionButton("quick-sale", "Venda rápida", "point_of_sale")} ${actionButton("new-order", "Novo pedido", "assignment", "btn-outline")}`,
     )}
-    ${dashboardReadyOrders()}
-    <section class="metric-grid">
-      ${metric("Garrafas em estoque", number(total.finishedStock), "Prontas para venda por lote", "water_bottle")}
-      ${metric("Pedidos em aberto", number(total.openOrderQty), `${brl(total.openOrderValue)} em pipeline`, "assignment")}
-      ${metric("A receber", brl(total.receivable), `${receivableRows.length} cobrança(s) pendentes`, "event_available")}
-      ${metric("Produção faltante", number(total.productionMissing), "Garrafas necessárias para pedidos", "factory")}
-      ${metric("Receita do período", brl(total.salesRevenue), `Lucro bruto ${brl(total.grossProfit)} (${pct(total.grossMargin)})`, "account_balance_wallet")}
-      ${metric("Despesas + compras", brl(total.expenses), `Compras registradas: ${brl(total.purchasesTotal)}`, "receipt_long")}
+    <section class="admin-card dashboard-period" aria-label="Período financeiro">
+      <label for="dashboardMonth">Resultado de <input id="dashboardMonth" type="month" value="${escapeHtml(dashboardMonth)}" required></label>
+      <button type="button" class="btn btn-outline" data-dashboard-current-month>Mês atual</button>
+      <p>Vendas e despesas pela data de registro. Estoque e pendências mostram a situação de hoje.</p>
+    </section>
+    <section class="metric-grid dashboard-key-metrics" aria-label="Indicadores principais">
+      ${metric("Disponível agora", number(availableStock), `${number(reservedStock)} reservadas · garrafas`, "water_bottle")}
+      ${metric("Receita do mês", brl(financial.revenue), "Vendas menos descontos, sem frete; não é caixa recebido", "account_balance_wallet")}
+      ${metric("Lucro estimado do mês", financial.unknownCosts ? "Custo incompleto" : brl(financial.net), financial.unknownCosts ? `${financial.unknownCosts} saída(s) sem custo. Revise os lotes.` : "Receita − custo das saídas − despesas", "monitoring")}
+    </section>
+    <section class="admin-grid">
+      <article class="admin-card dashboard-stock-card">
+        <div class="dashboard-card-head">
+          <h3>Estoque por sabor</h3>
+          ${dashboardLink("stock", "Ver estoque completo")}
+        </div>
+        ${dashboardStockChart()}
+      </article>
+      <article class="admin-card">
+        <h3>O que produzir agora</h3>
+        <p>Demanda ainda sem reserva. Confira o estoque livre antes de abrir novos lotes.</p>
+        ${dashboardLink("stock", "Conferir estoque")}${dashboardLink("batches", "Planejar produção")}
+        <div class="stack-list">
+          ${productionRows.length ? productionRows.slice(0, 6).map((row) => `<div class="report-row"><strong>${escapeHtml(row.flavor)}</strong><span>${number(row.missing)} sem reserva de ${number(row.ordered)}${row.nextDue ? ` · prazo ${escapeHtml(shortDate(row.nextDue))}` : ""} | ${productionClientRows(row).slice(0, 2).map((client) => escapeHtml(client.name)).join(", ") || "sem cliente"}</span></div>`).join("") : `<p class="empty-note">Sem pedido aberto exigindo produção.</p>`}
+        </div>
+      </article>
     </section>
     <section class="admin-grid">
       <article class="admin-card">
         <h3>Atenção necessária</h3>
+        ${dashboardLink("ingredients", "Revisar insumos")}${dashboardLink("packaging", "Embalagens")}
         <div class="alert-list">
           ${missingCostIngredients()
             .slice(0, 5)
@@ -4733,40 +4797,35 @@ function renderDashboard() {
           ${missingCostIngredients().length || lowStockIngredients().length || lowStockPackaging().length || nearExpiryBatches().length ? "" : `<div class="empty-note">Nenhum alerta crítico no momento.</div>`}
         </div>
       </article>
-      <article class="admin-card dashboard-stock-card">
-        <div class="dashboard-card-head">
-          <h3>Estoque por sabor</h3>
-          <span>disponível / reservado</span>
-        </div>
-        ${dashboardStockChart()}
-      </article>
-    </section>
-    <section class="admin-grid">
       <article class="admin-card">
-        <h3>Produção puxada por pedidos</h3>
-        <div class="stack-list">
-          ${productionRows.length ? productionRows.slice(0, 6).map((row) => `<div class="report-row"><strong>${escapeHtml(row.flavor)}</strong><span>${number(row.missing)} faltando de ${number(row.ordered)} | ${productionClientRows(row).slice(0, 2).map((client) => escapeHtml(client.name)).join(", ") || "sem cliente"}</span></div>`).join("") : `<p class="empty-note">Sem pedido aberto exigindo produção.</p>`}
-        </div>
-      </article>
-      <article class="admin-card">
-        <h3>Cobranças próximas</h3>
+        <h3>Saldo a receber · ${brl(total.receivable)}</h3>
+        ${dashboardLink("orders", "Acompanhar pedidos e pagamentos")}
         <div class="stack-list">
           ${receivableRows.length ? receivableRows.slice(0, 6).map(({ order, due, days, value }) => `<div class="report-row"><strong>${escapeHtml(orderClientDisplayName(order))}</strong><span>${brl(value)} | vence ${due || "-"}${days != null ? ` (${days < 0 ? `${Math.abs(days)} dias atrasado` : `${days} dias`})` : ""} | <a href="${paymentReminderMailto(order)}">preparar lembrete</a></span></div>`).join("") : `<p class="empty-note">Nenhuma cobrança em aberto por entrega.</p>`}
         </div>
       </article>
     </section>
+    <details class="admin-card dashboard-details" data-dashboard-panel="finance">
+      <summary>Entender o resultado financeiro</summary>
+      <p>Receita: ${brl(financial.revenue)} · Custo das saídas: ${brl(financial.cogs)} · Despesas: ${brl(financial.expenses)}.</p>
+      <p>Estimativa com os custos cadastrados, incluindo saídas sem receita. Compras de insumos não são descontadas novamente: entram no custo dos lotes. Confira custos e despesas antes de decidir.</p>
+      ${dashboardLink("expenses", "Registrar despesas")}${dashboardLink("costs", "Revisar custos")}
+    </details>
+    ${dashboardWorkflows()}
+    <details class="admin-card dashboard-details" data-dashboard-panel="reservations"><summary>Pedidos prontos e reservas</summary>${dashboardReadyOrders()}</details>
+    <details class="admin-card dashboard-details" data-dashboard-panel="history"><summary>Clientes do mês e histórico recente</summary>
     <section class="admin-grid">
       <article class="admin-card">
-        <h3>Parceiros com maior volume</h3>
+        <h3>Clientes com maior volume no mês</h3>
         <div class="stack-list">
-          ${partnerRows.length ? partnerRows.map(([partner, qty]) => `<div class="report-row"><strong>${escapeHtml(partner)}</strong><span>${number(qty)} garrafas vendidas</span></div>`).join("") : `<p class="empty-note">Registre vendas para ver parceiros por volume.</p>`}
+          ${partnerRows.length ? partnerRows.slice(0, 6).map(([partner, qty]) => `<div class="report-row"><strong>${escapeHtml(partner)}</strong><span>${number(qty)} garrafas vendidas</span></div>`).join("") : `<p class="empty-note">Registre vendas para ver parceiros por volume.</p>`}
         </div>
       </article>
       <article class="admin-card">
         <h3>Audit log recente</h3>
         <div class="stack-list">${renderAuditRows(5)}</div>
       </article>
-    </section>
+    </section></details>
   `;
 }
 
@@ -6112,7 +6171,7 @@ function renderReports() {
       (sale.batchCode ? `Lote ${sale.batchCode}` : "Sem sabor informado");
     acc[label] = acc[label] || { qty: 0, revenue: 0, profit: 0 };
     const cogs = Number(sale.qty) * (batch ? batchCost(batch).batchCostPerBottle : 0);
-    const revenue = Number(sale.qty) * Number(sale.unitPrice) - Number(sale.discount || 0);
+    const revenue = saleRevenue(sale);
     acc[label].qty += Number(sale.qty);
     acc[label].revenue += revenue;
     acc[label].profit += revenue - cogs;
@@ -6123,7 +6182,7 @@ function renderReports() {
     .map(([flavor, row]) => `<div class="report-row"><strong>${escapeHtml(flavor)}</strong><span>${number(row.qty)} un | ${brl(row.revenue)} receita | ${brl(row.profit)} lucro</span></div>`)
     .join("");
   return `
-    ${pageHead("Relatórios", "Margem, lucro, despesas, estoque, sabores mais vendidos e custo médio ao longo do tempo.", actionButton("export-reports", "Exportar CSV", "download", "btn-outline", "reports"))}
+    ${pageHead("Relatórios", "Todo o histórico. Para selecionar um mês, use o Início. Compras de estoque entram no custo dos lotes; despesas operacionais são descontadas separadamente.", actionButton("export-reports", "Exportar CSV", "download", "btn-outline", "reports"))}
     <section class="metric-grid">
       ${metric("Receita", brl(total.salesRevenue), "Vendas registradas (sem frete)", "payments")}
       ${metric("COGS", brl(total.cogs), "Custo dos produtos vendidos", "inventory")}
@@ -6178,7 +6237,7 @@ function renderCMS() {
           <input type="hidden" data-cms-image="${index}" data-field="key" value="${escapeHtml(image.key)}">
           <label class="field"><span>Imagem</span><input data-cms-image="${index}" data-field="label" value="${escapeHtml(image.label)}"></label>
           <label class="field"><span>Tamanho perfeito</span><input data-cms-image="${index}" data-field="recommended" value="${escapeHtml(image.recommended)}" readonly></label>
-          <label class="field field-full upload-field"><span>Upload com ajuste automático</span><input type="file" accept="image/*" data-cms-image-upload="${index}"><small>${escapeHtml(image.uploadedName ? `${image.uploadedName} ajustada para ${image.resizedSize || image.recommended}` : `A imagem será encaixada em ${image.recommended}, sem distorcer.`)}</small></label>
+          <label class="field field-full upload-field"><span>Upload com ajuste automático</span><input type="file" accept="image/*" data-cms-image-upload="${index}"><small data-upload-status="image-${index}" role="status">${escapeHtml(image.uploadedName ? `${image.uploadedName} ajustada para ${image.resizedSize || image.recommended}` : `A imagem será encaixada em ${image.recommended}, sem distorcer.`)}</small></label>
           <label class="field field-full"><span>URL da imagem</span><input data-cms-image="${index}" data-field="url" value="${escapeHtml(image.url)}"></label>
         </div>
       </article>
@@ -6201,7 +6260,7 @@ function renderCMS() {
           <label class="field"><span>Ordem</span><input type="number" min="1" step="1" data-cms-flavor="${index}" data-field="order" value="${escapeHtml(flavor.order)}"></label>
           <label class="field checkbox-field"><span>Visível no site</span><input type="checkbox" data-cms-flavor="${index}" data-field="visible" ${flavor.visible ? "checked" : ""}></label>
           <label class="field"><span>Tamanho perfeito</span><input data-cms-flavor="${index}" data-field="recommended" value="${escapeHtml(flavor.recommended || FLAVOR_IMAGE_RECOMMENDED)}" readonly></label>
-          <label class="field field-full upload-field"><span>Upload com ajuste automático</span><input type="file" accept="image/*" data-cms-flavor-upload="${index}"><small>${escapeHtml(flavor.uploadedName ? `${flavor.uploadedName} ajustada para ${flavor.resizedSize || flavor.recommended || FLAVOR_IMAGE_RECOMMENDED}` : `A imagem será encaixada em ${flavor.recommended || FLAVOR_IMAGE_RECOMMENDED}, sem distorcer.`)}</small></label>
+          <label class="field field-full upload-field"><span>Upload com ajuste automático</span><input type="file" accept="image/*" data-cms-flavor-upload="${index}"><small data-upload-status="flavor-${index}" role="status">${escapeHtml(flavor.uploadedName ? `${flavor.uploadedName} ajustada para ${flavor.resizedSize || flavor.recommended || FLAVOR_IMAGE_RECOMMENDED}` : `A imagem será encaixada em ${flavor.recommended || FLAVOR_IMAGE_RECOMMENDED}, sem distorcer.`)}</small></label>
           <label class="field field-full"><span>URL da foto</span><input data-cms-flavor="${index}" data-field="imageUrl" value="${escapeHtml(flavor.imageUrl || "")}"></label>
           <label class="field field-full"><span>Ingredientes separados por vírgula</span><input data-cms-flavor="${index}" data-field="ingredients" value="${escapeHtml(flavor.ingredients || "")}"></label>
           <label class="field field-full"><span>Texto do card</span><input data-cms-flavor="${index}" data-field="angle" value="${escapeHtml(flavor.angle || "")}"></label>
@@ -6879,7 +6938,9 @@ function render() {
     cms: renderCMS,
     schema: renderSchema,
   }[currentModule];
+  const openPanels = [...document.querySelectorAll("[data-dashboard-panel][open]")].map((panel) => panel.dataset.dashboardPanel);
   document.querySelector("#adminContent").innerHTML = `${cloudSyncNotice()}${view()}`;
+  document.querySelectorAll("[data-dashboard-panel]").forEach((panel) => { panel.open = openPanels.includes(panel.dataset.dashboardPanel); });
   applyLocaleToShell();
   bindModuleEvents();
   enhanceSelectSearch(document.querySelector("#adminContent"));
@@ -10625,6 +10686,11 @@ async function uploadCmsImageToCloud(kind, index, fileName, dataUrl) {
 
 async function handleCmsImageUpload(kind, index, file) {
   if (!file) return;
+  const input = document.querySelector(kind === "flavor" ? `[data-cms-flavor-upload="${index}"]` : `[data-cms-image-upload="${index}"]`);
+  if (input?.disabled) return;
+  const status = document.querySelector(`[data-upload-status="${kind}-${index}"]`);
+  if (input) input.disabled = true;
+  if (status) status.textContent = "Processando e enviando imagem…";
   try {
     const target = kind === "flavor" ? state.cms.flavors[Number(index)] : state.cms.images[Number(index)];
     if (!target) return;
@@ -10642,9 +10708,15 @@ async function handleCmsImageUpload(kind, index, file) {
     setCmsPreview(`${kind}-${index}`, finalUrl);
     const urlInput = document.querySelector(kind === "flavor" ? `[data-cms-flavor="${index}"][data-field="imageUrl"]` : `[data-cms-image="${index}"][data-field="url"]`);
     if (urlInput) urlInput.value = finalUrl;
+    if (status) status.textContent = cloudUrl
+      ? "Imagem enviada. Confira a confirmação de sincronização no topo do painel."
+      : "Imagem preparada no navegador. O envio ao armazenamento falhou; confira a sincronização antes de sair.";
   } catch (error) {
+    if (status) status.textContent = "Não foi possível processar. Tente PNG, JPG, WebP ou uma imagem menor.";
     window.alert("Não consegui processar essa imagem. Tente PNG, JPG, WebP ou uma imagem menor.");
     console.error(error);
+  } finally {
+    if (input) { input.disabled = false; input.value = ""; }
   }
 }
 
@@ -10655,6 +10727,18 @@ function fieldValue(input) {
 }
 
 function bindModuleEvents() {
+  document.querySelectorAll("[data-dashboard-module]").forEach((button) => {
+    button.addEventListener("click", () => setModule(button.dataset.dashboardModule));
+  });
+  document.querySelector("#dashboardMonth")?.addEventListener("change", (event) => {
+    if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(event.target.value)) return;
+    dashboardMonth = event.target.value;
+    render();
+  });
+  document.querySelector("[data-dashboard-current-month]")?.addEventListener("click", () => {
+    dashboardMonth = new Date().toLocaleDateString("sv-SE").slice(0, 7);
+    render();
+  });
   document.querySelectorAll("[data-dashboard-order-view]").forEach((button) => {
     button.addEventListener("click", () => {
       const requested = button.dataset.dashboardOrderView;
@@ -10997,4 +11081,6 @@ async function initializeAdmin() {
   }
 }
 
+// Startup uses status constants declared later in this classic script.
+runStartupIntegrations();
 initializeAdmin();

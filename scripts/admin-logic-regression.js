@@ -685,3 +685,40 @@ const tests = [
 
 tests.forEach((test) => test());
 console.log(`Admin logic regression: ${tests.length} scenarios passed.`);
+
+// Month boundaries, stock-independent financial periods, and incomplete costs.
+{
+  load({ packaging: [],
+    batches: [{ code: "MONTH", costSnapshot: { costPerBottle: 4 } }],
+    sales: [
+      { date: "2026-09-01", batchCode: "MONTH", qty: 10, unitPrice: 20, discount: 10, delivery: 50 },
+      { date: "2026-09-30", batchCode: "MONTH", qty: 2, unitPrice: 20, movementType: "brinde" },
+      { date: "2026-08-31", batchCode: "MONTH", qty: 100, unitPrice: 20 },
+      { date: "2026-10-01", batchCode: "MONTH", qty: 100, unitPrice: 20 },
+    ], expenses: [{ date: "2026-09-10", amount: 30 }, { date: "2026-08-10", amount: 1000 }, { date: "2026-09-10", amount: 500, purchaseId: "stock-buy" }, { date: "2026-09-11", amount: 5, purchaseId: "op-buy" }],
+    purchases: [{ id: "stock-buy", date: "2026-09-10", total: 500, kind: "ingredient" }, { id: "op-buy", kind: "operational", total: 5 }],
+  });
+  const result = call("dashboardFinancials", "2026-09");
+  assert.equal(result.revenue, 190, "month revenue excludes other months, gifts and freight, and deducts discounts");
+  assert.equal(result.cogs, 48, "all current-month inventory exits incur their snapshot cost");
+  assert.equal(result.expenses, 35, "only current-month expenses count");
+  assert.equal(result.net, 107, "do not deduct inventory purchases a second time");
+  assert.equal(call("totals").expenses, 1035, "reports share the inventory-purchase exclusion and keep operational purchases");
+  assert.equal(call("dashboardFinancials", "2024-02").range.end, "2024-02-29");
+  assert.equal(call("dashboardFinancials", "2026-12").range.end, "2026-12-31");
+  assert.equal(call("dashboardFinancials", "2027-01").net, 0, "empty month is zero");
+  admin.__getState().sales.push({ date: "2026-09-15", batchCode: "MISSING", qty: 1, unitPrice: 20 });
+  assert.equal(call("dashboardFinancials", "2026-09").unknownCosts, 1, "unlinked batch is not silently free");
+  admin.__eval('dashboardMonth = "2026-09"');
+  const html = call("renderDashboard");
+  assert.ok(html.includes("Custo incompleto"), "unknown cost suppresses misleading profit");
+  assert.ok(html.indexOf('aria-label="Indicadores principais"') < html.indexOf('data-dashboard-panel="reservations"'), "headline figures precede detailed operations");
+}
+console.log("Dashboard regression: monthly finances, missing costs and overview hierarchy passed.");
+
+{
+  load({ packaging: [], sales: [{ date: "2026-09-01", batchCode: "GIFT", flavor: "Gift test", qty: 2, unitPrice: 20, movementType: "brinde" }], batches: [{ code: "GIFT", costSnapshot: { costPerBottle: 4 } }] });
+  const report = call("renderReports");
+  const giftRow = report.match(/<div class="report-row"><strong>Gift test<\/strong><span>(.*?)<\/span>/)?.[1] || "";
+  assert.match(giftRow, /0,00 receita/, "flavor reports must not turn gifts into revenue");
+}

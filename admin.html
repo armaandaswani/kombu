@@ -19,7 +19,7 @@
       rel="stylesheet"
     />
     <link rel="icon" href="favicon.svg" type="image/svg+xml" />
-    <link rel="stylesheet" href="assets/kombu.css?v=20260723b" />
+    <link rel="stylesheet" href="assets/kombu.css?v=20260914a" />
   </head>
   <body class="admin-body">
     <section class="admin-login" id="loginScreen" aria-labelledby="loginTitle">
@@ -67,79 +67,84 @@
           </span>
         </a>
         <nav class="admin-nav" id="adminNav">
-          <button class="is-active" type="button" data-module="dashboard" title="Dashboard">
+<span class="admin-nav-heading">Visão geral</span>
+<button class="is-active" type="button" data-module="dashboard" title="Início">
             <span class="material-symbols-outlined" aria-hidden="true">dashboard</span>
-            <span class="label">Dashboard</span>
+            <span class="label">Início</span>
           </button>
-          <button type="button" data-module="products" title="Produtos">
-            <span class="material-symbols-outlined" aria-hidden="true">barcode_scanner</span>
-            <span class="label">Produtos</span>
-          </button>
-          <button type="button" data-module="ingredients" title="Ingredientes">
-            <span class="material-symbols-outlined" aria-hidden="true">egg_alt</span>
-            <span class="label">Ingredientes</span>
-          </button>
-          <button type="button" data-module="purchases" title="Compras">
-            <span class="material-symbols-outlined" aria-hidden="true">shopping_bag</span>
-            <span class="label">Compras</span>
-          </button>
-          <button type="button" data-module="suppliers" title="Fornecedores">
-            <span class="material-symbols-outlined" aria-hidden="true">local_shipping</span>
-            <span class="label">Fornecedores</span>
-          </button>
-          <button type="button" data-module="recipes" title="Receitas">
-            <span class="material-symbols-outlined" aria-hidden="true">menu_book</span>
-            <span class="label">Receitas</span>
-          </button>
-          <button type="button" data-module="costs" title="Custos">
-            <span class="material-symbols-outlined" aria-hidden="true">calculate</span>
-            <span class="label">Custos</span>
-          </button>
-          <button type="button" data-module="batches" title="Produção">
-            <span class="material-symbols-outlined" aria-hidden="true">factory</span>
-            <span class="label">Produção</span>
-          </button>
-          <button type="button" data-module="stock" title="Estoque">
-            <span class="material-symbols-outlined" aria-hidden="true">inventory_2</span>
-            <span class="label">Estoque</span>
-          </button>
-          <button type="button" data-module="packaging" title="Embalagens">
-            <span class="material-symbols-outlined" aria-hidden="true">deployed_code</span>
-            <span class="label">Embalagens</span>
-          </button>
-          <button type="button" data-module="sales" title="Vendas">
-            <span class="material-symbols-outlined" aria-hidden="true">receipt_long</span>
-            <span class="label">Vendas</span>
-          </button>
-          <button type="button" data-module="orders" title="Pedidos">
+<span class="admin-nav-heading">Vender e atender</span>
+<button type="button" data-module="orders" title="Pedidos">
             <span class="material-symbols-outlined" aria-hidden="true">assignment</span>
             <span class="label">Pedidos</span>
           </button>
-          <button type="button" data-module="receipts" title="Recibos">
+<button type="button" data-module="sales" title="Vendas">
+            <span class="material-symbols-outlined" aria-hidden="true">receipt_long</span>
+            <span class="label">Vendas</span>
+          </button>
+<button type="button" data-module="receipts" title="Recibos">
             <span class="material-symbols-outlined" aria-hidden="true">request_quote</span>
             <span class="label">Recibos</span>
           </button>
-          <button type="button" data-module="leads" title="Leads CRM">
+<button type="button" data-module="leads" title="Leads CRM">
             <span class="material-symbols-outlined" aria-hidden="true">contact_mail</span>
             <span class="label">Leads CRM</span>
           </button>
-          <button type="button" data-module="partners" title="Parceiros">
+<button type="button" data-module="partners" title="Parceiros">
             <span class="material-symbols-outlined" aria-hidden="true">handshake</span>
             <span class="label">Parceiros</span>
           </button>
-          <button type="button" data-module="expenses" title="Despesas">
+<span class="admin-nav-heading">Produzir e abastecer</span>
+<button type="button" data-module="batches" title="Produção">
+            <span class="material-symbols-outlined" aria-hidden="true">factory</span>
+            <span class="label">Produção</span>
+          </button>
+<button type="button" data-module="stock" title="Estoque">
+            <span class="material-symbols-outlined" aria-hidden="true">inventory_2</span>
+            <span class="label">Estoque</span>
+          </button>
+<button type="button" data-module="purchases" title="Compras">
+            <span class="material-symbols-outlined" aria-hidden="true">shopping_bag</span>
+            <span class="label">Compras</span>
+          </button>
+<button type="button" data-module="ingredients" title="Ingredientes">
+            <span class="material-symbols-outlined" aria-hidden="true">egg_alt</span>
+            <span class="label">Ingredientes</span>
+          </button>
+<button type="button" data-module="packaging" title="Embalagens">
+            <span class="material-symbols-outlined" aria-hidden="true">deployed_code</span>
+            <span class="label">Embalagens</span>
+          </button>
+<button type="button" data-module="recipes" title="Receitas">
+            <span class="material-symbols-outlined" aria-hidden="true">menu_book</span>
+            <span class="label">Receitas</span>
+          </button>
+<button type="button" data-module="suppliers" title="Fornecedores">
+            <span class="material-symbols-outlined" aria-hidden="true">local_shipping</span>
+            <span class="label">Fornecedores</span>
+          </button>
+<span class="admin-nav-heading">Finanças</span>
+<button type="button" data-module="expenses" title="Despesas">
             <span class="material-symbols-outlined" aria-hidden="true">payments</span>
             <span class="label">Despesas</span>
           </button>
-          <button type="button" data-module="reports" title="Relatórios">
+<button type="button" data-module="costs" title="Custos">
+            <span class="material-symbols-outlined" aria-hidden="true">calculate</span>
+            <span class="label">Custos</span>
+          </button>
+<button type="button" data-module="reports" title="Relatórios">
             <span class="material-symbols-outlined" aria-hidden="true">bar_chart</span>
             <span class="label">Relatórios</span>
           </button>
-          <button type="button" data-module="cms" title="CMS">
-            <span class="material-symbols-outlined" aria-hidden="true">edit_note</span>
-            <span class="label">CMS</span>
+<span class="admin-nav-heading">Cadastros e site</span>
+<button type="button" data-module="products" title="Produtos">
+            <span class="material-symbols-outlined" aria-hidden="true">barcode_scanner</span>
+            <span class="label">Produtos</span>
           </button>
-          <button type="button" data-module="schema" title="Arquitetura">
+<button type="button" data-module="cms" title="CMS">
+            <span class="material-symbols-outlined" aria-hidden="true">edit_note</span>
+            <span class="label">Conteúdo do site</span>
+          </button>
+<button type="button" data-module="schema" title="Arquitetura">
             <span class="material-symbols-outlined" aria-hidden="true">account_tree</span>
             <span class="label">Arquitetura</span>
           </button>
@@ -149,25 +154,7 @@
       <main class="admin-main">
         <header class="admin-topbar">
           <select class="mobile-module-select" id="mobileModuleSelector" aria-label="Selecionar módulo do admin">
-            <option value="dashboard">Dashboard</option>
-            <option value="products">Produtos</option>
-            <option value="ingredients">Ingredientes</option>
-            <option value="purchases">Compras</option>
-            <option value="suppliers">Fornecedores</option>
-            <option value="recipes">Receitas</option>
-            <option value="costs">Custos</option>
-            <option value="batches">Produção</option>
-            <option value="stock">Estoque</option>
-            <option value="packaging">Embalagens</option>
-            <option value="sales">Vendas</option>
-            <option value="orders">Pedidos</option>
-            <option value="receipts">Recibos</option>
-            <option value="leads">Leads CRM</option>
-            <option value="partners">Parceiros</option>
-            <option value="expenses">Despesas</option>
-            <option value="reports">Relatórios</option>
-            <option value="cms">CMS</option>
-            <option value="schema">Arquitetura</option>
+<optgroup label="Visão geral"><option value="dashboard">Início</option></optgroup><optgroup label="Vender e atender"><option value="orders">Pedidos</option><option value="sales">Vendas</option><option value="receipts">Recibos</option><option value="leads">Leads CRM</option><option value="partners">Parceiros</option></optgroup><optgroup label="Produzir e abastecer"><option value="batches">Produção</option><option value="stock">Estoque</option><option value="purchases">Compras</option><option value="ingredients">Ingredientes</option><option value="packaging">Embalagens</option><option value="recipes">Receitas</option><option value="suppliers">Fornecedores</option></optgroup><optgroup label="Finanças"><option value="expenses">Despesas</option><option value="costs">Custos</option><option value="reports">Relatórios</option></optgroup><optgroup label="Cadastros e site"><option value="products">Produtos</option><option value="cms">Conteúdo do site</option><option value="schema">Arquitetura</option></optgroup>
           </select>
           <label class="admin-search">
             <span class="material-symbols-outlined" aria-hidden="true">search</span>
@@ -222,6 +209,6 @@
     </div>
 
     <script src="assets/vendor/jspdf.umd.min.js?v=4.0.0"></script>
-    <script src="assets/admin.js?v=20260723b"></script>
+    <script src="assets/admin.js?v=20260914a"></script>
   </body>
 </html>
