@@ -1,0 +1,11 @@
+{
+  "name": "kombu-browser-tests",
+  "private": true,
+  "description": "Local browser testing only; excluded from Vercel deployment.",
+  "devDependencies": {
+    "playwright": "1.62.1"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

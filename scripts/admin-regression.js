@@ -1,10 +1,10 @@
 const assert = require("assert");
 const fs = require("fs");
 const { execFileSync } = require("child_process");
-const { chromium } = require("playwright");
+const { chromium, launchOptions } = require("./browser-runtime");
 
 const baseUrl = process.env.AUDIT_BASE_URL || "http://127.0.0.1:4173";
-const executablePath = process.env.CHROME_PATH || "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
+if (!["localhost", "127.0.0.1"].includes(new URL(baseUrl).hostname)) throw new Error("Admin regression requires a local fixture server");
 const storageKey = "kombuAdminStateV3";
 
 const seed = {
@@ -142,6 +142,47 @@ async function assertNoHorizontalOverflow(page, label) {
   assert.ok(overflow.body <= overflow.viewport + 1, `${label} body overflows horizontally: ${JSON.stringify(overflow)}`);
 }
 
+async function recalculateReservations(page) {
+  await page.selectOption("#mobileModuleSelector", "orders");
+  await page.click('[data-action="recalculate-reservations"]');
+  await page.click('[data-action="recalculate-reservations-confirm"]');
+  await page.waitForSelector("#adminModal", { state: "hidden" });
+}
+
+async function assertMultiItemReservationControls(browser) {
+  const fixture = JSON.parse(JSON.stringify(seed));
+  fixture.orders[0].items.push({ productId: "product-1-300", productName: "Kombucha Maracuja 300ml", flavor: "Maracuja", sizeMl: 300, qty: 2, unitPrice: 13, allocations: [] });
+  const context = await browser.newContext({ viewport: { width: 390, height: 844 }, locale: "pt-BR" });
+  try {
+    await context.addInitScript(({ key, value }) => localStorage.setItem(key, JSON.stringify(value)), { key: storageKey, value: fixture });
+    const page = await context.newPage();
+    await page.goto(`${baseUrl}/admin.html`);
+    await page.fill("#adminPassword", "local-regression");
+    await page.click('#loginForm button[type="submit"]');
+    await page.waitForSelector("#adminShell:not(.is-locked)");
+    await recalculateReservations(page);
+    await page.selectOption("#mobileModuleSelector", "dashboard");
+    await page.locator('[data-dashboard-panel="reservations"] > summary').click();
+    await page.click('[data-action="adjust-order-reservation:order-1"]');
+    const rows = page.locator('#adjustOrderReservationForm [data-reserve-row]');
+    assert.strictEqual(await rows.count(), 2, "both sizes must be editable in one reservation form");
+    await page.click('[data-reserve-all="0"]');
+    assert.deepStrictEqual(await rows.locator('[data-reserve-input]').evaluateAll(inputs => inputs.map(input => input.value)), ["0", "0"]);
+    await page.click('[data-reserve-all="max"]');
+    assert.deepStrictEqual(await rows.locator('[data-reserve-input]').evaluateAll(inputs => inputs.map(input => input.value)), ["4", "2"]);
+    await rows.nth(0).locator('[data-reserve-step="-1"]').click();
+    await rows.nth(1).locator('[data-reserve-set="0"]').click();
+    assert.match(await page.locator('#reserveChangeSummary').innerText(), /2 sabor\(es\) alterado/);
+    await page.fill('#adjustOrderReservationForm [name="reason"]', "Separar apenas três garrafas grandes");
+    await page.click('#adjustOrderReservationForm button[type="submit"]');
+    await page.waitForSelector("#adminModal", { state: "hidden" });
+    const saved = await storedState(page);
+    assert.deepStrictEqual(saved.orders[0].items.map(item => item.qty), [4, 2], "editing all reservations preserves order quantities");
+    assert.deepStrictEqual(saved.orders[0].items.map(item => item.allocations.reduce((sum, allocation) => sum + allocation.qty, 0)), [3, 0], "both line changes persist in one save");
+    assert.match(saved.audit[0].detail, /Separar apenas três garrafas grandes/);
+  } finally { await context.close(); }
+}
+
 async function assertOldestOrderReservationPriority(browser) {
   const fifoSeed = JSON.parse(JSON.stringify(seed));
   fifoSeed.batches[0].actual = 4;
@@ -195,6 +236,9 @@ async function assertOldestOrderReservationPriority(browser) {
   await page.fill("#adminPassword", "local-regression");
   await page.click('#loginForm button[type="submit"]');
   await page.waitForSelector("#adminShell:not(.is-locked)");
+  const beforeRecalculation = await storedState(page);
+  assert.ok(beforeRecalculation.orders.every(order => order.items.every(item => !(item.allocations || []).length)), "opening the dashboard must not redistribute free stock");
+  await recalculateReservations(page);
 
   const fifoState = await storedState(page);
   const oldOrder = fifoState.orders.find((order) => order.id === "order-old-large");
@@ -206,13 +250,15 @@ async function assertOldestOrderReservationPriority(browser) {
 }
 
 async function run() {
-  const browser = await chromium.launch({ headless: true, executablePath });
+  const browser = await chromium.launch(launchOptions);
+  try {
   const context = await browser.newContext({ viewport: { width: 390, height: 844 }, locale: "pt-BR" });
   await context.addInitScript(({ key, value }) => localStorage.setItem(key, JSON.stringify(value)), { key: storageKey, value: seed });
   const page = await context.newPage();
-  page.on("pageerror", (error) => console.error("PAGE ERROR:", error.stack || error.message));
+  const pageErrors = [];
+  page.on("pageerror", error => pageErrors.push(error.message));
   page.on("console", (message) => {
-    if (message.type() === "error") console.error("BROWSER ERROR:", message.text());
+    if (message.type() === "error" && !message.text().includes("Failed to load resource")) console.error("BROWSER ERROR:", message.text());
   });
   page.on("dialog", (dialog) => {
     if (dialog.type() === "prompt") {
@@ -232,6 +278,9 @@ async function run() {
   await page.fill("#adminPassword", "local-regression");
   await page.click('#loginForm button[type="submit"]');
   await page.waitForSelector("#adminShell:not(.is-locked)");
+  const beforeRecalculation = await storedState(page);
+  assert.ok(beforeRecalculation.orders.every(order => order.items.every(item => !(item.allocations || []).length)), "opening the dashboard must not redistribute free stock");
+  await recalculateReservations(page);
 
   let state = await storedState(page);
   const product300 = state.products.find((product) => product.id === "product-1-300");
@@ -332,6 +381,9 @@ async function run() {
   await page.click("#closeAdminModal");
 
   await page.selectOption("#mobileModuleSelector", "dashboard");
+  if (await page.locator('[data-dashboard-panel="reservations"]').getAttribute("open") === null) {
+    await page.locator('[data-dashboard-panel="reservations"] > summary').click();
+  }
   await page.click('[data-action="quick-sale"]');
   assert.strictEqual(await page.locator('#quickSaleForm [data-variant-flavor]').inputValue(), "Maracuja");
   assert.deepStrictEqual(
@@ -384,12 +436,15 @@ async function run() {
   assert.match(await legacySaleAudit.innerText(), /lote LOT-TEST-1/);
 
   await page.selectOption("#mobileModuleSelector", "dashboard");
+  if (await page.locator('[data-dashboard-panel="reservations"]').getAttribute("open") === null) {
+    await page.locator('[data-dashboard-panel="reservations"] > summary').click();
+  }
   const readyCard = page.locator(".order-ready-card", { hasText: "Ana Teste" });
   await assert.doesNotReject(() => readyCard.waitFor());
-  assert.match(await readyCard.innerText(), /4\/4/);
+  assert.match(await readyCard.innerText(), /4 de 4 reservadas/);
 
   await readyCard.locator('[data-action="adjust-order-reservation:order-1"]').click();
-  await page.fill('#adjustOrderReservationForm input[name="reservedNow"]', "3");
+  await page.fill('#adjustOrderReservationForm [data-reserve-input]', "3");
   await page.fill('#adjustOrderReservationForm input[name="reason"]', "Liberar uma unidade para venda");
   await page.click('#adjustOrderReservationForm button[type="submit"]');
   await page.waitForSelector("#adminModal", { state: "hidden" });
@@ -397,19 +452,19 @@ async function run() {
   state = await storedState(page);
   let item = state.orders[0].items[0];
   assert.strictEqual(item.qty, 4, "manual reservation changes must never alter the ordered quantity");
-  assert.strictEqual(item.reservationTarget, null, "legacy order target must not be used for current reservation adjustments");
+  assert.strictEqual(item.reservationTarget ?? null, null, "legacy order target must not be used for current reservation adjustments");
   assert.strictEqual(item.reservationOverride.reservedNow, 3, "the current reserved quantity should be persisted independently");
   assert.strictEqual(item.reservationOverride.orderedQty, 4, "the audit snapshot should preserve the ordered quantity");
   assert.strictEqual(item.allocations.reduce((sum, allocation) => sum + allocation.qty, 0), 3, "exactly three bottles should remain reserved");
-  assert.match(state.audit[0].detail, /4 -> 3/);
-  assert.match(state.audit[0].detail, /pedido permanece em 4/);
+  assert.match(state.audit[0].detail, /4 → 3/);
+  assert.strictEqual(item.reservationOverride.previousQty, 4, "reservation history retains the prior quantity");
   assert.match(state.audit[0].detail, /Liberar uma unidade para venda/);
   assert.strictEqual(state.audit[0].user, "Owner / Admin");
 
   const updatedCard = page.locator(".order-ready-card", { hasText: "Ana Teste" });
   const updatedCardText = await updatedCard.innerText();
-  assert.match(updatedCardText, /3\/4/);
-  assert.match(updatedCardText, /Sabores que faltam/);
+  assert.match(updatedCardText, /3 de 4 reservadas/);
+  assert.match(updatedCardText, /1 faltando/);
   assert.match(updatedCardText, /Maracuja/);
   assert.match(updatedCardText, /1 faltando de 4/);
 
@@ -420,6 +475,7 @@ async function run() {
   await assertNoHorizontalOverflow(page, "dashboard missing-only view");
   await page.click('[data-dashboard-order-view="summary"]');
 
+  await page.locator('.order-ready-menu > summary').click();
   await page.locator('[data-action="delivery-proof:order-1"]').click();
   await page.waitForSelector("#deliveryProofForm");
   assert.match(await page.locator(".delivery-proof-item").innerText(), /Maracuja 500ml/);
@@ -463,8 +519,15 @@ async function run() {
     3,
     "only the first shipment may leave inventory",
   );
-  assert.strictEqual(item.allocations.reduce((sum, allocation) => sum + allocation.qty, 0), 1, "the remaining bottle should be reserved for the next shipment");
+  assert.strictEqual(item.allocations.reduce((sum, allocation) => sum + allocation.qty, 0), 0, "delivery consumes reservations without silently reserving more stock");
+  await updatedCard.locator('[data-action="adjust-order-reservation:order-1"]').click();
+  await page.locator('#adjustOrderReservationForm [data-reserve-input]').fill("1");
+  await page.click('#adjustOrderReservationForm button[type="submit"]');
+  await page.waitForSelector("#adminModal", { state: "hidden" });
+  state = await storedState(page);
+  assert.strictEqual(state.orders[0].items[0].allocations.reduce((sum, allocation) => sum + allocation.qty, 0), 1, "the operator explicitly reserves the remaining bottle for the next shipment");
 
+  await updatedCard.locator('.order-ready-menu > summary').click();
   await updatedCard.locator('[data-action="dashboard-edit-partner:partner-1"]').click();
   await page.waitForSelector("#adminModal.is-open");
   assert.strictEqual(await page.locator("#mobileModuleSelector").inputValue(), "partners");
@@ -473,9 +536,13 @@ async function run() {
   await page.click("#closeAdminModal");
 
   await page.selectOption("#mobileModuleSelector", "dashboard");
+  if (await page.locator('[data-dashboard-panel="reservations"]').getAttribute("open") === null) {
+    await page.locator('[data-dashboard-panel="reservations"] > summary').click();
+  }
   const partialCard = page.locator(".order-ready-card", { hasText: "Ana Teste" });
   assert.match(await partialCard.innerText(), /3 já entregue/);
-  assert.match(await partialCard.innerText(), /1\/1/);
+  assert.match(await partialCard.innerText(), /1 de 1 reservadas/);
+  await partialCard.locator('.order-ready-menu > summary').click();
   await partialCard.locator('[data-action="delivery-proof:order-1"]').click();
   await page.waitForSelector("#deliveryProofForm");
   assert.strictEqual(await page.locator('[name="deliveredQty_0"]').inputValue(), "1", "the second proof may contain only the newly ready balance");
@@ -651,9 +718,11 @@ async function run() {
   assert.strictEqual(await page.locator(".sale-compact-card").count(), 0, "custom range must filter older movements immediately");
   await assertNoHorizontalOverflow(page, "sales period view");
 
+  assert.deepStrictEqual(pageErrors, [], "the workflow must not raise browser errors");
   await assertOldestOrderReservationPriority(browser);
-  await browser.close();
-  console.log("Admin regression: password visibility, decimal packaging cost, recipe-driven product cost, unified product availability, automatic 300ml recipes, flavor-size flows, compact order editing, two partial A4 deliveries, delivery-linked and manual receipts, partial payment balance, duplicate receipt warning, PDF and second copy, cancellation history, shipment history, period filters, FIFO order reservation, reservation override, partner deep-link, audit history and write-off passed.");
+  await assertMultiItemReservationControls(browser);
+  } finally { await browser.close(); }
+  console.log("Admin regression: password visibility, decimal packaging cost, recipe-driven product cost, unified product availability, automatic 300ml recipes, flavor-size flows, compact order editing, two partial A4 deliveries, delivery-linked and manual receipts, partial payment balance, duplicate receipt warning, PDF and second copy, cancellation history, shipment history, period filters, FIFO order reservation, reservation override, multi-item reservation controls, partner deep-link, audit history and write-off passed.");
 }
 
 run().catch((error) => {

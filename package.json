@@ -9,9 +9,10 @@
     "test:reservations": "node scripts/reservation-regression.js",
     "test:admin": "node scripts/admin-logic-regression.js",
     "check": "node --check assets/admin.js && node --check assets/public.js && node --check api/_lib/kombu-backend.js && node --check api/_lib/reservations.js && node --check api/state.js && node --check api/lead.js && node --check api/auth/login.js && node --check api/media/upload.js && node --check api/cron/payment-reminders.js",
-    "test:ui": "node scripts/admin-regression.js",
+    "test:ui": "node scripts/run-browser-tests.js",
     "test:public": "node scripts/public-regression.js",
-    "audit:ui": "node scripts/ui-audit.js"
+    "audit:ui": "node scripts/ui-audit.js",
+    "test:ui:setup": "npm ci --prefix scripts/browser --include=dev && node scripts/browser/node_modules/playwright/cli.js install chromium"
   },
   "engines": {
     "node": ">=18"

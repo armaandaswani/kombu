@@ -1,10 +1,9 @@
 const fs = require("fs");
 const path = require("path");
-const { chromium } = require("playwright");
+const { chromium, launchOptions } = require("./browser-runtime");
 
 const baseUrl = process.env.AUDIT_BASE_URL || "http://127.0.0.1:4173";
 const outputDir = process.env.AUDIT_OUTPUT_DIR || "/tmp/kombu-ui-audit";
-const executablePath = process.env.CHROME_PATH || "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
 const viewports = [
   { name: "mobile-375", width: 375, height: 812 },
   { name: "mobile-430", width: 430, height: 932 },
@@ -78,7 +77,7 @@ async function inspectPage(page) {
 }
 
 async function run() {
-  const browser = await chromium.launch({ headless: true, executablePath });
+  const browser = await chromium.launch(launchOptions);
   const report = { baseUrl, generatedAt: new Date().toISOString(), pages: [] };
   for (const viewport of viewports) {
     const context = await browser.newContext({ viewport, locale: "pt-BR" });

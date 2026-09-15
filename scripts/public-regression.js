@@ -1,12 +1,11 @@
 const assert = require("assert");
-const { chromium } = require("playwright");
+const { chromium, launchOptions } = require("./browser-runtime");
 
 const baseUrl = process.env.AUDIT_BASE_URL || "http://127.0.0.1:4173";
-const executablePath = process.env.CHROME_PATH || "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
 const officialMap = "https://www.google.com/maps/d/viewer?mid=1Zn4OECfeuJkhDkCj6noQKZDeLgOUbn8";
 
 async function run() {
-  const browser = await chromium.launch({ headless: true, executablePath });
+  const browser = await chromium.launch(launchOptions);
   const context = await browser.newContext({ viewport: { width: 390, height: 844 }, locale: "pt-BR" });
   const page = await context.newPage();
   let leadRequests = 0;

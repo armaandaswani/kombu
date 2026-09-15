@@ -1,9 +1,9 @@
 const assert = require('node:assert/strict');
-const { chromium } = require('playwright');
+const { chromium, launchOptions } = require("./browser-runtime");
 const baseUrl = process.env.AUDIT_BASE_URL || 'http://127.0.0.1:4173';
 if (!['localhost', '127.0.0.1'].includes(new URL(baseUrl).hostname)) throw new Error('Dashboard tests require a local fixture server');
 (async () => {
-  const browser = await chromium.launch({headless:true, executablePath:process.env.CHROME_PATH || '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'});
+  const browser = await chromium.launch(launchOptions);
   try {
     for (const width of [375, 768, 1440]) {
       const context = await browser.newContext({viewport:{width,height:900}});
@@ -17,10 +17,12 @@ if (!['localhost', '127.0.0.1'].includes(new URL(baseUrl).hostname)) throw new E
         state = normalizeState({products:[], recipes:[], ingredients:[], packaging:[], purchases:[], orders:[], expenses:[{date:'2026-09-10',amount:30}],sales:[{date:'2026-09-10',qty:10,unitPrice:20,batchCode:'TEST'}],batches:[{code:'TEST',costSnapshot:{costPerBottle:4}}]});
         dashboardMonth='2026-09'; render();
       });
-      assert.match(await page.locator('.dashboard-key-metrics').innerText(), /130,00/);
+      assert.equal((await page.locator('.dashboard-key-metrics .metric-card > strong').nth(2).innerText()).replace(/\s/g, ' '), 'R$ 130,00', 'monthly profit must be shown in its own card');
       await page.locator('#dashboardMonth').fill('2026-08');
       await page.locator('#dashboardMonth').dispatchEvent('change');
-      assert.match(await page.locator('.dashboard-key-metrics').innerText(), /0,00/);
+      for (const card of [1, 2]) {
+        assert.equal((await page.locator('.dashboard-key-metrics .metric-card > strong').nth(card).innerText()).replace(/\s/g, ' '), 'R$ 0,00', 'empty month must clear both revenue and profit');
+      }
       await page.locator('[data-dashboard-current-month]').click();
       assert.equal(await page.locator('#dashboardMonth').inputValue(), await page.evaluate(()=>new Date().toLocaleDateString('sv-SE').slice(0,7)));
       await page.locator('[data-dashboard-panel="reservations"] summary').click();

@@ -32,18 +32,23 @@ Content-Security-Policy is not exercised.
 npm test
 ```
 
-Runs the two offline suites: `scripts/api-regression.js` (auth, cron
-authorisation, cookie flags, state validation, optimistic concurrency,
-no-write-on-read, lead retention, login throttling) and
-`scripts/reservation-regression.js` (the server reservation engine).
+Runs three offline suites: API security/state regression, server reservations,
+and admin business logic (including dashboard financial calculations).
+`npm run check` checks source syntax.
 
-`npm run check` syntax-checks every source file.
+For browser tests, use Node 20+ and install Poppler (`pdfinfo`), then run:
 
-`scripts/admin-regression.js`, `scripts/public-regression.js` and
-`scripts/ui-audit.js` need Playwright, which is deliberately **not** a declared
-dependency: Vercel installs dependencies on every deploy and Playwright's
-postinstall downloads browsers, which can fail a build. Install it manually
-(`npm i -D playwright && npx playwright install chromium`) when you want them.
+```bash
+npm run test:ui:setup
+npm run test:ui
+```
+
+Playwright is pinned in the isolated `scripts/browser/` development package.
+The production root package stays dependency-free, and Vercel excludes `scripts/`.
+The UI command starts and stops a local fixture server with its backend disabled,
+then runs both the admin workflow and dashboard layout/interaction suites.
+See [browser test setup](scripts/browser/README.md) for browser selection,
+platform prerequisites, and the separate public regression/layout audit commands.
 
 ## Vercel
 

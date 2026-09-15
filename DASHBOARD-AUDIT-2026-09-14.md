@@ -44,3 +44,13 @@ No deployment, production login, production write, migration or schema change wa
 Manual expenses cannot be automatically identified as duplicates of purchases unless they carry the purchase link. Recordkeeping still determines profit accuracy. Missing costs and old recipe-based estimates require operator review. Recommendations do not estimate demand from sales velocity or account for production lead time, ingredient availability or minimum stock targets.
 
 The role selector remains a view/write-UI filter, not server-side access control. This audit did not introduce accounts, change the legacy bottle-size default, or change freight treatment. Bulk spreadsheet import is not implemented; guided entry uses existing forms and image uploads.
+
+## Browser-suite restoration — 15 September 2026
+
+The legacy browser-suite limitation above is resolved. `npm run test:ui` now starts its own loopback fixture server (API disabled), runs both admin and dashboard regression scripts, and exits successfully. Assertions now follow explicit FIFO recalculation, current reservation rows and menus, and explicit reservation of a partial delivery's remaining balance. Added multi-item bulk/stepper reservation checks and exact per-card financial values. Browser failures close the browser, and the runner closes its server.
+
+Playwright 1.62.1 is pinned in `scripts/browser/package.json` and its lockfile, outside the production package. Setup: `npm run test:ui:setup`. See `scripts/browser/README.md` for Node 20+, Chromium and Poppler prerequisites. Production remains a static/no-build application with no root runtime dependencies; `.vercelignore` already excludes all test files.
+
+Verified on local fixtures: `npm run check`, `npm test`, and `npm run test:ui` pass. The admin browser run includes PDF page-count/A4 checks using pdfinfo, receipts/payments, both partial deliveries, stock write-off, FIFO and multi-item reservation adjustment. The dashboard run covers 19 modules at 375, 768 and 1440 pixels, period selection, disclosures, navigation and upload failure feedback. No production deployment or production data access was part of this restoration.
+
+Also verified during restoration: `npm run test:ui:setup` completed, downloaded Chromium launched, and `npm run test:public` passed against a separately started loopback static server. The broader `audit:ui` scan was not rerun in this restoration.
