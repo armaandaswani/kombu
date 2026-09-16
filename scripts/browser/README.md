@@ -15,8 +15,10 @@ Setup uses `npm ci --prefix scripts/browser --include=dev` with the committed lo
 
 The runtime uses `CHROME_PATH` when supplied, otherwise installed Google Chrome on macOS, otherwise Playwright's downloaded Chromium. No `NODE_PATH` or Codex-specific package path is required.
 
-`npm run test:ui` starts a temporary HTTP server bound to 127.0.0.1 on a free port, runs the admin regression and dashboard regression sequentially, and closes the server on completion/failure. Its API routes always return 503; browser-local authentication and isolated fixture storage are used. It never connects to the production backend. Do not point fixture tests at a real deployment. Individual admin/dashboard scripts reject non-local base URLs. Expected local API failures exercise the app's local fallback.
+`npm run test:ui` starts a temporary HTTP server bound to 127.0.0.1 on a free port, runs the admin, dashboard, and order/production regressions sequentially, and closes the server on completion/failure. Its API routes always return 503; browser-local authentication and isolated fixture storage are used. It never connects to the production backend. Do not point fixture tests at a real deployment. Individual fixture scripts reject non-local base URLs. Expected local API failures exercise the app's local fallback.
 
 The admin regression covers explicit reservation recalculation (including no allocation on page load), FIFO allocation, per-item and bulk reservation controls, partial deliveries, stock, sales, receipts, PDF output, and payments. The dashboard regression covers 19 modules at three widths, exact monthly revenue/profit values, date controls, disclosure persistence, navigation, an order dialog, and upload failure feedback.
 
 For the existing public regression and broader layout audit, start a local fixture/static server separately and set `AUDIT_BASE_URL` before `npm run test:public` or `npm run audit:ui`. They use the same isolated Playwright installation.
+
+The order/production regression covers 300/500 ml filtering, shared prices by size, saved order edits, removal of the duplicate editor, automatic ingredient and label costs, ingredient consumption, immutable historical costs, new stock visibility, fully reserved stock, and duplicate batch rejection at 390 and 1440 px.

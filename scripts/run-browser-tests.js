@@ -30,7 +30,7 @@ const server = http.createServer(async (req, res) => {
   const baseUrl = `http://127.0.0.1:${server.address().port}`;
   console.log(`Local browser fixtures: ${baseUrl} (API disabled)`);
   try {
-    for (const suite of ["admin-regression.js", "dashboard-regression.js"]) {
+    for (const suite of ["admin-regression.js", "dashboard-regression.js", "order-production-regression.js"]) {
       const code = await new Promise((resolve, reject) => {
         const child = spawn(process.execPath, [path.join(__dirname, suite)], {
           timeout: 300000, stdio: "inherit", env: { ...process.env, AUDIT_BASE_URL: baseUrl },

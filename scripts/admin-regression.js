@@ -675,16 +675,13 @@ async function run() {
   await compactOrder.locator(":scope > summary").click();
   await compactOrder.locator('[data-action="edit-order:order-1"]').click();
   await page.waitForSelector("#orderForm");
-  assert.strictEqual(await page.locator(".order-item-selector").count(), 1, "order editor should start with a compact flavor selector");
-  assert.strictEqual(await page.locator(".order-item-row:not([hidden])").count(), 1, "only one flavor editor may be visible at a time");
-  assert.deepStrictEqual(
-    await page.locator('.order-item-row:not([hidden]) [data-variant-size] option').evaluateAll((options) => options.map((option) => option.value)),
-    ["300", "500"],
-    "order items must keep flavor and bottle size as separate, compact choices",
-  );
-  await page.click("[data-add-order-item]");
-  assert.strictEqual(await page.locator(".order-item-selector").count(), 2, "new flavors should be added to the compact selector");
-  assert.strictEqual(await page.locator(".order-item-row:not([hidden])").count(), 1, "adding a flavor must not expand every item editor");
+  assert.strictEqual(await page.locator(".order-item-selector").count(), 0, "the duplicate item navigator is removed");
+  assert.strictEqual(await page.locator("#orderItemsRows").isVisible(), false, "legacy item fields are not another visible editor");
+  assert.strictEqual(await page.locator('[data-pick-size]:visible').count(), 1, "only one bottle size is shown");
+  assert.strictEqual(await page.locator('#orderBottleSize').inputValue(), "500");
+  await page.selectOption('#orderBottleSize', "300");
+  assert.strictEqual(await page.locator('[data-pick-size="500"]').isVisible(), false);
+  assert.strictEqual(await page.locator('[data-pick-size="300"]').isVisible(), true);
   await assertNoHorizontalOverflow(page, "compact order editor");
   await page.click("#closeAdminModal");
 

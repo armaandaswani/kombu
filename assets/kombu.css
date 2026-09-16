@@ -6119,3 +6119,16 @@ textarea:focus-visible {
 }
 
 .admin-content .dashboard-stock-card { min-height: 0; }
+
+/* One size and one composition surface; the serialized item fields stay hidden. */
+#orderItemsRows[hidden], .flavor-pick-group[hidden] { display: none !important; }
+.order-composer-controls { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.flavor-pick-choice { display: flex; align-items: center; gap: 10px; min-width: 0; cursor: pointer; }
+.flavor-pick-choice input { flex: 0 0 auto; }
+.flavor-pick-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.flavor-pick.is-selected { background: #f3ffe2; border-color: #799860; }
+.order-production-card > summary { cursor: pointer; min-height: 44px; font-weight: 800; padding: 12px 0; }
+@media (max-width: 760px) { .order-composer-controls, .flavor-pick-grid { grid-template-columns: 1fr; } }
+
+.flavor-pick-choice { flex: 1; }
+.flavor-pick > .reserve-stepper { flex-shrink: 0; }

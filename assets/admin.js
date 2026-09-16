@@ -60,7 +60,7 @@ const ADMIN_I18N = {
     "Estoque geral por sabor": "Total stock by flavor",
     "Estoque por sabor": "Stock by flavor",
     "Tamanho da garrafa": "Bottle size",
-    "Toque em um sabor para corrigir o saldo disponível.": "Tap a flavor to correct its available stock.",
+    "Disponível é o saldo livre. Garrafas reservadas continuam em estoque, separadas para pedidos.": "Tap a flavor to correct its available stock.",
     "Fornecedor": "Supplier",
     "Fornecedores": "Suppliers",
     "Garrafas": "Bottles",
@@ -5310,7 +5310,7 @@ function renderBatches() {
               ? `registrado ${escapeHtml(shortDate(String(cost.costAt).slice(0, 10)))}`
               : cost.costBasis === "unknown"
                 ? "sem receita"
-                : "estimado hoje"
+                : "receita atual"
           }</small></td>
           <td>${escapeHtml(batch.idealSellBy || "-")}</td>
           <td>${escapeHtml(batch.sellBy || "-")}</td>
@@ -5323,9 +5323,14 @@ function renderBatches() {
   return `
     ${pageHead(
       "Produção / Lotes",
-      "Controle de lotes, versão da receita, rendimento real, vencimento, custo histórico e rastreabilidade.",
+      "Registre o que foi produzido. O custo é calculado pela receita e as garrafas entram no estoque, livres ou reservadas.",
       `${actionButton("new-batch", "Novo lote", "add")} ${actionButton("stock-adjustment", "Ajuste de estoque", "tune", "btn-outline")}`,
     )}
+    <section class="metric-grid compact">
+      ${metric("Lotes registrados", number(state.batches.length), "Produções cadastradas", "factory")}
+      ${metric("Disponíveis", number(finishedStockRows().reduce((sum, row) => sum + row.stock, 0)), "Garrafas livres para venda", "inventory_2")}
+      ${metric("Reservadas", number(finishedStockRows().reduce((sum, row) => sum + row.reserved, 0)), "Em estoque, separadas para pedidos", "assignment")}
+    </section>
     ${guessedSizeBatches.length ? `
       <section class="cloud-sync-notice bad" aria-live="assertive">
         <span class="material-symbols-outlined" aria-hidden="true">straighten</span>
@@ -5335,21 +5340,6 @@ function renderBatches() {
             A reserva so acontece quando o tamanho do lote e o do item do pedido sao iguais, e quando
             o tamanho nao esta registrado o sistema assume 500ml. Se algum desses lotes for de 300ml,
             ele pode estar sendo reservado para os pedidos errados. Abra o lote e informe o tamanho.
-          </p>
-        </div>
-      </section>
-    ` : ""}
-    ${estimatedBatches.length ? `
-      <section class="cloud-sync-notice warn">
-        <span class="material-symbols-outlined" aria-hidden="true">history</span>
-        <div>
-          <strong>${number(estimatedBatches.length)} lote(s) sem custo registrado na producao.</strong>
-          <p>
-            Lotes criados de agora em diante guardam o custo do momento em que foram produzidos.
-            Os lotes anteriores nao tem esse registro, entao o custo deles e recalculado com os
-            precos de hoje e aparece como "estimado". Mudar o preco de um ingrediente ainda altera
-            o custo historico desses lotes. Nada foi preenchido automaticamente porque os precos
-            atuais nao sao os precos da epoca.
           </p>
         </div>
       </section>
@@ -5367,12 +5357,6 @@ function renderBatches() {
         </div>
       </section>
     ` : ""}
-    <section class="admin-card order-production-card">
-      <h3>O que precisa ser produzido</h3>
-      <div class="production-chip-grid">
-        ${productionRows.length ? productionRows.map((row) => `<div class="production-chip"><strong>${escapeHtml(row.flavor)}</strong><span>${number(row.missing)} faltando</span><small>${number(row.reserved)} reservado de ${number(row.ordered)}</small>${renderProductionClientList(row)}</div>`).join("") : `<p class="empty-note">Nenhum pedido aberto exigindo produção.</p>`}
-      </div>
-    </section>
     ${table(
       [
         { label: "Lote / sabor" },
@@ -5391,6 +5375,13 @@ function renderBatches() {
       rows,
       1260,
     )}
+    <details class="admin-card order-production-card">
+      <summary>Demanda dos pedidos · ainda não é produção registrada</summary>
+      <div class="production-chip-grid">
+        ${productionRows.length ? productionRows.map((row) => `<div class="production-chip"><strong>${escapeHtml(row.flavor)}</strong><span>${number(row.missing)} faltando</span><small>${number(row.reserved)} reservado de ${number(row.ordered)}</small>${renderProductionClientList(row)}</div>`).join("") : `<p class="empty-note">Nenhum pedido aberto exigindo produção.</p>`}
+      </div>
+    </details>
+    ${estimatedBatches.length ? `<details class="admin-card dashboard-details"><summary>Como o custo é calculado</summary><p>O custo vem das quantidades da receita e dos preços cadastrados dos ingredientes e embalagens. Novos lotes guardam esse cálculo na produção. Nos ${number(estimatedBatches.length)} lotes antigos sem esse registro, usamos a receita atual. Não é necessário digitar um custo no lote.</p></details>` : ""}
   `;
 }
 
@@ -5570,11 +5561,12 @@ function stockBatchCard(row) {
           <strong>${escapeHtml(row.flavor || row.product?.flavor || "Kombucha")}</strong>
           <small>${escapeHtml(row.product ? productLabel(row.product) : "Produto sem vínculo")}</small>
         </div>
-        <span class="status ${statusClass(row.stock)}">${row.stock > 0 ? "disponível" : "sem saldo"}</span>
+        <span class="status ${statusClass(row.stock)}">${row.stock > 0 ? "disponível" : row.reserved > 0 ? "reservado para pedidos" : "sem saldo"}</span>
       </div>
       <div class="stock-stat-grid">
         <div class="stock-stat is-available"><span>Disponível</span><strong>${number(row.stock)}</strong></div>
         <div class="stock-stat"><span>Reservado</span><strong>${number(row.reserved)}</strong></div>
+        <div class="stock-stat"><span>Em estoque</span><strong>${number(row.stock + row.reserved)}</strong></div>
         <div class="stock-stat"><span>Saídas</span><strong>${number(row.sold)}</strong></div>
         <div class="stock-stat"><span>Produzido</span><strong>${number(batchProducedQuantity(row))}</strong></div>
       </div>
@@ -8580,19 +8572,24 @@ function newBatchForm() {
     `,
   );
   const form = document.querySelector("#batchForm");
+  let generatedCode = "";
   const updateBatchPreview = () => {
     const recipe = byId("recipes", form.elements.recipeId.value);
     const date = form.elements.date.value || todayIso();
     const plan = batchDatePlan(date);
-    form.elements.code.value = nextBatchCode(recipe, date);
+    const nextCode = nextBatchCode(recipe, date);
+    if (!form.elements.code.value || form.elements.code.value === generatedCode) form.elements.code.value = nextCode;
+    generatedCode = nextCode;
     document.querySelector("#batchDatePreview").innerHTML = `
-      <small>Datas automáticas do lote</small>
-      <strong>Validade: ${plan.expiry}</strong>
+      <small>Custo automático pela receita</small>
+      <strong>${brl(recipeCost(recipe).costPerBottle)} por garrafa · ${brl(recipeCost(recipe).costPerBottle * Number(form.elements.actual.value || 0))} no lote</strong>
+      <span>Validade: ${escapeHtml(plan.expiry)}. Inclui os ingredientes e materiais cadastrados na receita.</span>
       <span>Ideal vender até ${plan.idealSellBy}; obrigatório vender até ${plan.sellBy}.</span>
     `;
   };
   bindVariantPicker(form, recipeVariantChoices(), updateBatchPreview);
   form.addEventListener("change", updateBatchPreview);
+  form.elements.actual.addEventListener("input", updateBatchPreview);
   updateBatchPreview();
   form.addEventListener("submit", (event) => {
     event.preventDefault();
@@ -8600,7 +8597,11 @@ function newBatchForm() {
     const recipe = byId("recipes", data.recipeId);
     const plan = batchDatePlan(data.date);
     const bottles = Number(data.actual || 0);
-    if (!recipe || !bottles) return;
+    if (!recipe || !Number.isInteger(bottles) || bottles <= 0) return;
+    if (state.batches.some(batch => String(batch.code).trim() === String(data.code).trim())) {
+      window.alert("Este código de lote já existe. Use um código diferente para registrar outra produção.");
+      return;
+    }
     const createdAt = new Date().toISOString();
     const batch = {
       id: id("bat"),
@@ -8608,6 +8609,7 @@ function newBatchForm() {
       flavor: recipe?.flavor || "",
       productId: recipe?.productId || "",
       recipeId: data.recipeId,
+      sizeMl: Number(recipe.bottleMl || BASE_BOTTLE_SIZE_ML),
       date: data.date,
       responsible: data.responsible,
       expected: bottles,
@@ -8631,7 +8633,12 @@ function newBatchForm() {
     const reserved = allocateNewBatchToOrders(batch);
     addAudit("Lote criado", `${data.code}: ${number(bottles)} garrafas de ${recipe?.flavor || "receita"}; ${number(reserved)} reservadas para pedidos.`);
     closeModal();
-    render();
+    currentStockView = "kombuchas";
+    currentKombuchaStockSize = batch.sizeMl;
+    globalSearch = "";
+    const search = document.querySelector("#globalSearch");
+    if (search) search.value = "";
+    setModule("stock");
   });
 }
 
@@ -9645,39 +9652,19 @@ function editSaleForm(saleId) {
 }
 
 function orderItemRowTemplate(item = {}, clientType = "novo_cliente") {
-  // A new line starts with nothing chosen. Only an existing line resolves to a
-  // product, so nobody has to notice and undo an arbitrary pre-selection.
-  const selectedProductId = item.productId || "";
-  const selectedProduct = byId("products", selectedProductId);
-  const defaultPrice = item.unitPrice ?? (selectedProduct ? priceForOrderClientType(selectedProduct, clientType) : 0);
-  const status = item.productionStatus || "pendente";
-  const allocationsJson = JSON.stringify(orderItemAllocations(item));
-  const reservationOverrideJson = JSON.stringify(item.reservationOverride || null);
-  return `
-    <div class="builder-row order-item-row" hidden>
-      ${variantPickerTemplate(productVariantChoices(), selectedProductId, 'data-field="productId"', { allowEmpty: true })}
-      <label class="field"><span>Qtd. garrafas</span><input data-field="qty" type="number" min="${Math.max(1, orderItemDeliveredQty(item))}" step="1" value="${item.qty || 1}"></label>
-      <label class="field"><span>Preço unitário</span><input data-field="unitPrice" type="number" min="0" step="0.01" value="${defaultPrice}"></label>
-      <label class="field"><span>Status produção</span><select data-field="productionStatus">${ORDER_ITEM_STATUSES.map((option) => `<option value="${option}" ${status === option ? "selected" : ""}>${option}</option>`).join("")}</select></label>
-      <label class="field"><span>Pronto em</span><input data-field="readyDate" type="date" value="${item.readyDate || ""}"></label>
-      <label class="field"><span>Obs. do item</span><input data-field="note" value="${escapeHtml(item.note || "")}" placeholder="Ex: caixa, entrega, condição..."></label>
-      <div class="result-card reservation-note">
-        <small>Reserva automática</small>
-        <span>${orderItemAllocationLabel(item)}</span>
-      </div>
-      <input type="hidden" data-field="batchCode" value="${escapeHtml(item.batchCode || "")}">
-      <input type="hidden" data-field="producedQty" value="${Number(item.producedQty || 0)}">
-      <input type="hidden" data-field="reservedQty" value="${Number(item.reservedQty || 0)}">
-      <input type="hidden" data-field="deliveredQty" value="${Number(item.deliveredQty || 0)}">
-      <input type="hidden" data-field="allocations" value="${escapeHtml(allocationsJson)}">
-      <input type="hidden" data-field="reservationTarget" value="${item.reservationTarget == null ? "" : Number(item.reservationTarget)}">
-      <input type="hidden" data-field="reservationOverride" value="${escapeHtml(reservationOverrideJson)}">
-      <input type="hidden" data-field="key" value="${escapeHtml(item.key || id("oi"))}">
-      <button class="icon-btn" type="button" data-remove-builder-row aria-label="Remover item">
-        <span class="material-symbols-outlined" aria-hidden="true">delete</span>
-      </button>
-    </div>
-  `;
+  // Preserve delivery and reservation metadata without rendering a second editor.
+  const product = byId("products", item.productId);
+  const fields = {
+    productId: item.productId || "", qty: item.qty || 1,
+    unitPrice: item.unitPrice ?? (product ? priceForOrderClientType(product, clientType) : 0),
+    productionStatus: item.productionStatus || "pendente", readyDate: item.readyDate || "",
+    note: item.note || "", batchCode: item.batchCode || "", producedQty: Number(item.producedQty || 0),
+    reservedQty: Number(item.reservedQty || 0), deliveredQty: Number(item.deliveredQty || 0),
+    allocations: JSON.stringify(orderItemAllocations(item)),
+    reservationTarget: item.reservationTarget == null ? "" : Number(item.reservationTarget),
+    reservationOverride: JSON.stringify(item.reservationOverride || null), key: item.key || id("oi"),
+  };
+  return `<div class="order-item-row" hidden>${Object.entries(fields).map(([field, value]) => `<input type="hidden" data-field="${field}" value="${escapeHtml(value)}">`).join("")}</div>`;
 }
 
 // Spec section 4. Adding eight flavours meant eight rounds of: add a row, scroll
@@ -9733,22 +9720,22 @@ function orderFlavorPickerMarkup(clientType) {
           const price = priceForOrderClientType(product, clientType);
           const free = availableStockForProduct(choice.id);
           return `
-            <label class="flavor-pick" data-flavor-pick="${escapeHtml(choice.id)}">
-              <input type="checkbox" data-pick-check>
+            <div class="flavor-pick" data-flavor-pick="${escapeHtml(choice.id)}">
+              <label class="flavor-pick-choice"><input type="checkbox" data-pick-check>
               <span class="flavor-pick-name">
                 <strong>${escapeHtml(choice.flavor || product?.item || "Sabor")}</strong>
-                <small>${number(size)}ml · ${brl(price)} · ${free > 0 ? `${number(free)} em estoque` : "sem estoque livre"}</small>
-              </span>
+                <small><span data-pick-price>${brl(price)}</span> · ${free > 0 ? `${number(free)} em estoque` : "sem estoque livre"}</small>
+              </span></label>
               <span class="reserve-stepper">
                 <button type="button" class="icon-btn" data-pick-step="-1" aria-label="Diminuir">−</button>
                 <input type="number" min="0" step="1" value="0" data-pick-qty aria-label="Quantidade de ${escapeHtml(choice.flavor || "")} ${number(size)}ml">
                 <button type="button" class="icon-btn" data-pick-step="1" aria-label="Aumentar">+</button>
               </span>
-            </label>
+            </div>
           `;
         })
         .join("");
-      return `<div class="flavor-pick-group"><h4>${number(size)}ml</h4><div class="flavor-pick-grid">${cards}</div></div>`;
+      return `<div class="flavor-pick-group" data-pick-size="${size}" ${size === 500 ? "" : "hidden"}><div class="flavor-pick-grid">${cards}</div></div>`;
     })
     .join("");
 
@@ -9756,11 +9743,13 @@ function orderFlavorPickerMarkup(clientType) {
     <div class="builder-section flavor-picker-section">
       <div class="table-toolbar">
         <div>
-          <h3>Selecionar sabores do pedido</h3>
-          <p>Marque os sabores, defina as quantidades e adicione tudo de uma vez.</p>
+          <h3>Tamanho, preço e sabores</h3>
+          <p>Escolha o tamanho e marque os sabores. As quantidades entram direto no pedido.</p>
         </div>
       </div>
-      <div class="input-grid">
+      <div class="input-grid order-composer-controls">
+        <label class="field"><span>Tamanho da garrafa</span><select id="orderBottleSize"><option value="500">500 ml</option><option value="300">300 ml</option></select></label>
+        <label class="field"><span>Preço por garrafa (R$)</span><input id="orderUnitPrice" type="number" min="0" step="0.01" inputmode="decimal"><small id="orderPriceHelp"></small></label>
         <label class="field"><span>Quantidade para os sabores selecionados</span><input type="number" min="0" step="1" value="4" id="bulkPickQty"></label>
         <div class="field">
           <span>&nbsp;</span>
@@ -9768,8 +9757,8 @@ function orderFlavorPickerMarkup(clientType) {
         </div>
       </div>
       ${groups}
-      <div class="result-card field-full" id="flavorPickSummary"></div>
-      <button class="btn btn-primary" type="button" data-pick-add><span class="material-symbols-outlined" aria-hidden="true">playlist_add</span>Adicionar ao pedido</button>
+      <p id="orderOtherSizeSummary" class="empty-note"></p>
+      <div class="result-card field-full" id="orderPreview" aria-live="polite"></div>
     </div>
   `;
 }
@@ -9778,52 +9767,6 @@ function availableStockForProduct(productId) {
   return finishedStockRows()
     .filter((row) => row.product?.id === productId || row.productId === productId)
     .reduce((sum, row) => sum + Number(row.stock || 0), 0);
-}
-
-function orderItemEditorKey(row) {
-  return row?.querySelector('[data-field="key"]')?.value || "";
-}
-
-function renderOrderItemNavigator(form, preferredKey = "") {
-  const rowsContainer = form.querySelector("#orderItemsRows");
-  const navigator = form.querySelector("#orderItemNavigator");
-  const activeTitle = form.querySelector("#orderActiveItemTitle");
-  if (!rowsContainer || !navigator) return;
-  const rows = Array.from(rowsContainer.querySelectorAll(".order-item-row"));
-  if (!rows.length) {
-    navigator.innerHTML = "";
-    return;
-  }
-  const currentRow = rows.find((row) => row.classList.contains("is-active"));
-  const activeKey = preferredKey || orderItemEditorKey(currentRow) || orderItemEditorKey(rows[0]);
-  navigator.innerHTML = rows
-    .map((row) => {
-      const key = orderItemEditorKey(row);
-      const item = readOrderItemRow(row) || {};
-      const product = byId("products", item.productId);
-      const available = availableStockForProduct(item.productId);
-      const reserved = orderItemReservedQty(item);
-      const requested = Number(item.qty || 0);
-      const remaining = Math.max(0, requested - reserved);
-      const availability = remaining <= 0 ? "reserva completa" : available <= 0 ? "sem estoque" : available < remaining ? "parcial" : "disponível";
-      return `
-        <button type="button" class="order-item-selector ${key === activeKey ? "is-active" : ""}" data-order-item-select="${escapeHtml(key)}" aria-pressed="${key === activeKey}">
-          <span class="order-item-selector-head"><strong>${escapeHtml(product ? `${product.flavor} · ${number(product.sizeMl)}ml` : item.flavor || "Novo sabor")}</strong><i class="material-symbols-outlined" aria-hidden="true">edit</i></span>
-          <span class="order-item-selector-stock"><b>Disp. ${number(available)}</b><b>Res. ${number(reserved)}/${number(requested)}</b></span>
-          <small class="${availability === "sem estoque" ? "is-empty" : availability === "parcial" ? "is-partial" : "is-available"}">${availability} | ${escapeHtml(item.productionStatus || "pendente")}</small>
-        </button>
-      `;
-    })
-    .join("");
-  rows.forEach((row) => {
-    const isActive = orderItemEditorKey(row) === activeKey;
-    row.classList.toggle("is-active", isActive);
-    row.hidden = !isActive;
-    if (isActive && activeTitle) {
-      const product = byId("products", row.querySelector('[data-field="productId"]')?.value);
-      activeTitle.textContent = product ? `${product.flavor} · ${number(product.sizeMl)}ml` : "Editar sabor";
-    }
-  });
 }
 
 function readOrderItemRow(row) {
@@ -9887,282 +9830,156 @@ function updateOrderPreview(form) {
     preview.innerHTML = `
       <small>Resumo do pedido</small>
       <strong>${number(totalQty)} garrafas | ${brl(totalValue)}</strong>
-      <span>Pedido alimenta produção; ao marcar entregue, vira venda e cobrança automaticamente.</span>
+      <span>Confira as quantidades e o preço antes de salvar. A entrega é registrada no pedido.</span>
     `;
-  }
-  // Always-visible composition, so what has been added is never hidden behind
-  // the one-item-at-a-time editor.
-  const itemsSummary = form.querySelector("#orderItemsSummary");
-  if (itemsSummary) {
-    const inStock = items.filter((item) => availableStockForProduct(item.productId) >= Number(item.qty || 0)).length;
-    itemsSummary.innerHTML = items.length
-      ? `<small>Sabores no pedido</small>
-         <strong>${number(items.length)} sabor(es) · ${number(totalQty)} garrafa(s) · ${brl(totalValue)}</strong>
-         <span>${items
-           .map((item) => `${escapeHtml(item.productName || item.flavor || "Sabor")}: ${number(item.qty)}`)
-           .join("; ")}. ${number(inStock)} com estoque suficiente, ${number(items.length - inStock)} dependem de produção.</span>`
-      : `<small>Sabores no pedido</small><strong>Nenhum sabor adicionado</strong><span>Use o seletor acima para escolher os sabores.</span>`;
   }
   return { items, totalQty, totalValue };
 }
 
 function bindOrderForm(form) {
   const rows = form.querySelector("#orderItemsRows");
-  const partnerField = form.querySelector("[data-recurring-partner-field]");
-  const partnerSelect = form.elements.partnerId;
-  const applyPartnerVisibility = () => {
-    const isRecurringPartner = form.elements.clientType?.value === "parceiro_recorrente";
-    if (partnerField) partnerField.hidden = !isRecurringPartner;
-    if (partnerSelect) {
-      partnerSelect.required = isRecurringPartner && state.partners.length > 0;
-      if (!isRecurringPartner) partnerSelect.value = "";
-    }
-  };
-  const applySelectedPartner = () => {
-    const partner = byId("partners", partnerSelect?.value);
-    if (!partner) return;
-    form.elements.customerName.value = partner.name || form.elements.customerName.value;
-    form.elements.businessName.value = partner.name || form.elements.businessName.value;
-    form.elements.whatsapp.value = partner.whatsapp || form.elements.whatsapp.value;
-    if (form.elements.instagram) form.elements.instagram.value = partner.instagram || "";
-    if (form.elements.neighborhood) form.elements.neighborhood.value = partner.neighborhood || "";
-    if (form.elements.city) form.elements.city.value = partner.city || "Manaus";
-    if (!form.elements.source.value) form.elements.source.value = "Parceiro cadastrado";
-  };
-  const applyClientPricing = (row) => {
-    const product = byId("products", row.querySelector('[data-field="productId"]')?.value);
-    setRowField(row, "unitPrice", priceForOrderClientType(product, form.elements.clientType?.value || "novo_cliente"));
-  };
-  const bindProductPicker = (row) => {
-    bindVariantPicker(row, productVariantChoices(), () => {
-      applyClientPricing(row);
-      updateOrderPreview(form);
-      renderOrderItemNavigator(form, orderItemEditorKey(row));
+  let items = [...rows.querySelectorAll(".order-item-row")].map(readOrderItemRow).filter(Boolean);
+  const sizeInput = form.querySelector("#orderBottleSize");
+  const priceInput = form.querySelector("#orderUnitPrice");
+  if (items.length) sizeInput.value = String(productSizeMl(byId("products", items[0].productId)));
+  const negotiated = new Map();
+  const picks = [...form.querySelectorAll("[data-flavor-pick]")];
+  const clientType = () => form.elements.clientType.value;
+  const productSize = (productId) => productSizeMl(byId("products", productId));
+  const priceFor = (productId) => negotiated.get(productSize(productId)) ?? priceForOrderClientType(byId("products", productId), clientType());
+  // Keep negotiated prices and all delivery/reservation metadata when editing.
+  [300, 500].forEach((size) => {
+    const prices = new Set(items.filter(item => productSize(item.productId) === size).map(item => item.unitPrice));
+    if (prices.size === 1) negotiated.set(size, [...prices][0]);
+  });
+  const sync = () => {
+    rows.innerHTML = items.map(item => orderItemRowTemplate(item, clientType())).join("");
+    // Read once to assign stable keys to newly selected items before the next edit.
+    items = [...rows.querySelectorAll(".order-item-row")].map(readOrderItemRow).filter(Boolean);
+    picks.forEach((pick) => {
+      const selected = items.filter(item => item.productId === pick.dataset.flavorPick);
+      const qty = selected.reduce((sum, item) => sum + item.qty, 0);
+      const delivered = selected.reduce((sum, item) => sum + Number(item.deliveredQty || 0), 0);
+      const input = pick.querySelector("[data-pick-qty]");
+      if (document.activeElement !== input) input.value = String(qty);
+      input.min = String(delivered);
+      pick.querySelector("[data-pick-check]").checked = qty > 0;
+      pick.querySelector("[data-pick-check]").disabled = delivered > 0;
+      pick.classList.toggle("is-selected", qty > 0);
+      const prices = new Set(selected.map(item => item.unitPrice));
+      pick.querySelector("[data-pick-price]").textContent = prices.size > 1 ? "Preços diferentes mantidos" : brl(selected[0]?.unitPrice ?? priceFor(pick.dataset.flavorPick));
     });
+    const result = updateOrderPreview(form);
+    form.querySelector("#orderOtherSizeSummary").textContent = [300, 500].map(size => {
+      const qty = items.filter(item => productSize(item.productId) === size).reduce((sum, item) => sum + item.qty, 0);
+      return `${size} ml: ${number(qty)} garrafas`;
+    }).join(" · ");
+    return result;
   };
-  form.querySelector("[data-add-order-item]")?.addEventListener("click", () => {
-    rows.insertAdjacentHTML("beforeend", orderItemRowTemplate({}, form.elements.clientType?.value || "novo_cliente"));
-    enhanceSelectSearch(rows);
-    bindProductPicker(rows.lastElementChild);
-    applyClientPricing(rows.lastElementChild);
-    updateOrderPreview(form);
-    renderOrderItemNavigator(form, orderItemEditorKey(rows.lastElementChild));
-  });
-
-  // --- flavour picker -------------------------------------------------------
-  const picks = () => [...form.querySelectorAll("[data-flavor-pick]")];
-  const pickState = (label) => ({
-    productId: label.dataset.flavorPick,
-    checked: label.querySelector("[data-pick-check]").checked,
-    qty: Math.max(0, Math.round(Number(label.querySelector("[data-pick-qty]").value) || 0)),
-  });
-  const chosenPicks = () => picks().map(pickState).filter((pick) => pick.checked && pick.qty > 0);
-
-  const updatePickSummary = () => {
-    const summary = form.querySelector("#flavorPickSummary");
-    if (!summary) return;
-    const chosen = chosenPicks();
-    const clientType = form.elements.clientType?.value || "novo_cliente";
-    const bottles = chosen.reduce((sum, pick) => sum + pick.qty, 0);
-    const value = chosen.reduce((sum, pick) => sum + pick.qty * priceForOrderClientType(byId("products", pick.productId), clientType), 0);
-    const withStock = chosen.filter((pick) => availableStockForProduct(pick.productId) >= pick.qty).length;
-    summary.innerHTML = chosen.length
-      ? `<small>Seleção atual</small>
-         <strong>${number(chosen.length)} sabor(es) · ${number(bottles)} garrafa(s) · ${brl(value)}</strong>
-         <span>${chosen
-           .map((pick) => `${escapeHtml(productLabel(byId("products", pick.productId)))}: ${number(pick.qty)}`)
-           .join("; ")}. ${number(withStock)} com estoque suficiente, ${number(chosen.length - withStock)} dependem de produção.</span>`
-      : `<small>Seleção atual</small><strong>Nenhum sabor selecionado</strong><span>Marque os sabores e informe as quantidades.</span>`;
+  const showSize = () => {
+    const size = Number(sizeInput.value);
+    form.querySelectorAll("[data-pick-size]").forEach(group => { group.hidden = Number(group.dataset.pickSize) !== size; });
+    const first = picks.find(pick => productSize(pick.dataset.flavorPick) === size);
+    priceInput.value = negotiated.has(size) ? String(negotiated.get(size)) : "";
+    priceInput.placeholder = first ? String(priceFor(first.dataset.flavorPick)) : "Preço combinado";
+    form.querySelector("#orderPriceHelp").textContent = `Ao informar um valor, ele vale para todos os sabores de ${size} ml deste pedido.`;
   };
-
-  form.addEventListener("input", (event) => {
-    if (event.target.closest("[data-flavor-pick]")) updatePickSummary();
+  const setQuantity = (productId, value) => {
+    const selected = items.filter(item => item.productId === productId);
+    const delivered = selected.reduce((sum, item) => sum + Number(item.deliveredQty || 0), 0);
+    const target = Math.max(delivered, Math.round(Number(value) || 0));
+    const current = selected.reduce((sum, item) => sum + item.qty, 0);
+    if (target > current) {
+      if (selected.length) selected[selected.length - 1].qty += target - current;
+      else items.push({ productId, qty: target, unitPrice: priceFor(productId) });
+    } else {
+      let remove = current - target;
+      [...selected].reverse().forEach(item => {
+        const delta = Math.min(remove, item.qty - Number(item.deliveredQty || 0));
+        item.qty -= delta;
+        remove -= delta;
+      });
+      items = items.filter(item => item.qty > 0);
+    }
+    sync();
+  };
+  sizeInput.addEventListener("change", showSize);
+  priceInput.addEventListener("input", () => {
+    if (priceInput.value === "" || !priceInput.checkValidity()) return;
+    const size = Number(sizeInput.value);
+    negotiated.set(size, Number(priceInput.value));
+    items.filter(item => productSize(item.productId) === size).forEach(item => { item.unitPrice = Number(priceInput.value); });
+    sync();
   });
   form.addEventListener("change", (event) => {
-    const label = event.target.closest("[data-flavor-pick]");
-    if (!label) return;
-    // Ticking a flavour with no quantity yet adopts the bulk quantity, so one
-    // tick is enough in the common case.
-    if (event.target.matches("[data-pick-check]") && event.target.checked) {
-      const qtyInput = label.querySelector("[data-pick-qty]");
-      if (!Number(qtyInput.value)) qtyInput.value = String(Math.max(1, Number(form.querySelector("#bulkPickQty")?.value) || 1));
+    const pick = event.target.closest("[data-flavor-pick]");
+    if (pick && event.target.matches("[data-pick-check]")) {
+      setQuantity(pick.dataset.flavorPick, event.target.checked ? Math.max(1, Number(form.querySelector("#bulkPickQty").value) || 1) : 0);
     }
-    updatePickSummary();
+    if (pick && event.target.matches("[data-pick-qty]")) {
+      setQuantity(pick.dataset.flavorPick, event.target.value);
+      event.target.value = String(items.filter(item => item.productId === pick.dataset.flavorPick).reduce((sum, item) => sum + item.qty, 0));
+    }
   });
   form.addEventListener("click", (event) => {
     const step = event.target.closest("[data-pick-step]");
     if (step) {
-      const label = step.closest("[data-flavor-pick]");
-      const qtyInput = label.querySelector("[data-pick-qty]");
-      qtyInput.value = String(Math.max(0, Number(qtyInput.value || 0) + Number(step.dataset.pickStep)));
-      if (Number(qtyInput.value) > 0) label.querySelector("[data-pick-check]").checked = true;
-      updatePickSummary();
-      return;
+      const pick = step.closest("[data-flavor-pick]");
+      setQuantity(pick.dataset.flavorPick, Number(pick.querySelector("[data-pick-qty]").value) + Number(step.dataset.pickStep));
     }
     if (event.target.closest("[data-pick-apply]")) {
-      const bulk = Math.max(0, Math.round(Number(form.querySelector("#bulkPickQty")?.value) || 0));
-      picks().forEach((label) => {
-        if (label.querySelector("[data-pick-check]").checked) label.querySelector("[data-pick-qty]").value = String(bulk);
-      });
-      updatePickSummary();
-      return;
-    }
-    if (event.target.closest("[data-pick-add]")) {
-      const chosen = chosenPicks();
-      if (!chosen.length) {
-        window.alert("Marque ao menos um sabor e informe a quantidade.");
-        return;
-      }
-      const clientType = form.elements.clientType?.value || "novo_cliente";
-      chosen.forEach((pick) => {
-        const product = byId("products", pick.productId);
-        rows.insertAdjacentHTML(
-          "beforeend",
-          orderItemRowTemplate({ productId: pick.productId, qty: pick.qty, unitPrice: priceForOrderClientType(product, clientType) }, clientType),
-        );
-        enhanceSelectSearch(rows);
-        bindProductPicker(rows.lastElementChild);
-      });
-      // Leave the picker clean so a second batch can be added straight away.
-      picks().forEach((label) => {
-        label.querySelector("[data-pick-check]").checked = false;
-        label.querySelector("[data-pick-qty]").value = "0";
-      });
-      updatePickSummary();
-      updateOrderPreview(form);
-      renderOrderItemNavigator(form, orderItemEditorKey(rows.lastElementChild));
+      picks.filter(pick => productSize(pick.dataset.flavorPick) === Number(sizeInput.value) && pick.querySelector("[data-pick-check]").checked)
+        .forEach(pick => setQuantity(pick.dataset.flavorPick, form.querySelector("#bulkPickQty").value));
     }
   });
-  updatePickSummary();
-
-  // --- repeat a previous order ----------------------------------------------
-  const clientOrders = () =>
-    previousOrdersForClient(form.elements.customerName?.value, form.elements.businessName?.value).filter(
-      (order) => order.id !== form.dataset.editingOrderId,
-    );
-
-  const refreshRepeatActions = () => {
-    const actions = form.querySelector("#repeatOrderActions");
-    if (actions) actions.hidden = clientOrders().length === 0;
+  const partnerField = form.querySelector("[data-recurring-partner-field]");
+  const applyPartner = () => {
+    const partner = byId("partners", form.elements.partnerId.value);
+    if (!partner) return;
+    ["customerName", "businessName"].forEach(field => { form.elements[field].value = partner.name || form.elements[field].value; });
+    ["whatsapp", "instagram", "neighborhood", "city"].forEach(field => { form.elements[field].value = partner[field] || ""; });
+    if (!form.elements.source.value) form.elements.source.value = "Parceiro cadastrado";
   };
-
-  const applyPreviousOrder = (order) => {
-    const clientType = form.elements.clientType?.value || "novo_cliente";
-    const copied = orderItemsFromPreviousOrder(order, clientType);
-    if (!copied.length) {
-      window.alert("Esse pedido não tem sabores que ainda existam no cadastro.");
-      return;
-    }
-    // Drop the empty placeholder line, keep anything already chosen.
-    [...rows.querySelectorAll(".order-item-row")].forEach((row) => {
-      if (!row.querySelector("[data-variant-choice]")?.value) row.remove();
-    });
-    copied.forEach((item) => {
-      rows.insertAdjacentHTML("beforeend", orderItemRowTemplate(item, clientType));
-      enhanceSelectSearch(rows);
-      bindProductPicker(rows.lastElementChild);
-    });
-    const panel = form.querySelector("#previousOrdersPanel");
-    if (panel) panel.hidden = true;
-    updateOrderPreview(form);
-    renderOrderItemNavigator(form, orderItemEditorKey(rows.lastElementChild));
+  const partnerVisibility = () => {
+    const recurring = clientType() === "parceiro_recorrente";
+    partnerField.hidden = !recurring;
+    form.elements.partnerId.required = recurring && state.partners.length > 0;
+    if (!recurring) form.elements.partnerId.value = "";
   };
-
-  form.addEventListener("input", (event) => {
-    if (event.target === form.elements.customerName || event.target === form.elements.businessName) refreshRepeatActions();
-  });
-  form.addEventListener("change", (event) => {
-    if (event.target === form.elements.partnerId || event.target === form.elements.clientType) {
-      window.setTimeout(refreshRepeatActions, 0);
-    }
-  });
-  refreshRepeatActions();
-
+  const clientOrders = () => previousOrdersForClient(form.elements.customerName.value, form.elements.businessName.value).filter(order => order.id !== form.dataset.editingOrderId);
+  const refreshRepeat = () => { form.querySelector("#repeatOrderActions").hidden = clientOrders().length === 0; };
+  const repeat = (order) => {
+    if (!order) return;
+    orderItemsFromPreviousOrder(order, clientType()).forEach(item => {
+      const current = items.filter(row => row.productId === item.productId).reduce((sum, row) => sum + row.qty, 0);
+      setQuantity(item.productId, current + item.qty);
+    });
+    form.querySelector("#previousOrdersPanel").hidden = true;
+  };
   form.addEventListener("click", (event) => {
-    if (event.target.closest("[data-repeat-last-order]")) {
-      const [latest] = clientOrders();
-      if (!latest) {
-        window.alert("Este cliente ainda não tem pedidos anteriores.");
-        return;
-      }
-      applyPreviousOrder(latest);
-      return;
-    }
+    if (event.target.closest("[data-repeat-last-order]")) repeat(clientOrders()[0]);
     if (event.target.closest("[data-choose-previous-order]")) {
       const panel = form.querySelector("#previousOrdersPanel");
-      const orders = clientOrders();
-      panel.innerHTML = orders.length
-        ? `<div class="stack-list">${orders
-            .slice(0, 12)
-            .map(
-              (order) => `
-                <div class="audit-row">
-                  <strong>${escapeHtml(order.code || "sem código")} · ${escapeHtml(shortDate(order.orderDate || order.createdAt?.slice(0, 10) || ""))}</strong>
-                  <span>${number(orderQuantity(order))} garrafa(s) · ${brl(orderTotal(order))}</span>
-                  <span>${escapeHtml(orderItems(order).map((item) => `${number(item.qty)}x ${orderFlavorText(item)}`).join(", "))}</span>
-                  <button class="btn btn-outline" type="button" data-use-previous-order="${escapeHtml(order.id)}">Usar este pedido</button>
-                </div>
-              `,
-            )
-            .join("")}</div>`
-        : `<p class="empty-note">Este cliente ainda não tem pedidos anteriores.</p>`;
+      panel.innerHTML = clientOrders().slice(0, 12).map(order => `<button type="button" class="btn btn-outline" data-use-previous-order="${escapeHtml(order.id)}">${escapeHtml(order.code)} · ${escapeHtml(shortDate(order.orderDate))} · ${number(orderQuantity(order))} garrafas</button>`).join("");
       panel.hidden = !panel.hidden;
-      return;
     }
     const use = event.target.closest("[data-use-previous-order]");
-    if (use) {
-      const order = byId("orders", use.dataset.usePreviousOrder);
-      if (order) applyPreviousOrder(order);
-      return;
-    }
-    const itemSelector = event.target.closest("[data-order-item-select]");
-    if (itemSelector) {
-      renderOrderItemNavigator(form, itemSelector.dataset.orderItemSelect);
-      return;
-    }
-    const removeButton = event.target.closest("[data-remove-builder-row]");
-    if (!removeButton) return;
-    const row = removeButton.closest(".order-item-row");
-    if (row && rows.children.length > 1) {
-      const nextRow = row.nextElementSibling || row.previousElementSibling;
-      row.remove();
-      renderOrderItemNavigator(form, orderItemEditorKey(nextRow));
-    }
-    updateOrderPreview(form);
+    if (use) repeat(byId("orders", use.dataset.usePreviousOrder));
   });
   form.addEventListener("change", (event) => {
-    const row = event.target.closest(".order-item-row");
-    if (row && event.target.dataset.field === "productId") {
-      applyClientPricing(row);
-    }
     if (event.target.name === "clientType") {
-      applyPartnerVisibility();
-      if (event.target.value === "parceiro_recorrente") applySelectedPartner();
-      rows.querySelectorAll(".order-item-row").forEach(applyClientPricing);
+      partnerVisibility();
+      if (clientType() === "parceiro_recorrente") applyPartner();
+      items.forEach(item => { if (!negotiated.has(productSize(item.productId))) item.unitPrice = priceFor(item.productId); });
+      sync(); showSize(); refreshRepeat();
     }
-    if (event.target.name === "partnerId") applySelectedPartner();
-    if (event.target.name === "status" && event.target.value === "entregue" && !form.elements.deliveredAt.value) {
-      form.elements.deliveredAt.value = todayIso();
-      form.elements.paymentDueDate.value = addDaysIso(todayIso(), 15);
-    }
-    if (event.target.name === "deliveredAt" && event.target.value && !form.elements.paymentDueDate.value) {
-      form.elements.paymentDueDate.value = addDaysIso(event.target.value, 15);
-    }
-    updateOrderPreview(form);
-    if (row || event.target.name === "clientType") renderOrderItemNavigator(form, orderItemEditorKey(row));
+    if (event.target.name === "partnerId") { applyPartner(); refreshRepeat(); }
+    if (event.target.name === "deliveredAt" && event.target.value && !form.elements.paymentDueDate.value) form.elements.paymentDueDate.value = addDaysIso(event.target.value, 15);
   });
-  form.addEventListener("input", (event) => {
-    updateOrderPreview(form);
-    const row = event.target.closest(".order-item-row");
-    if (row) renderOrderItemNavigator(form, orderItemEditorKey(row));
+  form.addEventListener("input", event => {
+    if (["customerName", "businessName"].includes(event.target.name)) refreshRepeat();
   });
-  rows.querySelectorAll(".order-item-row").forEach((row) => {
-    bindProductPicker(row);
-    if (!Number(row.querySelector('[data-field="unitPrice"]')?.value || 0)) applyClientPricing(row);
-  });
-  applyPartnerVisibility();
-  updateOrderPreview(form);
-  renderOrderItemNavigator(form);
+  partnerVisibility(); refreshRepeat(); sync(); showSize();
 }
 
 function orderForm(orderId) {
@@ -10190,30 +10007,13 @@ function orderForm(orderId) {
     : `<option value="">Nenhum parceiro cadastrado ainda</option>`;
   const orderItemsSection = `
     ${orderFlavorPickerMarkup(clientType)}
-    <div class="builder-section order-items-editor">
-      <div class="table-toolbar">
-        <div>
-          <h3>Sabores do pedido</h3>
-          <p>Toque em um sabor para ver e editar somente aquele item.</p>
-        </div>
-        <div class="table-toolbar-actions" id="repeatOrderActions" hidden>
-          <button class="btn btn-outline" type="button" data-repeat-last-order><span class="material-symbols-outlined" aria-hidden="true">history</span>Repetir último pedido</button>
-          <button class="btn btn-outline" type="button" data-choose-previous-order><span class="material-symbols-outlined" aria-hidden="true">list</span>Escolher outro pedido anterior</button>
-        </div>
-      </div>
+    <details class="form-section" id="repeatOrderActions" hidden>
+      <summary>Repetir um pedido anterior</summary>
+      <button class="btn btn-outline" type="button" data-repeat-last-order>Repetir último pedido</button>
+      <button class="btn btn-outline" type="button" data-choose-previous-order>Escolher pedido anterior</button>
       <div id="previousOrdersPanel" hidden></div>
-      <div class="order-item-navigator" id="orderItemNavigator" aria-label="Sabores do pedido"></div>
-      <div class="result-card field-full" id="orderItemsSummary"></div>
-      <button class="btn btn-outline order-add-item" type="button" data-add-order-item>
-        <span class="material-symbols-outlined" aria-hidden="true">add</span>
-        Adicionar sabor
-      </button>
-      <div class="order-active-editor-head">
-        <span>Editar sabor selecionado</span>
-        <strong id="orderActiveItemTitle"></strong>
-      </div>
-      <div id="orderItemsRows">${(existing && orderItems(existing).length ? orderItems(existing) : [{}]).map((item) => orderItemRowTemplate(item, clientType)).join("")}</div>
-    </div>
+    </details>
+    <div id="orderItemsRows" hidden>${(existing ? orderItems(existing) : []).map(item => orderItemRowTemplate(item, clientType)).join("")}</div>
   `;
   openModal(
     existing ? "Editar pedido" : "Novo pedido",
@@ -10233,7 +10033,7 @@ function orderForm(orderId) {
             <label class="field"><span>Previsão de pronto</span><input name="estimatedReadyDate" type="date" value="${readyDate}"></label>
             <label class="field"><span>Cliente precisa até</span><input name="neededBy" type="date" value="${existing?.neededBy || ""}"></label>
             <label class="field"><span>Data de entrega</span><input name="deliveredAt" type="date" value="${deliveredAt}"></label>
-            <div class="result-card field-full" id="orderPreview"></div>
+
           </div>
         </details>
 
