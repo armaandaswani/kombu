@@ -2319,15 +2319,17 @@ function isOpenOrder(order) {
 }
 
 function orderReservationTimestamp(order = {}) {
-  const createdAt = Date.parse(String(order.createdAt || ""));
-  if (Number.isFinite(createdAt)) return createdAt;
   const orderDate = Date.parse(String(order.orderDate || ""));
-  return Number.isFinite(orderDate) ? orderDate : Number.MAX_SAFE_INTEGER;
+  if (Number.isFinite(orderDate)) return orderDate;
+  const createdAt = Date.parse(String(order.createdAt || ""));
+  return Number.isFinite(createdAt) ? createdAt : Number.MAX_SAFE_INTEGER;
 }
 
 function compareOrdersByReservationPriority(a = {}, b = {}) {
   const timestampDifference = orderReservationTimestamp(a) - orderReservationTimestamp(b);
   if (timestampDifference) return timestampDifference;
+  const enteredDifference = reservationTimestampValue(a.createdAt) - reservationTimestampValue(b.createdAt);
+  if (Number.isFinite(enteredDifference) && enteredDifference) return enteredDifference;
   const orderDateDifference = String(a.orderDate || "").localeCompare(String(b.orderDate || ""));
   if (orderDateDifference) return orderDateDifference;
   const codeDifference = String(a.code || "").localeCompare(String(b.code || ""));
@@ -2567,40 +2569,6 @@ function reservationTimestampValue(...values) {
     if (Number.isFinite(timestamp)) return timestamp;
   }
   return Number.NaN;
-}
-
-function batchReservationEventValue(batch = {}) {
-  return reservationTimestampValue(
-    batch.updatedAt,
-    batch.createdAt,
-    batch.correctedAt,
-    batch.productionDate,
-    batch.date,
-  );
-}
-
-function releaseSupersededReservationOverrides(eligibleBatches = []) {
-  const supersededAt = new Date().toISOString();
-  openOrdersByReservationPriority().forEach((order) => {
-    orderItems(order).forEach((item) => {
-      const override = item.reservationOverride;
-      if (!override || override.active === false) return;
-      const overrideAt = reservationTimestampValue(override.updatedAt);
-      if (!Number.isFinite(overrideAt)) return;
-      const newerBatch = eligibleBatches.find(
-        (batch) =>
-          batchMatchesOrderItem(batch, item) &&
-          batchReservationEventValue(batch) > overrideAt,
-      );
-      if (!newerBatch) return;
-      item.reservationOverride = {
-        ...override,
-        active: false,
-        supersededAt,
-        supersededByBatch: String(newerBatch.code || newerBatch.id || ""),
-      };
-    });
-  });
 }
 
 function reservationOptionsForBatch(batch) {
@@ -4336,7 +4304,7 @@ function resetOpenOrderReservations() {
   (state.orders || []).filter(isOpenOrder).forEach((order) => {
     orderItems(order).forEach((item) => {
       const target = orderItemAutomaticReservationLimit(item);
-      const manualAllocations = orderItemAllocations(item).filter((allocation) => allocation.manual);
+      const manualAllocations = orderItemAllocations(item).filter((allocation) => allocation.manual || (item.reservationOverride && item.reservationOverride.active !== false));
       item.allocations = manualAllocations;
       item.batchCode = "";
       item.reservedQty = 0;
@@ -4381,8 +4349,14 @@ function allocateNewBatchToOrders(batch) {
   return reserved;
 }
 
-// Runs a full recalculation against a copy of the state and reports what would
-// change, so the operator sees which orders gain and lose before anything moves.
+// Order creation and editing are explicit demand changes; ordinary saves still preserve allocations.
+function autoAllocateOrderStock() {
+  const result = reconcileOrderReservations();
+  requestReservationMode("recalculate");
+  return result;
+}
+
+// Simulate on a copy so the preview never moves live reservations.
 function reservationRecalculationPreview() {
   const label = (order, item) => ({
     key: `${order.id}::${item.key || ""}`,
@@ -4433,7 +4407,7 @@ function recalculateReservationsForm() {
     "Recalcular reservas automaticamente",
     "Pedidos",
     `
-      <p class="lead" style="font-size:1rem">Redistribui todo o estoque livre entre os pedidos abertos por ordem de chegada. Reservas ajustadas manualmente são mantidas.</p>
+      <p class="lead" style="font-size:1rem">Reorganiza as reservas automáticas pela data do pedido, do mais antigo ao mais novo. Reservas e limites ajustados manualmente são mantidos.</p>
       ${changes.length
         ? `<p class="empty-note">${number(changes.length)} linha(s) mudam:</p><div class="stack-list">${rows}</div>`
         : `<p class="empty-note">Nada mudaria: as reservas já estão como o cálculo automático faria.</p>`}
@@ -4456,13 +4430,11 @@ function applyReservationRecalculation() {
   render();
 }
 
-// Full teardown and rebuild by FIFO priority. Only ever runs when the operator
-// explicitly asks for it, because it can move reservations between orders.
+// Rebuild automatic reservations by order date while retaining manual allocations.
 function reconcileOrderReservations() {
   const eligibleBatches = (state.batches || [])
     .filter(shouldConsumeBatch)
     .sort((a, b) => String(a.date || "").localeCompare(String(b.date || "")) || String(a.code || "").localeCompare(String(b.code || "")));
-  releaseSupersededReservationOverrides(eligibleBatches);
   resetOpenOrderReservations();
   const byBatch = {};
   eligibleBatches.forEach((batch) => {
@@ -5984,6 +5956,7 @@ function orderCompactCard(order) {
         <div class="order-compact-actions">
           ${actionButton(`delivery-proof:${order.id}`, "PDF da entrega", "picture_as_pdf", "btn-primary")}
           ${orderDeliveries(order).length ? actionButton(`order-receipt:${order.id}`, "Emitir recibo", "request_quote", "btn-outline") : ""}
+          ${isOpenOrder(order) ? actionButton(`adjust-order-reservation:${order.id}`, "Ajustar reservas", "tune", "btn-outline") : ""}
           ${actionButton(`edit-order:${order.id}`, "Editar detalhes", "edit", "btn-outline")}
         </div>
       </div>
@@ -6003,8 +5976,8 @@ function renderOrders() {
   return `
     ${pageHead(
       "Pedidos",
-      "Acompanhe pedidos por cliente e atualize status em poucos toques.",
-      `${actionButton("new-order", "Novo pedido", "add")} ${actionButton("recalculate-reservations", "Recalcular reservas", "autorenew", "btn-outline")} ${actionButton("export-orders", "CSV", "download", "btn-outline")}`,
+      "Novos pedidos e lotes recebem reservas automaticamente. A prioridade é a data do pedido, do mais antigo ao mais novo.",
+      `${actionButton("new-order", "Novo pedido", "add")} ${actionButton("recalculate-reservations", "Autoalocar estoque", "autorenew", "btn-outline")} ${actionButton("export-orders", "CSV", "download", "btn-outline")}`,
     )}
     <section class="order-list order-compact-list">
       ${filteredOrders.length ? filteredOrders.map(orderCompactCard).join("") : `<article class="admin-card"><p class="empty-note">Nenhum pedido ainda. Use “Novo pedido” para começar.</p></article>`}
@@ -7660,8 +7633,10 @@ function setOrderItemReservation(order, item, targetQty, reason) {
 
   const after = orderItemReservedQty(item);
   // Records that a person chose this number, so automatic passes respect it.
+  item.allocations = orderItemAllocations(item).map(allocation => ({ ...allocation, manual: true }));
   item.reservationOverride = {
     active: true,
+    persistent: true,
     reservedNow: after,
     previousQty: current,
     orderedQty: ordered,
@@ -7672,10 +7647,53 @@ function setOrderItemReservation(order, item, targetQty, reason) {
   return { changed: true, from: current, to: after };
 }
 
-// Spec section 2. The old screen pre-selected one flavour, hid the rest behind a
-// dropdown and demanded a reason per flavour, so adjusting an order meant
-// repeating the whole cycle once per sabor. Every line is now on one screen and
-// the whole order is saved in one go.
+function restoreAutomaticOrderReservations(order) {
+  orderItems(order).forEach(item => {
+    item.reservationOverride = null;
+    item.allocations = orderItemAllocations(item).map(allocation => ({ ...allocation, manual: false }));
+  });
+  autoAllocateOrderStock();
+}
+
+function reservationTransferTargets(sourceOrder, sourceItem) {
+  const codes = new Set(orderItemAllocations(sourceItem).map(allocation => allocation.batchCode));
+  const batches = state.batches.filter(batch => codes.has(batch.code));
+  return openOrdersByReservationPriority().filter(order => order.id !== sourceOrder.id).flatMap(order =>
+    orderItems(order).filter(item => orderItemRemainingQty(item) > 0 && batches.some(batch => batchMatchesOrderItem(batch, item)))
+      .map(item => ({ order, item })));
+}
+
+// Only the bottles released by this edit may move; unrelated free stock stays put.
+function redirectReleasedReservations(sourceOrder, sourceItem, before, destination, reason) {
+  if (!destination || destination === "free") return 0;
+  const afterByBatch = new Map();
+  orderItemAllocations(sourceItem).forEach(a => afterByBatch.set(a.batchCode, (afterByBatch.get(a.batchCode) || 0) + a.qty));
+  const beforeByBatch = new Map();
+  before.forEach(a => beforeByBatch.set(a.batchCode, (beforeByBatch.get(a.batchCode) || 0) + a.qty));
+  const targets = reservationTransferTargets(sourceOrder, { ...sourceItem, allocations: before });
+  let moved = 0;
+  beforeByBatch.forEach((qty, code) => {
+    let released = Math.max(0, qty - (afterByBatch.get(code) || 0));
+    const batch = state.batches.find(batch => batch.code === code);
+    if (!batch) return;
+    targets.forEach(({ order, item }) => {
+      if (!released || !batchMatchesOrderItem(batch, item)) return;
+      const explicit = destination !== "auto";
+      if (explicit && destination !== JSON.stringify([order.id, item.key])) return;
+      const need = explicit ? orderItemRemainingQty(item) : orderItemAutomaticReservationNeed(item);
+      const take = Math.min(released, need, batchAvailableStock(code));
+      if (take <= 0) return;
+      reserveBatchForOrderItem(code, order, item, take, reason || "Redistribuição de reserva", explicit);
+      if (explicit) {
+        item.reservationOverride = { active: true, persistent: true, reservedNow: orderItemReservedQty(item), updatedAt: new Date().toISOString(), reason: reason || "Transferência manual" };
+      }
+      released -= take;
+      moved += take;
+    });
+  });
+  return moved;
+}
+
 function adjustOrderReservationForm(orderId) {
   const order = byId("orders", orderId);
   if (!order || !isOpenOrder(order)) return;
@@ -7690,6 +7708,8 @@ function adjustOrderReservationForm(orderId) {
     const item = byKey.get(line.key);
     const free = freeStockForOrderItem(item);
     const max = Math.min(line.outstanding, line.reserved + free);
+    const destinations = reservationTransferTargets(order, item).map(({ order: target, item: targetItem }) =>
+      `<option value="${escapeHtml(JSON.stringify([target.id, targetItem.key]))}">${escapeHtml(orderClientDisplayName(target))} · ${escapeHtml(target.code || "")} · ${escapeHtml(shortDate(target.orderDate))}</option>`).join("");
     return `
       <tr data-reserve-row="${escapeHtml(line.key)}" data-current="${line.reserved}" data-max="${max}">
         <td>
@@ -7706,6 +7726,7 @@ function adjustOrderReservationForm(orderId) {
             <input type="number" inputmode="numeric" min="0" max="${max}" step="1" value="${line.reserved}" data-reserve-input aria-label="Nova reserva de ${escapeHtml(line.product)}">
             <button type="button" class="icon-btn" data-reserve-step="1" aria-label="Aumentar">+</button>
           </div>
+          <label class="field" data-release-destination hidden><span>Destino das garrafas liberadas</span><select data-reserve-destination class="admin-select"><option value="free">Deixar no estoque livre</option><option value="auto">Autoalocar aos pedidos mais antigos</option>${destinations}</select><small>Somente o mesmo sabor e tamanho. O excedente fica livre.</small></label>
           <div class="reserve-quick">
             <button type="button" class="link-btn" data-reserve-set="max">tudo (${number(max)})</button>
             <button type="button" class="link-btn" data-reserve-set="0">zerar</button>
@@ -7724,6 +7745,7 @@ function adjustOrderReservationForm(orderId) {
         <div class="modal-action-row">
           <button class="btn btn-outline" type="button" data-reserve-all="max"><span class="material-symbols-outlined" aria-hidden="true">done_all</span>Reservar tudo disponível</button>
           <button class="btn btn-outline" type="button" data-reserve-all="0"><span class="material-symbols-outlined" aria-hidden="true">backspace</span>Remover todas as reservas</button>
+          <button class="btn btn-outline" type="button" data-reserve-auto>Voltar este pedido ao automático</button>
         </div>
         ${table(
           [
@@ -7753,10 +7775,11 @@ function adjustOrderReservationForm(orderId) {
     const max = Number(row.dataset.max || 0);
     const value = Math.max(0, Math.min(max, Math.round(Number(input.value) || 0)));
     if (String(value) !== input.value) input.value = String(value);
-    return { key: row.dataset.reserveRow, current: Number(row.dataset.current || 0), value, max };
+    return { key: row.dataset.reserveRow, current: Number(row.dataset.current || 0), value, max, destination: row.querySelector("[data-reserve-destination]").value };
   };
 
   const updateSummary = () => {
+    rowEls().forEach(row => { const data = readRow(row); row.querySelector("[data-release-destination]").hidden = data.value >= data.current; });
     const changes = rowEls().map(readRow).filter((row) => row.value !== row.current);
     const totals = rowEls().map(readRow).reduce(
       (acc, row) => {
@@ -7780,6 +7803,11 @@ function adjustOrderReservationForm(orderId) {
     if (event.target.matches("[data-reserve-input]")) updateSummary();
   });
   form.addEventListener("click", (event) => {
+    if (event.target.closest("[data-reserve-auto]")) {
+      restoreAutomaticOrderReservations(order);
+      addAudit("Pedido voltou à reserva automática", orderClientDisplayName(order));
+      closeModal(); render(); return;
+    }
     const step = event.target.closest("[data-reserve-step]");
     const set = event.target.closest("[data-reserve-set]");
     const all = event.target.closest("[data-reserve-all]");
@@ -7817,8 +7845,10 @@ function adjustOrderReservationForm(orderId) {
     [...requested].sort((a, b) => a.value - a.current - (b.value - b.current)).forEach((row) => {
       const item = byKey.get(row.key);
       if (!item) return;
+      const before = orderItemAllocations(item).map(allocation => ({ ...allocation }));
       const result = setOrderItemReservation(order, item, row.value, reason);
-      if (result.changed) applied.push({ key: row.key, ...result });
+      const moved = redirectReleasedReservations(order, item, before, row.destination, reason);
+      if (result.changed) applied.push({ key: row.key, destination: row.destination, moved, ...result });
     });
 
     refreshAllOrderReservations();
@@ -7826,12 +7856,12 @@ function adjustOrderReservationForm(orderId) {
     if (applied.length) {
       addAudit(
         "Reserva ajustada manualmente",
-        `${orderClientDisplayName(order)} | ${applied.map((row) => `${nameOf(row.key)}: ${number(row.from)} → ${number(row.to)}`).join("; ")}${reason ? ` | Motivo: ${reason}` : ""}`,
+        `${orderClientDisplayName(order)} | ${applied.map((row) => `${nameOf(row.key)}: ${number(row.from)} → ${number(row.to)}; ${number(row.moved)} transferida(s); destino: ${row.destination}`).join("; ")}${reason ? ` | Motivo: ${reason}` : ""}`,
       );
     }
     closeModal();
     render();
-    const missed = applied.filter((row, index) => row.to !== requested[index]?.value);
+    const missed = applied.filter(row => row.to !== requested.find(request => request.key === row.key)?.value);
     if (applied.length < requested.length || missed.length) {
       window.alert("Algumas quantidades foram limitadas pelo estoque disponível. Confira os valores salvos.");
     }
@@ -10109,13 +10139,13 @@ function orderForm(orderId) {
     if (existing) {
       Object.assign(existing, payload);
       syncOrderIntegrations(existing);
-      refreshAllOrderReservations();
+      autoAllocateOrderStock();
       addAudit("Pedido atualizado", `${payload.code}: ${payload.customerName}`);
     } else {
       const order = { id: id("ord"), createdAt: new Date().toISOString(), ...payload };
       syncOrderIntegrations(order);
       state.orders.unshift(order);
-      refreshAllOrderReservations();
+      autoAllocateOrderStock();
       addAudit("Pedido criado", `${payload.code}: ${payload.customerName} | ${number(totalQty)} garrafas`);
     }
     closeModal();

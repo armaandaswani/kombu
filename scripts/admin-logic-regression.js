@@ -646,7 +646,47 @@ function testTheLedgerSaysWhenItIsNotAvailableYet() {
   assert.ok(!html.includes("Total das"), "and no total is claimed when there is nothing");
 }
 
+function testOrderDateWinsOverLateDataEntry() {
+  load({ products: PRODUCTS, batches: [batch("L", "p-fv", 10)], orders: [
+    order("new", [item("new-i", "p-fv", 10)], { orderDate: "2026-08-10", createdAt: "2026-08-10T10:00:00Z" }),
+    order("old", [item("old-i", "p-fv", 10)], { orderDate: "2026-08-03", createdAt: "2026-09-18T10:00:00Z" }),
+  ] });
+  call("autoAllocateOrderStock");
+  assert.deepEqual(admin.__getState().orders.map(o => call("orderItemReservedQty", o.items[0])), [0, 10]);
+  assert.equal(admin.__eval("pendingReservationRequest.mode"), "recalculate");
+}
+
+function testReleasedBottlesHaveAnExplicitDestination() {
+  for (const destination of ["free", "auto", JSON.stringify(["new", "new-i"])]) {
+    const state = load({ products: PRODUCTS, batches: [batch("L", "p-fv", 10)], orders: [
+      order("source", [item("source-i", "p-fv", 10, [{ batchCode: "L", qty: 10 }])]),
+      order("old", [item("old-i", "p-fv", 10)], { orderDate: "2026-01-01" }),
+      order("new", [item("new-i", "p-fv", 10)], { orderDate: "2026-01-20" }),
+      order("wrong", [item("wrong-i", "p-fv-500", 10)], { orderDate: "2025-01-01" }),
+    ] });
+    const source = state.orders[0], line = source.items[0];
+    const before = plain(line.allocations);
+    call("setOrderItemReservation", source, line, 5, "teste");
+    const moved = call("redirectReleasedReservations", source, line, before, destination, "teste");
+    assert.equal(moved, destination === "free" ? 0 : 5);
+    const qty = state.orders.map(o => call("orderItemReservedQty", o.items[0]));
+    assert.deepEqual(qty, destination === "free" ? [5,0,0,0] : destination === "auto" ? [5,5,0,0] : [5,0,5,0]);
+    assert.equal(call("batchAvailableStock", "L"), destination === "free" ? 5 : 0);
+    if (destination !== "free") {
+      state.batches.push(batch("L-new", "p-fv", 5, { createdAt: "2099-01-01T00:00:00Z" }));
+      call("autoAllocateOrderStock");
+      assert.equal(call("orderItemReservedQty", line), 5, "manual choice persists across new stock and recalculation");
+      if (destination !== "auto") assert.equal(call("orderItemReservedQty", state.orders[2].items[0]), 5);
+      call("restoreAutomaticOrderReservations", source);
+      assert.equal(line.reservationOverride, null);
+      assert.equal(line.allocations.some(a => a.manual), false);
+    }
+  }
+}
+
 const tests = [
+  testOrderDateWinsOverLateDataEntry,
+  testReleasedBottlesHaveAnExplicitDestination,
   testACardReportsReservedAndMissingSeparately,
   testOrderStatusFollowsWhatIsStillMissing,
   testDeliveredBottlesLeaveTheOutstandingCount,

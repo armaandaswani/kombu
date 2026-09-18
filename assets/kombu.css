@@ -6132,3 +6132,8 @@ textarea:focus-visible {
 
 .flavor-pick-choice { flex: 1; }
 .flavor-pick > .reserve-stepper { flex-shrink: 0; }
+
+[data-release-destination][hidden] { display: none !important; }
+[data-release-destination] { min-width: 220px; max-width: 320px; margin-top: 10px; }
+#adjustOrderReservationForm [data-release-destination],
+#adjustOrderReservationForm .reserve-quick { grid-column: 1 / -1; min-width: 0; }

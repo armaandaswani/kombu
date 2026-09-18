@@ -334,7 +334,7 @@ function testManualCurrentReservationIsPreservedWithoutChangingOrder() {
   assert.equal(batchSummary(result).available, 1);
 }
 
-function testLaterProductionSupersedesManualCurrentReservation() {
+function testLaterProductionPreservesManualCurrentReservation() {
   const order = makeOrder({
     qty: 10,
     reservationOverride: {
@@ -359,10 +359,9 @@ function testLaterProductionSupersedesManualCurrentReservation() {
   const reconciledItem = item(result.state.orders[0]);
 
   assert.equal(reconciledItem.qty, 10);
-  assert.equal(reserved(result.state.orders[0]), 10);
-  assert.equal(reconciledItem.reservationOverride.active, false);
-  assert.equal(reconciledItem.reservationOverride.supersededByBatch, "KMB010-260727");
-  assert.equal(batchSummary(result).available, 1);
+  assert.equal(reserved(result.state.orders[0]), 3);
+  assert.equal(reconciledItem.reservationOverride.active, true);
+  assert.equal(batchSummary(result).available, 8);
   // The audit action names the mode that produced the change, so a recalculation
   // reads differently from new production arriving.
   const allocationAudit = result.state.audit.find(
@@ -372,8 +371,8 @@ function testLaterProductionSupersedesManualCurrentReservation() {
   assert.equal(allocationAudit.flavor, "Manga & Jasmim");
   assert.equal(allocationAudit.sizeMl, 500);
   assert.equal(allocationAudit.previousQty, 0);
-  assert.equal(allocationAudit.newQty, 10);
-  assert.equal(allocationAudit.quantityChanged, 10);
+  assert.equal(allocationAudit.newQty, 3);
+  assert.equal(allocationAudit.quantityChanged, 3);
 }
 
 function testInventoryQuantitySupportsReservations() {
@@ -610,7 +609,7 @@ function testRecalculateAppliesFifoAcrossOrders() {
   assert.equal(result.mode, "recalculate");
 }
 
-function testSupersededOverrideReconciliationIsIdempotent() {
+function testManualOverrideReconciliationIsIdempotent() {
   const first = reconcile(
     makeState({
       batches: [
@@ -650,7 +649,22 @@ function testSalesReduceReservableCapacity() {
   assert.equal(batchSummary(result).available, 0);
 }
 
+function testBackdatedOrdersAndPersistentManualReservations() {
+  const older = makeOrder({ id: "older", createdAt: "2026-09-18T00:00:00Z", qty: 10 });
+  older.orderDate = "2026-08-03";
+  const newer = makeOrder({ id: "newer", createdAt: "2026-08-10T00:00:00Z", qty: 10 });
+  let result = reconcile(makeState({ batches: [makeBatch({ actual: 10 })], orders: [newer, older] }));
+  assert.deepEqual(result.state.orders.map(reserved), [0,10]);
+  item(newer).allocations = [{ batchCode: "KMB010-260727", qty: 5, manual: true }];
+  item(newer).reservationOverride = { active: true, persistent: true, reservedNow: 5, updatedAt: "2026-01-01T00:00:00Z" };
+  result = reconcile(makeState({ batches: [makeBatch({ actual: 10, createdAt: "2026-09-18T00:00:00Z" })], orders: [newer, older] }));
+  assert.deepEqual(result.state.orders.map(reserved), [5,5]);
+  assert.equal(item(result.state.orders[0]).reservationOverride.active, true);
+  assert.deepEqual(reconcile(result.state).state, result.state);
+}
+
 const tests = [
+  testBackdatedOrdersAndPersistentManualReservations,
   testNewProductionUsesLegacyOrderIdentity,
   testPartialProduction,
   testFifoPrefersOldestOrder,
@@ -661,7 +675,7 @@ const tests = [
   testRepeatedReconciliationIsIdempotent,
   testInvalidAndDuplicateAllocationsAreRepaired,
   testManualCurrentReservationIsPreservedWithoutChangingOrder,
-  testLaterProductionSupersedesManualCurrentReservation,
+  testLaterProductionPreservesManualCurrentReservation,
   testInventoryQuantitySupportsReservations,
   testBlankActualFallsBackInsteadOfErasingStock,
   testWhitespaceActualIsTreatedAsUnrecorded,
@@ -675,7 +689,7 @@ const tests = [
   testPreserveIsTheDefault,
   testAllocateNewStockOnlyDistributesTheNamedBatch,
   testRecalculateAppliesFifoAcrossOrders,
-  testSupersededOverrideReconciliationIsIdempotent,
+  testManualOverrideReconciliationIsIdempotent,
   testSalesReduceReservableCapacity,
 ];
 

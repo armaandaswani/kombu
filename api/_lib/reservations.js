@@ -203,14 +203,17 @@ function orderItems(order) {
 }
 
 function orderCreatedValue(order) {
-  const value = order?.createdAt || order?.orderDate || order?.date || "";
-  const timestamp = Date.parse(value);
-  return Number.isFinite(timestamp) ? timestamp : Number.MAX_SAFE_INTEGER;
+  for (const value of [order?.orderDate, order?.createdAt, order?.date]) {
+    const timestamp = Date.parse(value || "");
+    if (Number.isFinite(timestamp)) return timestamp;
+  }
+  return Number.MAX_SAFE_INTEGER;
 }
 
 function compareOrders(a, b) {
   return (
     orderCreatedValue(a) - orderCreatedValue(b) ||
+    (Date.parse(a?.createdAt || "") - Date.parse(b?.createdAt || "") || 0) ||
     String(a?.orderDate || a?.date || "").localeCompare(String(b?.orderDate || b?.date || "")) ||
     String(a?.code || a?.id || "").localeCompare(String(b?.code || b?.id || ""))
   );
@@ -243,55 +246,6 @@ function reservationLimit(item) {
     return outstanding;
   }
   return Math.min(outstanding, nonNegative(manualTarget));
-}
-
-function timestampValue(...values) {
-  for (const value of values) {
-    const timestamp = Date.parse(value || "");
-    if (Number.isFinite(timestamp)) return timestamp;
-  }
-  return Number.NaN;
-}
-
-function batchReservationEventValue(batch) {
-  return timestampValue(
-    batch?.updatedAt,
-    batch?.createdAt,
-    batch?.correctedAt,
-    batch?.productionDate,
-    batch?.date
-  );
-}
-
-function releaseSupersededReservationOverrides(
-  openOrders,
-  eligibleBatches,
-  maps,
-  reconciledAt
-) {
-  openOrders.forEach((order) => {
-    orderItems(order).forEach((item) => {
-      const override = item?.reservationOverride;
-      if (!override || override.active === false) return;
-
-      const overrideAt = timestampValue(override.updatedAt);
-      if (!Number.isFinite(overrideAt)) return;
-
-      const newerBatch = eligibleBatches.find(
-        (batch) =>
-          batchMatchesOrderItem(batch, item, maps) &&
-          batchReservationEventValue(batch) > overrideAt
-      );
-      if (!newerBatch) return;
-
-      item.reservationOverride = {
-        ...override,
-        active: false,
-        supersededAt: reconciledAt,
-        supersededByBatch: String(newerBatch.code || newerBatch.id || ""),
-      };
-    });
-  });
 }
 
 function allocationQuantity(allocation) {
@@ -530,14 +484,6 @@ function reconcileReservations(inputState, options = {}) {
 
   const openOrders = state.orders.filter(isOpenOrder).sort(compareOrders);
   const openOrderSet = new Set(openOrders);
-  if (mode === "recalculate") {
-    releaseSupersededReservationOverrides(
-      openOrders,
-      eligibleBatches,
-      maps,
-      reconciledAt
-    );
-  }
   const retainedCandidates = [];
 
   state.orders.forEach((order) => {
@@ -545,7 +491,7 @@ function reconcileReservations(inputState, options = {}) {
       const originalAllocations = Array.isArray(item.allocations) ? item.allocations : [];
       if (openOrderSet.has(order)) {
         originalAllocations.forEach((allocation, allocationIndex) => {
-          if (mode !== "recalculate" || allocation?.manual) {
+          if (mode !== "recalculate" || allocation?.manual || (item.reservationOverride && item.reservationOverride.active !== false)) {
             retainedCandidates.push({ order, item, itemIndex, allocation, allocationIndex });
           }
         });
