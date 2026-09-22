@@ -4745,7 +4745,7 @@ function renderDashboard() {
     ${pageHead(
       "Início",
       "Seu negócio em um olhar: resultado do mês, estoque de hoje e próximos passos.",
-      `${actionButton("quick-sale", "Venda rápida", "point_of_sale")} ${actionButton("new-order", "Novo pedido", "assignment", "btn-outline")}`,
+      `${actionButton("quick-sale", "Venda rápida", "point_of_sale")} ${actionButton("new-order", "Novo pedido", "assignment", "btn-outline")} ${actionButton("new-batch", "Novo lote", "factory", "btn-outline")}`,
     )}
     <section class="admin-card dashboard-period" aria-label="Período financeiro">
       <label for="dashboardMonth">Resultado de <input id="dashboardMonth" type="month" value="${escapeHtml(dashboardMonth)}" required></label>

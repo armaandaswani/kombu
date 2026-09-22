@@ -772,6 +772,7 @@ console.log(`Admin logic regression: ${tests.length} scenarios passed.`);
   admin.__eval('dashboardMonth = "2026-09"');
   const html = call("renderDashboard");
   assert.ok(html.includes("Custo incompleto"), "unknown cost suppresses misleading profit");
+  assert.ok(html.includes('data-action="new-batch"'), "the dashboard keeps a direct new-batch action");
   assert.ok(html.indexOf('aria-label="Indicadores principais"') < html.indexOf('data-dashboard-panel="reservations"'), "headline figures precede detailed operations");
 }
 console.log("Dashboard regression: monthly finances, missing costs and overview hierarchy passed.");
