@@ -656,6 +656,25 @@ function testOrderDateWinsOverLateDataEntry() {
   assert.equal(admin.__eval("pendingReservationRequest.mode"), "recalculate");
 }
 
+function testGlobalAutoAllocationClearsManualOverrides() {
+  load({
+    products: PRODUCTS,
+    batches: [batch("L-auto", "p-fv", 10)],
+    orders: [order("manual", [item("manual-i", "p-fv", 10, [], {
+      reservationOverride: { active: true, persistent: true, reservedNow: 0 },
+    })])],
+  });
+  const state = admin.__getState();
+  call("autoAllocateOrderStock");
+  assert.equal(call("orderItemReservedQty", state.orders[0].items[0]), 0, "ordinary saves respect a manual zero ceiling");
+
+  call("forceAutomaticOrderReservations");
+  const line = admin.__getState().orders[0].items[0];
+  assert.equal(line.reservationOverride, null, "the global action removes the manual ceiling");
+  assert.equal(call("orderItemReservedQty", line), 10, "the global action allocates matching free stock");
+  assert.equal(line.allocations.every((allocation) => allocation.manual === false), true);
+}
+
 function testReleasedBottlesHaveAnExplicitDestination() {
   for (const destination of ["free", "auto", JSON.stringify(["new", "new-i"])]) {
     const state = load({ products: PRODUCTS, batches: [batch("L", "p-fv", 10)], orders: [
@@ -686,6 +705,7 @@ function testReleasedBottlesHaveAnExplicitDestination() {
 
 const tests = [
   testOrderDateWinsOverLateDataEntry,
+  testGlobalAutoAllocationClearsManualOverrides,
   testReleasedBottlesHaveAnExplicitDestination,
   testACardReportsReservedAndMissingSeparately,
   testOrderStatusFollowsWhatIsStillMissing,

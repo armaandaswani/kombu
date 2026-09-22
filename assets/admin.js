@@ -4356,6 +4356,28 @@ function autoAllocateOrderStock() {
   return result;
 }
 
+// The page-level action is an explicit instruction to put every open order
+// back under FIFO automation. Per-order adjustments remain sticky during
+// ordinary saves and new-production allocation, but keeping those overrides
+// here made the global button report "nothing changed" even when an order was
+// visibly waiting for stock. Clear the operator's manual ceilings first, then
+// run the same allocator used by the per-order "voltar ao automático" action.
+function prepareAllOpenOrdersForAutomaticReservations() {
+  (state.orders || []).filter(isOpenOrder).forEach((order) => {
+    orderItems(order).forEach((item) => {
+      item.reservationOverride = null;
+      item.allocations = orderItemAllocations(item).map((allocation) => ({ ...allocation, manual: false }));
+    });
+  });
+}
+
+function forceAutomaticOrderReservations() {
+  prepareAllOpenOrdersForAutomaticReservations();
+  const result = reconcileOrderReservations();
+  requestReservationMode("recalculate");
+  return result;
+}
+
 // Simulate on a copy so the preview never moves live reservations.
 function reservationRecalculationPreview() {
   const label = (order, item) => ({
@@ -4376,6 +4398,7 @@ function reservationRecalculationPreview() {
     // Every helper reads the module-level state, so simulate on a clone and
     // put the real one back before anything can observe the swap.
     state = clone(live);
+    prepareAllOpenOrdersForAutomaticReservations();
     reconcileOrderReservations();
     (state.orders || []).filter(isOpenOrder).forEach((order) => {
       orderItems(order).forEach((item) => {
@@ -4407,7 +4430,7 @@ function recalculateReservationsForm() {
     "Recalcular reservas automaticamente",
     "Pedidos",
     `
-      <p class="lead" style="font-size:1rem">Reorganiza as reservas automáticas pela data do pedido, do mais antigo ao mais novo. Reservas e limites ajustados manualmente são mantidos.</p>
+      <p class="lead" style="font-size:1rem">Reativa a reserva automática de todos os pedidos abertos e distribui o estoque pela data do pedido, do mais antigo ao mais novo. Ajustes manuais destes pedidos voltam ao cálculo automático.</p>
       ${changes.length
         ? `<p class="empty-note">${number(changes.length)} linha(s) mudam:</p><div class="stack-list">${rows}</div>`
         : `<p class="empty-note">Nada mudaria: as reservas já estão como o cálculo automático faria.</p>`}
@@ -4420,17 +4443,18 @@ function recalculateReservationsForm() {
 
 function applyReservationRecalculation() {
   const changes = reservationRecalculationPreview();
-  reconcileOrderReservations();
-  requestReservationMode("recalculate");
+  forceAutomaticOrderReservations();
   addAudit(
-    "Reservas recalculadas automaticamente",
-    `${number(changes.length)} linha(s) alteradas por redistribuição solicitada pelo usuário.`,
+    "Reservas automáticas reativadas",
+    `${number(changes.length)} linha(s) alteradas pela redistribuição FIFO solicitada pelo usuário.`,
   );
   closeModal();
   render();
 }
 
-// Rebuild automatic reservations by order date while retaining manual allocations.
+// Rebuild automatic reservations by order date. Callers that want to keep
+// manual allocations use the default path; the explicit global action clears
+// them with prepareAllOpenOrdersForAutomaticReservations first.
 function reconcileOrderReservations() {
   const eligibleBatches = (state.batches || [])
     .filter(shouldConsumeBatch)
