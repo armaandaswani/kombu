@@ -372,12 +372,13 @@ async function run() {
 
   await page.selectOption("#mobileModuleSelector", "batches");
   await page.click('[data-action="new-batch"]');
-  assert.strictEqual(await page.locator('#batchForm [data-variant-flavor]').inputValue(), "Maracuja");
   assert.deepStrictEqual(
-    await page.locator('#batchForm [data-variant-size] option').evaluateAll((options) => options.map((option) => option.value)),
+    await page.locator('#batchForm [name="sizeMl"] option').evaluateAll((options) => options.map((option) => option.value)),
     ["300", "500"],
-    "new batches must ask for flavor first and then expose both bottle sizes",
+    "new batches must expose both bottle sizes before selecting multiple flavors",
   );
+  await page.selectOption('#batchForm [name="sizeMl"]', "500");
+  assert.ok(await page.locator('#batchForm [data-batch-choice]').count() >= 1, "new batches must offer multiple flavor choices");
   await page.click("#closeAdminModal");
 
   await page.selectOption("#mobileModuleSelector", "dashboard");

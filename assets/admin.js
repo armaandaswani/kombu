@@ -8613,82 +8613,123 @@ function newBatchForm() {
     "Produção",
     `
       <form id="batchForm">
-        <div class="input-grid">
-          ${variantPickerTemplate(recipeVariantChoices(), state.recipes[0]?.id, 'name="recipeId"')}
+        <div class="input-grid batch-production-meta">
+          <label class="field"><span>Tamanho</span><select name="sizeMl" id="batchBottleSize"></select></label>
           <label class="field"><span>Data de entrada / produção</span><input name="date" type="date" value="${todayIso()}" required></label>
-          <label class="field"><span>Garrafas produzidas</span><input name="actual" type="number" min="1" step="1" value="20" required></label>
-          <label class="field"><span>Código do lote</span><input name="code" required></label>
           <label class="field"><span>Responsável</span><input name="responsible" value="Equipe"></label>
-          <div class="result-card field-full" id="batchDatePreview"></div>
+          <label class="field"><span>Aplicar quantidade aos selecionados</span><div class="batch-bulk-qty"><input name="bulkQty" type="number" min="1" step="1" placeholder="Ex.: 20"><button class="btn btn-outline" type="button" data-batch-apply-qty>Aplicar</button></div></label>
         </div>
-        <button class="btn btn-primary" type="submit">Criar lote e baixar insumos</button>
+        <div class="batch-production-heading">
+          <div><strong>Sabores produzidos</strong><span>Selecione vários sabores e informe quantas garrafas foram feitas de cada um.</span></div>
+          <span id="batchSelectionSummary" class="inline-muted">0 sabores selecionados</span>
+        </div>
+        <div id="batchFlavorGrid" class="batch-choice-grid"></div>
+        <p id="batchProductionHint" class="field-help">O código do lote e o custo são gerados automaticamente por sabor, usando a receita cadastrada.</p>
+        <button class="btn btn-primary" type="submit"><span class="material-symbols-outlined" aria-hidden="true">factory</span>Criar lotes e baixar insumos</button>
       </form>
     `,
   );
   const form = document.querySelector("#batchForm");
-  let generatedCode = "";
-  const updateBatchPreview = () => {
-    const recipe = byId("recipes", form.elements.recipeId.value);
-    const date = form.elements.date.value || todayIso();
-    const plan = batchDatePlan(date);
-    const nextCode = nextBatchCode(recipe, date);
-    if (!form.elements.code.value || form.elements.code.value === generatedCode) form.elements.code.value = nextCode;
-    generatedCode = nextCode;
-    document.querySelector("#batchDatePreview").innerHTML = `
-      <small>Custo automático pela receita</small>
-      <strong>${brl(recipeCost(recipe).costPerBottle)} por garrafa · ${brl(recipeCost(recipe).costPerBottle * Number(form.elements.actual.value || 0))} no lote</strong>
-      <span>Validade: ${escapeHtml(plan.expiry)}. Inclui os ingredientes e materiais cadastrados na receita.</span>
-      <span>Ideal vender até ${plan.idealSellBy}; obrigatório vender até ${plan.sellBy}.</span>
-    `;
+  const choices = recipeVariantChoices();
+  const sizes = [...new Set(choices.map((choice) => Number(choice.sizeMl || BASE_BOTTLE_SIZE_ML)))].sort((a, b) => a - b);
+  form.elements.sizeMl.innerHTML = sizes.map((size) => `<option value="${size}" ${size === BASE_BOTTLE_SIZE_ML || (!sizes.includes(BASE_BOTTLE_SIZE_ML) && size === sizes[0]) ? "selected" : ""}>${number(size)}ml</option>`).join("");
+  const grid = document.querySelector("#batchFlavorGrid");
+  const summary = document.querySelector("#batchSelectionSummary");
+  const renderBatchChoices = () => {
+    const size = Number(form.elements.sizeMl.value || BASE_BOTTLE_SIZE_ML);
+    const visible = choices.filter((choice) => Number(choice.sizeMl) === size);
+    grid.innerHTML = visible.map((choice) => `
+      <div class="batch-choice-card" data-batch-flavor="${escapeHtml(choice.flavor)}">
+        <label class="batch-choice-label">
+          <input type="checkbox" data-batch-choice value="${escapeHtml(choice.id)}">
+          <span><strong>${escapeHtml(choice.flavor)}</strong><small>${number(size)}ml · código automático ${escapeHtml(nextBatchCode(byId("recipes", choice.id), form.elements.date.value || todayIso()))}</small></span>
+        </label>
+        <input class="batch-choice-qty" data-batch-qty="${escapeHtml(choice.id)}" type="number" min="1" step="1" placeholder="Qtd." disabled aria-label="Garrafas produzidas de ${escapeHtml(choice.flavor)}">
+      </div>
+    `).join("");
+    grid.querySelectorAll("[data-batch-choice]").forEach((checkbox) => {
+      const qty = grid.querySelector(`[data-batch-qty="${CSS.escape(checkbox.value)}"]`);
+      checkbox.addEventListener("change", () => {
+        qty.disabled = !checkbox.checked;
+        if (checkbox.checked && !qty.value) qty.value = "1";
+        updateBatchSelectionSummary();
+      });
+    });
+    grid.querySelectorAll("[data-batch-qty]").forEach((qty) => {
+      qty.addEventListener("input", () => {
+        const checkbox = grid.querySelector(`[data-batch-choice][value="${CSS.escape(qty.dataset.batchQty)}"]`);
+        if (Number(qty.value || 0) > 0 && checkbox && !checkbox.checked) {
+          checkbox.checked = true;
+          qty.disabled = false;
+        }
+        updateBatchSelectionSummary();
+      });
+    });
+    updateBatchSelectionSummary();
   };
-  bindVariantPicker(form, recipeVariantChoices(), updateBatchPreview);
-  form.addEventListener("change", updateBatchPreview);
-  form.elements.actual.addEventListener("input", updateBatchPreview);
-  updateBatchPreview();
+  const updateBatchSelectionSummary = () => {
+    const selected = [...grid.querySelectorAll("[data-batch-choice]:checked")];
+    const total = selected.reduce((sum, checkbox) => sum + Number(grid.querySelector(`[data-batch-qty="${CSS.escape(checkbox.value)}"]`)?.value || 0), 0);
+    summary.textContent = `${number(selected.length)} ${selected.length === 1 ? "sabor selecionado" : "sabores selecionados"}${total ? ` · ${number(total)} garrafas` : ""}`;
+  };
+  form.elements.sizeMl.addEventListener("change", renderBatchChoices);
+  form.elements.date.addEventListener("change", renderBatchChoices);
+  form.querySelector("[data-batch-apply-qty]").addEventListener("click", () => {
+    const qty = Number(form.elements.bulkQty.value || 0);
+    if (!Number.isInteger(qty) || qty <= 0) return;
+    grid.querySelectorAll("[data-batch-choice]:checked").forEach((checkbox) => {
+      const input = grid.querySelector(`[data-batch-qty="${CSS.escape(checkbox.value)}"]`);
+      input.value = qty;
+    });
+    updateBatchSelectionSummary();
+  });
+  renderBatchChoices();
   form.addEventListener("submit", (event) => {
     event.preventDefault();
     const data = Object.fromEntries(new FormData(form).entries());
-    const recipe = byId("recipes", data.recipeId);
-    const plan = batchDatePlan(data.date);
-    const bottles = Number(data.actual || 0);
-    if (!recipe || !Number.isInteger(bottles) || bottles <= 0) return;
-    if (state.batches.some(batch => String(batch.code).trim() === String(data.code).trim())) {
-      window.alert("Este código de lote já existe. Use um código diferente para registrar outra produção.");
+    const selected = [...grid.querySelectorAll("[data-batch-choice]:checked")].map((checkbox) => {
+      const recipe = byId("recipes", checkbox.value);
+      const bottles = Number(grid.querySelector(`[data-batch-qty="${CSS.escape(checkbox.value)}"]`)?.value || 0);
+      return { recipe, bottles, code: nextBatchCode(recipe, data.date) };
+    });
+    if (!selected.length || selected.some((selection) => !selection.recipe || !Number.isInteger(selection.bottles) || selection.bottles <= 0)) {
+      window.alert("Selecione pelo menos um sabor e informe uma quantidade válida.");
       return;
     }
     const createdAt = new Date().toISOString();
-    const batch = {
-      id: id("bat"),
-      code: data.code,
-      flavor: recipe?.flavor || "",
-      productId: recipe?.productId || "",
-      recipeId: data.recipeId,
-      sizeMl: Number(recipe.bottleMl || BASE_BOTTLE_SIZE_ML),
-      date: data.date,
-      responsible: data.responsible,
-      expected: bottles,
-      actual: bottles,
-      idealSellBy: plan.idealSellBy,
-      sellBy: plan.sellBy,
-      expiry: plan.expiry,
-      status: "aprovado",
-      inventoryAdjusted: true,
-      inventoryQty: bottles,
-      createdAt,
-      updatedAt: createdAt,
-      // Freeze what this production actually cost. Later ingredient price
-      // changes must not rewrite the cost of stock that already exists.
-      costSnapshot: buildBatchCostSnapshot(recipe),
-    };
-    state.batches.unshift(batch);
-    applyBatchInventory(recipe, bottles, -1);
-    // Additive: this batch's bottles go to open orders by FIFO and no existing
-    // reservation on any other order is touched.
-    const reserved = allocateNewBatchToOrders(batch);
-    addAudit("Lote criado", `${data.code}: ${number(bottles)} garrafas de ${recipe?.flavor || "receita"}; ${number(reserved)} reservadas para pedidos.`);
+    const created = selected.map(({ recipe, bottles, code }) => {
+      const plan = batchDatePlan(data.date);
+      const batch = {
+        id: id("bat"),
+        code,
+        flavor: recipe.flavor || "",
+        productId: recipe.productId || "",
+        recipeId: recipe.id,
+        sizeMl: Number(recipe.bottleMl || BASE_BOTTLE_SIZE_ML),
+        date: data.date,
+        responsible: data.responsible,
+        expected: bottles,
+        actual: bottles,
+        idealSellBy: plan.idealSellBy,
+        sellBy: plan.sellBy,
+        expiry: plan.expiry,
+        status: "aprovado",
+        inventoryAdjusted: true,
+        inventoryQty: bottles,
+        createdAt,
+        updatedAt: createdAt,
+        // Freeze what this production actually cost. Later ingredient price
+        // changes must not rewrite the cost of stock that already exists.
+        costSnapshot: buildBatchCostSnapshot(recipe),
+      };
+      state.batches.unshift(batch);
+      applyBatchInventory(recipe, bottles, -1);
+      return { batch, reserved: allocateNewBatchToOrders(batch) };
+    });
+    addAudit("Lotes criados", `${created.length} sabor(es) | ${number(created.reduce((sum, row) => sum + row.batch.actual, 0))} garrafas; ${number(created.reduce((sum, row) => sum + row.reserved, 0))} reservadas para pedidos.`);
     closeModal();
     currentStockView = "kombuchas";
-    currentKombuchaStockSize = batch.sizeMl;
+    currentKombuchaStockSize = created.at(-1)?.batch.sizeMl || BASE_BOTTLE_SIZE_ML;
     globalSearch = "";
     const search = document.querySelector("#globalSearch");
     if (search) search.value = "";

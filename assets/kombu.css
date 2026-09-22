@@ -1560,6 +1560,96 @@ textarea:focus-visible {
   background: var(--soft-green);
 }
 
+.batch-production-meta {
+  margin-bottom: 18px;
+}
+
+.batch-bulk-qty {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+}
+
+.batch-production-heading {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 16px;
+  margin: 6px 0 10px;
+}
+
+.batch-production-heading > div {
+  display: grid;
+  gap: 3px;
+}
+
+.batch-production-heading > div span {
+  color: var(--muted);
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.batch-choice-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(260px, 100%), 1fr));
+  gap: 10px;
+  max-height: min(52vh, 520px);
+  overflow: auto;
+  padding: 2px;
+}
+
+.batch-choice-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 92px;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: #fbfff6;
+  padding: 11px;
+}
+
+.batch-choice-card:has([data-batch-choice]:checked) {
+  border-color: rgba(42, 79, 39, 0.45);
+  background: var(--soft-green);
+  box-shadow: 0 0 0 2px rgba(42, 79, 39, 0.08);
+}
+
+.batch-choice-label {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  gap: 9px;
+  cursor: pointer;
+}
+
+.batch-choice-label span {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.batch-choice-label strong,
+.batch-choice-label small {
+  overflow-wrap: anywhere;
+}
+
+.batch-choice-label small {
+  color: var(--muted);
+  font-size: 0.76rem;
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+.batch-choice-qty {
+  min-width: 0;
+}
+
+.batch-choice-qty:disabled {
+  background: #f2f4ee;
+  color: var(--muted);
+}
+
 .stock-kombucha-layout,
 .stock-batch-list,
 .order-list {
