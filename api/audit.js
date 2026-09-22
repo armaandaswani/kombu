@@ -23,6 +23,7 @@ module.exports = async function handler(req, res) {
   // Keyset pagination on `at`, so paging stays correct while new entries arrive.
   const before = String(url.searchParams.get("before") || "").trim();
   const search = String(url.searchParams.get("search") || "").trim().slice(0, 120);
+  const day = String(url.searchParams.get("day") || "").trim();
 
   const filters = [
     "state_id=eq.production",
@@ -32,6 +33,15 @@ module.exports = async function handler(req, res) {
   ];
   if (before && Number.isFinite(Date.parse(before))) {
     filters.push(`at=lt.${encodeURIComponent(new Date(before).toISOString())}`);
+  }
+  if (/^\d{4}-\d{2}-\d{2}$/.test(day)) {
+    const start = new Date(`${day}T00:00:00`);
+    const end = new Date(start);
+    end.setDate(end.getDate() + 1);
+    if (Number.isFinite(start.getTime()) && Number.isFinite(end.getTime())) {
+      filters.push(`at=gte.${encodeURIComponent(start.toISOString())}`);
+      filters.push(`at=lt.${encodeURIComponent(end.toISOString())}`);
+    }
   }
   if (search) {
     // PostgREST needs commas and parentheses escaped inside an or() filter.

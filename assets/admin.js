@@ -1858,8 +1858,36 @@ function applyBatchInventory(recipe, bottles, direction) {
   });
   usage.packaging.forEach(({ item, qty }) => {
     if (!item) return;
+    // Packaging records with zero stock are often cost-only catalog entries
+    // (the bottle/label price is known, but physical packaging is not tracked
+    // in the portal). Do not create negative inventory for those records.
+    if (Number(item.stock || 0) <= 0) return;
     item.stock = Number((Number(item.stock || 0) + Number(direction || 0) * qty).toFixed(6));
   });
+}
+
+function batchProductionShortfalls(selections = []) {
+  const required = new Map();
+  selections.forEach(({ recipe, bottles }) => {
+    batchUsage(recipe, bottles).ingredients.forEach(({ ingredient, qty }) => {
+      if (!ingredient) return;
+      const key = `ingredient:${ingredient.id}`;
+      const row = required.get(key) || { item: ingredient, label: ingredient.name, unit: ingredient.purchaseUnit || "un", required: 0 };
+      row.required += Number(qty || 0);
+      required.set(key, row);
+    });
+    batchUsage(recipe, bottles).packaging.forEach(({ item, qty }) => {
+      if (!item) return;
+      if (Number(item.stock || 0) <= 0) return;
+      const key = `packaging:${item.id}`;
+      const row = required.get(key) || { item, label: item.name, unit: item.unit || "un", required: 0 };
+      row.required += Number(qty || 0);
+      required.set(key, row);
+    });
+  });
+  return [...required.values()]
+    .map((row) => ({ ...row, available: Number(row.item.stock || 0) }))
+    .filter((row) => row.required > Math.max(0, row.available) + 1e-9);
 }
 
 function adjustBatchInventoryTo(batch, nextActual) {
@@ -4801,6 +4829,10 @@ function renderDashboard() {
         </div>
       </article>
     </section>
+    <section class="admin-card dashboard-recent-changes" aria-label="Últimas alterações">
+      <div class="dashboard-card-head"><h3>Últimas alterações</h3><button class="btn btn-outline" type="button" data-action="audit-history"><span class="material-symbols-outlined" aria-hidden="true">history</span>Ver histórico</button></div>
+      <div class="stack-list">${renderAuditRows(6) || `<p class="empty-note">Nenhuma alteração registrada ainda.</p>`}</div>
+    </section>
     <details class="admin-card dashboard-details" data-dashboard-panel="finance">
       <summary>Entender o resultado financeiro</summary>
       <p>Receita: ${brl(financial.revenue)} · Custo das saídas: ${brl(financial.cogs)} · Despesas: ${brl(financial.expenses)}.</p>
@@ -4816,10 +4848,6 @@ function renderDashboard() {
         <div class="stack-list">
           ${partnerRows.length ? partnerRows.slice(0, 6).map(([partner, qty]) => `<div class="report-row"><strong>${escapeHtml(partner)}</strong><span>${number(qty)} garrafas vendidas</span></div>`).join("") : `<p class="empty-note">Registre vendas para ver parceiros por volume.</p>`}
         </div>
-      </article>
-      <article class="admin-card">
-        <h3>Audit log recente</h3>
-        <div class="stack-list">${renderAuditRows(5)}</div>
       </article>
     </section></details>
   `;
@@ -6332,7 +6360,13 @@ function auditDetailWithFlavor(detail) {
 
 // The trail inside the state document is capped, so it only ever shows the most
 // recent activity. audit_events keeps everything; this reads it back.
-let auditHistory = { entries: [], nextBefore: null, search: "", loading: false, error: "", unavailable: false };
+let auditHistory = { entries: [], nextBefore: null, search: "", day: todayIso(), loading: false, error: "", unavailable: false };
+
+function shiftIsoDay(day, amount) {
+  const date = new Date(`${day || todayIso()}T12:00:00`);
+  date.setDate(date.getDate() + Number(amount || 0));
+  return date.toLocaleDateString("sv-SE");
+}
 
 function auditHistoryMarkup() {
   const rows = auditHistory.entries
@@ -6348,7 +6382,16 @@ function auditHistoryMarkup() {
     .join("");
 
   return `
-    <div class="input-grid">
+    <div class="input-grid audit-history-filters">
+      <label class="field">
+        <span>Dia do histórico</span>
+        <input id="auditHistoryDay" type="date" value="${escapeHtml(auditHistory.day)}">
+      </label>
+      <div class="audit-day-actions">
+        <button class="btn btn-outline" type="button" data-action="audit-day-prev"><span class="material-symbols-outlined" aria-hidden="true">chevron_left</span>Dia anterior</button>
+        <button class="btn btn-outline" type="button" data-action="audit-day-today">Hoje</button>
+        <button class="btn btn-outline" type="button" data-action="audit-day-next">Dia seguinte<span class="material-symbols-outlined" aria-hidden="true">chevron_right</span></button>
+      </div>
       <label class="field field-full">
         <span>Buscar no histórico</span>
         <input id="auditHistorySearch" type="search" value="${escapeHtml(auditHistory.search)}" placeholder="Sabor, cliente, lote, acao..." autocomplete="off">
@@ -6374,6 +6417,13 @@ function renderAuditHistory() {
   if (!mount) return;
   mount.innerHTML = auditHistoryMarkup();
   const input = mount.querySelector("#auditHistorySearch");
+  const day = mount.querySelector("#auditHistoryDay");
+  if (day) {
+    day.addEventListener("change", () => {
+      auditHistory.day = day.value || todayIso();
+      loadAuditHistory({ reset: true });
+    });
+  }
   if (input) {
     input.addEventListener("input", () => {
       window.clearTimeout(renderAuditHistory.timer);
@@ -6400,6 +6450,7 @@ async function loadAuditHistory({ reset = false } = {}) {
     const params = new URLSearchParams({ limit: "50" });
     if (auditHistory.nextBefore) params.set("before", auditHistory.nextBefore);
     if (auditHistory.search) params.set("search", auditHistory.search);
+    if (auditHistory.day) params.set("day", auditHistory.day);
     const response = await fetch(`/api/audit?${params.toString()}`, { credentials: "same-origin" });
     const payload = await readJsonSafe(response);
     if (!response.ok || !payload.ok) {
@@ -6418,7 +6469,7 @@ async function loadAuditHistory({ reset = false } = {}) {
     if (!auditHistory.entries.length && (auditHistory.unavailable || auditHistory.error)) {
       const term = normalizeText(auditHistory.search);
       auditHistory.entries = (state.audit || [])
-        .filter((entry) => !term || normalizeText(`${entry.action || ""} ${entry.detail || ""}`).includes(term))
+        .filter((entry) => (!auditHistory.day || String(entry.at || "").slice(0, 10) === auditHistory.day) && (!term || normalizeText(`${entry.action || ""} ${entry.detail || ""}`).includes(term)))
         .slice(0, 50)
         .map((entry) => ({ at: entry.at, user: entry.user, action: entry.action, detail: entry.detail }));
       if (auditHistory.entries.length) {
@@ -6437,8 +6488,8 @@ async function loadAuditHistory({ reset = false } = {}) {
   }
 }
 
-function openAuditHistory({ search = "", title = "Histórico completo", eyebrow = "Auditoria", intro = "" } = {}) {
-  auditHistory = { entries: [], nextBefore: null, search, loading: false, error: "", unavailable: false };
+function openAuditHistory({ search = "", day = todayIso(), title = "Histórico completo", eyebrow = "Auditoria", intro = "" } = {}) {
+  auditHistory = { entries: [], nextBefore: null, search, day, loading: false, error: "", unavailable: false };
   openModal(
     title,
     eyebrow,
@@ -8696,6 +8747,11 @@ function newBatchForm() {
       window.alert("Selecione pelo menos um sabor e informe uma quantidade válida.");
       return;
     }
+    const shortfalls = batchProductionShortfalls(selected);
+    if (shortfalls.length) {
+      window.alert(`Insumos insuficientes para esta produção:\n${shortfalls.map((row) => `${row.label}: precisa ${number(row.required, 3)} ${row.unit}, disponível ${number(row.available, 3)} ${row.unit}`).join("\n")}`);
+      return;
+    }
     const createdAt = new Date().toISOString();
     const created = selected.map(({ recipe, bottles, code }) => {
       const plan = batchDatePlan(data.date);
@@ -10858,6 +10914,9 @@ function handleAction(action) {
     "sync-cloud": () => syncFromCloud().then(render),
     "audit-history": () => openAuditHistory(),
     "audit-history-more": () => loadAuditHistory(),
+    "audit-day-prev": () => { auditHistory.day = shiftIsoDay(auditHistory.day, -1); loadAuditHistory({ reset: true }); },
+    "audit-day-next": () => { auditHistory.day = shiftIsoDay(auditHistory.day, 1); loadAuditHistory({ reset: true }); },
+    "audit-day-today": () => { auditHistory.day = todayIso(); loadAuditHistory({ reset: true }); },
     "sales-ledger": () => openSalesLedger(),
     "sales-ledger-more": () => loadSalesLedger(),
     "order-history": openOrderHistory,

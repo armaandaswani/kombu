@@ -1650,6 +1650,21 @@ textarea:focus-visible {
   color: var(--muted);
 }
 
+.audit-history-filters {
+  align-items: end;
+}
+
+.audit-day-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: end;
+}
+
+.dashboard-recent-changes {
+  margin-top: 18px;
+}
+
 .stock-kombucha-layout,
 .stock-batch-list,
 .order-list {
