@@ -432,7 +432,8 @@ async function run() {
   assert.match(await page.locator('[data-stock-size="500"]').innerText(), /1 disponível/);
   await assertNoHorizontalOverflow(page, "stock variant overview");
   await page.selectOption("#mobileModuleSelector", "reports");
-  const legacySaleAudit = page.locator(".audit-row", { hasText: "LOT-TEST-1" });
+  const legacySaleAudit = page.locator(".audit-event-card", { hasText: "LOT-TEST-1" });
+  await legacySaleAudit.locator("summary").click();
   assert.match(await legacySaleAudit.innerText(), /Maracuja/);
   assert.match(await legacySaleAudit.innerText(), /lote LOT-TEST-1/);
 

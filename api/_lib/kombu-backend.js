@@ -700,7 +700,7 @@ function stateInvariantViolations(state) {
 
   [...list(state.ingredients), ...list(state.packaging)].forEach((item) => {
     if (isBadNumber(item?.stock)) byRule.non_finite_quantity += 1;
-    if (negative(item?.stock)) byRule.negative_material_stock += 1;
+    // Material deficits are valid: completed production still consumes its recipe.
   });
 
   return { byRule, total: Object.values(byRule).reduce((sum, count) => sum + count, 0) };

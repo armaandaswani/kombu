@@ -398,6 +398,7 @@ function reservationAuditState(state, maps) {
         orderId: String(order?.code || order?.id || ""),
         client: orderAuditLabel(order),
         quantity: reservedQuantity(item),
+        batchCodes: [...new Set((item.allocations || []).map((allocation) => String(allocation?.batchCode || "")).filter(Boolean))],
       });
     });
   });
@@ -442,7 +443,7 @@ function reservationAuditChanges(beforeRows, afterRows, reconciledAt, user, mode
       newQty,
       quantityChanged,
       reason,
-      detail: `${row.flavor} ${row.sizeMl}ml | ${row.client} | ${previousQty} -> ${newQty} (${direction} ${Math.abs(quantityChanged)})`,
+      detail: `${row.flavor} ${row.sizeMl}ml | ${row.client} | pedido ${row.orderId || "-"} | lotes ${(row.batchCodes || []).join(", ") || "-"} | ${previousQty} -> ${newQty} (${direction} ${Math.abs(quantityChanged)})`,
     });
   });
   return records;
@@ -584,7 +585,7 @@ function reconcileReservations(inputState, options = {}) {
       auditUser,
       mode
     );
-    state.audit.unshift(...detailedRecords, {
+    if (detailedRecords.length || mode !== "preserve") state.audit.unshift(...detailedRecords, {
       at: reconciledAt,
       user: auditUser,
       action:

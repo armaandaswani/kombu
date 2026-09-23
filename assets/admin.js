@@ -1858,36 +1858,8 @@ function applyBatchInventory(recipe, bottles, direction) {
   });
   usage.packaging.forEach(({ item, qty }) => {
     if (!item) return;
-    // Packaging records with zero stock are often cost-only catalog entries
-    // (the bottle/label price is known, but physical packaging is not tracked
-    // in the portal). Do not create negative inventory for those records.
-    if (Number(item.stock || 0) <= 0) return;
     item.stock = Number((Number(item.stock || 0) + Number(direction || 0) * qty).toFixed(6));
   });
-}
-
-function batchProductionShortfalls(selections = []) {
-  const required = new Map();
-  selections.forEach(({ recipe, bottles }) => {
-    batchUsage(recipe, bottles).ingredients.forEach(({ ingredient, qty }) => {
-      if (!ingredient) return;
-      const key = `ingredient:${ingredient.id}`;
-      const row = required.get(key) || { item: ingredient, label: ingredient.name, unit: ingredient.purchaseUnit || "un", required: 0 };
-      row.required += Number(qty || 0);
-      required.set(key, row);
-    });
-    batchUsage(recipe, bottles).packaging.forEach(({ item, qty }) => {
-      if (!item) return;
-      if (Number(item.stock || 0) <= 0) return;
-      const key = `packaging:${item.id}`;
-      const row = required.get(key) || { item, label: item.name, unit: item.unit || "un", required: 0 };
-      row.required += Number(qty || 0);
-      required.set(key, row);
-    });
-  });
-  return [...required.values()]
-    .map((row) => ({ ...row, available: Number(row.item.stock || 0) }))
-    .filter((row) => row.required > Math.max(0, row.available) + 1e-9);
 }
 
 function adjustBatchInventoryTo(batch, nextActual) {
@@ -3142,6 +3114,134 @@ function registerOrderDelivery(order, delivery) {
   refreshOrderReservationStatus(order);
 }
 
+function orderReadyForDelivery(order = {}) {
+  if (!isOpenOrder(order)) return false;
+  const items = orderItems(order).filter((item) => orderItemOutstandingQty(item) > 0);
+  return items.some((item) => deliveryProofDefaultQty(item) > 0);
+}
+
+function ordersReadyForBulkDelivery() {
+  return (state.orders || []).filter(orderReadyForDelivery).sort(compareOrdersByReservationPriority);
+}
+
+function buildReadyOrderDelivery(order, data = {}) {
+  const deliveredAt = data.deliveryDate || todayIso();
+  const items = orderItems(order)
+    .map((item) => {
+      const qty = deliveryProofDefaultQty(item);
+      if (!qty) return null;
+      return {
+        orderItemKey: item.key,
+        productId: item.productId || "",
+        flavor: orderFlavorText(item),
+        qty,
+        unitPrice: Number(item.unitPrice || 0),
+        allocations: deliveryAllocationPlan(item, qty),
+      };
+    })
+    .filter(Boolean);
+  if (!items.length) throw new Error("Este pedido não tem garrafas pendentes.");
+  const deliveryFee = orderDeliveries(order).length ? 0 : Math.max(0, Number(order.deliveryFee || 0));
+  const productsTotal = items.reduce((sum, item) => sum + Number(item.qty || 0) * Number(item.unitPrice || 0), 0);
+  return {
+    id: id("delivery"),
+    number: orderDeliveries(order).length + 1,
+    deliveredAt,
+    createdAt: new Date().toISOString(),
+    paymentMethod: data.paymentMethod || deliveryProofPaymentMethod(order),
+    paymentDueDate: addDaysIso(deliveredAt, 15),
+    deliveryFee,
+    notes: String(data.notes || "").trim(),
+    items,
+    totalQty: items.reduce((sum, item) => sum + Number(item.qty || 0), 0),
+    productsTotal,
+    total: productsTotal + deliveryFee,
+  };
+}
+
+function deliveryAuditDetail(order, delivery) {
+  const lines = (delivery.items || []).map((item) => {
+    const batches = (item.allocations || []).map((allocation) => `${allocation.batchCode} (${number(allocation.qty)})`).join(", ") || "sem lote";
+    return `${number(item.qty)}x ${item.flavor} | lotes: ${batches}`;
+  });
+  return `${orderClientDisplayName(order)} | pedido ${order.code || order.id} | remessa ${number(delivery.number)} | ${lines.join("; ")}`;
+}
+
+function quickReadyDeliveriesForm() {
+  const orders = ordersReadyForBulkDelivery();
+  if (!orders.length) {
+    openModal(
+      "Dar baixa nos prontos",
+      "Pedidos",
+      `<p class="empty-note">Nenhum pedido aberto tem garrafas reservadas para entrega.</p>`,
+    );
+    return;
+  }
+  openModal(
+    "Dar baixa nos prontos",
+    "Pedidos",
+    `
+      <form id="quickReadyDeliveriesForm">
+        <p class="lead" style="font-size:1rem">Selecione os pedidos para entregar as garrafas já reservadas. O que ainda falta produzir continua pendente. O PDF fica disponível em cada pedido.</p>
+        <div class="input-grid delivery-proof-meta">
+          <label class="field"><span>Data das entregas</span><input name="deliveryDate" type="date" value="${todayIso()}" required></label>
+          <label class="field delivery-proof-payment"><span>Forma de pagamento</span><select name="paymentMethod" class="admin-select">${deliveryProofPaymentOptions(DELIVERY_PROOF_DEFAULT_PAYMENT_METHOD)}</select></label>
+          <label class="field field-full"><span>Observação comum (opcional)</span><input name="notes" placeholder="Ex.: baixa retroativa de entregas já concluídas"></label>
+        </div>
+        <fieldset class="quick-delivery-list">
+          <legend>Pedidos prontos (${number(orders.length)})</legend>
+          ${orders.map((order) => {
+            const items = orderItems(order).filter((item) => orderItemOutstandingQty(item) > 0);
+            const qty = items.reduce((sum, item) => sum + deliveryProofDefaultQty(item), 0);
+            return `
+              <label class="quick-delivery-card">
+                <input type="checkbox" name="orderIds" value="${escapeHtml(order.id)}" checked>
+                <span class="quick-delivery-card-body">
+                  <strong>${escapeHtml(orderClientDisplayName(order))}</strong>
+                  <small>${order.code ? `Pedido ${escapeHtml(order.code)} · ` : ""}${escapeHtml(shortDate(order.orderDate || order.createdAt?.slice(0, 10) || ""))} · ${number(qty)} garrafa(s)</small>
+                  <span>${items.map((item) => `${number(deliveryProofDefaultQty(item))}x ${escapeHtml(orderFlavorText(item))} · lotes ${escapeHtml(orderItemBatchCodes(item).join(", ") || "-")}`).join("; ")}</span>
+                </span>
+              </label>
+            `;
+          }).join("")}
+        </fieldset>
+        <button class="btn btn-primary" type="submit"><span class="material-symbols-outlined" aria-hidden="true">local_shipping</span>Registrar entregas selecionadas</button>
+      </form>
+    `,
+  );
+  const form = document.querySelector("#quickReadyDeliveriesForm");
+  form.addEventListener("submit", (event) => {
+    event.preventDefault();
+    const data = Object.fromEntries(new FormData(form).entries());
+    const ids = [...form.querySelectorAll('input[name="orderIds"]:checked')].map((input) => input.value);
+    if (!ids.length) {
+      window.alert("Selecione pelo menos um pedido pronto.");
+      return;
+    }
+    const button = form.querySelector('button[type="submit"]');
+    button.disabled = true;
+    try {
+      const planned = ids.map((orderId) => {
+        const order = byId("orders", orderId);
+        if (!order || !orderReadyForDelivery(order)) throw new Error("Um dos pedidos mudou e já não tem garrafas reservadas.");
+        const delivery = buildReadyOrderDelivery(order, data);
+        return { order, delivery };
+      });
+      const snapshot = clone(state);
+      try {
+        planned.forEach(({ order, delivery }) => registerOrderDelivery(order, delivery));
+      } catch (error) { state = snapshot; throw error; }
+      addAudit("Entregas em lote registradas", planned.map(({ order, delivery }) => deliveryAuditDetail(order, delivery)).join("\n"));
+      closeModal();
+      render();
+    } catch (error) {
+      console.error(error);
+      button.disabled = false;
+      window.alert(error.message || "Não foi possível registrar as entregas selecionadas.");
+    }
+  });
+}
+
 function deliveryProofForm(orderId) {
   const order = byId("orders", orderId);
   if (!order) {
@@ -3223,7 +3323,7 @@ function deliveryProofForm(orderId) {
       const delivery = buildOrderDelivery(order, form);
       generateDeliveryProofPdf(order, delivery);
       registerOrderDelivery(order, delivery);
-      addAudit("Entrega parcial registrada", `${orderClientDisplayName(order)} | remessa ${delivery.number} | ${number(delivery.totalQty)} garrafa(s)`);
+      addAudit("Entrega parcial registrada", deliveryAuditDetail(order, delivery));
       closeModal();
       render();
     } catch (error) {
@@ -4474,7 +4574,7 @@ function applyReservationRecalculation() {
   forceAutomaticOrderReservations();
   addAudit(
     "Reservas automáticas reativadas",
-    `${number(changes.length)} linha(s) alteradas pela redistribuição FIFO solicitada pelo usuário.`,
+    changes.map((row) => `${row.client} | ${row.flavor} | ${number(row.before)} → ${number(row.after)} reservadas`).join("\n") || "Nenhuma quantidade alterada.",
   );
   closeModal();
   render();
@@ -6019,6 +6119,7 @@ function orderCompactCard(order) {
 function renderOrders() {
   const orders = state.orders || [];
   const filteredOrders = orders.filter((order) => matchesSearch(order));
+  const readyForDelivery = ordersReadyForBulkDelivery();
   const openOrders = orders.filter(isOpenOrder);
   const inProduction = orders.filter((order) => order.status === "em produção");
   const dueSoon = openOrders.filter((order) => {
@@ -6029,7 +6130,7 @@ function renderOrders() {
     ${pageHead(
       "Pedidos",
       "Novos pedidos e lotes recebem reservas automaticamente. A prioridade é a data do pedido, do mais antigo ao mais novo.",
-      `${actionButton("new-order", "Novo pedido", "add")} ${actionButton("recalculate-reservations", "Autoalocar estoque", "autorenew", "btn-outline")} ${actionButton("export-orders", "CSV", "download", "btn-outline")}`,
+      `${actionButton("new-order", "Novo pedido", "add")} ${actionButton("quick-deliver-ready", `Dar baixa nos prontos${readyForDelivery.length ? ` (${number(readyForDelivery.length)})` : ""}`, "local_shipping", "btn-outline")} ${actionButton("recalculate-reservations", "Autoalocar estoque", "autorenew", "btn-outline")} ${actionButton("export-orders", "CSV", "download", "btn-outline")}`,
     )}
     <section class="order-list order-compact-list">
       ${filteredOrders.length ? filteredOrders.map(orderCompactCard).join("") : `<article class="admin-card"><p class="empty-note">Nenhum pedido ainda. Use “Novo pedido” para começar.</p></article>`}
@@ -6370,15 +6471,7 @@ function shiftIsoDay(day, amount) {
 
 function auditHistoryMarkup() {
   const rows = auditHistory.entries
-    .map(
-      (entry) => `
-        <div class="audit-row">
-          <strong>${escapeHtml(entry.action || "-")}</strong>
-          <span>${escapeHtml(entry.at ? new Date(entry.at).toLocaleString("pt-BR") : "-")} | ${escapeHtml(entry.user || "-")}</span>
-          <span>${escapeHtml(auditDetailWithFlavor(entry.detail || ""))}</span>
-        </div>
-      `,
-    )
+    .map((entry) => auditEventCardMarkup(entry))
     .join("");
 
   return `
@@ -6847,8 +6940,22 @@ function openLeadArchive() {
 function renderAuditRows(limit) {
   return state.audit
     .slice(0, limit)
-    .map((entry) => `<div class="audit-row"><strong>${escapeHtml(entry.action)}</strong><span>${escapeHtml(new Date(entry.at).toLocaleString("pt-BR"))} | ${escapeHtml(entry.user)}</span><span>${escapeHtml(auditDetailWithFlavor(entry.detail))}</span></div>`)
+    .map((entry) => auditEventCardMarkup(entry))
     .join("");
+}
+
+function auditEventCardMarkup(entry = {}) {
+  const detail = auditDetailWithFlavor(entry.detail || "");
+  const timestamp = entry.at ? new Date(entry.at).toLocaleString("pt-BR") : "-";
+  return `
+    <details class="audit-event-card">
+      <summary>
+        <span class="audit-event-heading"><strong>${escapeHtml(entry.action || "-")}</strong><small>${escapeHtml(timestamp)} · ${escapeHtml(entry.user || "-")}</small></span>
+        <span class="material-symbols-outlined audit-event-chevron" aria-hidden="true">expand_more</span>
+      </summary>
+      <div class="audit-event-detail">${escapeHtml(detail || "Sem detalhes registrados.")}</div>
+    </details>
+  `;
 }
 
 function matchesSearch(item) {
@@ -8747,11 +8854,6 @@ function newBatchForm() {
       window.alert("Selecione pelo menos um sabor e informe uma quantidade válida.");
       return;
     }
-    const shortfalls = batchProductionShortfalls(selected);
-    if (shortfalls.length) {
-      window.alert(`Insumos insuficientes para esta produção:\n${shortfalls.map((row) => `${row.label}: precisa ${number(row.required, 3)} ${row.unit}, disponível ${number(row.available, 3)} ${row.unit}`).join("\n")}`);
-      return;
-    }
     const createdAt = new Date().toISOString();
     const created = selected.map(({ recipe, bottles, code }) => {
       const plan = batchDatePlan(data.date);
@@ -8782,7 +8884,17 @@ function newBatchForm() {
       applyBatchInventory(recipe, bottles, -1);
       return { batch, reserved: allocateNewBatchToOrders(batch) };
     });
-    addAudit("Lotes criados", `${created.length} sabor(es) | ${number(created.reduce((sum, row) => sum + row.batch.actual, 0))} garrafas; ${number(created.reduce((sum, row) => sum + row.reserved, 0))} reservadas para pedidos.`);
+    addAudit(
+      "Lotes criados",
+      created
+        .map(({ batch, reserved }) => {
+          const destinations = batchReservationRows(batch.code)
+            .map((row) => `${number(row.qty)}x ${orderClientDisplayName(row.order)} (${row.order.code || row.order.id})`)
+            .join(", ");
+          return `${batch.flavor} ${number(batch.sizeMl)}ml | ${number(batch.actual)} produzidas | lote ${batch.code} | ${number(reserved)} reservadas${destinations ? ` para: ${destinations}` : ""}`;
+        })
+        .join("\n"),
+    );
     closeModal();
     currentStockView = "kombuchas";
     currentKombuchaStockSize = created.at(-1)?.batch.sizeMl || BASE_BOTTLE_SIZE_ML;
@@ -10863,6 +10975,7 @@ function handleAction(action) {
     "new-order": () => orderForm(),
     "new-receipt": () => startReceiptWizard(),
     "new-batch": newBatchForm,
+    "quick-deliver-ready": quickReadyDeliveriesForm,
     "stock-adjustment": stockAdjustmentForm,
     "new-supplier": () =>
       simpleRecordForm("suppliers", "Novo fornecedor", [

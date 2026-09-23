@@ -6242,3 +6242,19 @@ textarea:focus-visible {
 [data-release-destination] { min-width: 220px; max-width: 320px; margin-top: 10px; }
 #adjustOrderReservationForm [data-release-destination],
 #adjustOrderReservationForm .reserve-quick { grid-column: 1 / -1; min-width: 0; }
+
+.audit-event-card { border: 1px solid var(--line); border-radius: 12px; background: white; overflow: hidden; }
+.audit-event-card summary { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 16px; cursor: pointer; list-style: none; }
+.audit-event-card summary::-webkit-details-marker { display: none; }
+.audit-event-heading { display: grid; gap: 5px; }
+.audit-event-heading small { color: var(--muted); }
+.audit-event-chevron { transition: transform .2s; }
+.audit-event-card[open] .audit-event-chevron { transform: rotate(180deg); }
+.audit-event-detail { border-top: 1px solid var(--line); padding: 16px; white-space: pre-line; overflow-wrap: anywhere; line-height: 1.7; background: #f8fbf3; }
+.quick-delivery-list { display: grid; gap: 10px; border: 0; padding: 0; margin: 16px 0; min-width: 0; }
+.quick-delivery-list legend { font-weight: 800; margin-bottom: 12px; }
+.quick-delivery-card { display: flex; gap: 12px; padding: 16px; border: 1px solid var(--line); border-radius: 12px; background: white; cursor: pointer; }
+.quick-delivery-card:has(input:checked) { border-color: var(--green); background: #f3ffe2; }
+.quick-delivery-card input { width: 22px; height: 22px; flex-shrink: 0; }
+.quick-delivery-card-body { display: grid; gap: 6px; overflow-wrap: anywhere; min-width: 0; }
+.quick-delivery-card-body small, .quick-delivery-card-body > span { color: var(--muted); font-size: 13px; }

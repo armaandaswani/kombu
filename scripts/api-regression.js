@@ -451,7 +451,7 @@ async function run() {
 
   const negativeStock = cleanState();
   negativeStock.ingredients[0].stock = -3;
-  assert.strictEqual(backend.stateInvariantViolations(negativeStock).byRule.negative_material_stock, 1);
+  assert.strictEqual(backend.stateInvariantViolations(negativeStock).byRule.negative_material_stock, 0);
 
   const notANumber = cleanState();
   notANumber.orders[0].items[0].qty = "abc";
