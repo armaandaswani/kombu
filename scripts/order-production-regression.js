@@ -113,6 +113,22 @@ const stored = page => page.evaluate(()=>JSON.parse(localStorage.getItem("kombuA
       await eventCard.locator('summary').click();
       assert.match(await eventCard.locator('.audit-event-detail').innerText(),/Maracuja 500ml/);
       assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+2));
+      const filterCases = await page.evaluate(() => {
+        const base = {status:'all',period:'recent',from:'',to:'',dateBy:'order'};
+        const oldOpen = {status:'recebido',orderDate:'2020-01-01'};
+        const recent = {status:'entregue',orderDate:'2020-01-01',deliveredAt:'2026-09-17'};
+        const old = {...recent,deliveredAt:'2026-09-16'};
+        return [orderVisibleInList(oldOpen,base,'2026-09-23'),orderVisibleInList(recent,base,'2026-09-23'),orderVisibleInList(old,base,'2026-09-23'),orderVisibleInList(old,{...base,period:'custom',dateBy:'delivery',from:'2026-09-16',to:'2026-09-16'}),orderVisibleInList(recent,{...base,status:'open'},'2026-09-23')];
+      });
+      assert.deepEqual(filterCases,[true,true,false,true,false]);
+      await page.evaluate(()=>setModule('orders'));
+      await page.click('[data-order-list-status="open"]');
+      assert.equal(await page.locator('.order-compact-list > details').count(),0);
+      await page.click('[data-order-list-status="entregue"]');
+      await page.selectOption('#orderListPeriod','custom');
+      await page.selectOption('#orderListDateBy','delivery');
+      assert.equal(await page.locator('#orderListFrom').isVisible(),true);
+      assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+2));
       assert.deepEqual(errors,[]);
       await context.close();
     }

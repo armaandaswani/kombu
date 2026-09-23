@@ -6116,9 +6116,42 @@ function orderCompactCard(order) {
   `;
 }
 
+let orderListFilters = { status: "all", period: "recent", from: "", to: "", dateBy: "order" };
+
+function orderDeliveryDate(order) {
+  return String(order.lastDeliveryAt || order.deliveredAt || orderDeliveries(order).map(d => d.deliveredAt).filter(Boolean).sort().at(-1) || "").slice(0, 10);
+}
+
+function orderVisibleInList(order, filters = orderListFilters, today = new Date().toLocaleDateString("sv-SE")) {
+  if (filters.status === "open" ? !isOpenOrder(order) : filters.status !== "all" && order.status !== filters.status) return false;
+  if (filters.period === "recent") {
+    if (isOpenOrder(order)) return true;
+    const date = orderDeliveryDate(order);
+    return order.status === "entregue" && date >= shiftIsoDay(today, -6) && date <= today;
+  }
+  if (filters.period === "all") return true;
+  const date = filters.dateBy === "delivery" ? orderDeliveryDate(order) : String(order.orderDate || order.createdAt || "").slice(0, 10);
+  return Boolean(date) && (!filters.from || date >= filters.from) && (!filters.to || date <= filters.to);
+}
+
+function orderListFiltersMarkup() {
+  return `<section class="admin-card order-list-filters">
+    <div class="order-filter-status" role="group" aria-label="Status dos pedidos">
+      ${[["all", "Todos"], ["open", "Em aberto"], ...ORDER_STATUSES.map(status => [status, status])].map(([value, label]) => `<button type="button" class="btn btn-outline ${orderListFilters.status === value ? "is-active" : ""}" data-order-list-status="${value}" aria-pressed="${orderListFilters.status === value}">${label}</button>`).join("")}
+    </div>
+    <div class="input-grid">
+      <label class="field"><span>Visualizar</span><select id="orderListPeriod">${[["recent", "Em aberto + entregues há até 7 dias"], ["custom", "Consultar período"], ["all", "Todo o histórico"]].map(([value,label])=>`<option value="${value}" ${orderListFilters.period === value ? "selected" : ""}>${label}</option>`).join("")}</select></label>
+      ${orderListFilters.period === "custom" ? `<label class="field"><span>Data de referência</span><select id="orderListDateBy"><option value="order" ${orderListFilters.dateBy === "order" ? "selected" : ""}>Entrada do pedido</option><option value="delivery" ${orderListFilters.dateBy === "delivery" ? "selected" : ""}>Última entrega</option></select></label>
+      <label class="field"><span>De</span><input type="date" id="orderListFrom" value="${escapeHtml(orderListFilters.from)}"></label>
+      <label class="field"><span>Até</span><input type="date" id="orderListTo" value="${escapeHtml(orderListFilters.to)}"></label>` : ""}
+    </div>
+    <p class="inline-muted">${orderListFilters.period === "recent" ? "Pedidos abertos aparecem sempre. Entregues saem desta visão após sete dias da entrega e permanecem no histórico." : "O status e o período selecionados filtram a lista. Nenhum pedido é apagado."}</p>
+  </section>`;
+}
+
 function renderOrders() {
   const orders = state.orders || [];
-  const filteredOrders = orders.filter((order) => matchesSearch(order));
+  const filteredOrders = orders.filter((order) => matchesSearch(order) && orderVisibleInList(order));
   const readyForDelivery = ordersReadyForBulkDelivery();
   const openOrders = orders.filter(isOpenOrder);
   const inProduction = orders.filter((order) => order.status === "em produção");
@@ -6132,8 +6165,10 @@ function renderOrders() {
       "Novos pedidos e lotes recebem reservas automaticamente. A prioridade é a data do pedido, do mais antigo ao mais novo.",
       `${actionButton("new-order", "Novo pedido", "add")} ${actionButton("quick-deliver-ready", `Dar baixa nos prontos${readyForDelivery.length ? ` (${number(readyForDelivery.length)})` : ""}`, "local_shipping", "btn-outline")} ${actionButton("recalculate-reservations", "Autoalocar estoque", "autorenew", "btn-outline")} ${actionButton("export-orders", "CSV", "download", "btn-outline")}`,
     )}
+    ${orderListFiltersMarkup()}
+    <p class="inline-muted">${number(filteredOrders.length)} pedido(s) nesta visão</p>
     <section class="order-list order-compact-list">
-      ${filteredOrders.length ? filteredOrders.map(orderCompactCard).join("") : `<article class="admin-card"><p class="empty-note">Nenhum pedido ainda. Use “Novo pedido” para começar.</p></article>`}
+      ${filteredOrders.length ? filteredOrders.map(orderCompactCard).join("") : `<article class="admin-card"><p class="empty-note">Nenhum pedido nesta visão. Altere o status ou consulte outro período.</p></article>`}
     </section>
     <section class="metric-grid order-metrics-compact">
       ${metric("Pedidos abertos", number(openOrders.length), `${number(openOrders.reduce((sum, order) => sum + orderOutstandingQuantity(order), 0))} garrafas no pipeline`, "pending_actions")}
@@ -10790,6 +10825,13 @@ function fieldValue(input) {
 }
 
 function bindModuleEvents() {
+  document.querySelectorAll("[data-order-list-status]").forEach(button => button.addEventListener("click", () => {
+    orderListFilters.status = button.dataset.orderListStatus;
+    render();
+  }));
+  [["orderListPeriod", "period"], ["orderListDateBy", "dateBy"], ["orderListFrom", "from"], ["orderListTo", "to"]].forEach(([id, key]) => {
+    document.getElementById(id)?.addEventListener("change", event => { orderListFilters[key] = event.target.value; render(); });
+  });
   document.querySelectorAll("[data-dashboard-module]").forEach((button) => {
     button.addEventListener("click", () => setModule(button.dataset.dashboardModule));
   });

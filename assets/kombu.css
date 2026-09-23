@@ -6258,3 +6258,9 @@ textarea:focus-visible {
 .quick-delivery-card input { width: 22px; height: 22px; flex-shrink: 0; }
 .quick-delivery-card-body { display: grid; gap: 6px; overflow-wrap: anywhere; min-width: 0; }
 .quick-delivery-card-body small, .quick-delivery-card-body > span { color: var(--muted); font-size: 13px; }
+
+.order-list-filters { margin-bottom: 16px; }
+.order-filter-status { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+.order-filter-status .btn { min-height: 40px; padding: 8px 14px; text-transform: capitalize; }
+.order-filter-status .is-active { background: var(--green); color: white; }
+.order-list-filters .inline-muted { margin: 12px 0 0; line-height: 1.5; }
