@@ -3,7 +3,7 @@
   "timezone": "America/Manaus",
   "postTime": "12:30",
   "everyDays": 2,
-  "linkInBio": "https://www.kombukombucha.com.br/#onde-encontrar",
+  "linkInBio": "https://www.kombukombucha.com.br/#onde",
   "rules": [
     "Sem alegação de saúde: nunca cura, previne, desintoxica, emagrece ou fortalece. Imunidade fala só de limão, gengibre e cúrcuma como ingredientes.",
     "Nunca 'sem açúcar'. A fermentação consome a maior parte do açúcar; isso é tudo o que se diz.",
@@ -12,7 +12,10 @@
     "Não afirmar que um parceiro tem um sabor específico: o estoque muda. Use 'pergunte quais sabores estão gelados hoje'.",
     "Solar Café Regional (@solarcaferegional) é parceiro ativo, mas sempre listado por último e sem post próprio no primeiro mês.",
     "Nomes oficiais: Goiaba, Manga & Jasmim, Flor Fada Azul & Blueberry.",
-    "Dois posts seguidos nunca na mesma família de cor (roxo, vermelho, amarelo, verde)."
+    "Dois posts seguidos nunca na mesma família de cor (roxo, vermelho, amarelo, verde).",
+    "Marcar (user_tags) todo parceiro citado: o publicador marca na primeira imagem cada @ da legenda. Todo post que fala de um parceiro cita o @ dele.",
+    "Misturar formatos (dono, 24/10): carrosséis com estruturas diferentes e posts de imagem única; nunca mais de três posts seguidos no mesmo formato. Reels quando o publicador aceitar vídeo.",
+    "Nada ambíguo (dono, 24/10): cada frase precisa ser lida de um jeito só, mesmo fora de contexto. Ex.: nunca 'Fica de fora.' seguido de uma lista; escreva 'A Kombú não leva:' e 'Nenhum conservante.'"
   ],
   "posts": [
     {
@@ -52,384 +55,364 @@
           "body": "Divina Terra · Casa Agridoce\nLa Dolce Vita · Cafeteria Garden"
         }
       ],
-      "caption": "Kombú é kombucha artesanal feita em Manaus: chá verde, fermentação natural e sabor de ingredientes de verdade.\n\nDoze sabores, todos gaseificados pela própria fermentação. Encontre gelada na @divinaterramanaus, na @casaagridoceam, na @ladolcevitagelateria e na @cafeteriagarden_.\n\n#kombucha #manaus #kombuchaartesanal #amazonia #aartedonatural"
+      "caption": "Kombú é kombucha artesanal feita em Manaus: chá verde, fermentação natural e sabor de ingredientes de verdade.\n\nDoze sabores, todos gaseificados pela própria fermentação. Encontre gelada na @divinaterramanaus, na @casaagridoceam, na @ladolcevitagelateria e na @cafeteriagarden_.\n\n#kombucha #manaus #kombuchaartesanal #amazonia #aartedonatural",
+      "format": "carrossel"
     },
     {
       "id": "02-maracuja",
       "family": "amarelo",
+      "format": "imagem",
       "slides": [
         {
           "type": "bottle",
           "flavor": "maracuja",
-          "kicker": "Sabor em foco",
-          "title": "Maracujá."
-        },
-        {
-          "type": "text",
-          "flavor": "maracuja",
-          "title": "Tropical, ácido, refrescante.",
-          "body": "Polpa de maracujá de verdade, com as sementes."
-        },
-        {
-          "type": "cta",
-          "flavor": "maracuja",
-          "title": "Gelada nos parceiros.",
-          "body": "Endereços no link da bio."
+          "title": "Maracujá",
+          "body": "Feita com a polpa da fruta e as sementes."
         }
       ],
-      "caption": "Maracujá: tropical, ácido, refrescante.\n\nPolpa de verdade, com as sementes, fermentada em lotes pequenos em Manaus. Gelada nos parceiros Kombú — endereços no link da bio.\n\n#kombucha #manaus #maracuja #kombuchaartesanal #amazonia"
+      "caption": "Maracujá com semente e tudo.\n\nA Kombú de maracujá é feita com a polpa da fruta, sementes incluídas, e chá verde. É ácida, refrescante e tem o gás natural da fermentação.\n\nGelada nos parceiros ou em pedido direto, a partir de 20 garrafas. Link na bio.\n\n#kombucha #manaus #maracuja #kombuchaartesanal #amazonia"
     },
     {
       "id": "03-divina-terra",
       "family": "roxo",
+      "format": "imagem",
       "slides": [
         {
           "type": "partner",
           "flavor": "uva",
-          "kicker": "Onde encontrar",
-          "title": "Divina Terra.",
-          "body": "Alimentos naturais, no São Geraldo.",
-          "address": "Av. Djalma Batista, 935\nSão Geraldo · Manaus",
-          "bottle": "uva"
-        },
-        {
-          "type": "text",
-          "flavor": "uva",
-          "title": "Gelada, por unidade.",
-          "body": "Para quem já procura o natural de propósito. Pergunte quais sabores estão na geladeira hoje."
+          "kicker": "Onde comprar",
+          "title": "Divina Terra",
+          "address": "Av. Djalma Batista, 935\nSão Geraldo, Manaus"
         }
       ],
-      "caption": "Kombú gelada na Divina Terra, no São Geraldo.\n\nAv. Djalma Batista, 935. Por unidade, para quem já procura o natural de propósito. Pergunte quais sabores estão gelados hoje. @divinaterramanaus\n\n#kombucha #manaus #divinaterra #produtosnaturais #saogeraldo"
+      "caption": "Tem Kombú gelada na Divina Terra, no São Geraldo.\n\nA @divinaterramanaus vende a Kombú por unidade, sem pedido mínimo. Os sabores mudam conforme a reposição, então vale perguntar quais estão na geladeira no dia.\n\nAv. Djalma Batista, 935, São Geraldo.\n\n#kombucha #manaus #divinaterra #saogeraldo #kombuchaartesanal"
     },
     {
       "id": "04-fermentacao",
       "family": "verde",
+      "format": "carrossel",
       "slides": [
         {
+          "bg": "brand",
           "type": "cover",
-          "bg": "brand",
-          "kicker": "Processo",
-          "title": "Fermentada por tempo,",
-          "accent": "não por pressa."
+          "title": "De onde vem o gás da Kombú?",
+          "accent": "Da própria fermentação."
         },
         {
-          "type": "step",
           "bg": "brand",
+          "type": "step",
           "n": "1",
-          "title": "Chá verde.",
-          "body": "A base de toda Kombú."
+          "title": "Chá verde adoçado",
+          "body": "É a base de todos os sabores."
         },
         {
-          "type": "step",
           "bg": "brand",
+          "type": "step",
           "n": "2",
-          "title": "Cultura viva.",
-          "body": "Ela consome a maior parte do açúcar e cria a gaseificação natural."
+          "title": "Fermentação",
+          "body": "A cultura de kombucha consome a maior parte do açúcar e forma o gás naturalmente."
         },
         {
+          "bg": "brand",
           "type": "step",
-          "bg": "brand",
           "n": "3",
-          "title": "Ingrediente de verdade.",
-          "body": "O sabor vem de frutas, flores, ervas e especiarias."
+          "title": "Ingredientes",
+          "body": "Depois entram as frutas, flores, ervas e especiarias de cada sabor."
         },
         {
-          "type": "cta",
           "bg": "brand",
-          "title": "Lotes pequenos.",
-          "body": "Sempre gelada."
+          "type": "cta",
+          "title": "Nenhum gás é adicionado.",
+          "body": "Tudo acontece na fermentação, em pequenos lotes, aqui em Manaus."
         }
       ],
-      "caption": "Fermentada por tempo, não por pressa.\n\nChá verde e cultura viva. A fermentação consome a maior parte do açúcar e cria a gaseificação natural; o sabor vem de ingredientes de verdade.\n\n#kombucha #manaus #fermentacaonatural #kombuchaartesanal #amazonia"
+      "caption": "Muita gente pergunta se a Kombú tem gás adicionado. Não tem.\n\nO gás se forma durante a fermentação: a cultura de kombucha consome a maior parte do açúcar do chá verde e, nesse processo, a bebida fica gaseificada naturalmente. Depois entram as frutas, flores, ervas e especiarias de cada sabor.\n\nArraste para ver o processo em três passos.\n\n#kombucha #manaus #fermentacaonatural #kombuchaartesanal #aartedonatural"
     },
     {
       "id": "05-frutas-vermelhas",
       "family": "vermelho",
+      "format": "imagem",
       "slides": [
         {
           "type": "bottle",
           "flavor": "frutas-vermelhas",
-          "kicker": "Sabor em foco",
-          "title": "Frutas Vermelhas."
-        },
-        {
-          "type": "text",
-          "flavor": "frutas-vermelhas",
-          "title": "Frutado, vibrante, equilibrado.",
-          "body": "Frutas vermelhas de verdade, fermentadas em lotes pequenos."
-        },
-        {
-          "type": "cta",
-          "flavor": "frutas-vermelhas",
-          "title": "Gelada nos parceiros.",
-          "body": "Endereços no link da bio."
+          "title": "Frutas Vermelhas",
+          "body": "Morango, blueberry e oxicoco."
         }
       ],
-      "caption": "Frutas Vermelhas: frutado, vibrante, equilibrado.\n\nFrutas vermelhas de verdade, fermentadas em lotes pequenos em Manaus. Gelada nos parceiros Kombú — endereços no link da bio.\n\n#kombucha #manaus #frutasvermelhas #kombuchaartesanal #amazonia"
+      "caption": "Morango, blueberry e oxicoco na mesma garrafa.\n\nFrutas Vermelhas é frutada e levemente ácida, com a cor que vem das próprias frutas.\n\nGelada nos parceiros ou em pedido direto, a partir de 20 garrafas. Link na bio.\n\n#kombucha #manaus #frutasvermelhas #kombuchaartesanal #amazonia"
     },
     {
       "id": "06-la-dolce-vita",
       "family": "amarelo",
+      "format": "carrossel",
       "slides": [
         {
           "type": "cover",
           "flavor": "manga-jasmim",
-          "kicker": "Harmonização",
-          "title": "Gelato e kombucha.",
-          "accent": "Na La Dolce Vita."
+          "title": "Gelato e Kombú",
+          "body": "Os dois estão na Gelateria Dolce Vita."
         },
         {
           "type": "bottle",
           "flavor": "manga-jasmim",
-          "kicker": "Uma sugestão",
-          "title": "Manga & Jasmim.",
-          "body": "Tropical, perfumada, floral."
+          "title": "Manga & Jasmim",
+          "body": "Nossa sugestão para acompanhar os gelatos de fruta."
         },
         {
           "type": "partner",
           "flavor": "manga-jasmim",
-          "kicker": "Onde encontrar",
-          "title": "La Dolce Vita.",
-          "body": "Gelateria artesanal.",
-          "address": "Alameda Luís Mendes, 16\nN. Sra. das Graças · Manaus"
+          "kicker": "Onde comprar",
+          "title": "Gelateria Dolce Vita",
+          "address": "Alameda Luís Mendes, 16\nN. Sra. das Graças, Manaus"
         }
       ],
-      "caption": "Gelato artesanal pede uma bebida à altura.\n\nNa @ladolcevitagelateria, a Kombú gelada acompanha o gelato. Uma sugestão: Manga & Jasmim, tropical e floral. Pergunte quais sabores estão gelados hoje. Alameda Luís Mendes, 16.\n\n#kombucha #manaus #gelato #ladolcevita #kombuchaartesanal"
+      "caption": "Gelato e Kombú gelada no mesmo lugar.\n\nNa Gelateria Dolce Vita, a Kombú fica na geladeira ao lado dos gelatos. Para acompanhar os sabores de fruta, a nossa sugestão é Manga & Jasmim. Pergunte quais sabores estão disponíveis no dia.\n\nAlameda Luís Mendes, 16, Nossa Senhora das Graças. @ladolcevitagelateria\n\n#kombucha #manaus #gelato #kombuchaartesanal #amazonia"
     },
     {
       "id": "07-flor-fada-azul",
       "family": "roxo",
+      "format": "carrossel",
       "slides": [
         {
           "type": "bottle",
           "flavor": "flor-fada-blueberry",
-          "kicker": "Ingrediente de verdade",
-          "title": "Flor Fada Azul & Blueberry."
+          "title": "De onde vem essa cor?"
         },
         {
           "type": "text",
           "flavor": "flor-fada-blueberry",
-          "title": "A cor vem da flor e da fruta.",
-          "body": "Nenhum corante."
+          "title": "Da flor fada azul e do blueberry.",
+          "body": "A flor tinge a bebida naturalmente. O blueberry completa a cor e o sabor."
         },
         {
-          "type": "text",
+          "type": "cta",
           "flavor": "flor-fada-blueberry",
-          "title": "Floral, frutado, singular.",
-          "body": "Gelada nos parceiros. Endereços no link da bio."
+          "title": "Flor Fada Azul & Blueberry",
+          "body": "Floral e frutada, sem corante."
         }
       ],
-      "caption": "A cor desta Kombú vem da flor fada azul e do blueberry. Nenhum corante.\n\nFlor Fada Azul & Blueberry: floral, frutado, singular. Gelada nos parceiros Kombú — endereços no link da bio.\n\n#kombucha #manaus #florfadaazul #kombuchaartesanal #amazonia"
+      "caption": "Essa cor não vem de corante.\n\nA Flor Fada Azul & Blueberry ganha esse tom da flor fada azul, uma flor comestível que tinge a bebida naturalmente, e do blueberry. O sabor é floral e frutado.\n\nGelada nos parceiros ou em pedido direto, a partir de 20 garrafas. Link na bio.\n\n#kombucha #manaus #florcomestivel #kombuchaartesanal #amazonia"
     },
     {
       "id": "08-revenda",
       "family": "verde",
+      "format": "carrossel",
       "slides": [
         {
-          "type": "cover",
           "bg": "brand",
-          "kicker": "Para negócios",
-          "title": "Coloque Kombú",
-          "accent": "na sua geladeira."
+          "type": "cover",
+          "title": "Revenda Kombú no seu negócio",
+          "accent": "Para cafés, empórios, confeitarias e restaurantes em Manaus."
         },
         {
-          "type": "list",
           "bg": "brand",
-          "title": "O que vem junto.",
+          "type": "list",
+          "title": "Como funciona",
           "items": [
-            "Doze sabores, de frutados a herbais.",
-            "Apresentação de gôndola.",
-            "Produzida em Manaus, com origem clara.",
-            "Relação direta com quem faz."
+            "Você escolhe os sabores",
+            "Nós produzimos o pedido",
+            "Combinamos a reposição"
           ]
         },
         {
-          "type": "cta",
           "bg": "brand",
-          "title": "Cafés, empórios, confeitarias, restaurantes.",
-          "body": "Condições no direct ou pelo site."
+          "type": "text",
+          "title": "12 sabores",
+          "body": "Frutados, florais, herbais e cítricos, para montar o mix do seu público."
+        },
+        {
+          "bg": "brand",
+          "type": "cta",
+          "title": "Fale com a gente",
+          "body": "Pelo direct ou pelo site. Enviamos valores e condições no retorno."
         }
       ],
-      "caption": "Tem um café, empório, confeitaria ou restaurante em Manaus? A Kombú pode estar na sua geladeira.\n\nDoze sabores, apresentação de gôndola e relação direta com quem faz. Condições comerciais no direct ou pelo formulário do site.\n\n#kombucha #manaus #revenda #cafesmanaus #kombuchaartesanal"
+      "caption": "Tem um café, empório, confeitaria ou restaurante em Manaus?\n\nA Kombú pode fazer parte do seu cardápio. Você escolhe os sabores, nós produzimos o pedido e combinamos juntos a frequência de reposição.\n\nChame no direct ou preencha o formulário em kombukombucha.com.br/revenda. Enviamos valores e condições no retorno.\n\n#kombucha #manaus #revenda #cafesmanaus #kombuchaartesanal"
     },
     {
       "id": "09-hibisco",
       "family": "vermelho",
+      "format": "imagem",
       "slides": [
         {
           "type": "bottle",
           "flavor": "hibisco-anis",
-          "kicker": "Sabor em foco",
-          "title": "Hibisco & Anis Estrelado."
-        },
-        {
-          "type": "text",
-          "flavor": "hibisco-anis",
-          "title": "Floral, acidulado, aromático.",
-          "body": "O hibisco traz a cor e a acidez. O anis estrelado, o perfume."
-        },
-        {
-          "type": "cta",
-          "flavor": "hibisco-anis",
-          "title": "Gelada nos parceiros.",
-          "body": "Endereços no link da bio."
+          "title": "Hibisco & Anis Estrelado",
+          "body": "A cor vem do hibisco."
         }
       ],
-      "caption": "Hibisco & Anis Estrelado: floral, acidulado, aromático.\n\nO hibisco traz a cor e a acidez; o anis estrelado, o perfume. Gelada nos parceiros Kombú — endereços no link da bio.\n\n#kombucha #manaus #hibisco #kombuchaartesanal #amazonia"
+      "caption": "O vermelho desta garrafa vem do hibisco.\n\nHibisco & Anis Estrelado é floral e levemente ácida. O hibisco dá a cor e a acidez, e o anis estrelado dá o aroma.\n\nGelada nos parceiros ou em pedido direto, a partir de 20 garrafas. Link na bio.\n\n#kombucha #manaus #hibisco #kombuchaartesanal #amazonia"
     },
     {
       "id": "10-casa-agridoce",
       "family": "verde",
+      "format": "imagem",
       "slides": [
         {
           "type": "partner",
           "flavor": "pera-alecrim",
-          "kicker": "Onde encontrar",
-          "title": "Casa Agridoce.",
-          "body": "Café e confeitaria.",
-          "address": "R. Selma Acioly, 296\nAdrianópolis · Manaus",
-          "bottle": "pera-alecrim"
-        },
-        {
-          "type": "text",
-          "flavor": "pera-alecrim",
-          "title": "Com o brunch.",
-          "body": "Doces artesanais, café e uma kombucha para acompanhar. Pergunte quais sabores estão gelados hoje."
+          "kicker": "Onde comprar",
+          "title": "Casa Agridoce",
+          "address": "R. Selma Acioly, 296\nAdrianópolis, Manaus"
         }
       ],
-      "caption": "Kombú gelada na Casa Agridoce, em Adrianópolis.\n\nDoces artesanais, café, brunch — e uma kombucha para acompanhar. R. Selma Acioly, 296. Pergunte quais sabores estão gelados hoje. @casaagridoceam\n\n#kombucha #manaus #casaagridoce #brunchmanaus #confeitaria"
+      "caption": "Brunch em Adrianópolis? A Casa Agridoce tem Kombú gelada.\n\nNa @casaagridoceam você encontra doces artesanais, café e Kombú por unidade. Pergunte quais sabores estão disponíveis no dia.\n\nR. Selma Acioly, 296, Adrianópolis.\n\n#kombucha #manaus #brunch #adrianopolis #kombuchaartesanal"
     },
     {
       "id": "11-imunidade",
       "family": "amarelo",
+      "format": "carrossel",
       "slides": [
         {
           "type": "bottle",
           "flavor": "imunidade",
-          "kicker": "Sabor em foco",
-          "title": "Imunidade."
+          "title": "Imunidade",
+          "body": "Limão, gengibre e cúrcuma."
         },
         {
-          "type": "text",
+          "type": "list",
           "flavor": "imunidade",
-          "title": "Limão, gengibre e cúrcuma.",
-          "body": "Cítrica, com a picância do gengibre e um fundo terroso."
+          "title": "Como é o sabor",
+          "items": [
+            "Cítrico, do limão",
+            "Picante, do gengibre",
+            "Terroso, da cúrcuma"
+          ]
         },
         {
           "type": "cta",
           "flavor": "imunidade",
-          "title": "Gelada nos parceiros.",
-          "body": "Endereços no link da bio."
+          "title": "Para quem gosta de sabor intenso",
+          "body": "Gelada nos parceiros ou em pedido direto."
         }
       ],
-      "caption": "Imunidade: limão, gengibre e cúrcuma.\n\nCítrica, com a picância do gengibre e um fundo terroso da cúrcuma. Gelada nos parceiros Kombú — endereços no link da bio.\n\n#kombucha #manaus #gengibre #curcuma #kombuchaartesanal"
+      "caption": "Limão, gengibre e cúrcuma.\n\nImunidade tem um sabor intenso: começa cítrica com o limão, tem o toque picante do gengibre e termina com o sabor terroso da cúrcuma.\n\nGelada nos parceiros ou em pedido direto, a partir de 20 garrafas. Link na bio.\n\n#kombucha #manaus #gengibre #kombuchaartesanal #amazonia"
     },
     {
       "id": "12-como-comprar",
       "family": "verde",
+      "format": "carrossel",
       "slides": [
         {
+          "bg": "brand",
           "type": "cover",
-          "bg": "brand",
-          "kicker": "Como comprar",
-          "title": "Dois jeitos",
-          "accent": "de levar Kombú."
+          "title": "Como comprar a Kombú",
+          "accent": "Existem dois jeitos."
         },
         {
-          "type": "option",
           "bg": "brand",
+          "type": "option",
           "n": "1",
-          "title": "Uma garrafa, hoje.",
-          "body": "Gelada em um dos nossos parceiros, por unidade, sem pedido mínimo.",
-          "bottle": "goiaba"
+          "title": "Por unidade",
+          "body": "Gelada, nos nossos parceiros em Manaus. Sem pedido mínimo."
         },
         {
+          "bg": "brand",
           "type": "option",
-          "bg": "brand",
-          "n": "2",
-          "title": "Pedido direto.",
-          "body": "A partir de 20 garrafas, com os sabores que você escolher. Cerca de duas semanas de produção."
+          "n": "20+",
+          "title": "Pedido direto",
+          "body": "A partir de 20 garrafas, com os sabores que você escolher. Produção em cerca de duas semanas."
         },
         {
-          "type": "cta",
           "bg": "brand",
-          "title": "Peça pelo direct",
-          "body": "ou pelo site."
+          "type": "cta",
+          "title": "Faça seu pedido",
+          "body": "Pelo direct, pelo WhatsApp ou pelo site."
         }
       ],
-      "caption": "Dois jeitos de levar Kombú.\n\nPara provar, uma garrafa gelada em um dos nossos parceiros. Para ter em casa, pedido direto a partir de 20 garrafas, com cerca de duas semanas de produção. Pedidos pelo direct ou pelo site.\n\n#kombucha #manaus #kombuchaartesanal #amazonia #encomenda"
+      "caption": "Existem dois jeitos de comprar a Kombú.\n\nPor unidade: gelada, nos nossos parceiros em Manaus, sem pedido mínimo.\n\nPedido direto: a partir de 20 garrafas, com os sabores que você escolher. Produzimos em cerca de duas semanas e combinamos a entrega ou a retirada.\n\nPara pedir, chame no direct ou acesse o link na bio.\n\n#kombucha #manaus #kombuchaartesanal #amazonia #encomenda"
     },
     {
       "id": "13-cafeteria-garden",
       "family": "vermelho",
+      "format": "imagem",
       "slides": [
         {
           "type": "partner",
           "flavor": "rosas-cardamomo",
-          "kicker": "Onde encontrar",
-          "title": "Cafeteria Garden.",
-          "body": "No Parque 10.",
-          "address": "Parque 10 · Manaus",
-          "bottle": "rosas-cardamomo"
-        },
-        {
-          "type": "text",
-          "flavor": "rosas-cardamomo",
-          "title": "Mais um endereço.",
-          "body": "Kombú gelada em Manaus. Pergunte quais sabores estão na geladeira hoje."
+          "kicker": "Onde comprar",
+          "title": "Cafeteria Garden",
+          "address": "Conjunto Japonês\nParque 10, Manaus"
         }
       ],
-      "caption": "Kombú gelada na Cafeteria Garden, no Parque 10.\n\nMais um endereço para encontrar Kombú gelada em Manaus. Pergunte quais sabores estão na geladeira hoje. @cafeteriagarden_\n\n#kombucha #manaus #cafeteria #parque10 #kombuchaartesanal"
+      "caption": "No Parque 10, a Kombú está na Cafeteria Garden.\n\nA @cafeteriagarden_ vende a Kombú gelada por unidade. Pergunte quais sabores estão disponíveis no dia.\n\nConjunto Japonês, Parque 10.\n\n#kombucha #manaus #parque10 #cafeteria #kombuchaartesanal"
     },
     {
       "id": "14-lavanda-limao",
       "family": "roxo",
+      "format": "carrossel",
       "slides": [
         {
           "type": "bottle",
           "flavor": "lavanda-limao",
-          "kicker": "Sabor em foco",
-          "title": "Lavanda & Limão."
+          "title": "Lavanda & Limão"
         },
         {
           "type": "text",
           "flavor": "lavanda-limao",
-          "title": "Cítrico à frente, floral no fim.",
-          "body": "O limão abre. A lavanda fica."
+          "title": "Primeiro, o limão.",
+          "body": "O sabor cítrico aparece logo no primeiro gole."
         },
         {
-          "type": "cta",
+          "type": "text",
           "flavor": "lavanda-limao",
-          "title": "Gelada nos parceiros.",
-          "body": "Endereços no link da bio."
+          "title": "Depois, a lavanda.",
+          "body": "O sabor floral fica no final."
         }
       ],
-      "caption": "Lavanda & Limão: cítrico à frente, floral no fim.\n\nO limão abre, a lavanda fica. Gelada nos parceiros Kombú — endereços no link da bio.\n\n#kombucha #manaus #lavanda #kombuchaartesanal #amazonia"
+      "caption": "O limão aparece primeiro. A lavanda fica no final.\n\nLavanda & Limão começa cítrica e termina floral, com chá verde e o gás natural da fermentação.\n\nGelada nos parceiros ou em pedido direto, a partir de 20 garrafas. Link na bio.\n\n#kombucha #manaus #lavanda #kombuchaartesanal #amazonia"
     },
     {
       "id": "15-maca-canela",
       "family": "vermelho",
+      "format": "imagem",
       "slides": [
         {
           "type": "bottle",
           "flavor": "maca-canela",
-          "kicker": "Sabor em foco",
-          "title": "Maçã & Canela."
-        },
-        {
-          "type": "text",
-          "flavor": "maca-canela",
-          "title": "Aconchegante, frutado, especiado.",
-          "body": "Maçã e canela em pau sobre uma base de chá verde fermentado."
-        },
-        {
-          "type": "cta",
-          "flavor": "maca-canela",
-          "title": "Gelada nos parceiros.",
-          "body": "Endereços no link da bio."
+          "title": "Maçã & Canela",
+          "body": "Maçã e canela em pau."
         }
       ],
-      "caption": "Maçã & Canela: aconchegante, frutado, especiado.\n\nMaçã e canela em pau sobre uma base de chá verde fermentado. Gelada nos parceiros Kombú — endereços no link da bio.\n\n#kombucha #manaus #macaecanela #kombuchaartesanal #amazonia"
+      "caption": "Maçã e canela em pau, com chá verde fermentado.\n\nMaçã & Canela é frutada e especiada: a maçã dá o sabor e a canela em pau dá o aroma.\n\nGelada nos parceiros ou em pedido direto, a partir de 20 garrafas. Link na bio.\n\n#kombucha #manaus #canela #kombuchaartesanal #amazonia"
+    },
+    {
+      "id": "16-de-verdade",
+      "family": "verde",
+      "format": "carrossel",
+      "slides": [
+        {
+          "bg": "brand",
+          "type": "cover",
+          "title": "O que vai na Kombú",
+          "accent": "E o que não usamos."
+        },
+        {
+          "bg": "brand",
+          "type": "list",
+          "title": "Ingredientes",
+          "items": [
+            "Chá verde",
+            "Cultura de kombucha",
+            "Frutas",
+            "Flores e ervas",
+            "Especiarias"
+          ]
+        },
+        {
+          "bg": "brand",
+          "type": "list",
+          "title": "Não usamos",
+          "items": [
+            "Conservantes",
+            "Corantes artificiais",
+            "Aromatizantes artificiais",
+            "Gás adicionado"
+          ]
+        }
+      ],
+      "caption": "O que vai na Kombú, e o que não usamos.\n\nIngredientes: chá verde, cultura de kombucha, frutas, flores, ervas e especiarias.\n\nNão usamos conservantes, corantes artificiais, aromatizantes artificiais nem gás adicionado. O gás se forma na própria fermentação.\n\n#kombucha #manaus #kombuchaartesanal #ingredientesnaturais #aartedonatural"
     }
   ]
 }

@@ -72,15 +72,27 @@ async function account(env, token) {
 
 const sameCaption = (a, b) => (a || '').replace(/\s+/g, ' ').trim() === (b || '').replace(/\s+/g, ' ').trim();
 
-async function publish(post, user, token) {
+// Partners are tagged on the image, not only @mentioned in the caption (owner, 24/10). Every
+// handle in the caption is a partner unless it is our own, so a post that names partners can never
+// go out without tagging them; `tags` in the calendar overrides that. Spread along the bottom
+// edge, clear of the copy, which sits in the upper two thirds of each slide.
+function userTags(post, own) {
+  const handles = post.tags || [...new Set([...post.caption.matchAll(/@([A-Za-z0-9._]+[A-Za-z0-9_])/g)].map(m => m[1].toLowerCase()))];
+  const list = handles.filter(h => h !== own.toLowerCase()).slice(0, 20);
+  return list.map((username, i) => ({username, x: +((i + 1) / (list.length + 1)).toFixed(2), y: 0.9}));
+}
+
+async function publish(post, user, token, tags) {
+  // Tags go on the first image only: the same accounts on every slide reads as spam.
+  const tagParam = tags.length ? {user_tags: JSON.stringify(tags)} : {};
   if (post.slides.length === 1) {
-    const c = await call('POST', `/${user.id}/media`, {image_url: `${imageBase}/${post.id}/1.jpg`, caption: post.caption}, token);
+    const c = await call('POST', `/${user.id}/media`, {image_url: `${imageBase}/${post.id}/1.jpg`, caption: post.caption, ...tagParam}, token);
     await waitFinished(c.id, token);
     return (await call('POST', `/${user.id}/media_publish`, {creation_id: c.id}, token)).id;
   }
   const children = [];
   for (let n = 1; n <= post.slides.length; n++) {
-    const c = await call('POST', `/${user.id}/media`, {image_url: `${imageBase}/${post.id}/${n}.jpg`, is_carousel_item: 'true'}, token);
+    const c = await call('POST', `/${user.id}/media`, {image_url: `${imageBase}/${post.id}/${n}.jpg`, is_carousel_item: 'true', ...(n === 1 ? tagParam : {})}, token);
     children.push(c.id);
   }
   for (const id of children) await waitFinished(id, token);
@@ -112,12 +124,33 @@ async function run(env) {
     return log(env, `${post.id} já estava na conta (media ${existing.id}); registrado sem repostar`);
   }
 
+  const tags = userTags(post, user.username);
   try {
-    const mediaId = await publish(post, user, token);
+    let mediaId;
+    try {
+      mediaId = await publish(post, user, token, tags);
+    } catch (e) {
+      // A renamed or private partner account makes Instagram reject the whole tag list ("Invalid
+      // user id"), which on 24/10 cost post 01 all four tags over one handle. Nothing was published
+      // (publish is the last call), so check each handle on an unpublished container, drop only
+      // the ones Instagram refuses, and post with the rest.
+      if (!tags.length) throw e;
+      const ok = [];
+      for (const t of tags) {
+        try {
+          await call('POST', `/${user.id}/media`, {image_url: `${imageBase}/${post.id}/1.jpg`, is_carousel_item: post.slides.length > 1 ? 'true' : 'false', user_tags: JSON.stringify([t])}, token);
+          ok.push(t);
+        } catch { /* refused handle */ }
+      }
+      const dropped = tags.filter(t => !ok.includes(t)).map(t => '@' + t.username);
+      await log(env, `marcação recusada em ${post.id} para ${dropped.join(' ') || '?'} (${e.message}); publicando com as demais`);
+      tags.splice(0, tags.length, ...ok);
+      mediaId = await publish(post, user, token, tags);
+    }
     const at = new Date().toISOString();
     await env.STATE.put('published:' + post.id, JSON.stringify({mediaId, at}));
     await env.STATE.put('last', JSON.stringify({id: post.id, at}));
-    await log(env, `publicado ${post.id} (media ${mediaId}) em @${user.username}`);
+    await log(env, `publicado ${post.id} (media ${mediaId}) em @${user.username}${tags.length ? `, marcando ${tags.map(t => '@' + t.username).join(' ')}` : ''}`);
   } catch (e) {
     await log(env, `erro ao publicar ${post.id}: ${e.message}`);
     throw e;

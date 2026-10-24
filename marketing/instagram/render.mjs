@@ -42,6 +42,13 @@ function lint() {
     previous = post.family;
     if (post.slides.length > 10) problems.push(`${post.id}: o Instagram aceita no máximo 10 imagens`);
   }
+  // The owner wants a mix of formats (24/10): a single image and a carousel read differently in the
+  // feed, and a long run of either makes the grid monotonous.
+  const formats = calendar.posts.map(p => p.slides.length > 1 ? 'carrossel' : 'imagem');
+  formats.forEach((f, i) => { if (i >= 3 && formats.slice(i - 3, i + 1).every(x => x === f)) problems.push(`${calendar.posts[i].id}: quatro posts seguidos em ${f}`); });
+  // A partner named on the slides must be @mentioned in the caption, which is where the publisher
+  // takes the handles it tags from.
+  for (const post of calendar.posts) for (const s of post.slides) if (s.type === 'partner' && !/@\w/.test(post.caption)) problems.push(`${post.id}: parceiro sem @ na legenda (não seria marcado)`);
   const ids = calendar.posts.map(p => p.id);
   if (new Set(ids).size !== ids.length) problems.push('ids repetidos no calendário');
   return problems;
@@ -77,7 +84,7 @@ function theme(slide) {
   if (slide.bg === 'cream') return {bg: '#F6F2E8', fg: '#1E2A1B', accent: '#2D4B28', muted: '#5F675A', rule: 'rgba(45,75,40,.45)'};
   const f = FLAVORS[slide.flavor];
   if (!f) throw new Error(`sabor desconhecido: ${slide.flavor}`);
-  return {bg: f.bg, ...MODES[f.mode]};
+  return {bg: f.bg, mode: f.mode, ...MODES[f.mode]};
 }
 
 // ---------------------------------------------------------------- fonts
@@ -92,84 +99,68 @@ async function fontCss() {
 const bottleUrl = slug => pathToFileURL(path.join(root, 'assets/bottles', `${slug}.webp`)).href;
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'}[c]));
 
+// Every slide is one centred composition (owner, 24/10: the first template read as robotic and
+// lopsided). Wordmark at the top, handle and progress at the bottom, and in between the bottle
+// when there is one, then the words. No tracked capitals, no italic accent words.
 const css = `
 *{box-sizing:border-box}
 html,body{margin:0;width:1080px;height:1350px;overflow:hidden}
-body{background:var(--bg);color:var(--fg);font-family:'Plus Jakarta Sans',sans-serif;position:relative;-webkit-font-smoothing:antialiased}
-.glow{position:absolute;width:1100px;height:1100px;border-radius:50%;right:-420px;top:150px;background:radial-gradient(circle,rgba(255,255,255,.20),transparent 62%)}
-.top,.foot{position:absolute;left:84px;right:84px;display:flex;justify-content:space-between;align-items:center;z-index:3}
-.top{top:70px}.foot{bottom:66px}
-.mark{font-family:'Playfair Display',serif;font-weight:700;font-size:34px;letter-spacing:.2em}
-.slogan{font-family:'Playfair Display',serif;font-style:italic;font-weight:600;font-size:26px;color:var(--muted)}
-.handle{font-weight:600;font-size:24px;color:var(--muted);letter-spacing:.02em}
-.dots{display:flex;gap:10px;align-items:center}.dots i{width:12px;height:12px;border-radius:50%;background:var(--muted);opacity:.45}
-.dots i.on{opacity:1;background:var(--accent);width:36px;border-radius:7px}
-.copy{position:absolute;left:84px;top:200px;bottom:170px;width:912px;display:flex;flex-direction:column;justify-content:center;z-index:2}
-.copy.narrow{width:540px}
-.kicker{font-weight:700;font-size:25px;letter-spacing:.22em;text-transform:uppercase;color:var(--accent);display:flex;align-items:center;gap:18px;margin-bottom:34px}
-.kicker::before{content:"";width:46px;height:2px;background:var(--rule)}
-h1{font-family:'Playfair Display',serif;font-weight:700;font-size:112px;line-height:1.02;letter-spacing:-.01em;margin:0;text-wrap:balance}
-h2{font-family:'Playfair Display',serif;font-weight:700;font-size:90px;line-height:1.04;margin:0;text-wrap:balance}
-.narrow h1,.narrow h2{font-size:84px}
-.accent{display:block;font-family:'Playfair Display',serif;font-style:italic;font-weight:600;font-size:74px;line-height:1.08;color:var(--accent);margin-top:20px}
-.narrow .accent{font-size:58px}
-p{font-size:43px;line-height:1.36;color:var(--muted);margin:34px 0 0;white-space:pre-line;max-width:860px}
-.narrow p{font-size:38px}
-.orn{display:flex;align-items:center;gap:14px;margin:40px 0 0}
-.orn i{display:block;height:2px;width:70px;background:var(--rule)}.orn b{width:9px;height:9px;border-radius:50%;background:var(--accent)}
-.bottle{position:absolute;z-index:1;bottom:110px;right:40px;height:1090px;filter:drop-shadow(0 34px 40px rgba(0,0,0,.28))}
-.lineup{position:absolute;left:0;right:0;bottom:150px;display:flex;justify-content:center;align-items:flex-end;gap:0}
-.lineup img{height:650px;margin:0 -26px;filter:drop-shadow(0 26px 30px rgba(0,0,0,.22))}
-.lineup img:nth-child(3){height:730px;z-index:2}
-.lineup img:nth-child(2),.lineup img:nth-child(4){height:690px;z-index:1}
-.addr{margin-top:40px;padding-left:26px;border-left:3px solid var(--accent);font-weight:600;font-size:36px;line-height:1.4;white-space:pre-line}
-.num{font-family:'Playfair Display',serif;font-weight:700;font-size:250px;line-height:.8;color:var(--accent);opacity:.9;margin-bottom:30px}
-.badge{display:inline-grid;place-items:center;width:84px;height:84px;border-radius:50%;border:2px solid var(--accent);color:var(--accent);font-family:'Playfair Display',serif;font-weight:700;font-size:44px;margin-bottom:34px}
-ul{list-style:none;margin:44px 0 0;padding:0;display:grid;gap:30px}
-li{font-size:42px;line-height:1.3;display:flex;gap:26px;align-items:baseline}
-li::before{content:"";flex:none;width:14px;height:14px;transform:rotate(45deg) translateY(-6px);background:var(--accent)}
-.cta{align-items:center;text-align:center}
-.cta h2{font-size:96px}.cta p{margin-left:auto;margin-right:auto}
-.cta .orn{justify-content:center;margin:0 0 46px}
+body{position:relative;background:var(--bg);color:var(--fg);font-family:'Plus Jakarta Sans',sans-serif;-webkit-font-smoothing:antialiased}
+.glow{position:absolute;left:50%;top:44%;width:900px;height:900px;transform:translate(-50%,-50%);border-radius:50%;background:radial-gradient(circle,var(--glow) 0%,transparent 62%);opacity:.55;z-index:0}
+.top{position:absolute;top:64px;left:0;right:0;text-align:center;z-index:3}
+.mark{font-family:'Playfair Display',serif;font-weight:700;font-size:38px;letter-spacing:.24em;padding-left:.24em}
+.foot{position:absolute;bottom:58px;left:0;right:0;display:grid;justify-items:center;gap:20px;z-index:3}
+.handle{font-weight:600;font-size:26px;color:var(--muted)}
+.dots{display:flex;gap:10px;align-items:center;height:12px}.dots i{width:11px;height:11px;border-radius:50%;background:var(--muted);opacity:.4}
+.dots i.on{opacity:1;background:var(--accent);width:34px;border-radius:6px}
+.stage{position:absolute;top:150px;bottom:170px;left:90px;right:90px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;z-index:2}
+.bottle{display:block;height:var(--bh,640px);width:auto;margin-bottom:46px;filter:drop-shadow(0 34px 40px rgba(0,0,0,.28))}
+.lineup{display:flex;justify-content:center;align-items:flex-end;margin-bottom:46px}
+.lineup img{height:500px;margin:0 -24px;filter:drop-shadow(0 26px 30px rgba(0,0,0,.22))}
+.lineup img:nth-child(3){height:580px;z-index:2}.lineup img:nth-child(2),.lineup img:nth-child(4){height:540px;z-index:1}
+.label{font-weight:600;font-size:32px;color:var(--accent);margin:0 0 22px}
+h1{font-family:'Playfair Display',serif;font-weight:700;font-size:118px;line-height:1.04;letter-spacing:-.01em;margin:0;text-wrap:balance}
+h2{font-family:'Playfair Display',serif;font-weight:700;font-size:96px;line-height:1.08;margin:0;text-wrap:balance}
+.with-bottle h1{font-size:76px}.with-bottle h2{font-size:64px}
+p{font-size:44px;line-height:1.38;color:var(--muted);margin:30px 0 0;max-width:840px;text-wrap:pretty;white-space:pre-line}
+.with-bottle p{font-size:34px;margin-top:20px;max-width:800px}
+.num{font-family:'Playfair Display',serif;font-weight:700;font-size:200px;line-height:1;color:var(--accent);margin-bottom:24px}
+.items{list-style:none;margin:40px 0 0;padding:0;display:grid;gap:0;justify-items:center}
+.items li{font-family:'Playfair Display',serif;font-weight:600;font-size:60px;line-height:1.15;padding:18px 0}
+.items li+li{border-top:2px solid var(--rule);min-width:320px}
+.addr{margin-top:26px;font-weight:600;font-size:32px;line-height:1.4;white-space:pre-line}
 `;
 
 function slideHtml(slide, i, total, fonts) {
   const t = theme(slide);
-  const vars = `--bg:${t.bg};--fg:${t.fg};--accent:${t.accent};--muted:${t.muted};--rule:${t.rule}`;
-  const kicker = slide.kicker ? `<div class="kicker">${esc(slide.kicker)}</div>` : '';
+  const vars = `--bg:${t.bg};--fg:${t.fg};--accent:${t.accent};--muted:${t.muted};--rule:${t.rule};--glow:${t.mode === 'dark' ? 'rgba(255,255,255,.55)' : 'rgba(255,255,255,.22)'}`;
+  const bottleSlug = slide.bottle || (['bottle', 'cover', 'partner'].includes(slide.type) && slide.flavor ? slide.flavor : null);
+  const label = slide.kicker ? `<div class="label">${esc(slide.kicker)}</div>` : '';
   const body = slide.body ? `<p>${esc(slide.body)}</p>` : '';
-  const bottleSlug = slide.bottle || (['bottle', 'cover'].includes(slide.type) && slide.flavor ? slide.flavor : null);
-  const showBottle = bottleSlug && slide.type !== 'lineup';
-  const narrow = showBottle ? ' narrow' : '';
-  let inner = '';
+  const H = slide.type === 'cover' || slide.type === 'bottle' || slide.type === 'partner' ? 'h1' : 'h2';
+  const title = slide.title ? `<${H}>${esc(slide.title)}</${H}>` : '';
+  const sub = slide.accent ? `<p>${esc(slide.accent)}</p>` : '';
+  let visual = '';
+  if (slide.type === 'lineup') visual = `<div class="lineup">${slide.bottles.map(b => `<img src="${bottleUrl(b)}">`).join('')}</div>`;
+  else if (bottleSlug) visual = `<img class="bottle" style="--bh:${slide.items || slide.body && slide.body.length > 70 || slide.address ? 520 : 640}px" src="${bottleUrl(bottleSlug)}">`;
+  let words;
   switch (slide.type) {
-    case 'cover':
-      inner = `<div class="copy${narrow}">${kicker}<h1>${esc(slide.title)}${slide.accent ? `<span class="accent">${esc(slide.accent)}</span>` : ''}</h1></div>`; break;
-    case 'bottle':
-      inner = `<div class="copy narrow">${kicker}<h1>${esc(slide.title)}</h1>${body}<div class="orn"><i></i><b></b><i></i></div></div>`; break;
-    case 'text':
-      inner = `<div class="copy${narrow}"><h2>${esc(slide.title)}</h2>${body}</div>`; break;
-    case 'lineup':
-      inner = `<div class="copy" style="justify-content:flex-start;top:210px"><h2>${esc(slide.title)}</h2>${body}</div>
-        <div class="lineup">${slide.bottles.map(b => `<img src="${bottleUrl(b)}">`).join('')}</div>`; break;
-    case 'partner':
-      inner = `<div class="copy${narrow}">${kicker}<h1>${esc(slide.title)}</h1>${body}${slide.address ? `<div class="addr">${esc(slide.address)}</div>` : ''}</div>`; break;
-    case 'step':
-      inner = `<div class="copy"><div class="num">${esc(slide.n)}</div><h2>${esc(slide.title)}</h2>${body}</div>`; break;
-    case 'option':
-      inner = `<div class="copy${narrow}"><div class="badge">${esc(slide.n)}</div><h2>${esc(slide.title)}</h2>${body}</div>`; break;
+    case 'step': case 'option':
+      words = `<div class="num">${esc(slide.n)}</div>${title}${body}`; break;
     case 'list':
-      inner = `<div class="copy"><h2>${esc(slide.title)}</h2><ul>${slide.items.map(x => `<li>${esc(x)}</li>`).join('')}</ul></div>`; break;
-    case 'cta':
-      inner = `<div class="copy cta"><div class="orn"><i></i><b></b><i></i></div><h2>${esc(slide.title)}</h2>${body}</div>`; break;
+      words = `${title}<ul class="items">${slide.items.map(x => `<li>${esc(x)}</li>`).join('')}</ul>`; break;
+    case 'partner':
+      words = `${label}${title}${body}${slide.address ? `<div class="addr">${esc(slide.address)}</div>` : ''}`; break;
+    case 'cover': case 'bottle': case 'text': case 'cta': case 'lineup':
+      words = `${label}${title}${sub}${body}`; break;
     default: throw new Error(`tipo de slide desconhecido: ${slide.type}`);
   }
   const dots = total > 1 ? Array.from({length: total}, (_, n) => `<i class="${n === i ? 'on' : ''}"></i>`).join('') : '';
   return `<!doctype html><html><head><meta charset="utf-8"><style>${fonts}${css}</style></head>
-<body style="${vars}">${showBottle ? '<div class="glow"></div>' : ''}
-<div class="top"><span class="mark">KOMBÚ</span><span class="slogan">A Arte do Natural</span></div>
-${inner}${showBottle ? `<img class="bottle" src="${bottleUrl(bottleSlug)}">` : ''}
-<div class="foot"><span class="handle">@kombu.amazonia</span><span class="dots">${dots}</span></div></body></html>`;
+<body style="${vars}">${visual ? '<div class="glow"></div>' : ''}
+<div class="top"><span class="mark">KOMBÚ</span></div>
+<div class="stage${visual ? ' with-bottle' : ''}">${visual}${words}</div>
+<div class="foot">${dots ? `<span class="dots">${dots}</span>` : ''}<span class="handle">@kombu.amazonia</span></div></body></html>`;
 }
 
 // ---------------------------------------------------------------- render
