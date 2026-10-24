@@ -21,11 +21,11 @@
     { slug: "maracuja", name: "Maracujá", imageKey: "maracuja", profile: "Frutados", ingredients: ["Maracujá", "chá verde"], angle: "Tropical, ácida e refrescante.", description: "Polpa de maracujá de verdade, com as sementes." },
     { slug: "frutas-vermelhas", name: "Frutas Vermelhas", imageKey: "frutasVermelhas", profile: "Frutados", ingredients: ["Morango", "blueberry", "oxicoco"], angle: "Frutada, vibrante e equilibrada.", description: "Morango, blueberry e oxicoco num perfil frutado e levemente ácido." },
     { slug: "hibisco-anis-estrelado", name: "Hibisco & Anis Estrelado", imageKey: "hibisco", profile: "Florais", ingredients: ["Hibisco", "anis estrelado", "chá verde"], angle: "Floral, acidulada e aromática.", description: "O hibisco traz a cor e a acidez. O anis estrelado, o perfume." },
-    { slug: "flor-fada-azul-blueberry", name: "Flor Fada Azul & Blueberry", imageKey: "mirtilo", profile: "Florais", ingredients: ["Flor fada azul", "blueberry", "chá verde"], angle: "Floral, frutada e singular.", description: "A cor vem da flor e da fruta. Nenhum corante." },
+    { slug: "flor-fada-azul-blueberry", name: "Flor Fada Azul & Blueberry", imageKey: "mirtilo", profile: "Florais", ingredients: ["Flor fada azul", "blueberry", "chá verde"], angle: "Floral e frutada.", description: "A cor vem da flor e da fruta. Nenhum corante." },
     { slug: "maca-canela", name: "Maçã & Canela", imageKey: "macaCanela", profile: "Especiados", ingredients: ["Maçã", "canela em pau", "chá verde"], angle: "Aconchegante, frutada e especiada.", description: "Maçã e canela em pau sobre uma base de chá verde fermentado." },
     { slug: "pera-alecrim", name: "Pêra & Alecrim", imageKey: "peraAlecrim", profile: "Herbais", ingredients: ["Pêra", "alecrim", "chá verde"], angle: "Delicada, herbal e aromática.", description: "O frescor da pêra com o aroma do alecrim." },
     { slug: "imunidade", name: "Imunidade", imageKey: "imunidade", profile: "Cítricos", ingredients: ["Limão", "gengibre", "cúrcuma"], angle: "Cítrica, picante e terrosa.", description: "Limão, gengibre e cúrcuma: cítrica, com a picância do gengibre." },
-    { slug: "rosas-cardamomo", name: "Rosas & Cardamomo", imageKey: "rosasCardamomo", profile: "Florais", ingredients: ["Rosas", "cardamomo", "chá verde"], angle: "Elegante, botânica e levemente especiada.", description: "Pétalas de rosa e o toque especiado do cardamomo." },
+    { slug: "rosas-cardamomo", name: "Rosas & Cardamomo", imageKey: "rosasCardamomo", profile: "Florais", ingredients: ["Rosas", "cardamomo", "chá verde"], angle: "Floral e levemente especiada.", description: "Pétalas de rosa e o toque especiado do cardamomo." },
     { slug: "lavanda-limao", name: "Lavanda & Limão", imageKey: "lavandaLimao", profile: "Cítricos", ingredients: ["Lavanda", "limão", "chá verde"], angle: "Cítrica à frente, floral no fim.", description: "O limão abre. A lavanda fica." },
     { slug: "jasmim-manga", name: "Manga & Jasmim", imageKey: "jasmimManga", profile: "Frutados", ingredients: ["Manga", "jasmim", "chá verde"], angle: "Tropical, perfumada e floral.", description: "Manga madura com o perfume do jasmim." },
     { slug: "goiaba", name: "Goiaba", imageKey: "goiaba", profile: "Frutados", ingredients: ["Goiaba", "chá verde"], angle: "Tropical e naturalmente frutada.", description: "Goiaba de verdade, suave e refrescante." },
@@ -240,17 +240,29 @@
       if (nowName) nowName.textContent = flavors[current].name;
     }
     show(0);
+    // The visitor can browse the flavours here too: dots, arrows, a tap on the bottle, or a swipe.
+    // Any of them pauses the rotation for a while so it doesn't move on under the visitor's finger.
+    const pick = (i) => { show(i); pausedUntil = Date.now() + 9000; };
     dots.addEventListener("click", (event) => {
       const button = event.target.closest("button[data-i]");
-      if (!button) return;
-      show(Number(button.dataset.i));
-      pausedUntil = Date.now() + 9000;
+      if (button) pick(Number(button.dataset.i));
+    });
+    $(".hero-arrow.prev", stage)?.addEventListener("click", () => pick(current - 1));
+    $(".hero-arrow.next", stage)?.addEventListener("click", () => pick(current + 1));
+    holder.addEventListener("click", () => pick(current + 1));
+    let touchX = null;
+    holder.addEventListener("touchstart", (event) => { touchX = event.touches[0].clientX; }, { passive: true });
+    holder.addEventListener("touchend", (event) => {
+      if (touchX === null) return;
+      const dx = event.changedTouches[0].clientX - touchX;
+      touchX = null;
+      if (Math.abs(dx) > 40) pick(current + (dx < 0 ? 1 : -1));
     });
     if (reduceMotion) return;
     const tick = () => { if (Date.now() > pausedUntil && !document.hidden) show(current + 1); };
     const visible = new IntersectionObserver(([entry]) => {
       clearInterval(timer);
-      if (entry.isIntersecting) timer = setInterval(tick, 3400);
+      if (entry.isIntersecting) timer = setInterval(tick, 2700);
     });
     visible.observe(stage);
 
@@ -607,6 +619,31 @@
     window.addEventListener("hashchange", check);
   }
 
+  // ------------------------------------------------------------ direct orders
+  // Ordering direct used to sit near the end of the page and was easy to miss (owner, 24/10). On
+  // smaller screens a button follows the visitor; it steps aside over the hero, where the same
+  // action is already on screen, over the flavour stage, which has its own "Pedir este sabor", and
+  // over the order form and footer, where it would cover fields.
+  function initOrdering() {
+    const fab = $(".order-fab");
+    if (fab && "IntersectionObserver" in window) {
+      const covering = new Set();
+      const io = new IntersectionObserver((entries) => {
+        entries.forEach((e) => (e.isIntersecting ? covering.add(e.target) : covering.delete(e.target)));
+        fab.classList.toggle("is-away", covering.size > 0);
+      });
+      $$(".hero, .walk-stage, #comprar, .site-footer").forEach((el) => io.observe(el));
+      fab.hidden = false;
+    }
+    // "Pedir este sabor" starts the order with the flavour that is on screen.
+    $$(".walk-order").forEach((link) => link.addEventListener("click", () => {
+      const field = $("#order-mensagem");
+      const name = $(".walk-name")?.textContent.trim();
+      if (!field || !name || field.value.includes(name)) return;
+      field.value = field.value.trim() ? `${field.value.trim()}, ${name}` : name;
+    }));
+  }
+
   // ------------------------------------------------------------ audience chooser
   // A first visit to the home page asks whether this is for the visitor's own consumption or for
   // resale, so the reseller path is not left to a pill in the corner (owner, 2026-10-24). Asked
@@ -641,6 +678,7 @@
   async function boot() {
     legacyLegalLinks();
     initChooser();
+    if (page === "consumer") initOrdering();
     initHeader();
     observeReveals();
     initMagnetic();

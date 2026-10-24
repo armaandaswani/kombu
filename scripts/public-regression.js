@@ -51,6 +51,13 @@ async function run() {
     assert.strictEqual(await page.locator(".hero-bottle img").count(), 11, "the hero cycles the same visible flavours");
     assert.ok(!(await page.locator("#flavorList").innerText()).includes("Uva"), "a flavour hidden in the admin is not listed");
 
+    // The hero can be browsed by hand.
+    const firstName = await page.locator("#heroNow").innerText();
+    await page.click(".hero-arrow.next");
+    assert.notStrictEqual(await page.locator("#heroNow").innerText(), firstName, "the next arrow shows another flavour");
+    await page.click(".hero-arrow.prev");
+    assert.strictEqual(await page.locator("#heroNow").innerText(), firstName, "the previous arrow comes back");
+
     // Scrolling through the walk puts each flavour on stage, in order, with its own bottle.
     for (const i of [0, 4, 10]) {
       await page.evaluate((n) => {
@@ -81,6 +88,20 @@ async function run() {
 
     // WhatsApp links use the number set in the admin.
     assert.ok((await page.locator("[data-whatsapp]").first().getAttribute("href")).includes("phone=5592992097165"));
+
+    // Ordering direct is one tap away: hero button, "Pedir este sabor" prefills the flavour,
+    // and on a phone a floating button appears once the hero is out of view.
+    assert.strictEqual(await page.locator('.hero .btn[href="#comprar"]').count(), 1, "the hero offers ordering direct");
+    assert.ok(await page.evaluate(() => document.querySelector("#comprar").compareDocumentPosition(document.querySelector("#sabores")) & Node.DOCUMENT_POSITION_FOLLOWING), "ordering comes before the flavour walk");
+    await page.evaluate(() => { const el = document.querySelectorAll(".walk-step")[4]; window.scrollTo(0, el.getBoundingClientRect().top + window.scrollY - window.innerHeight / 2 + 20); });
+    await page.waitForFunction(() => document.querySelector(".walk-count").textContent.startsWith("05"));
+    const onStage = (await page.locator(".walk-name").innerText()).trim();
+    await page.locator(".walk-order").evaluate((a) => a.click());
+    assert.strictEqual(await page.inputValue("#order-mensagem"), onStage, "Pedir este sabor fills in the flavour on screen");
+    await page.fill("#order-mensagem", "");
+    await page.evaluate(() => window.scrollTo(0, document.querySelector("#onde").getBoundingClientRect().top + window.scrollY + 300));
+    await page.waitForFunction(() => !document.querySelector(".order-fab").classList.contains("is-away"));
+    assert.ok(await page.locator(".order-fab").isVisible(), "the floating order button shows mid-page on a phone");
 
     // Direct order form → /api/lead as a "contato" tagged as a 20+ order.
     await page.fill("#order-nome", "Teste Público");
