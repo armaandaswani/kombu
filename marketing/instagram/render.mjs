@@ -42,6 +42,13 @@ function lint() {
     previous = post.family;
     if (post.slides.length > 10) problems.push(`${post.id}: o Instagram aceita no máximo 10 imagens`);
   }
+  // Variety inside a carousel too (owner, 24/10): the same background twice in a row reads as one
+  // long slide. Flavour slides take the flavour's colour, so two flavours in a row are fine.
+  // Posts already on Instagram (publishedAt) are history, not something to fix.
+  for (const post of calendar.posts.filter(p => !p.publishedAt)) post.slides.forEach((sl, i) => {
+    const bg = x => x.bg || x.flavor;
+    if (i && bg(sl) === bg(post.slides[i - 1])) problems.push(`${post.id}: slides ${i} e ${i + 1} com o mesmo fundo (${bg(sl)})`);
+  });
   // The owner wants a mix of formats (24/10): a single image and a carousel read differently in the
   // feed, and a long run of either makes the grid monotonous.
   const formats = calendar.posts.map(p => p.slides.length > 1 ? 'carrossel' : 'imagem');
@@ -125,6 +132,7 @@ h2{font-family:'Playfair Display',serif;font-weight:700;font-size:96px;line-heig
 p{font-size:44px;line-height:1.38;color:var(--muted);margin:30px 0 0;max-width:840px;text-wrap:pretty;white-space:pre-line}
 .with-bottle p{font-size:34px;margin-top:20px;max-width:800px}
 .num{font-family:'Playfair Display',serif;font-weight:700;font-size:200px;line-height:1;color:var(--accent);margin-bottom:24px}
+.with-bottle .num{font-size:120px;margin-bottom:6px}
 .items{list-style:none;margin:40px 0 0;padding:0;display:grid;gap:0;justify-items:center}
 .items li{font-family:'Playfair Display',serif;font-weight:600;font-size:60px;line-height:1.15;padding:18px 0}
 .items li+li{border-top:2px solid var(--rule);min-width:320px}
@@ -142,7 +150,7 @@ function slideHtml(slide, i, total, fonts) {
   const sub = slide.accent ? `<p>${esc(slide.accent)}</p>` : '';
   let visual = '';
   if (slide.type === 'lineup') visual = `<div class="lineup">${slide.bottles.map(b => `<img src="${bottleUrl(b)}">`).join('')}</div>`;
-  else if (bottleSlug) visual = `<img class="bottle" style="--bh:${slide.items || slide.body && slide.body.length > 70 || slide.address ? 520 : 640}px" src="${bottleUrl(bottleSlug)}">`;
+  else if (bottleSlug) visual = `<img class="bottle" style="--bh:${slide.n ? 430 : slide.items || slide.body && slide.body.length > 70 || slide.address ? 520 : 640}px" src="${bottleUrl(bottleSlug)}">`;
   let words;
   switch (slide.type) {
     case 'step': case 'option':
