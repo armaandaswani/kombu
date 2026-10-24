@@ -455,7 +455,7 @@
           <dl>
             ${p.address ? `<div>${ICONS.pin}<dd>${esc(p.address)}</dd></div>` : ""}
             ${p.hours ? `<div>${ICONS.clock}<dd>${esc(p.hours)}</dd></div>` : ""}
-            ${p.flavors.length ? `<div>${ICONS.glass}<dd>${esc(p.flavors.join(", "))}</dd></div>` : ""}
+            ${p.flavors.length ? `<div class="flv">${ICONS.glass}<dd>${esc(p.flavors.join(", "))}</dd></div>` : ""}
             ${p.instagram ? `<div>${ICONS.ig}<dd><a href="${esc(instagramUrl(p.instagram))}" target="_blank" rel="noreferrer">${esc(p.instagram.startsWith("@") ? p.instagram : "@" + p.instagram)}</a></dd></div>` : ""}
           </dl>
           <div class="actions">

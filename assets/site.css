@@ -463,7 +463,7 @@ h3 { font-size: clamp(1.12rem, 1.6vw, 1.4rem); line-height: 1.2; }
   .b2b-hero .display { font-size: clamp(1.7rem, 7.4vw, 2.5rem); }
   .hero-sub { font-size: 0.98rem; margin-top: 8px; }
   .hero-copy .lead, .b2b-hero .lead { font-size: 0.88rem; line-height: 1.5; }
-  .hero-copy .actions { flex-direction: column; align-items: stretch; gap: 8px; width: 100%; max-width: 220px; }
+  .hero-copy .actions { gap: 10px; }
   .hero-copy .actions .btn { min-height: 42px; padding: 0 16px; font-size: 0.86rem; }
   .b2b-for { font-size: 0.86rem; }
   .hero-stage { height: min(58svh, 440px); min-height: 320px; padding-bottom: 30px; }
@@ -477,10 +477,9 @@ h3 { font-size: clamp(1.12rem, 1.6vw, 1.4rem); line-height: 1.2; }
   .hero-now { bottom: 6px; font-size: 0.74rem; flex-direction: column; gap: 0; line-height: 1.2; text-align: center; }
   .hero-now strong { display: block; font-size: 0.9rem; }
   .fan { height: min(46svh, 360px); min-height: 240px; }
-  /* keep the bottles inside their column so they never sit on top of the copy */
-  .fan { overflow: hidden; }
+  /* three whole bottles, overlapping by a fixed amount so they stay inside their column */
   .fan img:nth-child(1), .fan img:nth-child(5) { display: none; }
-  .fan img { margin: 0 -24%; }
+  .fan img { margin: 0 -26px; }
   .fan img:nth-child(2), .fan img:nth-child(4) { height: 74%; }
   .fan img:nth-child(3) { height: 88%; }
 
@@ -530,12 +529,15 @@ h3 { font-size: clamp(1.12rem, 1.6vw, 1.4rem); line-height: 1.2; }
   .partner { padding: 20px; gap: 10px; border-radius: 18px; }
   .partner h3 { font-size: 1.35rem; }
   .partner dl div { font-size: 0.86rem; }
+  .partner .flv dd { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+  .partner .actions { flex-wrap: nowrap; gap: 8px; }
+  .partner .actions .btn { flex: 1; padding: 0 10px; }
 
-  /* story: three short beats side by side */
-  .timeline { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
-  .timeline article { padding-top: 14px; gap: 6px; }
-  .timeline b { font-size: 1.5rem; }
-  .timeline p { font-size: 0.82rem; line-height: 1.45; }
+  /* story: one row per beat, the year beside its line */
+  .timeline { grid-template-columns: 1fr; gap: 0; }
+  .timeline article { grid-template-columns: 84px 1fr; align-items: baseline; justify-items: start; text-align: left; gap: 14px; padding: 16px 0; }
+  .timeline b { font-size: 1.4rem; }
+  .timeline p { font-size: 0.92rem; line-height: 1.5; }
 
   .faq summary { padding: 16px 18px; font-size: 0.95rem; }
   .faq summary::after { width: 28px; height: 28px; }
@@ -572,6 +574,47 @@ h3 { font-size: clamp(1.12rem, 1.6vw, 1.4rem); line-height: 1.2; }
   .post-list a { padding: 20px; }
   .post-list h2, .post-list h3 { font-size: 1.3rem; }
   .post-body p { font-size: 1rem; }
+}
+/* Phone hero (owner, 24/10): side by side, but only the headline sits next to the bottle. The
+   supporting line and the two buttons run underneath at full width, all on the same left edge, so
+   nothing is squeezed into half a 390px screen. hero-copy dissolves (display: contents) so its
+   children can take places in the hero's own grid. */
+@media (max-width: 600px) {
+  .hero .wrap, .b2b-hero .wrap {
+    grid-template-columns: minmax(0, 1fr) 132px;
+    grid-template-areas: "title stage" "lead lead" "actions actions";
+    column-gap: 16px; row-gap: 0; align-items: center; justify-items: stretch; text-align: left;
+    padding-top: 84px; padding-bottom: 36px;
+  }
+  .b2b-hero .wrap { grid-template-areas: "for stage" "title stage" "lead lead" "actions actions"; }
+  .hero-copy { display: contents; }
+  .hero h1, .b2b-hero h1 { grid-area: title; align-self: center; }
+  .b2b-for { grid-area: for; align-self: end; margin-bottom: 8px; font-size: 0.8rem; line-height: 1.4; }
+  .b2b-hero h1 { align-self: start; }
+  .display { font-size: clamp(1.75rem, 8vw, 2.2rem); line-height: 1.05; }
+  .b2b-hero .display { font-size: clamp(1.3rem, 6vw, 1.75rem); }
+  .b2b-hero .wrap { grid-template-columns: minmax(0, 1fr) 120px; }
+  .hero-sub { font-size: 0.92rem; line-height: 1.3; margin-top: 10px; }
+  .hero-copy .lead, .b2b-hero .lead { grid-area: lead; max-width: none; margin: 20px 0 0; font-size: 0.92rem; line-height: 1.55; }
+  .hero-copy .actions { grid-area: actions; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; width: 100%; max-width: none; margin-top: 20px; }
+  .hero-copy .actions .btn { width: 100%; min-height: 44px; padding: 0 10px; font-size: 0.88rem; }
+
+  .hero-stage { grid-area: stage; width: 132px; height: 250px; min-height: 0; padding-bottom: 26px; justify-self: end; }
+  .hero-bottle img { height: 100%; }
+  .bubbles { display: none; }
+  .hero-arrow { width: 30px; height: 30px; top: 42%; bottom: auto; transform: translateY(-50%); background: rgba(27, 47, 24, 0.55); }
+  .hero-arrow svg { width: 14px; height: 14px; }
+  .hero-arrow.prev { left: -6px; }
+  .hero-arrow.next { right: -6px; }
+  .hero-now { bottom: 0; width: 100%; font-size: 0.7rem; flex-direction: column; gap: 0; line-height: 1.25; white-space: normal; }
+  .hero-now strong { font-size: 0.8rem; }
+
+  /* resale: three whole bottles that fit the column instead of a clipped fan */
+  .fan { grid-area: stage; width: 120px; height: 190px; min-height: 0; overflow: visible; justify-self: end; align-items: flex-end; }
+  .fan img:nth-child(2), .fan img:nth-child(4) { height: 74%; margin: 0 -13px; }
+  .fan img:nth-child(2) { transform: rotate(-4deg); }
+  .fan img:nth-child(4) { transform: rotate(4deg); }
+  .fan img:nth-child(3) { height: 100%; margin: 0; }
 }
 @media (max-width: 560px) {
   .logo b { font-size: 1.25rem; }
