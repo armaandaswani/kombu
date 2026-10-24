@@ -93,6 +93,39 @@ async function run() {
   assert.strictEqual(res.statusCode, 401);
   assert.strictEqual(jsonBody(res).error, "not_authenticated");
 
+  // --- public partner data ----------------------------------------------------
+  // Partners used to be sent to the public site whole, exposing each one's
+  // negotiated payment terms and restock history to anyone.
+  const published = backend.sanitizePublicState({
+    partners: [
+      {
+        id: "par-1",
+        name: "Divina Terra",
+        visible: true,
+        neighborhood: "São Geraldo",
+        address: "Av. Djalma Batista, 935",
+        hours: "Seg a sáb, 8h às 20h",
+        instagram: "@divinaterramanaus",
+        whatsapp: "5592999999999",
+        flavors: "Uva, Goiaba",
+        terms: "15 dias após entrega",
+        lastDelivery: "2026-09-23",
+        sourceOrderId: "ord-123",
+      },
+      { id: "par-2", name: "Parceiro oculto", visible: false, terms: "30 dias" },
+    ],
+  });
+  assert.strictEqual(published.partners.length, 1, "a partner hidden in the admin never reaches the site");
+  const shown = published.partners[0];
+  assert.strictEqual(shown.terms, undefined, "payment terms are negotiated privately and must not be public");
+  assert.strictEqual(shown.lastDelivery, undefined, "restock history must not be public");
+  assert.strictEqual(shown.sourceOrderId, undefined, "internal order ids must not be public");
+  assert.strictEqual(shown.visible, undefined, "the admin's visibility flag is not the site's business");
+  assert.strictEqual(shown.address, "Av. Djalma Batista, 935", "the address the site needs still gets through");
+  assert.strictEqual(shown.hours, "Seg a sáb, 8h às 20h");
+  assert.strictEqual(shown.instagram, "@divinaterramanaus");
+  assert.strictEqual(shown.name, "Divina Terra");
+
   // --- lead retention --------------------------------------------------------
   // Roughly 500 submissions to the public form used to flush the whole CRM.
   const workedLead = (n) => ({ id: `worked-${n}`, status: "qualificado" });

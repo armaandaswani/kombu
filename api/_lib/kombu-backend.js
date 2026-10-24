@@ -713,10 +713,22 @@ function invariantRegressions(before, after) {
     .map((rule) => ({ rule, was: Number(before?.byRule?.[rule] || 0), now: Number(after.byRule[rule] || 0) }));
 }
 
+// Only what the public site actually renders. Partners used to go out whole, so
+// anyone could read each one's payment terms ("15 dias após entrega"), the date
+// of its last restock and the internal order it came from - commercial terms the
+// owner negotiates privately, and a map of which accounts have gone quiet.
+const PUBLIC_PARTNER_FIELDS = ["id", "name", "type", "neighborhood", "city", "address", "hours", "whatsapp", "instagram", "flavors"];
+
+function publicPartner(partner) {
+  return Object.fromEntries(
+    PUBLIC_PARTNER_FIELDS.filter((key) => partner[key] !== undefined).map((key) => [key, partner[key]]),
+  );
+}
+
 function sanitizePublicState(state = {}) {
   return {
     cms: state.cms || {},
-    partners: Array.isArray(state.partners) ? state.partners.filter((partner) => partner.visible) : [],
+    partners: Array.isArray(state.partners) ? state.partners.filter((partner) => partner.visible).map(publicPartner) : [],
     notifications: {
       adminEmail: state.notifications?.adminEmail || ADMIN_EMAIL,
     },

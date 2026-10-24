@@ -9644,6 +9644,11 @@ const partnerFields = [
   { name: "type", label: "Tipo" },
   { name: "neighborhood", label: "Bairro" },
   { name: "city", label: "Cidade" },
+  // The public site has always rendered these, but the form never offered them,
+  // so every partner showed "Manaus" and "Consulte o parceiro" and "Ver rota"
+  // could not route anyone.
+  { name: "address", label: "Endereço completo", full: true },
+  { name: "hours", label: "Horário de funcionamento", full: true },
   { name: "whatsapp", label: "WhatsApp" },
   { name: "instagram", label: "Instagram" },
   { name: "flavors", label: "Sabores", full: true },
