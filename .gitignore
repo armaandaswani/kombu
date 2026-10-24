@@ -6,3 +6,9 @@ node_modules/
 .env.*
 !.env.example
 
+
+# Instagram publisher: rendered images live on Cloudflare Pages, not in git
+marketing/instagram/out/
+marketing/instagram/.render/
+marketing/instagram/.wrangler/
+marketing/instagram/worker/.wrangler/

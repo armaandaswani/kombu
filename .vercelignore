@@ -19,3 +19,6 @@ supabase/
 # .html, so /stitch_komb_operational_suite/admin_dashboard_komb/code served a
 # full picture of the admin UI to anyone. Nothing at runtime references them.
 stitch_komb_operational_suite/
+
+# Instagram publisher (content, renderer, worker). Not part of the website.
+marketing/

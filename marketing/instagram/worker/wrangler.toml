@@ -1,0 +1,16 @@
+# Kombú Instagram publisher (@kombu.amazonia). Cron only: no public URL.
+name = "kombu-instagram"
+main = "index.mjs"
+compatibility_date = "2026-10-01"
+workers_dev = false
+preview_urls = false
+
+[[kv_namespaces]]
+binding = "STATE"
+id = "b59df63d5f8d4b91a087a818f4252c3e"
+
+# Manaus is UTC-4 with no daylight saving. 16:30 UTC = 12:30 in Manaus (the post),
+# 22:30 UTC = 18:30 (a retry, which only publishes if the noon run did not).
+# The posts themselves go out every two days; the worker skips the days in between.
+[triggers]
+crons = ["30 16 * * *", "30 22 * * *"]
