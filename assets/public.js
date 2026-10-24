@@ -160,7 +160,7 @@ const flavors = [
     description: "Uma combinação delicada de flor fada azul e blueberry.",
   },
   {
-    name: "Jasmim & Manga",
+    name: "Manga & Jasmim",
     slug: "jasmim-manga",
     imageKey: "jasmimManga",
     profile: "Frutados",
@@ -383,11 +383,45 @@ function getPublicPartners() {
         hours: partner.hours || "Consulte o parceiro",
         whatsapp: String(partner.whatsapp || "").replace(/\D/g, "") || "5592992097165",
         instagram: partner.instagram || "",
-        flavors: String(partner.flavors || "").split(",").map((item) => item.trim()).filter(Boolean),
+        flavors: String(partner.flavors || "").split(",").map((item) => canonicalFlavorName(item.trim())).filter(Boolean),
       }));
   } catch {
     return partners;
   }
+}
+
+// Partner flavour lists are typed by hand in the admin, so the same drink arrives
+// written several ways: "Mirtilo c/Flor Borboleta Azul", "Maçã c/Canela",
+// "Hibisco com Anis Estrelado". Shown raw, one bottle looks like three products
+// and none of them match the names in Sabores. This maps whatever was typed back
+// onto the canonical name, and leaves anything it cannot place untouched.
+function flavorTokens(value) {
+  return String(value || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/\bc\//g, " ")
+    .replace(/[^a-z0-9]+/g, " ")
+    .split(" ")
+    .filter((word) => word.length > 2 && !["com", "e", "de", "da", "do"].includes(word));
+}
+
+function canonicalFlavorName(value) {
+  const typed = flavorTokens(value);
+  if (!typed.length) return String(value || "").trim();
+  let best = null;
+  let bestScore = 0;
+  flavors.forEach((flavor) => {
+    const known = flavorTokens(flavor.name);
+    const hits = known.filter((word) => typed.includes(word)).length;
+    // Needs most of the canonical name present, so "Uva" cannot swallow "Uva Verde".
+    const score = hits / known.length;
+    if (score > bestScore) {
+      bestScore = score;
+      best = flavor.name;
+    }
+  });
+  return bestScore >= 0.5 ? best : String(value || "").trim();
 }
 
 function applyPublicCms() {
