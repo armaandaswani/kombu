@@ -74,3 +74,63 @@ Doze sabores, todos gaseificados pela própria fermentação. Encontre gelada na
 - **Tones to avoid**: hype-y, preachy, wellness-guru, "rise and grind", engagement bait
 - **Ambiguity**: every line must have only one reading, even out of context (owner, 24/10). Never "Fica de fora." over a list; write "A Kombú não leva:" and "Nenhum conservante."
 - **Content types to avoid**: memes, polls for engagement's sake, invented testimonials or statistics
+
+---
+
+## Voice Profile (brand-voice skill, 2026-10-24)
+This block is the source of truth for how Kombú writes. It wins over the "Voice & Tone" section above when they differ.
+
+```text
+VOICE PROFILE
+=============
+Author: Kombú (@kombu.amazonia, kombukombucha.com.br)
+Goal: get Manaus consumers to try it and order direct; bring in resellers
+Confidence: medium-high. Built from the owner's own words and corrections, the label and the approved copy
+
+Source Set
+- owner's corrections, 24/10: "evitar frases e posts ambíguos"; "bolhas? GÁS!"; "role para escolher o seu??";
+  "profissionais, mais simples e que deixem claro"; "gramática fácil, mas mantendo o tom premium, minimalista e profissional"
+- the bottle label: "Kombucha premium artesanal da Amazônia", "Naturalmente gaseificada", "Manter sempre gelado"
+- live site copy after the owner's review (24/10): "Peça direto da Kombú.", "O que vai na Kombú.", "Não usamos"
+- owner's brief: slogan "A Arte do Natural", family business in Manaus since 2017, B2B first
+
+Rhythm
+- short, complete sentences. One idea per sentence. No fragments standing alone as slides ("Com o brunch.")
+
+Compression
+- says the fact plainly, then one detail. No adjective trios ("frutado, vibrante, equilibrado")
+
+Capitalization
+- conventional. Flavour names with official capitals: Manga & Jasmim, Flor Fada Azul & Blueberry
+
+Parentheticals
+- none
+
+Question Use
+- only real questions the reader has ("A Kombú tem açúcar?"). No bait questions
+
+Claim Style
+- verifiable facts only: ingredients, process, place, year, how to buy. No health claims, no "sem açúcar",
+  no prices, no superlatives ("o melhor"), no invented stories
+
+Preferred Moves
+- name the thing exactly: "gás natural da fermentação", "a partir de 20 garrafas", "cerca de duas semanas"
+- say what it is, then what to do: "Gelada nos parceiros ou em pedido direto. Link na bio."
+- headings that work alone and read one way only: "A Kombú não leva:", "Nenhum conservante."
+
+Banned Moves
+- "bolha" / "borbulha" (say "gás")
+- wordplay and instructions about the page ("Role e escolha o seu", "Arraste" is fine only in a carousel caption)
+- any line with two readings ("Fica de fora." over a list)
+- italic accent words, tracked capitals, em dashes, "de verdade" used as filler, "premium" more than once per piece
+- hype, urgency, emojis
+
+CTA Rules
+- one call per piece: buy at a partner, or order direct from 20 bottles. Resale: "Fale com a gente", terms in the reply
+- explanatory posts may also ask for a save or a share
+
+Channel Notes
+- Instagram: hook within 125 characters, max 5 hashtags, always #manaus, partners @mentioned (they get tagged)
+- Site: same rules; buttons say what happens ("Fazer pedido", "Enviar pedido")
+- WhatsApp/email: same register, first person plural ("nós produzimos", "combinamos")
+```

@@ -28,6 +28,12 @@ const FORBIDDEN = [
   [/\bmirtilo\b/i, 'o nome oficial é Blueberry'],
   [/\bjasmim\s*&\s*manga\b/i, 'o nome oficial é Manga & Jasmim'],
   [/goiába/i, 'o nome oficial é Goiaba, sem acento'],
+  // Voice profile (.agents/social-media-context-sms.md, 24/10): the owner's own corrections.
+  [/\bbolh\w*|borbulh\w*/i, 'é gás, não bolha'],
+  [/—/, 'sem travessão; use ponto ou dois-pontos'],
+  [/!/, 'sem ponto de exclamação'],
+  [/\brole\b|\brolar\b/i, 'não dê instruções sobre a página ("role", "rolar")'],
+  [/\bo melhor\b|\bo mais\b/i, 'sem superlativo'],
 ];
 function lint() {
   const problems = [];
