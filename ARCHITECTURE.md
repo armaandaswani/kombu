@@ -5,7 +5,7 @@ This folder contains the Kombú operational web application built from the Stitc
 - `index.html`: public institutional/catalog site in Brazilian Portuguese.
 - `admin.html`: internal operating dashboard.
 - `assets/kombu.css`: shared visual system based on the Amazonian Vitality Stitch palette.
-- `assets/public.js`: public flavor cards, partner locator, forms and flavor detail views.
+- `assets/site.js`: public flavor cards, partner locator, forms and flavor detail views.
 - `assets/admin.js`: operational workflows, cost calculations, admin modules and CSV export.
 - `api/lead.js`: Vercel serverless endpoint for new leads, Supabase persistence and Resend notifications.
 - `api/state.js`: authenticated admin state sync endpoint backed by Supabase.

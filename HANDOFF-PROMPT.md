@@ -36,7 +36,7 @@ add a dependency without saying so explicitly and explaining why.
 ```
 admin.html, index.html      the two pages
 assets/admin.js             ~11,000 lines — ALL admin business logic lives here
-assets/public.js            public site
+assets/site.js            public site
 assets/kombu.css            all styles
 api/_lib/kombu-backend.js   shared backend: auth, Supabase, archives, invariants
 api/_lib/reservations.js    server-side reservation engine

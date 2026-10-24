@@ -8,7 +8,7 @@
     "test:api": "node scripts/api-regression.js",
     "test:reservations": "node scripts/reservation-regression.js",
     "test:admin": "node scripts/admin-logic-regression.js",
-    "check": "node --check assets/admin.js && node --check assets/public.js && node --check api/_lib/kombu-backend.js && node --check api/_lib/reservations.js && node --check api/state.js && node --check api/lead.js && node --check api/auth/login.js && node --check api/media/upload.js && node --check api/cron/payment-reminders.js",
+    "check": "node --check assets/admin.js && node --check assets/site.js && node --check api/sales.js && node --check api/_lib/kombu-backend.js && node --check api/_lib/reservations.js && node --check api/state.js && node --check api/lead.js && node --check api/auth/login.js && node --check api/media/upload.js && node --check api/cron/payment-reminders.js",
     "test:ui": "node scripts/run-browser-tests.js",
     "test:public": "node scripts/public-regression.js",
     "audit:ui": "node scripts/ui-audit.js",
