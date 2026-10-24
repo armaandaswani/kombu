@@ -178,7 +178,35 @@ async function run() {
     assert.ok(await b.page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth), "no horizontal scroll on /revenda");
     assert.deepStrictEqual(b.errors, [], "no script errors on /revenda");
 
-    console.log("Public regression: walk, admin overrides, partner order and escaping, both forms, menu, legal redirects, first-visit chooser and mobile layout passed.");
+    // ---------------------------------------------------------------- blog and SEO
+    const blog = await newPage(browser, leads);
+    for (const url of ["/", "/revenda", "/legal", "/blog", "/blog/o-que-e-kombucha", "/blog/como-a-kombu-e-feita", "/blog/como-servir-kombucha"]) {
+      await blog.page.goto(`${baseUrl}${url}`);
+      const seo = await blog.page.evaluate(() => ({
+        h1: document.querySelectorAll("h1").length,
+        title: document.title,
+        description: document.querySelector('meta[name="description"]')?.content || "",
+        canonical: document.querySelector('link[rel="canonical"]')?.href || "",
+        ogImage: document.querySelector('meta[property="og:image"]')?.content || "",
+        jsonld: [...document.querySelectorAll('script[type="application/ld+json"]')].map((s) => { try { JSON.parse(s.textContent); return true; } catch { return false; } }),
+        wide: document.documentElement.scrollWidth > document.documentElement.clientWidth,
+      }));
+      assert.strictEqual(seo.h1, 1, `${url}: exactly one h1`);
+      assert.ok(seo.title.length >= 25 && seo.title.length <= 65, `${url}: title length ${seo.title.length}`);
+      assert.ok(seo.description.length >= 80 && seo.description.length <= 165, `${url}: description length ${seo.description.length}`);
+      assert.ok(seo.canonical.startsWith("https://www.kombukombucha.com.br/"), `${url}: canonical`);
+      assert.ok(seo.ogImage.endsWith("/assets/og-kombu.jpg"), `${url}: share image`);
+      assert.ok(seo.jsonld.length >= 1 && seo.jsonld.every(Boolean), `${url}: valid structured data`);
+      assert.ok(!seo.wide, `${url}: no horizontal scroll`);
+    }
+    await blog.page.goto(`${baseUrl}/blog`);
+    assert.strictEqual(await blog.page.locator(".post-list li").count(), 3, "the blog lists every article");
+    const readingLinks = blog.page.locator(".reading-list a");
+    assert.strictEqual(await readingLinks.count(), 5, "the reading list from linktr.ee/kombuestudos");
+    for (const rel of await readingLinks.evaluateAll((as) => as.map((a) => a.rel))) assert.ok(rel.includes("noopener"), "external reading opens safely");
+    assert.deepStrictEqual(blog.errors, [], "no script errors on the blog");
+
+    console.log("Public regression: walk, admin overrides, partner order and escaping, both forms, menu, legal redirects, first-visit chooser, mobile layout, blog and SEO basics passed.");
   } finally {
     await browser.close();
   }

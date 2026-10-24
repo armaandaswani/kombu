@@ -127,7 +127,7 @@ h3 { font-size: clamp(1.35rem, 2.3vw, 1.85rem); line-height: 1.15; }
 .hero-copy { display: grid; gap: 20px; justify-items: center; width: 100%; min-width: 0; max-width: 46rem; }
 .hero-copy .lead { margin-inline: auto; }
 .hero-copy .actions { justify-content: center; }
-.hero-sub { font-family: var(--serif); font-style: italic; font-weight: 600; font-size: clamp(1.3rem, 2.6vw, 2rem); color: var(--lime); line-height: 1.2; margin: -6px 0 0; }
+.hero-sub { display: block; font-family: var(--serif); font-style: italic; font-weight: 600; font-size: clamp(1.3rem, 2.6vw, 2rem); letter-spacing: 0; color: var(--lime); line-height: 1.2; margin: 18px 0 0; }
 .hero .lead { color: rgba(255, 247, 237, 0.78); }
 .hero .btn-ghost { color: var(--cream); }
 .hero-stage { position: relative; width: 100%; height: min(48svh, 460px); padding-bottom: 34px; display: grid; place-items: center; order: -1; }
@@ -337,7 +337,34 @@ h3 { font-size: clamp(1.35rem, 2.3vw, 1.85rem); line-height: 1.15; }
 /* ---------------------------------------------------------------- legal */
 .legal { padding-top: 140px; }
 .legal article { max-width: 46rem; margin: 0 auto 60px; scroll-margin-top: 110px; }
-.legal p { color: var(--ink-2); }
+.legal p { color: var(--ink-2); }.legal-title { max-width: 46rem; margin: 0 auto 40px; text-align: center; font-size: clamp(2.2rem, 5vw, 3.4rem); }
+
+/* ---------------------------------------------------------------- blog */
+.blog-index .section-head h1 { font-size: clamp(2.4rem, 6vw, 4.3rem); line-height: 1.04; }
+.post { padding-top: 130px; padding-bottom: clamp(60px, 9vw, 110px); }
+.post article { max-width: 44rem; }
+.post article > h1 { font-size: clamp(2.4rem, 6vw, 4rem); line-height: 1.05; text-align: center; margin: 10px 0 22px; }
+.post article > .lead { margin: 0 auto 10px; text-align: center; }
+.crumbs { text-align: center; font-weight: 600; font-size: 0.95rem; }
+.crumbs a { color: var(--orange); text-decoration: none; }
+.post-body { margin-top: 30px; }
+.post-body h2 { font-size: clamp(1.6rem, 3.4vw, 2.2rem); margin: 44px 0 14px; }
+.post-body p { margin: 0 0 16px; font-size: 1.08rem; line-height: 1.7; color: var(--ink-2); }
+.post .actions { justify-content: center; margin-top: 40px; }
+.post-more { margin-top: clamp(60px, 9vw, 100px); }
+.post-more > h2 { text-align: center; font-size: clamp(1.8rem, 4vw, 2.6rem); margin-bottom: 26px; }
+.post-list { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; justify-content: center; gap: 16px; }
+.post-list li { flex: 0 1 360px; }
+.post-list a { display: grid; gap: 10px; height: 100%; padding: 28px; border-radius: 22px; background: #fff; box-shadow: 0 1px 0 var(--line), 0 30px 60px -50px rgba(27, 47, 24, 0.5); text-decoration: none; color: inherit; text-align: center; }
+.post-list h2, .post-list h3 { font-size: 1.6rem; line-height: 1.15; }
+.post-list p { margin: 0; color: var(--ink-2); font-size: 0.98rem; }
+.post-list span { font-weight: 700; color: var(--orange); }
+.readings { margin-top: clamp(70px, 10vw, 120px); }
+.reading-list { list-style: none; margin: 0 auto; padding: 0; max-width: 44rem; display: grid; gap: 10px; }
+.reading-list a { display: grid; gap: 4px; padding: 20px 24px; border-radius: 18px; background: #fff; box-shadow: 0 1px 0 var(--line); text-decoration: none; color: inherit; text-align: center; }
+.reading-list b { font-family: var(--serif); font-size: 1.25rem; }
+.reading-list span { font-size: 0.92rem; color: var(--ink-2); }
+.ledger-note a, .faq a { color: inherit; font-weight: 700; }
 
 /* ---------------------------------------------------------------- audience chooser
    Shown once, on a first visit to the home page, so nobody misses that there is a separate
