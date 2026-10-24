@@ -24,12 +24,13 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,800;1,600;1,700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" />
-    <link rel="stylesheet" href="/assets/site.css?v=20261024f" />
+    <link rel="stylesheet" href="/assets/site.css?v=20261024i" />
   </head>
   <body data-page="revenda">
+    <a class="skip" href="#main">Pular para o conteúdo</a>
     <header class="site-header">
       <div class="wrap bar">
-        <a class="logo" href="/" aria-label="Kombú, página inicial"><b>KOMBÚ</b><span>A Arte do Natural</span></a>
+        <a class="logo" href="/" aria-label="Kombú, página inicial"><b translate="no">KOMBÚ</b><span>A Arte do Natural</span></a>
         <nav class="nav" aria-label="Principal">
           <a href="#por-que">Por que Kombú</a>
           <a href="#como-funciona">Como funciona</a>
@@ -44,7 +45,7 @@
       </div>
     </header>
 
-    <main>
+    <main id="main">
       <section class="b2b-hero grain" aria-labelledby="b2b-title">
         <div class="wrap">
           <div class="hero-copy">
@@ -157,9 +158,9 @@
             </div>
             <div class="row">
               <label class="field"><span>WhatsApp</span><input id="rev-whatsapp" name="whatsapp" required inputmode="tel" autocomplete="tel" /></label>
-              <label class="field"><span>Instagram</span><input id="rev-instagram" name="instagram" placeholder="@seunegocio" /></label>
+              <label class="field"><span>Instagram</span><input id="rev-instagram" name="instagram" autocomplete="off" spellcheck="false" placeholder="@seunegocio" /></label>
             </div>
-            <label class="field"><span>Mensagem</span><textarea id="rev-mensagem" name="mensagem" placeholder="Conte sobre o seu ponto, o movimento e o que procura."></textarea></label>
+            <label class="field"><span>Mensagem</span><textarea id="rev-mensagem" name="mensagem" autocomplete="off" placeholder="Conte sobre o seu negócio e o que procura…"></textarea></label>
             <button class="btn" type="submit" data-magnetic>Enviar</button>
             <p class="form-note">Valores e condições são enviados no retorno.</p>
             <p class="form-status" role="status" hidden></p>
@@ -171,7 +172,7 @@
     <footer class="site-footer">
       <div class="wrap">
         <div>
-          <a class="logo" href="/"><b>KOMBÚ</b><span>A Arte do Natural</span></a>
+          <a class="logo" href="/"><b translate="no">KOMBÚ</b><span>A Arte do Natural</span></a>
           <p>Kombucha artesanal, feita em Manaus.</p>
         </div>
         <div>
@@ -196,6 +197,6 @@
       </div>
     </footer>
 
-    <script src="/assets/site.js?v=20261024f" defer></script>
+    <script src="/assets/site.js?v=20261024i" defer></script>
   </body>
 </html>

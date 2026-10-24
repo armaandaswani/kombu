@@ -224,7 +224,7 @@
     if (sub && String(cms().headline || "").trim()) sub.textContent = cms().headline.trim();
     if (lead && String(cms().subheadline || "").trim()) lead.textContent = cms().subheadline.trim();
 
-    holder.innerHTML = flavors.map((f, i) => `<img src="${esc(f.image)}" alt="Garrafa Kombú ${esc(f.name)}" ${i ? 'loading="lazy"' : 'fetchpriority="high"'} decoding="async">`).join("");
+    holder.innerHTML = flavors.map((f, i) => `<img src="${esc(f.image)}" alt="Garrafa Kombú ${esc(f.name)}" width="533" height="1600" ${i ? 'loading="lazy"' : 'fetchpriority="high"'} decoding="async">`).join("");
     dots.innerHTML = flavors.map((f, i) => `<button type="button" aria-label="Ver ${esc(f.name)}" aria-pressed="${i === 0}" data-i="${i}"></button>`).join("");
     const imgs = $$("img", holder);
     let current = -1;
@@ -243,6 +243,9 @@
     // The visitor can browse the flavours here too: dots, arrows, a tap on the bottle, or a swipe.
     // Any of them pauses the rotation for a while so it doesn't move on under the visitor's finger.
     const pick = (i) => { show(i); pausedUntil = Date.now() + 9000; };
+    // A pointer resting on the bottles holds the rotation, so it never changes under the cursor.
+    stage.addEventListener("pointerenter", (event) => { if (event.pointerType === "mouse") pausedUntil = Infinity; });
+    stage.addEventListener("pointerleave", (event) => { if (event.pointerType === "mouse") pausedUntil = Date.now() + 1500; });
     dots.addEventListener("click", (event) => {
       const button = event.target.closest("button[data-i]");
       if (button) pick(Number(button.dataset.i));
@@ -350,7 +353,7 @@
     const srList = $("#flavorList");
     steps.innerHTML = flavors.map((f, i) => `<div class="walk-step" id="sabor-${esc(f.slug)}" data-i="${i}" aria-hidden="true"></div>`).join("");
     // Same files as the hero, so they are usually cached by the time the visitor gets here.
-    bottle.innerHTML = flavors.map((f) => `<img src="${esc(f.image)}" alt="" decoding="async">`).join("");
+    bottle.innerHTML = flavors.map((f) => `<img src="${esc(f.image)}" alt="" width="533" height="1600" decoding="async">`).join("");
     rail.innerHTML = flavors.map((f, i) => `<button type="button" style="--sw:${palette(f).bg}" aria-label="${esc(f.name)}" data-i="${i}"></button>`).join("");
     if (srList) srList.innerHTML = flavors.map((f) => `<li>${esc(f.name)}: ${esc(f.angle)} ${esc(f.ingredients.join(", "))}.</li>`).join("");
     const imgs = $$("img", bottle);
@@ -425,6 +428,8 @@
     const filters = $("#partnerFilters");
     const list = partners();
     let bairro = "todos";
+    const names = $("#buyPartners");
+    if (names) names.innerHTML = list.map((p) => `<li>${esc(p.name)}</li>`).join("");
 
     if (!list.length) {
       grid.innerHTML = `<div class="partner-empty"><h3>Os pontos de venda estão no mapa.</h3><p class="lead" style="margin:12px auto 22px">Abra o mapa oficial para ver onde encontrar Kombú gelada.</p><a class="btn btn-dark" href="${esc(cms().officialMapUrl || OFFICIAL_MAP_URL)}" target="_blank" rel="noreferrer">${ICONS.pin}Abrir mapa</a></div>`;
@@ -470,7 +475,7 @@
       const pick = ["goiaba", "maracuja", "uva", "pera-alecrim", "hibisco-anis-estrelado"]
         .map((slug) => flavors.find((f) => f.slug === slug)).filter(Boolean);
       const chosen = pick.length >= 3 ? pick : flavors.slice(0, 5);
-      fan.innerHTML = chosen.map((f) => `<img src="${esc(f.image)}" alt="Garrafa Kombú ${esc(f.name)}" decoding="async">`).join("");
+      fan.innerHTML = chosen.map((f) => `<img src="${esc(f.image)}" alt="Garrafa Kombú ${esc(f.name)}" width="533" height="1600" decoding="async">`).join("");
     }
     const proof = $("#proofNames");
     if (proof) {

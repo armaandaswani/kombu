@@ -24,13 +24,14 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,800;1,600;1,700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" />
-    <link rel="stylesheet" href="/assets/site.css?v=20261024f" />
+    <link rel="stylesheet" href="/assets/site.css?v=20261024i" />
     <link rel="preload" as="image" href="/assets/bottles/maracuja.webp" />
   </head>
   <body data-page="consumer">
+    <a class="skip" href="#main">Pular para o conteúdo</a>
     <header class="site-header">
       <div class="wrap bar">
-        <a class="logo" href="/" aria-label="Kombú, página inicial"><b>KOMBÚ</b><span>A Arte do Natural</span></a>
+        <a class="logo" href="/" aria-label="Kombú, página inicial"><b translate="no">KOMBÚ</b><span>A Arte do Natural</span></a>
         <nav class="nav" aria-label="Principal">
           <a href="#comprar">Fazer pedido</a>
           <a href="#diferente">Ingredientes</a>
@@ -46,7 +47,7 @@
       </div>
     </header>
 
-    <main>
+    <main id="main">
       <section class="hero grain" aria-labelledby="hero-title">
         <div class="wrap">
           <div class="hero-copy">
@@ -92,7 +93,7 @@
                   <label class="field"><span>Nome</span><input id="order-nome" name="nome" required autocomplete="name" /></label>
                   <label class="field"><span>WhatsApp</span><input id="order-whatsapp" name="whatsapp" required inputmode="tel" autocomplete="tel" /></label>
                 </div>
-                <label class="field"><span>Sabores e quantidade</span><input id="order-mensagem" name="mensagem" placeholder="Ex.: 10 Maracujá e 10 Uva" /></label>
+                <label class="field"><span>Sabores e quantidade</span><input id="order-mensagem" name="mensagem" autocomplete="off" placeholder="Ex.: 10 Maracujá e 10 Uva…" /></label>
                 <button class="btn" type="submit">Enviar pedido</button>
                 <p class="form-status" role="status" hidden></p>
               </form>
@@ -101,9 +102,10 @@
               <div>
                 <span class="big">1</span>
                 <h3>Por unidade.</h3>
-                <p>Nos nossos parceiros em Manaus, gelada e sem pedido mínimo.</p>
+                <p>Gelada e sem pedido mínimo, nestes parceiros em Manaus:</p>
+                <ul class="buy-partners" id="buyPartners"></ul>
               </div>
-              <a class="btn" href="#onde" data-magnetic>Ver os parceiros</a>
+              <a class="btn" href="#onde" data-magnetic>Ver endereços</a>
             </article>
           </div>
         </div>
@@ -226,7 +228,7 @@
     <footer class="site-footer">
       <div class="wrap">
         <div>
-          <a class="logo" href="/"><b>KOMBÚ</b><span>A Arte do Natural</span></a>
+          <a class="logo" href="/"><b translate="no">KOMBÚ</b><span>A Arte do Natural</span></a>
           <p>Kombucha artesanal, feita em Manaus.</p>
         </div>
         <div>
@@ -260,11 +262,11 @@
         <h2 id="chooser-title">O que você procura?</h2>
         <div class="chooser-opts">
           <button class="opt" type="button" data-choice="consumo" autofocus>
-            <img src="/assets/bottles/maracuja.webp" alt="" />
+            <img src="/assets/bottles/maracuja.webp" alt="" width="533" height="1600" />
             <span><b>Para consumo próprio</b><small>Quero comprar para mim.</small></span>
           </button>
           <a class="opt opt-dark" href="/revenda" data-choice="revenda">
-            <span class="trio" aria-hidden="true"><img src="/assets/bottles/goiaba.webp" alt="" /><img src="/assets/bottles/uva.webp" alt="" /><img src="/assets/bottles/pera-alecrim.webp" alt="" /></span>
+            <span class="trio" aria-hidden="true"><img src="/assets/bottles/goiaba.webp" alt="" width="533" height="1600" /><img src="/assets/bottles/uva.webp" alt="" width="533" height="1600" /><img src="/assets/bottles/pera-alecrim.webp" alt="" width="533" height="1600" /></span>
             <span><b>Para revenda</b><small>Tenho um café, loja ou restaurante.</small></span>
           </a>
         </div>
@@ -272,6 +274,6 @@
       </div>
     </dialog>
 
-    <script src="/assets/site.js?v=20261024f" defer></script>
+    <script src="/assets/site.js?v=20261024i" defer></script>
   </body>
 </html>

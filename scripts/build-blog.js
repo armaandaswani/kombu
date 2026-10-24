@@ -123,9 +123,10 @@ function head({ title, description, url, type = "website", jsonld }) {
     <script type="application/ld+json">${JSON.stringify(jsonld)}</script>
   </head>
   <body data-page="blog">
+    <a class="skip" href="#main">Pular para o conteúdo</a>
     <header class="site-header is-solid">
       <div class="wrap bar">
-        <a class="logo" href="/" aria-label="Kombú, página inicial"><b>KOMBÚ</b><span>A Arte do Natural</span></a>
+        <a class="logo" href="/" aria-label="Kombú, página inicial"><b translate="no">KOMBÚ</b><span>A Arte do Natural</span></a>
         <nav class="nav" aria-label="Principal">
           <a href="/#comprar">Fazer pedido</a>
           <a href="/#sabores">Sabores</a>
@@ -143,7 +144,7 @@ function head({ title, description, url, type = "website", jsonld }) {
 
 const foot = `    <footer class="site-footer">
       <div class="wrap">
-        <div><a class="logo" href="/"><b>KOMBÚ</b><span>A Arte do Natural</span></a><p>Kombucha artesanal, feita em Manaus.</p></div>
+        <div><a class="logo" href="/"><b translate="no">KOMBÚ</b><span>A Arte do Natural</span></a><p>Kombucha artesanal, feita em Manaus.</p></div>
         <div><h4>Kombú</h4><ul><li><a href="/#comprar">Fazer pedido</a></li><li><a href="/#onde">Onde comprar</a></li><li><a href="/blog">Blog</a></li><li><a href="/revenda">Para revenda</a></li></ul></div>
         <div><h4>Contato</h4><ul><li><a href="/#comprar" data-whatsapp="Olá! Vim pelo site da Kombú.">WhatsApp</a></li><li><a href="https://www.instagram.com/kombu.amazonia/" target="_blank" rel="noreferrer">Instagram</a></li><li><a href="/legal#privacidade">Privacidade</a></li><li><a href="/legal#termos">Termos</a></li></ul></div>
         <div class="fine"><span>© <span data-year>2026</span> Kombú, Manaus</span><span>A Arte do Natural</span></div>
@@ -171,7 +172,7 @@ function articlePage(a) {
   };
   const others = articles.filter((x) => x !== a);
   return head({ title: `${a.title} | Blog Kombú`, description: a.description, url, type: "article", jsonld }) + `
-    <main class="post">
+    <main id="main" class="post">
       <article class="wrap">
         <nav class="crumbs" aria-label="Você está em"><a href="/blog">Blog</a></nav>
         <h1>${esc(a.title)}</h1>
@@ -203,7 +204,7 @@ function indexPage() {
     blogPost: articles.map((a) => ({ "@type": "BlogPosting", headline: a.title, url: `${site}/blog/${a.slug}`, datePublished: published })),
   };
   return head({ title: "Blog Kombú | Tudo sobre kombucha", description: "O que é kombucha, como a Kombú é feita, como servir e conservar, e uma lista de leituras e estudos sobre kombucha.", url, jsonld }) + `
-    <main class="post blog-index">
+    <main id="main" class="post blog-index">
       <div class="wrap">
         <div class="section-head">
           <h1>Tudo sobre kombucha.</h1>
