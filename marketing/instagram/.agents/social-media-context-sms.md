@@ -1,5 +1,5 @@
 # Social Media Context
-last_updated: 2026-10-24
+last_updated: 2026-10-27
 
 The brand rules in `../calendar.json` ("rules") and the checks in `../render.mjs` win over anything
 a social-media skill suggests. When a skill's generic advice (urgency, "save this", stats, arrows in
@@ -95,7 +95,7 @@ Source Set
 - owner's brief: slogan "A Arte do Natural", family business in Manaus since 2017, B2B first
 
 Rhythm
-- short, complete sentences. One idea per sentence. No fragments standing alone as slides ("Com o brunch.")
+- natural, connected sentences with varied length. Brevity must not break the thought into disconnected slogans. No fragments standing alone as slides ("Com o brunch.").
 
 Compression
 - says the fact plainly, then one detail. No adjective trios ("frutado, vibrante, equilibrado")
@@ -134,3 +134,22 @@ Channel Notes
 - Site: same rules; buttons say what happens ("Fazer pedido", "Enviar pedido")
 - WhatsApp/email: same register, first person plural ("nós produzimos", "combinamos")
 ```
+
+## Image direction — owner feedback, 2026-10-27
+
+- Do not reuse old photographs of people who already appeared on the Instagram page.
+- For lifestyle concepts, the owner prefers newly generated fictional adults enjoying Kombú around yoga, running, and sports, with natural photographic styling.
+- Product packaging is a Penta 500 ml bottle. Calibrate its size against the hand and face using the owner's real reference photos IMG_6992, IMG_6995 and IMG_6997. The first generated versions were oversized; the second were slightly too small. The third versions use a modest increase over version 2, guided by those real photos. Do not reuse the reference person's identity in generated lifestyle scenes.
+- Use the actual bottle photographs as packaging references. Preserve the bottle shape, label, and beverage color. These scenes must not imply health or athletic-performance benefits, or be presented as real customer testimonials.
+
+## Editorial direction — latest owner feedback, 2026-10-27
+
+This section updates the earlier voice and CTA notes where they differ.
+
+- Write in a human, warm, professional tone in posts and conversation. Read the copy aloud as a conversation with someone interested in Kombú. Connect ideas rather than putting three isolated claims next to each other.
+- The owner explicitly rejected: “A flor dá cor. O blueberry traz sabor. O sabor é floral e frutado.” Short sentences alone do not make copy good. Explain the actual recipe in one flowing thought instead of rephrasing the same fact on every line.
+- Rotate actual featured flavors, not just background colors. Do not repeat a hero flavor in a run of six upcoming posts. Avoid multi-bottle lineups that keep reintroducing the same flavors around the featured posts.
+- Keep published posts 01 and 02 unchanged. Update the actual future calendar and render it for review.
+- Include creator recruitment and affiliate-coupon posts. The public site confirms approval before activation, 5% off products for the audience, and 10% commission on paid products after the discount, excluding freight. Do not promise automatic approval, free products, minimum earnings, or invented eligibility thresholds.
+- Creator posts may invite applications via the “Para criadores” section of the website; this is an owner-authorized exception to the older two-CTA rule. This is not authorization to message creators directly.
+- The current site also offers kits of 4, 6, 12 and 20 bottles of 500 ml. Do not describe 20 bottles as the minimum for all direct purchases; distinguish standard production orders from the kit options. Do not publish monetary prices.

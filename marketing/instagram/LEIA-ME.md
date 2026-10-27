@@ -40,10 +40,14 @@ de revisão da Meta. É assim que a Reveja funciona desde 23/10/2026.
 
 ## Rotina
 - Ver o log: `wrangler kv key get log --namespace-id b59df63d5f8d4b91a087a818f4252c3e --remote`
-- Mudou o calendário? `node render.mjs` → `wrangler pages deploy out --project-name kombu-social --branch main`
+- Mudou o calendário? `node render.mjs` → `node prepare-publish.mjs` → `wrangler pages deploy .render/publish --project-name kombu-social --branch main`
   → `cd worker && wrangler deploy` (o calendário vai embutido no worker).
 - Acrescentar posts: adicionar ao fim de `posts` em `calendar.json` e repetir o passo acima.
   O worker avisa "calendário esgotado" no log quando a fila acaba.
+- `node render.mjs --check` revisa o calendário sem abrir o Chrome. A revisão também confere a abertura da legenda e impede repetir o sabor principal numa sequência de seis posts futuros, usando `heroFlavor`.
+- Posts com `publishedAt` não são renderizados novamente. Preserve seus arquivos existentes em `out/`; a preparação da publicação copia somente os JPEGs e legendas previstos no calendário, sem slides antigos ou cópias de conflito do iCloud.
+- O tipo `lifestyle` usa as cenas aprovadas em `assets/lifestyle/`. As pessoas são fictícias e não devem ser apresentadas como clientes ou depoimentos reais.
+- Os posts 17 e 20 convidam criadores para o programa descrito em `https://www.kombukombucha.com.br/#criadores`. O cadastro passa por aprovação antes da ativação do cupom. Percentuais não devem ser alterados sem conferir as condições atuais.
 - Pausar: remover os crons em `worker/wrangler.toml` e `wrangler deploy`.
 - Wrangler neste Mac: `~/.npm/_npx/*/node_modules/.bin/wrangler`, com `CI=1` e
   `CLOUDFLARE_ACCOUNT_ID=d96b1341ef54c6d28ad6415f18220aaf`.

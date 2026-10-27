@@ -64,6 +64,13 @@ function lint() {
   for (const post of calendar.posts) for (const s of post.slides) if (s.type === 'partner' && !/@\w/.test(post.caption)) problems.push(`${post.id}: parceiro sem @ na legenda (não seria marcado)`);
   const ids = calendar.posts.map(p => p.id);
   if (new Set(ids).size !== ids.length) problems.push('ids repetidos no calendário');
+  const future = calendar.posts.filter(p => !p.publishedAt);
+  future.forEach((post, i) => {
+    if (!post.heroFlavor) problems.push(`${post.id}: falta indicar o sabor principal em heroFlavor`);
+    if ((post.caption.split('\n')[0] || '').length > 125) problems.push(`${post.id}: abertura da legenda acima de 125 caracteres`);
+    if (post.heroFlavor && future.slice(Math.max(0, i - 5), i).some(p => p.heroFlavor === post.heroFlavor)) problems.push(`${post.id}: sabor principal repetido em uma sequência de seis posts`);
+    for (const slide of post.slides) if (slide.type === 'lifestyle' && !/^[a-z0-9-]+\.png$/i.test(slide.image || '')) problems.push(`${post.id}: arquivo lifestyle inválido`);
+  });
   return problems;
 }
 const problems = lint();
@@ -71,6 +78,11 @@ if (problems.length) {
   console.error('O calendário não passou na revisão:\n - ' + problems.join('\n - '));
   process.exit(1);
 }
+for (const post of calendar.posts.filter(p => !p.publishedAt)) for (const slide of post.slides) {
+  if (slide.type === 'lifestyle') await fs.access(path.join(root, 'assets/lifestyle', slide.image));
+}
+console.log('Revisão do calendário: sem erros.');
+if (only === '--check') process.exit(0);
 
 // ---------------------------------------------------------------- palette
 // Label colours, tuned for full-bleed backgrounds. "light" means cream type on a deep ground.
@@ -121,7 +133,7 @@ html,body{margin:0;width:1080px;height:1350px;overflow:hidden}
 body{position:relative;background:var(--bg);color:var(--fg);font-family:'Plus Jakarta Sans',sans-serif;-webkit-font-smoothing:antialiased}
 .glow{position:absolute;left:50%;top:44%;width:900px;height:900px;transform:translate(-50%,-50%);border-radius:50%;background:radial-gradient(circle,var(--glow) 0%,transparent 62%);opacity:.55;z-index:0}
 .top{position:absolute;top:64px;left:0;right:0;text-align:center;z-index:3}
-.mark{font-family:'Playfair Display',serif;font-weight:700;font-size:38px;letter-spacing:.24em;padding-left:.24em}
+.mark{font-family:'Playfair Display',serif;font-weight:700;font-size:38px;letter-spacing:.04em;padding-left:.04em}
 .foot{position:absolute;bottom:58px;left:0;right:0;display:grid;justify-items:center;gap:20px;z-index:3}
 .handle{font-weight:600;font-size:26px;color:var(--muted)}
 .dots{display:flex;gap:10px;align-items:center;height:12px}.dots i{width:11px;height:11px;border-radius:50%;background:var(--muted);opacity:.4}
@@ -146,6 +158,19 @@ p{font-size:44px;line-height:1.38;color:var(--muted);margin:30px 0 0;max-width:8
 `;
 
 function slideHtml(slide, i, total, fonts) {
+  if (slide.type === 'lifestyle') {
+    const image = pathToFileURL(path.join(root, 'assets/lifestyle', slide.image)).href;
+    const dots = total > 1 ? Array.from({length: total}, (_, n) => `<i class="${n === i ? 'on' : ''}"></i>`).join('') : '';
+    return `<!doctype html><html><head><meta charset="utf-8"><style>${fonts}${css}
+    .lifestyle{position:absolute;inset:0;width:1080px;height:1350px;object-fit:cover}
+    .shade{position:absolute;inset:0;background:linear-gradient(to bottom,rgba(0,0,0,.28),transparent 16%,transparent 72%,rgba(0,0,0,.43))}
+    .photo-copy{position:absolute;bottom:185px;left:90px;right:90px;text-align:center;font-size:82px;line-height:1.06;white-space:pre-line;text-shadow:0 2px 18px rgba(0,0,0,.18)}
+    </style></head><body style="--bg:#2D4B28;--fg:#FFF7ED;--accent:#FFF7ED;--muted:rgba(255,247,237,.9)">
+    <img class="lifestyle" src="${image}"><div class="shade"></div>
+    <div class="top"><span class="mark">KOMBÚ</span></div>
+    ${slide.title ? `<h1 class="photo-copy">${esc(slide.title)}</h1>` : ''}
+    <div class="foot">${dots ? `<span class="dots">${dots}</span>` : ''}<span class="handle">@kombu.amazonia</span></div></body></html>`;
+  }
   const t = theme(slide);
   const vars = `--bg:${t.bg};--fg:${t.fg};--accent:${t.accent};--muted:${t.muted};--rule:${t.rule};--glow:${t.mode === 'dark' ? 'rgba(255,255,255,.55)' : 'rgba(255,255,255,.22)'}`;
   const bottleSlug = slide.bottle || (['bottle', 'cover', 'partner'].includes(slide.type) && slide.flavor ? slide.flavor : null);
@@ -198,6 +223,8 @@ const send = (method, params = {}) => new Promise((resolve, reject) => { const i
 await send('Emulation.setDeviceMetricsOverride', {width: 1080, height: 1350, deviceScaleFactor: 1, mobile: false});
 try {
   for (const post of calendar.posts) {
+    // The published images are history. A type/layout change must never overwrite them.
+    if (post.publishedAt) continue;
     if (only && post.id !== only) continue;
     const dir = path.join(root, 'out', post.id);
     await fs.rm(dir, {recursive: true, force: true});
