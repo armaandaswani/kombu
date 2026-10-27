@@ -33,6 +33,7 @@ async function newPage(browser, leads, { firstVisit = false } = {}) {
   page.on("pageerror", (e) => errors.push(e.message));
   await page.route("**/api/public-state", (route) => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ ok: true, state }) }));
   await page.route("**/api/checkout", async (route) => {
+    if (route.request().method() === "GET") return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ ok: true, products: [{ productId: "p1", flavor: "Maracujá", available: 10 }, { productId: "p2", flavor: "Uva", available: 10 }] }) });
     const body = JSON.parse(route.request().postData() || "{}");
     if (body.action === "quote") {
       const catalog = require("../assets/kit-catalog");
@@ -158,8 +159,8 @@ async function run() {
     await page.evaluate(() => window.scrollTo(0, 0));
     await page.waitForFunction(() => !document.querySelector(".site-header").classList.contains("is-hidden"));
     await page.click(".menu-btn");
-    assert.ok((await page.locator(".nav .audience").innerText()).includes("Para consumo próprio"));
-    assert.ok((await page.locator(".nav .audience").innerText()).includes("Para revenda"));
+    assert.strictEqual(await page.locator(".nav .nav-buy").innerText(), "Comprar");
+    assert.strictEqual(await page.locator(".nav .nav-reseller").innerText(), "Revenda");
     assert.ok(await page.locator(".site-header").evaluate((h) => h.classList.contains("menu-open")));
     await page.click('.nav a[href="#onde"]');
     assert.ok(!(await page.locator(".site-header").evaluate((h) => h.classList.contains("menu-open"))), "following a menu link closes the menu");
@@ -239,14 +240,15 @@ async function run() {
     await referral.page.fill('#kitForm [name="bairro"]', "Centro");
     await referral.page.fill('#kitForm [name="cep"]', "69057-002");
     await referral.page.fill('#kitForm [name="address"]', "Rua Teste, 100");
-    await referral.page.fill('#kitForm [name="flavors"]', "3 Maracujá e 3 Uva");
+    await referral.page.fill('#stockProducts input[data-product-id="p1"]', "3");
+    await referral.page.fill('#stockProducts input[data-product-id="p2"]', "3");
     await referral.page.waitForFunction(() => !document.querySelector('#kitForm button[type="submit"]').disabled);
     assert.ok((await referral.page.locator("#kitQuote").innerText()).includes("133,95"), "the approved 5% discount is shown on the six-bottle kit");
     await referral.page.click('#kitForm button[type="submit"]');
     await referral.page.waitForSelector("#kitForm .form-status[data-state='ok']");
     assert.strictEqual(kitOrders.at(-1).kitId, "kit-6");
     assert.strictEqual(kitOrders.at(-1).couponCode, "AMAZONIA10");
-    assert.strictEqual(kitOrders.at(-1).flavors, "3 Maracujá e 3 Uva");
+    assert.deepStrictEqual(kitOrders.at(-1).items, [{ productId: "p1", qty: 3 }, { productId: "p2", qty: 3 }]);
     assert.strictEqual(kitOrders.at(-1).deliveryCents, undefined, "customer does not choose a delivery fee");
     await referral.page.fill('input[name="couponCode"]', "");
     await referral.page.locator('input[name="couponCode"]').blur();

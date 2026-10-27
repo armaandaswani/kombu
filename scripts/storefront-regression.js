@@ -12,7 +12,7 @@ let failInsert = false;
 let failProvider = false;
 let lastLinkRequest;
 let missingSchema = false;
-const crmRow = { id: "production", updated_at: "2026-10-27T12:00:00Z", state: { leads: [] } };
+const crmRow = { id: "production", updated_at: "2026-10-27T12:00:00Z", state: { leads: [], products: [{ id: "p1", flavor: "Maracujá", sizeMl: 500 }, { id: "p2", flavor: "Uva", sizeMl: 500 }], batches: [{ code: "b1", productId: "p1", actual: 100, expiry: "2099-01-01" }, { code: "b2", productId: "p2", actual: 100, expiry: "2099-01-01" }] } };
 function response(value, status = 200) { return { ok: status < 400, status, text: async () => JSON.stringify(value), json: async () => value }; }
 function matches(row, url) {
   const id = url.searchParams.get("id");
@@ -58,7 +58,7 @@ global.fetch = async (raw, options = {}) => {
   // CRM notification is secondary; simulate it unavailable so this suite also
   // checks that a durable order survives a separate CRM failure.
   if (url.pathname === "/rest/v1/app_state") {
-    if (!missingSchema) return response({ message: "CRM unavailable" }, 503);
+    if (!missingSchema && options.method === "PATCH") return response({ message: "CRM unavailable" }, 503);
     if (options.method === "PATCH") Object.assign(crmRow, JSON.parse(options.body));
     return response([crmRow]);
   }
@@ -84,7 +84,7 @@ async function run() {
   await assert.rejects(pricedQuote({ kitId: "kit-4", couponCode: "AMAZONIA5" }), /invalid_creator_code/);
   creators.get("AMAZONIA5").active = true;
   for (const bad of ["javascript:alert(1)","https://checkout.infinitepay.com.br.evil.test/a","https://evil.test","http://checkout.infinitepay.com.br/a"]) assert.throws(() => safeCheckoutUrl(bad));
-  const input = { requestId: crypto.randomUUID(), kitId: "kit-6", couponCode: "AMAZONIA5", name: "Cliente Teste", phone: "92999990000", email: "cliente@example.test", city: "Manaus", neighborhood: "Centro", cep: "69057002", address: "Rua Teste, 1", flavors: "3 Maracujá e 3 Uva" };
+  const input = { requestId: crypto.randomUUID(), kitId: "kit-6", couponCode: "AMAZONIA5", name: "Cliente Teste", phone: "92999990000", email: "cliente@example.test", city: "Manaus", neighborhood: "Centro", cep: "69057002", address: "Rua Teste, 1", items: [{ productId: "p1", qty: 3 }, { productId: "p2", qty: 3 }] };
   const initialProviderCalls = providerCalls;
   const requested = await requestOrder(input);
   assert.equal(providerCalls, initialProviderCalls, "customer request never creates a payment before freight confirmation");
@@ -92,7 +92,7 @@ async function run() {
   assert.equal(orders.get(input.requestId).status, "awaiting_shipping");
   await requestOrder(input);
   assert.equal(orders.size, 1, "same request ID is idempotent");
-  await assert.rejects(requestOrder({ ...input, flavors: "Pedido alterado" }), /request_changed/);
+  await assert.rejects(requestOrder({ ...input, items: [{ productId: "p1", qty: 6 }] }), /request_changed/);
   await assert.rejects(requestOrder({ ...input, requestId: crypto.randomUUID(), city: "Belém" }), /invalid_delivery_address/);
   await assert.rejects(createPaymentLink(input.requestId, -1), /invalid_delivery_fee/);
   await assert.rejects(createPaymentLink(input.requestId, 1.5), /invalid_delivery_fee/);

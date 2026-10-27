@@ -2,10 +2,15 @@ const { json, readBody, clientIp, rateLimit } = require("./_lib/kombu-backend");
 const { catalog, checkoutEnabled, PICKUP, pricedQuote, requestOrder } = require("./_lib/storefront");
 module.exports = async function handler(req, res) {
   res.setHeader("Cache-Control", "no-store");
-  if (req.method === "GET") return json(res, 200, {
+  if (req.method === "GET") {
+    try {
+    const products = await require("./_lib/storefront-stock").getStock();
+    return json(res, 200, {
     ok: true, kits: catalog.kits, discountBps: catalog.discountBps,
-    checkoutEnabled: checkoutEnabled(), pickup: PICKUP, deliveryMode: "uber_manual",
-  });
+    products, checkoutEnabled: checkoutEnabled(), pickup: PICKUP, deliveryMode: "uber_manual",
+    });
+    } catch { return json(res, 503, { ok: false, error: "stock_unavailable" }); }
+  }
   if (req.method !== "POST") { res.setHeader("Allow", "GET, POST"); return json(res, 405, { ok: false, error: "method_not_allowed" }); }
   const throttle = rateLimit(`checkout:${clientIp(req)}`, { limit: 15, windowMs: 60000 });
   if (!throttle.allowed) { res.setHeader("Retry-After", String(throttle.retryAfterSeconds)); return json(res, 429, { ok: false, error: "rate_limited" }); }

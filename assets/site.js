@@ -732,8 +732,8 @@
 
   function initChooser() {
     if (page === "revenda") saveAudience("revenda");
-    $$('.audience a[href="/revenda"]').forEach((a) => a.addEventListener("click", () => saveAudience("revenda")));
-    $$('.audience a[href="/"]').forEach((a) => a.addEventListener("click", () => saveAudience("consumo")));
+    $$('.nav a[href="/revenda"]').forEach((a) => a.addEventListener("click", () => saveAudience("revenda")));
+    $$('.site-header .logo[href="/"]').forEach((a) => a.addEventListener("click", () => saveAudience("consumo")));
     const dialog = $("#audienceChooser");
     if (!dialog || typeof dialog.showModal !== "function") return;
     if (readAudience() || location.hash) return;

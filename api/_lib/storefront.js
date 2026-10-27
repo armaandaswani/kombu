@@ -56,8 +56,11 @@ async function requestOrder(body) {
   };
   if (!customer.name || !/^\d{10,13}$/.test(customer.phone) || (customer.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(customer.email))) fail("invalid_customer");
   if (customer.city.toLocaleLowerCase("pt-BR") !== "manaus" || !customer.address || !customer.neighborhood || !/^\d{8}$/.test(customer.cep)) fail("invalid_delivery_address");
-  const flavors = String(body.flavors || "").trim().slice(0, 1000);
-  if (!flavors) fail("flavors_required");
+  const { getStock, validateSelection } = require("./storefront-stock");
+  const kit = catalog.kits.find(k => k.id === body.kitId);
+  if (!kit) fail("invalid_kit");
+  const selection = validateSelection(body.items, await getStock(), kit.bottles);
+  const flavors = selection.map(item => `${item.qty} ${item.flavor}`).join("; ");
   const fingerprint = crypto.createHash("sha256").update(JSON.stringify([body.kitId, catalog.code(body.couponCode), customer, flavors])).digest("hex");
   const quote = await pricedQuote(body);
   async function notify(required = false) {
