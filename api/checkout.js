@@ -4,10 +4,10 @@ module.exports = async function handler(req, res) {
   res.setHeader("Cache-Control", "no-store");
   if (req.method === "GET") {
     try {
-    const products = await require("./_lib/storefront-stock").getStock();
+    const availability = await require("./_lib/storefront-stock").getAvailability();
     return json(res, 200, {
     ok: true, kits: catalog.kits, discountBps: catalog.discountBps,
-    products, checkoutEnabled: checkoutEnabled(), pickup: PICKUP, deliveryMode: "uber_manual",
+    ...availability, checkoutEnabled: checkoutEnabled(), pickup: PICKUP, deliveryMode: "uber_manual",
     });
     } catch { return json(res, 503, { ok: false, error: "stock_unavailable" }); }
   }

@@ -56,18 +56,27 @@ async function requestOrder(body) {
   };
   if (!customer.name || !/^\d{10,13}$/.test(customer.phone) || (customer.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(customer.email))) fail("invalid_customer");
   if (customer.city.toLocaleLowerCase("pt-BR") !== "manaus" || !customer.address || !customer.neighborhood || !/^\d{8}$/.test(customer.cep)) fail("invalid_delivery_address");
-  const { getStock, validateSelection } = require("./storefront-stock");
+  const { getStock, validateSelection, getAvailability, validateReservation } = require("./storefront-stock");
+  if (body.orderMode && !["ready", "reservation"].includes(body.orderMode)) fail("invalid_order_mode");
+  const reservation = body.orderMode === "reservation";
   const kit = catalog.kits.find(k => k.id === body.kitId);
   if (!kit) fail("invalid_kit");
-  const selection = validateSelection(body.items, await getStock(), kit.bottles);
+  const selection = reservation
+    ? validateReservation(body.items, (await getAvailability()).reservationProducts, kit.bottles)
+    : validateSelection(body.items, await getStock(), kit.bottles);
   const flavors = selection.map(item => `${item.qty} ${item.flavor}`).join("; ");
-  const fingerprint = crypto.createHash("sha256").update(JSON.stringify([body.kitId, catalog.code(body.couponCode), customer, flavors])).digest("hex");
+  const fingerprint = crypto.createHash("sha256").update(JSON.stringify([body.kitId, catalog.code(body.couponCode), customer, flavors, reservation])).digest("hex");
   const quote = await pricedQuote(body);
   async function notify(required = false) {
-    const summary = `Pedido de kit: ${quote.bottles} garrafas de ${quote.sizeMl} ml. Produtos: R$ ${(quote.productsCents / 100).toFixed(2)}. Cupom: ${quote.couponCode || "nenhum"}. Frete Uber a confirmar. Sabores: ${flavors}. Endereço: ${customer.address}, ${customer.neighborhood}, ${customer.city}, CEP ${customer.cep}. Pedido: ${body.requestId}`;
-    const saved = await appendLeadToState({ id: `kit-${body.requestId}`, type: "contato", name: customer.name, whatsapp: customer.phone, location: customer.neighborhood, couponCode: quote.couponCode, source: "site-kits", message: summary }).catch(() => ({ ok: false }));
+    const summary = `${reservation ? "RESERVA DE LOTE — SEM PAGAMENTO. Prazo de produção a confirmar. " : ""}Pedido de kit: ${quote.bottles} garrafas de ${quote.sizeMl} ml. Produtos: R$ ${(quote.productsCents / 100).toFixed(2)}. Cupom: ${quote.couponCode || "nenhum"}. Frete Uber a confirmar. Sabores: ${flavors}. Endereço: ${customer.address}, ${customer.neighborhood}, ${customer.city}, CEP ${customer.cep}. Pedido: ${body.requestId}`;
+    const saved = await appendLeadToState({ id: `kit-${body.requestId}`, type: "contato", name: customer.name, whatsapp: customer.phone, location: customer.neighborhood, couponCode: quote.couponCode, source: reservation ? "site-reserva-lote" : "site-kits", message: summary }).catch(() => ({ ok: false }));
     if (required && !saved.ok) fail("order_store_unavailable", 503);
-    await sendEmail({ to: process.env.LEAD_NOTIFY_EMAIL || ADMIN_EMAIL, subject: `Novo pedido de kit Kombú: ${customer.name}`, text: summary }).catch(() => {});
+    await sendEmail({ to: process.env.LEAD_NOTIFY_EMAIL || ADMIN_EMAIL, subject: `${reservation ? "Reserva sem pagamento" : "Novo pedido de kit"} Kombú: ${customer.name}`, text: summary }).catch(() => {});
+  }
+  if (reservation) {
+    // Production requests are CRM enquiries, never payment orders or stock holds.
+    await notify(true);
+    return { orderId: body.requestId, persisted: true, storage: "crm", reservation: true };
   }
   let previous;
   try {

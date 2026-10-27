@@ -1,6 +1,22 @@
 const { getAppState } = require('./kombu-backend');
 const { reconcileReservations, batchMatchesOrderItem, orderItemSize } = require('./reservations');
 const normal = value => String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLowerCase();
+function reservableProducts(state) {
+  if (!state || !Array.isArray(state.products)) throw new Error('stock_unavailable');
+  const maps = { products: new Map(state.products.map(p => [p.id, p])), recipes: new Map((state.recipes || []).map(r => [r.id, r])) };
+  return state.products.filter(p => p.visible !== false && normal(p.status || 'ativo') === 'ativo' && orderItemSize({ productId: p.id }, maps) === 500)
+    .map(p => ({ productId: p.id, flavor: String(p.flavor || p.name || ''), sizeMl: 500 })).filter(p => p.flavor);
+}
+async function getAvailability() {
+  const state = await getAppState();
+  return { products: availableProducts(state), reservationProducts: reservableProducts(state) };
+}
+function validateReservation(items, products, bottles) {
+  if (![12, 20].includes(bottles)) { const e = new Error('reservation_kit_required'); e.status = 400; throw e; }
+  const selection = validateSelection(items, products.map(p => ({ ...p, available: bottles })), bottles);
+  if (selection.some(item => item.qty < 5)) { const e = new Error('reservation_minimum'); e.status = 400; throw e; }
+  return selection;
+}
 function availableProducts(state, now = new Date()) {
   if (!state || !Array.isArray(state.products)) throw new Error('stock_unavailable');
   const maps = { products: new Map(state.products.map(p => [p.id, p])), recipes: new Map((state.recipes || []).map(r => [r.id, r])) };
@@ -35,4 +51,4 @@ function validateSelection(items, products, bottles) {
   if (selected.reduce((sum, item) => sum + item.qty, 0) !== bottles) invalid();
   return selected;
 }
-module.exports = { availableProducts, getStock, validateSelection };
+module.exports = { availableProducts, getStock, validateSelection, reservableProducts, getAvailability, validateReservation };

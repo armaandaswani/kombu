@@ -42,6 +42,7 @@
 <div class="row"><label class="field"><span>Nome</span><input name="nome" required autocomplete="name" maxlength="120" /></label><label class="field"><span>WhatsApp</span><input name="whatsapp" required inputmode="tel" autocomplete="tel" maxlength="25" /></label></div>
 <label class="field"><span>E-mail (opcional)</span><input name="email" type="email" autocomplete="email" maxlength="160" /></label>
 <label class="field"><span>Qual kit?</span><select name="kitId" id="kit-choice" required><option value="">Selecione</option><option value="kit-4">Primeiros sabores — 4 garrafas — R$ 100,00</option><option value="kit-6">Para compartilhar — 6 garrafas — R$ 141,00</option><option value="kit-12">Mais descobertas — 12 garrafas — R$ 264,00</option><option value="kit-20">Sua seleção completa — 20 garrafas — R$ 400,00</option></select></label>
+<label class="field"><span>Como deseja receber?</span><select name="orderMode"><option value="ready">Pronta entrega · conforme estoque</option><option value="reservation">Reservar lote · kits de 12 ou 20 · sem pagamento</option></select></label><p id="reservationHelp" class="form-note" hidden>Reserva para produção, sem pagamento agora. Escolha um kit de 12 ou 20, com no mínimo 5 garrafas por sabor. Combinamos o prazo com você antes de produzir.</p>
 <fieldset id="stockSelection"><legend>Escolha seus sabores · 500 ml</legend><p id="stockStatus" role="status">Consultando disponibilidade…</p><div id="stockProducts"></div></fieldset>
 <div class="row"><label class="field"><span>Cidade</span><input name="city" required value="Manaus" autocomplete="address-level2" /></label><label class="field"><span>CEP de entrega</span><input name="cep" required inputmode="numeric" autocomplete="postal-code" pattern="[0-9]{5}-?[0-9]{3}" maxlength="9" /></label></div>
 <label class="field"><span>Bairro</span><input name="bairro" required autocomplete="address-level3" maxlength="120" /></label>
@@ -53,4 +54,4 @@
 <footer class="site-footer tasting-footer"><div class="wrap"><a class="logo" href="/"><b translate="no">KOMBÚ</b><span>A Arte do Natural</span></a><p>Kombucha artesanal, feita em Manaus.</p><nav aria-label="Rodapé"><a href="/revenda">Para revenda</a><a href="/#criadores">Para criadores</a><a href="/legal#privacidade">Privacidade</a></nav></div></footer>
 <script src="/assets/kit-catalog.js?v=20261027b" defer></script>
 <script src="/assets/site.js?v=20261027e" defer></script>
-<script src="/assets/storefront.js?v=20261027e" defer></script></body></html>
+<script src="/assets/storefront.js?v=20261027f" defer></script></body></html>

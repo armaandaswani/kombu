@@ -33,7 +33,7 @@ async function newPage(browser, leads, { firstVisit = false } = {}) {
   page.on("pageerror", (e) => errors.push(e.message));
   await page.route("**/api/public-state", (route) => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ ok: true, state }) }));
   await page.route("**/api/checkout", async (route) => {
-    if (route.request().method() === "GET") return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ ok: true, products: [{ productId: "p1", flavor: "Maracujá", available: 10 }, { productId: "p2", flavor: "Uva", available: 10 }] }) });
+    if (route.request().method() === "GET") return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ ok: true, products: [{ productId: "p1", flavor: "Maracujá", available: 10 }, { productId: "p2", flavor: "Uva", available: 10 }], reservationProducts: [{ productId: "p1", flavor: "Maracujá", sizeMl: 500 }, { productId: "p2", flavor: "Uva", sizeMl: 500 }] }) });
     const body = JSON.parse(route.request().postData() || "{}");
     if (body.action === "quote") {
       const catalog = require("../assets/kit-catalog");
@@ -42,7 +42,7 @@ async function newPage(browser, leads, { firstVisit = false } = {}) {
       return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ ok: true, quote }) });
     }
     kitOrders.push(body);
-    return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ ok: true, persisted: true, orderId: body.requestId }) });
+    return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ ok: true, persisted: true, reservation: body.orderMode === "reservation", orderId: body.requestId }) });
   });
   await page.route("**/api/lead", async (route) => {
     leads.push(JSON.parse(route.request().postData() || "{}").lead);
@@ -249,6 +249,18 @@ async function run() {
     assert.strictEqual(kitOrders.at(-1).kitId, "kit-6");
     assert.strictEqual(kitOrders.at(-1).couponCode, "AMAZONIA10");
     assert.deepStrictEqual(kitOrders.at(-1).items, [{ productId: "p1", qty: 3 }, { productId: "p2", qty: 3 }]);
+    await referral.page.selectOption('#kitForm [name="kitId"]', 'kit-12');
+    await referral.page.selectOption('#kitForm [name="orderMode"]', 'reservation');
+    await referral.page.fill('#stockProducts input[data-product-id="p1"]', '4');
+    await referral.page.fill('#stockProducts input[data-product-id="p2"]', '8');
+    assert.ok(await referral.page.locator('#kitForm button[type="submit"]').isDisabled(), 'minimum 5 per flavour blocks 4+8');
+    await referral.page.fill('#stockProducts input[data-product-id="p1"]', '5');
+    await referral.page.fill('#stockProducts input[data-product-id="p2"]', '7');
+    await referral.page.waitForFunction(() => !document.querySelector('#kitForm button[type="submit"]').disabled);
+    assert.strictEqual(await referral.page.locator('#kitForm button[type="submit"]').textContent(), 'Reservar lote sem pagamento');
+    await referral.page.selectOption('#kitForm [name="kitId"]', 'kit-6');
+    assert.ok(await referral.page.locator('#kitForm button[type="submit"]').isDisabled(), 'small kits cannot reserve production');
+
     assert.strictEqual(kitOrders.at(-1).deliveryCents, undefined, "customer does not choose a delivery fee");
     await referral.page.fill('input[name="couponCode"]', "");
     await referral.page.locator('input[name="couponCode"]').blur();

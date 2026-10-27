@@ -146,6 +146,17 @@ async function run() {
   assert.equal(fallback.storage, "crm");
   assert.equal(fallback.persisted, true);
   assert.ok(crmRow.state.leads[0].message.includes("141.00"), "kit enquiries remain usable before checkout migration");
+  const reservedInput = { ...enquiry, requestId: crypto.randomUUID(), orderMode: "reservation", kitId: "kit-12", items: [{ productId: "p1", qty: 5 }, { productId: "p2", qty: 7 }] };
+  crmRow.state.batches.forEach(batch => { batch.actual = 0; });
+  const callsBeforeReservation = providerCalls;
+  const reserve = await requestOrder(reservedInput);
+  assert.equal(reserve.reservation, true);
+  assert.equal(providerCalls, callsBeforeReservation, "production reservations must never call payment provider");
+  assert.ok(crmRow.state.leads.some(lead => lead.source === "site-reserva-lote" && lead.message.includes("SEM PAGAMENTO") && lead.message.includes("5 Maracujá; 7 Uva")));
+  await assert.rejects(requestOrder({ ...reservedInput, requestId: crypto.randomUUID(), orderMode: "ready" }), /stock_changed/);
+  await assert.rejects(requestOrder({ ...reservedInput, requestId: crypto.randomUUID(), items: [{productId:"p1",qty:4},{productId:"p2",qty:8}] }), /reservation_minimum/);
+  await assert.rejects(requestOrder({ ...reservedInput, kitId: "kit-6", items: [{productId:"p1",qty:6}] }), /reservation_kit_required/);
+  assert.equal(crmRow.state.orders?.length || 0, 0, "production enquiry must not reserve current stock");
   missingSchema = false;
   const checkout = require("../api/checkout");
   let res = mockRes();
