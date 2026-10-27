@@ -4,15 +4,17 @@
   "private": true,
   "description": "Kombu public site and operational admin platform.",
   "scripts": {
-    "test": "npm run test:api && npm run test:reservations && npm run test:admin",
+    "test": "npm run test:api && npm run test:reservations && npm run test:admin && npm run test:storefront",
     "test:api": "node scripts/api-regression.js",
     "test:reservations": "node scripts/reservation-regression.js",
     "test:admin": "node scripts/admin-logic-regression.js",
-    "check": "node --check assets/admin.js && node --check assets/site.js && node --check api/sales.js && node --check api/_lib/kombu-backend.js && node --check api/_lib/reservations.js && node --check api/state.js && node --check api/lead.js && node --check api/auth/login.js && node --check api/media/upload.js && node --check api/cron/payment-reminders.js",
+    "check": "node --check assets/admin.js && node --check assets/site.js && node --check api/sales.js && node --check api/_lib/kombu-backend.js && node --check api/_lib/reservations.js && node --check api/state.js && node --check api/lead.js && node --check api/auth/login.js && node --check api/media/upload.js && node --check api/cron/payment-reminders.js && node --check assets/kit-catalog.js && node --check assets/storefront.js && node --check assets/payment-status.js && node --check api/_lib/storefront.js && node --check api/checkout.js && node --check api/creators.js && node --check api/payment-webhook.js && node --check api/payment-status.js",
     "test:ui": "node scripts/run-browser-tests.js",
     "test:public": "node scripts/public-regression.js",
     "audit:ui": "node scripts/ui-audit.js",
-    "test:ui:setup": "npm ci --prefix scripts/browser --include=dev && node scripts/browser/node_modules/playwright/cli.js install chromium"
+    "test:ui:setup": "npm ci --prefix scripts/browser --include=dev && node scripts/browser/node_modules/playwright/cli.js install chromium",
+    "test:storefront": "node scripts/storefront-regression.js",
+    "test:storefront:ui": "node scripts/storefront-browser-regression.js"
   },
   "engines": {
     "node": ">=18"

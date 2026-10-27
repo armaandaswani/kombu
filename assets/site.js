@@ -354,7 +354,10 @@
     steps.innerHTML = flavors.map((f, i) => `<div class="walk-step" id="sabor-${esc(f.slug)}" data-i="${i}" aria-hidden="true"></div>`).join("");
     // Same files as the hero, so they are usually cached by the time the visitor gets here.
     bottle.innerHTML = flavors.map((f) => `<img src="${esc(f.image)}" alt="" width="533" height="1600" decoding="async">`).join("");
-    rail.innerHTML = flavors.map((f, i) => `<button type="button" style="--sw:${palette(f).bg}" aria-label="${esc(f.name)}" data-i="${i}"></button>`).join("");
+    rail.innerHTML = flavors.map((f, i) => `<button type="button" style="--sw:${palette(f).bg}" aria-label="Ver sabor ${esc(f.name)}" title="${esc(f.name)}" aria-controls="flavorStage" data-i="${i}"></button>`).join("");
+    stage.id = "flavorStage";
+    rail.setAttribute("aria-label", "Escolher sabor");
+    $$("img", bottle).forEach((img) => { img.draggable = false; });
     if (srList) srList.innerHTML = flavors.map((f) => `<li>${esc(f.name)}: ${esc(f.angle)} ${esc(f.ingredients.join(", "))}.</li>`).join("");
     const imgs = $$("img", bottle);
     const stepEls = $$(".walk-step", steps);
@@ -405,12 +408,52 @@
       if (b) goToStep(Number(b.dataset.i));
     });
     function goToStep(i) {
+      i = Math.max(0, Math.min(flavors.length - 1, i));
       const el = stepEls[i];
       if (!el) return;
-      const top = el.getBoundingClientRect().top + window.scrollY - window.innerHeight * 0.5 + 2;
-      window.scrollTo({ top, behavior: reduceMotion ? "auto" : "smooth" });
+      const start = walk.getBoundingClientRect().top + window.scrollY;
+      const centered = el.getBoundingClientRect().top + window.scrollY - window.innerHeight * 0.5 + 2;
+      const top = Math.max(start, Math.min(start + walk.offsetHeight - window.innerHeight, centered));
+      // Move the scroll position immediately: animating past all intervening
+      // steps made a dot selection cycle through flavours before settling.
+      const previous = document.documentElement.style.scrollBehavior;
+      document.documentElement.style.scrollBehavior = "auto";
+      window.scrollTo({ top, behavior: "auto" });
+      document.documentElement.style.scrollBehavior = previous;
       show(i);
     }
+    rail.addEventListener("keydown", (event) => {
+      const button = event.target.closest("button[data-i]");
+      if (!button) return;
+      const i = Number(button.dataset.i);
+      const next = { ArrowLeft: i - 1, ArrowRight: i + 1, Home: 0, End: flavors.length - 1 }[event.key];
+      if (next === undefined) return;
+      event.preventDefault();
+      const target = Math.max(0, Math.min(flavors.length - 1, next));
+      goToStep(target);
+      rail.querySelector(`button[data-i="${target}"]`).focus({ preventScroll: true });
+    });
+    // Horizontal touch swipes browse flavours; vertical gestures retain normal
+    // page scrolling. Desktop visitors can drag the bottle in either direction.
+    let gesture = null;
+    stage.addEventListener("pointerdown", (event) => {
+      if (!event.isPrimary || event.button !== 0 || event.target.closest("a, button, input, select, textarea")) return;
+      if (event.pointerType === "mouse" && !event.target.closest(".walk-bottle")) return;
+      gesture = { id: event.pointerId, x: event.clientX, y: event.clientY };
+      stage.setPointerCapture(event.pointerId);
+      bottle.classList.add("is-dragging");
+    });
+    stage.addEventListener("pointerup", (event) => {
+      if (!gesture || event.pointerId !== gesture.id) return;
+      const dx = event.clientX - gesture.x;
+      const dy = event.clientY - gesture.y;
+      gesture = null;
+      bottle.classList.remove("is-dragging");
+      if (Math.abs(dx) >= 40 && Math.abs(dx) > Math.abs(dy) * 1.25) goToStep(current + (dx < 0 ? 1 : -1));
+    });
+    const cancelGesture = () => { gesture = null; bottle.classList.remove("is-dragging"); };
+    stage.addEventListener("pointercancel", cancelGesture);
+    stage.addEventListener("lostpointercapture", cancelGesture);
     // Old links like /#sabor-maracuja still land on that flavour.
     const fromHash = () => {
       if (!location.hash.startsWith("#sabor-")) return;
@@ -487,13 +530,37 @@
     if (count) count.textContent = String(flavors.length);
   }
 
+  // Referral codes are captured for the current browsing session. The backend
+  // treats them as unverified labels; payment pricing must use an approved code table.
+  const REFERRAL_KEY = "kombuReferral";
+  function referralCode(value) {
+    const code = String(value || "").trim().toUpperCase();
+    return /^[A-Z0-9_-]{1,40}$/.test(code) ? code : "";
+  }
+  function initReferrals() {
+    const query = new URLSearchParams(location.search);
+    const supplied = query.get("cupom") || query.get("ref");
+    let code = referralCode(supplied);
+    try {
+      if (supplied !== null) sessionStorage.setItem(REFERRAL_KEY, code);
+      else code = referralCode(sessionStorage.getItem(REFERRAL_KEY));
+    } catch { /* The form still works when storage is disabled. */ }
+    $$("input[name='couponCode']").forEach((input) => {
+      input.value = code;
+      input.addEventListener("change", () => {
+        input.value = referralCode(input.value);
+        try { sessionStorage.setItem(REFERRAL_KEY, input.value); } catch { /* optional */ }
+      });
+    });
+  }
+
   // ------------------------------------------------------------ forms → /api/lead
   function normalizeLead(data, type) {
     return {
       id: `lead-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
       type,
       status: "novo",
-      source: page === "revenda" ? "site-revenda" : "site-publico",
+      source: type === "criador" ? "site-criadores" : page === "revenda" ? "site-revenda" : page === "tasting" ? "site-kits" : "site-publico",
       name: data.nome || "",
       business: data.negocio || "",
       businessType: data.tipo || "",
@@ -501,6 +568,7 @@
       whatsapp: data.whatsapp || "",
       instagram: data.instagram || "",
       message: data.mensagem || "",
+      couponCode: referralCode(data.couponCode),
       emailTo: ADMIN_EMAIL,
       createdAt: new Date().toISOString(),
     };
@@ -531,6 +599,7 @@
         status.dataset.state = "ok";
         status.textContent = success;
         form.reset();
+        initReferrals();
       } catch {
         status.dataset.state = "error";
         status.textContent = "Não foi possível enviar agora. Seus dados continuam aqui; tente de novo em instantes ou chame no WhatsApp.";
@@ -547,6 +616,9 @@
   function initHeader() {
     const header = $(".site-header");
     if (!header) return;
+    // Light pages declare their initial header style in the markup. Preserve
+    // it when scrolling instead of resetting it based on a page-name list.
+    const solidAtTop = header.classList.contains("is-solid");
     const toggle = $(".menu-btn", header);
     toggle?.addEventListener("click", () => {
       const open = header.classList.toggle("menu-open");
@@ -563,7 +635,7 @@
     function onScroll() {
       const y = window.scrollY;
       const pastHero = first ? y > first.offsetHeight - 90 : y > 60;
-      header.classList.toggle("is-solid", pastHero || page === "legal");
+      header.classList.toggle("is-solid", pastHero || solidAtTop);
       const goingDown = y > lastY + 4;
       const goingUp = y < lastY - 4;
       if (goingDown && y > 320 && !header.classList.contains("menu-open")) header.classList.add("is-hidden");
@@ -683,6 +755,7 @@
   async function boot() {
     legacyLegalLinks();
     initChooser();
+    initReferrals();
     if (page === "consumer") initOrdering();
     initHeader();
     observeReveals();
@@ -702,6 +775,7 @@
       initRevenda(flavors);
       initForm($("#resellerForm"), "revenda", "Recebemos seus dados. A Kombú vai retornar pelo contato informado com sabores, valores e condições.");
     }
+    initForm($("#creatorForm"), "criador", "Recebemos sua proposta. Vamos conversar pelo contato informado antes de definir a parceria.");
     observeReveals();
   }
   boot();

@@ -9,7 +9,7 @@ const {
 } = require("./_lib/kombu-backend");
 
 function leadSubject(lead) {
-  const prefix = lead.type === "revenda" ? "Novo lead de revenda" : "Novo contato";
+  const prefix = lead.type === "revenda" ? "Novo lead de revenda" : lead.type === "criador" ? "Nova proposta de criador" : "Novo contato";
   const name = lead.name || lead.business || lead.whatsapp || "sem nome";
   return `${prefix} Kombú: ${name}`;
 }
@@ -27,6 +27,7 @@ function leadText(lead) {
     `WhatsApp: ${lead.whatsapp || "-"}`,
     `Instagram: ${lead.instagram || "-"}`,
     `Origem: ${lead.source || "-"}`,
+    `Código informado (não validado): ${lead.couponCode || "-"}`,
     `Criado em: ${lead.createdAt}`,
     "",
     "Mensagem:",
@@ -45,6 +46,7 @@ function leadHtml(lead) {
     ["WhatsApp", lead.whatsapp || "-"],
     ["Instagram", lead.instagram || "-"],
     ["Origem", lead.source || "-"],
+    ["Código informado (não validado)", lead.couponCode || "-"],
     ["Criado em", lead.createdAt],
   ]
     .map(

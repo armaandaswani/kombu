@@ -6186,16 +6186,68 @@ function renderOrders() {
   `;
 }
 
+async function openCreatorStore() {
+  openModal("Cupons e pedidos online", "Vendas diretas", `
+    <p>Cupons ativos: 5% de desconto nos produtos e 10% de comissão após o desconto, sem frete. Comissões de pagamentos confirmados aguardam entrega e revisão de estornos antes de qualquer repasse.</p>
+    <form id="creatorCodeForm" class="input-grid">
+      <label class="field"><span>Nome do criador</span><input name="creatorName" required maxlength="120"></label>
+      <label class="field"><span>Código exclusivo</span><input name="code" required maxlength="40" pattern="[A-Za-z0-9_-]{1,40}"></label>
+      <button class="btn btn-primary" type="submit">Ativar código</button>
+    </form><p id="creatorStoreStatus" role="status"></p><div id="creatorStoreData">Carregando…</div>`);
+  const store = document.querySelector("#creatorStoreData");
+  const status = document.querySelector("#creatorStoreStatus");
+  async function api(body) {
+    const response = await fetch("/api/creators", body ? { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) } : {});
+    const result = await response.json();
+    if (!response.ok) throw new Error("Não foi possível concluir. Confira a configuração do checkout e do Supabase. Um código existente não pode ser reutilizado por outro criador.");
+    return result;
+  }
+  const labels = { awaiting_shipping: "Aguardando frete", creating: "Gerando link", pending: "Aguardando pagamento", paid: "Pago", review: "Conferir com InfinitePay antes de tentar novamente", refunded: "Estornado", canceled: "Cancelado" };
+  async function load() {
+    try {
+      const data = await api();
+      if (!store.isConnected) return;
+      store.innerHTML = `<h3>Códigos</h3>${(data.creators || []).map((creator) => `<p><strong>${escapeHtml(creator.code)}</strong> — ${escapeHtml(creator.creator_name)} — ${creator.active ? `<button class="btn btn-outline" type="button" data-disable-code="${escapeHtml(creator.code)}">Desativar</button>` : "Inativo"}</p>`).join("") || "<p>Nenhum criador cadastrado.</p>"}<h3>Últimos pedidos (até 200)</h3>${(data.orders || []).map((order) => `<article class="admin-card"><h4>${escapeHtml(order.customer.name)} — ${escapeHtml(labels[order.status] || order.status)}</h4><p>${escapeHtml(order.quote.bottles)} garrafas · produtos ${brl(order.quote.productsCents / 100)} · cupom ${escapeHtml(order.quote.couponCode || "nenhum")}</p><p>${escapeHtml(order.flavors)}</p><p>${escapeHtml(order.customer.address)}, ${escapeHtml(order.customer.neighborhood)}, ${escapeHtml(order.customer.city)} — CEP ${escapeHtml(order.customer.cep)} · WhatsApp ${escapeHtml(order.customer.phone)}</p><p>Saída: ${escapeHtml(order.pickup_address)}</p><p>Comissão estimada: ${brl(order.commission_cents / 100)} — ${order.commission_status === "void" ? "cancelada" : order.status === "paid" ? "aguarda entrega e revisão de estornos" : "ainda não devida"}</p>${order.status === "awaiting_shipping" ? `<form data-order-shipping="${escapeHtml(order.id)}"><label class="field"><span>Frete consultado agora no Uber (R$)</span><input name="shipping" type="number" min="0" max="1000" step="0.01" required></label><p>Confirme disponibilidade e prazo com o cliente. O link inclui este frete, vale 30 minutos e não reserva um entregador.</p><button class="btn btn-primary" type="submit">Gerar link InfinitePay</button></form>` : order.checkout_url && order.status === "pending" ? `<p>Frete ${brl(order.quote.deliveryCents / 100)} · total ${brl(order.quote.totalCents / 100)}</p><label class="field"><span>Copie e envie ao cliente pelo seu atendimento</span><input readonly value="${escapeHtml(order.checkout_url)}" aria-label="Link InfinitePay"></label>` : ""}</article>`).join("") || "<p>Nenhum pedido online.</p>"}`;
+    } catch (error) { if (store.isConnected) store.textContent = error.message; }
+  }
+  document.querySelector("#creatorCodeForm").addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const button = form.querySelector("button");
+    button.disabled = true;
+    try { await api({ action: "create", ...Object.fromEntries(new FormData(form)) }); form.reset(); status.textContent = "Código ativado."; await load(); }
+    catch (error) { status.textContent = error.message; } finally { button.disabled = false; }
+  });
+  store.addEventListener("click", async (event) => {
+    const button = event.target.closest("[data-disable-code]");
+    if (!button || button.disabled) return;
+    button.disabled = true;
+    try { await api({ action: "disable", code: button.dataset.disableCode }); await load(); }
+    catch (error) { status.textContent = error.message; button.disabled = false; }
+  });
+  store.addEventListener("submit", async (event) => {
+    const form = event.target.closest("[data-order-shipping]");
+    if (!form) return;
+    event.preventDefault();
+    const button = form.querySelector("button");
+    if (button.disabled) return;
+    button.disabled = true;
+    try { await api({ action: "payment-link", orderId: form.dataset.orderShipping, deliveryCents: Math.round(Number(form.elements.shipping.value) * 100) }); status.textContent = "Link gerado. Copie o endereço abaixo para enviar ao cliente."; await load(); }
+    catch (error) { status.textContent = error.message; await load(); }
+  });
+  await load();
+}
+
 function renderLeads() {
   const rows = state.leads
     .filter((lead) => matchesSearch(lead))
     .map((lead) => `
       <tr>
-        <td><strong>${lead.type === "revenda" ? "Revenda" : "Contato"}</strong><br><span>${escapeHtml(new Date(lead.createdAt).toLocaleString("pt-BR"))}</span></td>
+        <td><strong>${lead.type === "revenda" ? "Revenda" : lead.type === "criador" ? "Criador" : "Contato"}</strong><br><span>${escapeHtml(new Date(lead.createdAt).toLocaleString("pt-BR"))}</span></td>
         <td><strong>${escapeHtml(lead.name || "Sem nome")}</strong><br><span>${escapeHtml(lead.whatsapp || "Sem WhatsApp")}</span></td>
         <td>${escapeHtml(lead.business || "-")}<br><span>${escapeHtml(lead.businessType || "")}${lead.location ? ` | ${escapeHtml(lead.location)}` : ""}</span></td>
         <td>${escapeHtml(lead.instagram || "-")}</td>
-        <td>${escapeHtml(lead.message || "-")}</td>
+        <td>${escapeHtml(lead.message || "-")}${lead.couponCode ? `<br><small>Código informado: ${escapeHtml(lead.couponCode)} (não validado)</small>` : ""}</td>
         <td>
           <select class="admin-select compact-select" data-lead-status="${escapeHtml(lead.id)}">
             ${["novo", "contatado", "qualificado", "ganho", "perdido"].map((status) => `<option value="${status}" ${lead.status === status ? "selected" : ""}>${status}</option>`).join("")}
@@ -6208,13 +6260,13 @@ function renderLeads() {
     ${pageHead(
       "Leads CRM",
       `Leads capturados no site público e notificações enviadas para ${state.notifications.adminEmail}.`,
-      `${actionButton("lead-archive", "Arquivo completo", "inventory_2", "btn-outline")} ${actionButton("export-leads", "Exportar CSV", "download", "btn-outline")}`,
+      `${actionButton("creator-store", "Cupons e pedidos online", "storefront", "btn-outline")} ${actionButton("lead-archive", "Arquivo completo", "inventory_2", "btn-outline")} ${actionButton("export-leads", "Exportar CSV", "download", "btn-outline")}`,
     )}
     <section class="metric-grid">
       ${metric("Leads novos", number(state.leads.filter((lead) => lead.status === "novo").length), "Ainda sem contato", "mark_email_unread")}
       ${metric("Revenda", number(state.leads.filter((lead) => lead.type === "revenda").length), "Formulário seja revendedor", "storefront")}
       ${metric("Contato geral", number(state.leads.filter((lead) => lead.type === "contato").length), "Mensagens do site", "chat")}
-      ${metric("Email admin", state.notifications.adminEmail, "Canal de notificação", "alternate_email")}
+      ${metric("Criadores", number(state.leads.filter((lead) => lead.type === "criador").length), "Propostas de parceria", "alternate_email")}
     </section>
     ${table(
       [
@@ -11077,6 +11129,7 @@ function handleAction(action) {
     "audit-day-prev": () => { auditHistory.day = shiftIsoDay(auditHistory.day, -1); loadAuditHistory({ reset: true }); },
     "audit-day-next": () => { auditHistory.day = shiftIsoDay(auditHistory.day, 1); loadAuditHistory({ reset: true }); },
     "audit-day-today": () => { auditHistory.day = todayIso(); loadAuditHistory({ reset: true }); },
+    "creator-store": openCreatorStore,
     "sales-ledger": () => openSalesLedger(),
     "sales-ledger-more": () => loadSalesLedger(),
     "order-history": openOrderHistory,
@@ -11125,7 +11178,7 @@ function handleAction(action) {
     "export-sales": () => exportCSV("kombu-saidas-vendas", [["Data", "Tipo", "Cliente/destino", "Preço", "Sabor", "Lote", "Qtd", "Preço unitário", "Receita", "Desconto", "Entrega", "Observação"], ...state.sales.map((s) => [s.date, s.movementType || "venda", s.customerName || s.partner, s.priceType || s.channel, s.flavor, s.batchCode, s.qty, s.unitPrice, saleRevenue(s), s.discount, s.delivery, s.note || ""])]),
     "export-orders": () => exportCSV("kombu-pedidos", [["Código", "Data", "Tipo cliente", "Status", "Cliente", "Negócio", "WhatsApp", "Previsão pronto", "Entrega", "Receber até", "Pagamento", "Precisa até", "Qtd", "Valor", "Itens", "Observações"], ...(state.orders || []).map((order) => [order.code, order.orderDate, orderClientTypeLabel(order.clientType), order.status, order.customerName, order.businessName, order.whatsapp, order.estimatedReadyDate, order.deliveredAt || "", orderPaymentDueDate(order), orderReceivableStatus(order), order.neededBy, orderQuantity(order), orderTotal(order), orderItems(order).map((item) => `${item.qty}x ${orderProductText(item)} | ${item.productionStatus || "pendente"} | reservado ${orderItemReservedQty(item)} | lotes ${orderItemBatchCodes(item).join(" + ") || "-"} @ ${brl(item.unitPrice)}`).join("; "), order.notes || ""])]),
     "export-receipts": () => exportCSV("kombu-recibos", [["Recibo", "Status", "Data recebimento", "Cliente", "Negócio", "Valor", "Método", "Referência", "Pedido", "Entregas", "Emitido por", "Motivo cancelamento"], ...(state.receipts || []).map((receipt) => [receipt.number, receipt.status, receipt.receivedAt, receipt.customerName, receipt.businessName, receipt.amount, receipt.method, receipt.reference, receipt.orderCode, (receipt.deliveryIds || []).join(" + "), receipt.createdBy, receipt.cancelReason || ""])]),
-    "export-leads": () => exportCSV("kombu-leads-crm", [["Criado em", "Tipo", "Status", "Nome", "Negócio", "Tipo negócio", "Local", "WhatsApp", "Instagram", "Mensagem"], ...state.leads.map((lead) => [lead.createdAt, lead.type, lead.status, lead.name, lead.business, lead.businessType, lead.location, lead.whatsapp, lead.instagram, lead.message])]),
+    "export-leads": () => exportCSV("kombu-leads-crm", [["Criado em", "Tipo", "Status", "Nome", "Negócio", "Tipo negócio", "Local", "WhatsApp", "Instagram", "Mensagem", "Código informado"], ...state.leads.map((lead) => [lead.createdAt, lead.type, lead.status, lead.name, lead.business, lead.businessType, lead.location, lead.whatsapp, lead.instagram, lead.message, lead.couponCode || ""])]),
     "export-reports": () => exportCSV("kombu-relatorio", [["Métrica", "Valor"], ["Receita (sem frete)", totals().salesRevenue], ["Frete cobrado", totals().deliveryFees], ["COGS", totals().cogs], ["Lucro bruto", totals().grossProfit], ["Despesas", totals().expenses], ["Líquido", totals().net], ["Pedidos em aberto", totals().openOrderValue], ["A receber", totals().receivable], ["Produção faltante", totals().productionMissing]]),
     "export-costs": () => {
       const recipe = byId("recipes", activeRecipeId);

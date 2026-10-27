@@ -22,3 +22,6 @@ stitch_komb_operational_suite/
 
 # Instagram publisher (content, renderer, worker). Not part of the website.
 marketing/
+
+# Local browser evidence and implementation research.
+research/

@@ -95,7 +95,7 @@ h3 { font-size: clamp(1.12rem, 1.6vw, 1.4rem); line-height: 1.2; }
   transition: transform 0.45s var(--ease), background 0.35s, color 0.35s, box-shadow 0.35s;
 }
 .site-header .bar { display: flex; align-items: center; justify-content: space-between; gap: 20px; height: 66px; }
-.site-header.is-solid { background: rgba(249, 249, 248, 0.86); backdrop-filter: blur(14px) saturate(1.4); -webkit-backdrop-filter: blur(14px) saturate(1.4); color: var(--ink); box-shadow: 0 1px 0 var(--line); }
+.site-header.is-solid { background: rgba(249, 249, 248, 0.86); backdrop-filter: blur(14px) saturate(1.4); -webkit-backdrop-filter: blur(14px) saturate(1.4); color: var(--green-deep); box-shadow: 0 1px 0 var(--line); }
 .site-header.is-hidden { transform: translateY(-100%); }
 .logo { display: inline-flex; align-items: baseline; gap: 12px; text-decoration: none; }
 .logo b { font-family: var(--serif); font-weight: 700; font-size: 1.3rem; letter-spacing: 0.22em; }
@@ -190,7 +190,7 @@ h3 { font-size: clamp(1.12rem, 1.6vw, 1.4rem); line-height: 1.2; }
 .walk { position: relative; }
 .walk-stage {
   --c: #4A2352; --sfg: var(--cream); --sfg2: rgba(255, 247, 237, 0.78); --acc: #F4D58D;
-  position: sticky; top: 0; height: 100svh; overflow: hidden;
+  position: sticky; top: 0; height: 100svh; overflow: hidden; touch-action: pan-y;
   background: var(--c); color: var(--sfg);
   transition: background 0.8s var(--ease), color 0.6s;
 }
@@ -208,15 +208,17 @@ h3 { font-size: clamp(1.12rem, 1.6vw, 1.4rem); line-height: 1.2; }
 /* The stage's colours use their own token names: .btn defines --bg/--fg on itself, and when the
    stage shared those names the button resolved to the stage colour for fill and text alike. */
 .walk-stage .btn { --bg: var(--sfg); --fg: var(--c); width: fit-content; }
-.walk-bottle { position: relative; height: 100%; display: grid; place-items: center; }
+.walk-bottle { position: relative; height: 100%; display: grid; place-items: center; cursor: grab; user-select: none; -webkit-user-select: none; }
+.walk-bottle.is-dragging { cursor: grabbing; }
 .walk-bottle::before { content: ""; position: absolute; width: 92%; aspect-ratio: 1; border-radius: 50%; background: radial-gradient(circle, rgba(255, 255, 255, 0.24), transparent 64%); }
 .walk-bottle img { position: absolute; height: 86%; width: auto; max-width: none; filter: drop-shadow(0 38px 44px rgba(0, 0, 0, 0.32)); opacity: 0; transform: translateY(30px) scale(0.95) rotate(4deg); transition: opacity 0.6s var(--ease), transform 0.8s var(--ease); }
 .walk-bottle img.is-on { opacity: 1; transform: none; }
-.walk-rail { position: absolute; left: 0; right: 0; bottom: 26px; display: flex; justify-content: center; gap: 9px; padding: 0 var(--gutter); }
-.walk-rail button { width: 15px; height: 15px; padding: 0; border-radius: 50%; border: 2px solid var(--sfg); background: var(--sw); cursor: pointer; opacity: 0.7; transition: transform 0.35s var(--ease), opacity 0.3s; }
-.walk-rail button[aria-current="true"] { transform: scale(1.5); opacity: 1; }
+.walk-rail { position: absolute; z-index: 2; left: 0; right: 0; bottom: 18px; display: flex; justify-content: center; gap: 4px; padding: 0 var(--gutter); }
+.walk-rail button { position: relative; flex: 0 1 40px; width: 40px; min-width: 0; height: 44px; padding: 0; border: 0; background: transparent; color: var(--sfg); cursor: pointer; }
+.walk-rail button::before { content: ""; position: absolute; left: 50%; top: 50%; width: 15px; height: 15px; border-radius: 50%; border: 2px solid var(--sfg); background: var(--sw); opacity: 0.7; transform: translate(-50%, -50%); transition: transform 0.35s var(--ease), opacity 0.3s; }
+.walk-rail button[aria-current="true"]::before { transform: translate(-50%, -50%) scale(1.5); opacity: 1; }
 .walk-progress { position: absolute; left: 0; top: 0; height: 3px; background: var(--acc); width: var(--p, 0%); transition: width 0.4s var(--ease); }
-.walk-steps { position: relative; margin-top: -100svh; }
+.walk-steps { position: relative; margin-top: -100svh; pointer-events: none; }
 /* Each flavour holds the stage for about half a screen of scrolling. The first and last get a
    full screen: the first so it is already showing when the stage pins, the last so it is not
    cut short when the stage releases. */
@@ -443,7 +445,8 @@ h3 { font-size: clamp(1.12rem, 1.6vw, 1.4rem); line-height: 1.2; }
   .menu-open .nav .audience a { font-size: 0.95rem; padding: 11px 20px; }
   .menu-open .nav .audience { margin-top: 18px; }
   .menu-open { color: var(--cream); }
-  .menu-open.site-header.is-solid { background: transparent; box-shadow: none; backdrop-filter: none; }
+  .menu-open.site-header.is-solid { background: transparent; color: var(--cream); box-shadow: none; backdrop-filter: none; }
+  .menu-open.site-header.is-solid .audience a[aria-current="page"] span { color: var(--green-deep); }
 }
 /* Phones and small tablets: the same page, composed for a narrow screen rather than stretched.
    Smaller type, compact buttons, and side-by-side columns wherever the content is short enough to
@@ -625,3 +628,33 @@ h3 { font-size: clamp(1.12rem, 1.6vw, 1.4rem); line-height: 1.2; }
   .walk-rail button { width: 11px; height: 11px; }
   .walk-ing li { font-size: 0.78rem; padding: 6px 11px; }
 }
+
+/* Partner and creator invitations reuse Kombú's existing colour and type system. */
+.partnership-invite { display:flex; align-items:center; justify-content:space-between; gap:36px; }
+.partnership-invite > div { max-width:720px; }
+.partnership-invite .btn { flex-shrink:0; }
+.form-note, .order-form small { font-size:.85rem; line-height:1.6; }
+.tasting-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:24px; }
+.tasting-kit { padding:32px; background:var(--paper-2); border-radius:20px; display:flex; flex-direction:column; align-items:flex-start; }
+.tasting-kit:nth-child(2) { background:#EDB43E; }
+.tasting-kit:nth-child(3) { background:#C2D371; }
+.tasting-kit h2 { font-size:2rem; }
+.tasting-kit p { flex:1; }
+.tasting-intro { padding-top:160px; }
+@media(max-width:760px) { .partnership-invite { flex-direction:column; align-items:flex-start; } .tasting-grid { grid-template-columns:1fr; } }
+
+.tasting-kit > img { height:240px; width:auto; align-self:center; margin:0 auto 24px; object-fit:contain; }
+
+.tasting-footer .wrap { display:flex; flex-wrap:wrap; align-items:center; gap:32px; }
+.tasting-footer nav { display:flex; flex-wrap:wrap; gap:20px; }
+
+.tasting-grid { grid-template-columns:repeat(4,minmax(0,1fr)); }
+.kit-price { display:grid; gap:4px; margin:8px 0 22px; }
+.kit-price strong { font-size:1.8rem; line-height:1.2; }
+.kit-price span { font-size:.8rem; }
+.tasting-kit:nth-child(4) { background:#E2CFDF; }
+.kit-summary { padding:18px; border:1px solid var(--line); border-radius:12px; }
+.kit-summary p { margin:4px 0; }
+#couponStatus[data-state="error"] { color:#9C271D; }
+@media(min-width:761px) and (max-width:1150px) { .tasting-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+@media(max-width:760px) { .tasting-grid { grid-template-columns:1fr; } }

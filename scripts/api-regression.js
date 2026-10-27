@@ -27,6 +27,15 @@ async function run() {
   const cron = require("../api/cron/payment-reminders");
   const stateHandler = require("../api/state");
 
+  // A public referral is only a label, and cannot supply pricing or payout authority.
+  const referred = backend.normalizeLead({ lead: { type: "criador", couponCode: " amazonia10 ", discount: 100, commission: 999 } });
+  assert.strictEqual(referred.couponCode, "AMAZONIA10");
+  assert.strictEqual(referred.type, "criador");
+  assert.strictEqual(referred.discount, undefined);
+  assert.strictEqual(referred.commission, undefined);
+  assert.strictEqual(backend.normalizeLead({ couponCode: "<script>" }).couponCode, "");
+  assert.strictEqual(backend.normalizeLead({ couponCode: "A".repeat(41) }).couponCode, "");
+
   assert.strictEqual(backend.validateAppState({ products: [] }), "");
   assert.strictEqual(backend.validateAppState({ products: {} }), "invalid_products");
   assert.strictEqual(backend.validateAppState([]), "invalid_state");

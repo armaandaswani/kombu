@@ -95,6 +95,8 @@ function normalizeLead(payload) {
     location: cleanText(lead.location || lead.bairro, 160),
     whatsapp: cleanText(lead.whatsapp, 40),
     instagram: cleanText(lead.instagram, 80),
+    // Attribution only: this value never authorizes a discount or payout.
+    couponCode: /^[A-Z0-9_-]{1,40}$/.test(String(lead.couponCode || "").trim().toUpperCase()) ? String(lead.couponCode).trim().toUpperCase() : "",
     message: cleanText(lead.message || lead.mensagem, 4000),
     emailTo: cleanText(lead.emailTo, 160) || process.env.LEAD_NOTIFY_EMAIL || ADMIN_EMAIL,
     source: cleanText(lead.source, 80) || "site-publico",

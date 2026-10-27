@@ -23,6 +23,8 @@ const state = {
   ],
 };
 
+const kitOrders = [];
+
 async function newPage(browser, leads, { firstVisit = false } = {}) {
   const context = await browser.newContext({ viewport: { width: 390, height: 844 }, locale: "pt-BR", reducedMotion: "no-preference" });
   if (!firstVisit) await context.addInitScript(() => localStorage.setItem("kombuAudience", "consumo"));
@@ -30,6 +32,17 @@ async function newPage(browser, leads, { firstVisit = false } = {}) {
   const errors = [];
   page.on("pageerror", (e) => errors.push(e.message));
   await page.route("**/api/public-state", (route) => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ ok: true, state }) }));
+  await page.route("**/api/checkout", async (route) => {
+    const body = JSON.parse(route.request().postData() || "{}");
+    if (body.action === "quote") {
+      const catalog = require("../assets/kit-catalog");
+      if (body.couponCode !== "AMAZONIA10") return route.fulfill({ status: 400, contentType: "application/json", body: JSON.stringify({ ok: false, error: "invalid_creator_code" }) });
+      const quote = catalog.quote(body.kitId, body.couponCode === "AMAZONIA10" ? { id: "fixture-creator", code: "AMAZONIA10", active: true } : null);
+      return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ ok: true, quote }) });
+    }
+    kitOrders.push(body);
+    return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ ok: true, persisted: true, orderId: body.requestId }) });
+  });
   await page.route("**/api/lead", async (route) => {
     leads.push(JSON.parse(route.request().postData() || "{}").lead);
     await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ ok: true, persisted: true }) });
@@ -68,6 +81,35 @@ async function run() {
       const onIndex = await page.evaluate(() => [...document.querySelectorAll(".walk-bottle img")].findIndex((img) => img.classList.contains("is-on")));
       assert.strictEqual(onIndex, i, `flavour ${i + 1}: the bottle shown matches the name`);
     }
+    // The transparent scroll markers must not intercept dot clicks or drags.
+    await page.locator(".walk-rail button").nth(3).click();
+    await page.waitForFunction(() => document.querySelector(".walk-count").textContent.startsWith("04"));
+    await page.waitForTimeout(150);
+    assert.ok((await page.locator(".walk-count").innerText()).startsWith("04"), "dot selection stays selected after scroll sync");
+    await page.locator(".walk-rail button").first().click();
+    await page.waitForFunction(() => document.querySelector(".walk-count").textContent.startsWith("01"));
+    assert.ok(await page.locator(".walk-stage").evaluate((stage) => Math.abs(stage.getBoundingClientRect().top) < 3), "first flavour remains fully pinned");
+    await page.locator(".walk-rail button").first().focus();
+    await page.keyboard.press("End");
+    await page.waitForFunction((count) => document.querySelector(".walk-count").textContent.startsWith(String(count).padStart(2, "0")), steps);
+    await page.keyboard.press("Home");
+    await page.waitForFunction(() => document.querySelector(".walk-count").textContent.startsWith("01"));
+    const bottleBox = await page.locator(".walk-bottle").boundingBox();
+    const dragX = bottleBox.x + bottleBox.width * 0.7;
+    const dragY = bottleBox.y + bottleBox.height * 0.5;
+    await page.mouse.move(dragX, dragY);
+    await page.mouse.down();
+    await page.mouse.move(dragX - 100, dragY + 5, { steps: 6 });
+    await page.mouse.up();
+    await page.waitForFunction(() => document.querySelector(".walk-count").textContent.startsWith("02"));
+    const touch = await page.context().newCDPSession(page);
+    await touch.send("Emulation.setTouchEmulationEnabled", { enabled: true, maxTouchPoints: 1 });
+    await touch.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [{ x: dragX, y: dragY, id: 1 }] });
+    await touch.send("Input.dispatchTouchEvent", { type: "touchMove", touchPoints: [{ x: dragX - 90, y: dragY + 5, id: 1 }] });
+    await touch.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+    await page.waitForFunction(() => document.querySelector(".walk-count").textContent.startsWith("03"));
+    await touch.send("Emulation.setTouchEmulationEnabled", { enabled: false });
+    await touch.detach();
     await page.evaluate(() => window.scrollTo(0, 0));
     assert.strictEqual(await page.evaluate(() => document.querySelector(".walk-stage .btn") && getComputedStyle(document.querySelector(".walk-stage .btn")).backgroundColor !== getComputedStyle(document.querySelector(".walk-stage")).backgroundColor), true, "the stage button is not the colour of the stage");
 
@@ -91,7 +133,7 @@ async function run() {
 
     // Ordering direct is one tap away: hero button, "Pedir este sabor" prefills the flavour,
     // and on a phone a floating button appears once the hero is out of view.
-    assert.strictEqual(await page.locator('.hero .btn[href="#comprar"]').count(), 1, "the hero offers ordering direct");
+    assert.strictEqual(await page.locator('.hero .btn[href="/experimente"]').count(), 1, "the hero leads directly to priced kits");
     assert.ok(await page.evaluate(() => document.querySelector("#comprar").compareDocumentPosition(document.querySelector("#sabores")) & Node.DOCUMENT_POSITION_FOLLOWING), "ordering comes before the flavour walk");
     await page.evaluate(() => { const el = document.querySelectorAll(".walk-step")[4]; window.scrollTo(0, el.getBoundingClientRect().top + window.scrollY - window.innerHeight / 2 + 20); });
     await page.waitForFunction(() => document.querySelector(".walk-count").textContent.startsWith("05"));
@@ -178,9 +220,56 @@ async function run() {
     assert.ok(await b.page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth), "no horizontal scroll on /revenda");
     assert.deepStrictEqual(b.errors, [], "no script errors on /revenda");
 
+    // Referral survives navigation to a tasting kit, and can be changed or removed.
+    const referral = await newPage(browser, leads);
+    await referral.page.goto(`${baseUrl}/?cupom=amazonia10#comprar`);
+    await referral.page.waitForFunction(() => document.querySelector("input[name='couponCode']")?.value === "AMAZONIA10");
+    await referral.page.goto(`${baseUrl}/experimente`);
+    await referral.page.waitForFunction(() => document.querySelector("input[name='couponCode']")?.value === "AMAZONIA10");
+    await referral.page.click('[data-kit="kit-6"]');
+    assert.strictEqual(await referral.page.inputValue("#kit-choice"), "kit-6");
+    await referral.page.fill('#kitForm [name="couponCode"]', "INVALID");
+    await referral.page.locator('#kitForm [name="couponCode"]').blur();
+    await referral.page.waitForSelector('#couponStatus[data-state="error"]');
+    assert.ok(await referral.page.locator('#kitForm button[type="submit"]').isDisabled(), "invalid code blocks a discounted order");
+    await referral.page.fill('#kitForm [name="couponCode"]', "AMAZONIA10");
+    await referral.page.locator('#kitForm [name="couponCode"]').blur();
+    await referral.page.fill('#kitForm [name="nome"]', "Cliente Kit");
+    await referral.page.fill('#kitForm [name="whatsapp"]', "92999990000");
+    await referral.page.fill('#kitForm [name="bairro"]', "Centro");
+    await referral.page.fill('#kitForm [name="cep"]', "69057-002");
+    await referral.page.fill('#kitForm [name="address"]', "Rua Teste, 100");
+    await referral.page.fill('#kitForm [name="flavors"]', "3 Maracujá e 3 Uva");
+    await referral.page.waitForFunction(() => !document.querySelector('#kitForm button[type="submit"]').disabled);
+    assert.ok((await referral.page.locator("#kitQuote").innerText()).includes("133,95"), "the approved 5% discount is shown on the six-bottle kit");
+    await referral.page.click('#kitForm button[type="submit"]');
+    await referral.page.waitForSelector("#kitForm .form-status[data-state='ok']");
+    assert.strictEqual(kitOrders.at(-1).kitId, "kit-6");
+    assert.strictEqual(kitOrders.at(-1).couponCode, "AMAZONIA10");
+    assert.strictEqual(kitOrders.at(-1).flavors, "3 Maracujá e 3 Uva");
+    assert.strictEqual(kitOrders.at(-1).deliveryCents, undefined, "customer does not choose a delivery fee");
+    await referral.page.fill('input[name="couponCode"]', "");
+    await referral.page.locator('input[name="couponCode"]').blur();
+    await referral.page.reload();
+    await referral.page.waitForFunction(() => Boolean(window.KombuKits && document.querySelector("#kitForm")));
+    assert.strictEqual(await referral.page.inputValue('input[name="couponCode"]'), "");
+    await referral.page.goto(`${baseUrl}/?ref=%3Cscript%3E#comprar`);
+    await referral.page.waitForFunction(() => document.querySelectorAll(".walk-step").length > 0);
+    assert.strictEqual(await referral.page.inputValue('input[name="couponCode"]'), "");
+    await referral.page.fill('#creatorForm [name="nome"]', "Criadora Teste");
+    await referral.page.fill('#creatorForm [name="whatsapp"]', "92999990000");
+    await referral.page.fill('#creatorForm [name="instagram"]', "@criadora");
+    await referral.page.fill('#creatorForm [name="bairro"]', "Manaus");
+    await referral.page.fill('#creatorForm [name="mensagem"]', "Quero apresentar a Kombú para minha comunidade.");
+    await referral.page.click('#creatorForm button[type="submit"]');
+    await referral.page.waitForSelector("#creatorForm .form-status[data-state='ok']");
+    assert.strictEqual(leads.at(-1).type, "criador");
+    assert.strictEqual(leads.at(-1).source, "site-criadores");
+    assert.deepStrictEqual(referral.errors, []);
+
     // ---------------------------------------------------------------- blog and SEO
     const blog = await newPage(browser, leads);
-    for (const url of ["/", "/revenda", "/legal", "/blog", "/blog/o-que-e-kombucha", "/blog/como-a-kombu-e-feita", "/blog/como-servir-kombucha"]) {
+    for (const url of ["/", "/experimente", "/revenda", "/legal", "/blog", "/blog/o-que-e-kombucha", "/blog/como-a-kombu-e-feita", "/blog/como-servir-kombucha"]) {
       await blog.page.goto(`${baseUrl}${url}`);
       const seo = await blog.page.evaluate(() => ({
         h1: document.querySelectorAll("h1").length,
