@@ -76,6 +76,11 @@
     quoteText.textContent = `Produtos: ${money(quote.subtotalCents)}${quote.discountCents ? ` − ${money(quote.discountCents)} de desconto = ${money(quote.productsCents)}` : ""}. Frete à parte.`;
   }
   async function refreshQuote() {
+    document.querySelectorAll("[data-kit]").forEach(link => {
+      const selected = link.dataset.kit === kit.value;
+      link.classList.toggle("is-selected", selected);
+      if (selected) link.setAttribute("aria-current", "true"); else link.removeAttribute("aria-current");
+    });
     document.querySelector("#customQuantityField").hidden = kit.value !== "kit-custom";
     quantity.disabled = kit.value !== "kit-custom";
     if (isReservation()) stockProducts.querySelectorAll("input").forEach(input => { input.max = String(bottles() || 20); });
