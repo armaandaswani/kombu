@@ -733,7 +733,7 @@
   function initChooser() {
     if (page === "revenda") saveAudience("revenda");
     $$('.nav a[href="/revenda"]').forEach((a) => a.addEventListener("click", () => saveAudience("revenda")));
-    $$('.site-header .logo[href="/"]').forEach((a) => a.addEventListener("click", () => saveAudience("consumo")));
+    $$('.site-header .logo[href="/"], .nav-consumer').forEach((a) => a.addEventListener("click", () => saveAudience("consumo")));
     const dialog = $("#audienceChooser");
     if (!dialog || typeof dialog.showModal !== "function") return;
     if (readAudience() || location.hash) return;

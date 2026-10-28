@@ -160,7 +160,7 @@ async function run() {
     await page.waitForFunction(() => !document.querySelector(".site-header").classList.contains("is-hidden"));
     await page.click(".menu-btn");
     assert.strictEqual(await page.locator(".nav .nav-buy").innerText(), "Comprar");
-    assert.strictEqual(await page.locator(".nav .nav-reseller").innerText(), "Revenda");
+    assert.strictEqual(await page.locator(".nav .nav-reseller").innerText(), "Para revenda");
     assert.ok(await page.locator(".site-header").evaluate((h) => h.classList.contains("menu-open")));
     await page.click('.nav a[href="#onde"]');
     assert.ok(!(await page.locator(".site-header").evaluate((h) => h.classList.contains("menu-open"))), "following a menu link closes the menu");
