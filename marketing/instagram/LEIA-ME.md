@@ -60,7 +60,7 @@ não o repete.
 
 ## Stories diários (27/10/2026)
 - Pedido do titular: cinco Stories diferentes por dia, com logo K pequena e arte própria em 1080×1920. Fotos da Dolce Vita podem receber fundo e luz por IA; a montagem não representa o interior real da parceira.
-- `stories-calendar.json` guarda cinco artes por data local de Manaus. A primeira sequência, em 28/10, apresenta Dolce Vita, explica kombucha, o sabor/gás da fermentação e a produção artesanal familiar da Kombú em Manaus desde 2017. Benefícios são apresentados pela experiência e pelos diferenciais verificáveis, sem promessas de saúde.
+- `stories-calendar.json` guarda cinco artes por data local de Manaus. A primeira sequência, em 28/10, apresenta Dolce Vita, explica kombucha, o sabor/gás da fermentação e a produção artesanal da Kombú em Manaus desde 2017. Benefícios são apresentados pela experiência e pelos diferenciais verificáveis, sem promessas de saúde.
 - `render-stories.mjs` valida e gera `out/stories/<data>/<id>.jpg`. O tipo `art` usa uma arte final aprovada; os demais montam fotos e garrafas com a logo pequena. A área segura de texto evita a interface do Instagram.
 - Fluxo: `node render-stories.mjs --check`, `node render-stories.mjs`, revisão visual, `node prepare-publish.mjs`, deploy de `.render/publish` no Pages `kombu-social`. A preparação preserva os arquivos do feed e copia somente os Stories manifestados.
 - O Worker mantém os crons existentes: publica os cinco Stories do dia na execução de 12:30 e retoma os que faltarem às 18:30. O feed mantém o intervalo de dois dias. Não existem chamadas manuais de publicação.
@@ -68,3 +68,5 @@ não o repete.
 - A automação deste chat prepara/revisa a fila diariamente às 09:00 de Manaus e confere o resultado às 13:00. Ela depende do ambiente local disponível. A publicação no horário é feita no Cloudflare, com as artes já preparadas.
 - Antes de mudar um dia, confira o log e `stories:done:<data>` sem ler tokens. Nunca substitua arte já publicada. Preserve também o feed e as alterações de terceiros.
 - Testes do publicador, com respostas simuladas e sem Instagram: `node --test worker/stories.test.mjs`.
+
+- Correção do titular: não usar referências à família na comunicação. Os validadores impedem esses termos e o nome inexistente “Vitalidade”; o sabor correto é Imunidade. A fila inclui o novo carrossel 21-dolce-vita-fotos, com quatro artes finais do tipo art, preservadas em assets/partners/.

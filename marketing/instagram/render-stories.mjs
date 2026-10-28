@@ -13,7 +13,7 @@ for(const day of plan.days){
  validateDay(plan,day.date);
  for(const f of day.frames){
   const text=[f.title,f.body,f.cta].join(' ');
-  if(/\b(detox|emagrec\w*|probiótic\w*|intestin\w*|cura|previne)\b|sem açúcar|R\$|—|!/i.test(text))throw Error('Texto fora da voz: '+f.id);
+  if(/\bvitalidade\b|\bfam[ií]lia(?:s)?\b|\bfamiliar(?:es)?\b|\b(detox|emagrec\w*|probiótic\w*|intestin\w*|cura|previne)\b|sem açúcar|R\$|—|!/i.test(text))throw Error('Texto fora da voz: '+f.id);
   if(f.imageSource)await fs.access(path.join(root,f.imageSource));
   if(f.flavor)await fs.access(path.join(root,'assets/bottles',f.flavor+'.webp'));
  }

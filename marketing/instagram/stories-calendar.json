@@ -37,7 +37,7 @@
           "type": "art",
           "imageSource": "assets/partners/dolce-story-04.jpg",
           "image": "stories/2026-10-28/dolce-vita-04.jpg",
-          "title": "Feita pela nossa família, aqui em Manaus.",
+          "title": "Kombucha artesanal, feita em Manaus.",
           "body": "Produzimos Kombú de forma artesanal desde 2017, com ingredientes como frutas, flores, ervas e especiarias.",
           "partner": "@ladolcevitagelateria"
         },
@@ -87,7 +87,7 @@
           "id": "conversa-2",
           "type": "text",
           "title": "Kombú é feita em Manaus.",
-          "body": "Nossa família produz kombucha artesanal aqui desde 2017.",
+          "body": "Produzimos kombucha artesanal em Manaus desde 2017.",
           "bg": "#F6F2E8",
           "image": "stories/2026-10-29/conversa-2.jpg"
         },
@@ -334,7 +334,7 @@
           "id": "conversa-7",
           "type": "text",
           "title": "Uma bebida feita aqui perto.",
-          "body": "A Kombú é uma kombucha artesanal produzida em Manaus pela nossa família.",
+          "body": "A Kombú é uma kombucha artesanal produzida em Manaus desde 2017.",
           "bg": "#2D4B28",
           "image": "stories/2026-11-03/conversa-7.jpg"
         },

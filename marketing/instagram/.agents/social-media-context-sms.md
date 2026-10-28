@@ -11,7 +11,7 @@ copy) conflicts with them, follow the rules.
 - **Type**: Brand
 - **Name**: Kombú
 - **Handle(s)**: @kombu.amazonia on Instagram
-- **Role**: Artisan kombucha made in Manaus by a family, since 2017
+- **Role**: Artisan kombucha made in Manaus since 2017
 - **Industry/niche**: Premium artisan kombucha in Manaus. B2B first (cafés, empórios, bakeries, restaurants), with consumers buying at partners
 - **Positioning**: A Arte do Natural. Green tea, live culture, real fruit, flowers, herbs and spices, and time. The bubbles come from the fermentation itself.
 
@@ -40,7 +40,7 @@ copy) conflicts with them, follow the rules.
 2. **O que é de verdade** (what's real): what goes in the bottle and what stays out; how the fermentation works, explained plainly
 3. **Onde provar** (where to try it): partners, tagged with their handle. Never claim a partner has a specific flavour, because stock changes. Solar Café Regional is always listed last
 4. **Para o seu negócio** (for your business): resale, direct orders from 20 bottles with about two weeks to deliver, and how restocking works. Wholesale terms are discussed in DMs, never posted
-5. **Bastidores e história** (behind the scenes and story): the family, Manaus, small batches, 2017 to today. Only facts the owner has confirmed (no invented brand story)
+5. **Bastidores e história** (behind the scenes and story): Manaus, small batches, 2017 to today. Only facts the owner has confirmed (no invented brand story)
 
 ---
 
@@ -92,7 +92,7 @@ Source Set
   "profissionais, mais simples e que deixem claro"; "gramática fácil, mas mantendo o tom premium, minimalista e profissional"
 - the bottle label: "Kombucha premium artesanal da Amazônia", "Naturalmente gaseificada", "Manter sempre gelado"
 - live site copy after the owner's review (24/10): "Peça direto da Kombú.", "O que vai na Kombú.", "Não usamos"
-- owner's brief: slogan "A Arte do Natural", family business in Manaus since 2017, B2B first
+- owner's brief: slogan "A Arte do Natural", artisan production in Manaus since 2017, B2B first
 
 Rhythm
 - natural, connected sentences with varied length. Brevity must not break the thought into disconnected slogans. No fragments standing alone as slides ("Com o brunch.").
@@ -159,5 +159,11 @@ This section updates the earlier voice and CTA notes where they differ.
 
 - O titular rejeitou apenas colocar título sobre as fotos da Dolce Vita. Quer composição mais trabalhada com IA, fundo limpo/recriado, luz melhor e logo K pequena no topo. Preserve a embalagem real e não apresente a montagem como o interior real da parceira.
 - Formatos: carrossel de feed 1080×1350; Stories 1080×1920, cinco diferentes por dia.
-- As fotos IMG_7015/7017/7018 foram tiradas pelo titular na parceira Gelateria Dolce Vita. A sequência deve valorizar o local e explicar sutilmente por que experimentar kombucha e por que escolher Kombú. Conecte a ocasião de consumo com chá fermentado, sabores, gás da fermentação, produção artesanal familiar em Manaus desde 2017 e ingredientes. Não transforme o pedido de benefícios em promessas de saúde.
+- As fotos IMG_7015/7017/7018 foram tiradas pelo titular na parceira Gelateria Dolce Vita. A sequência deve valorizar o local e explicar sutilmente por que experimentar kombucha e por que escolher Kombú. Conecte a ocasião de consumo com chá fermentado, sabores, gás da fermentação, produção artesanal em Manaus desde 2017 e ingredientes. Não transforme o pedido de benefícios em promessas de saúde.
 - Stories devem formar uma conversa, com cada arte acrescentando uma informação. Evite cinco anúncios soltos ou a mesma foto com títulos diferentes dia após dia.
+
+## Regra de posicionamento — correção do titular em 27/10/2026
+
+Nunca usar “feita pela nossa família”, “nossa família”, “produção familiar” ou equivalentes no conteúdo da marca. O titular considera esse enquadramento amador. Valorizar produção artesanal, ingredientes, cuidado no processo e a experiência em Manaus desde 2017, com tom profissional. Esta regra vale para feed, Stories, legendas e futuras automações.
+
+- O sabor é **Imunidade**. “Vitalidade” não existe no catálogo. A IA já inventou esse nome em um rótulo; revisar a embalagem visualmente após toda edição, além de validar os textos.

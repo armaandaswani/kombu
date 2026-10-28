@@ -20,6 +20,8 @@ const only = process.argv[2];
 
 // ---------------------------------------------------------------- rules
 const FORBIDDEN = [
+  [/\bvitalidade\b/i, 'o sabor se chama Imunidade'],
+  [/\bfam[ií]lia(?:s)?\b|\bfamiliar(?:es)?\b/i, 'não associar a marca à produção familiar'],
   [/\b(cura|curar|previne|prevenir|trata|tratar)\b/i, 'promessa de tratamento'],
   [/\b(detox|desintox\w*|emagre\w*|fortalec\w*|metabolismo)\b/i, 'alegação de saúde'],
   [/\b(probi[oó]tic\w*|intestin\w*)\b/i, 'alegação de saúde (probiótico/intestino)'],
@@ -69,6 +71,7 @@ function lint() {
     if (!post.heroFlavor) problems.push(`${post.id}: falta indicar o sabor principal em heroFlavor`);
     if ((post.caption.split('\n')[0] || '').length > 125) problems.push(`${post.id}: abertura da legenda acima de 125 caracteres`);
     if (post.heroFlavor && future.slice(Math.max(0, i - 5), i).some(p => p.heroFlavor === post.heroFlavor)) problems.push(`${post.id}: sabor principal repetido em uma sequência de seis posts`);
+    for (const slide of post.slides) if (slide.type === 'art' && !/^[a-z0-9-]+\.jpg$/.test(slide.image || '')) problems.push(`${post.id}: arquivo art inválido`);
     for (const slide of post.slides) if (slide.type === 'lifestyle' && !/^[a-z0-9-]+\.png$/i.test(slide.image || '')) problems.push(`${post.id}: arquivo lifestyle inválido`);
   });
   return problems;
@@ -79,6 +82,7 @@ if (problems.length) {
   process.exit(1);
 }
 for (const post of calendar.posts.filter(p => !p.publishedAt)) for (const slide of post.slides) {
+  if (slide.type === 'art') await fs.access(path.join(root, 'assets/partners', slide.image));
   if (slide.type === 'lifestyle') await fs.access(path.join(root, 'assets/lifestyle', slide.image));
 }
 console.log('Revisão do calendário: sem erros.');
@@ -158,6 +162,11 @@ p{font-size:44px;line-height:1.38;color:var(--muted);margin:30px 0 0;max-width:8
 `;
 
 function slideHtml(slide, i, total, fonts) {
+  if (slide.type === 'art') {
+    const image = pathToFileURL(path.join(root, 'assets/partners', slide.image)).href;
+    return `<!doctype html><html><head><meta charset="utf-8"><style>html,body{margin:0;width:1080px;height:1350px;overflow:hidden}img{display:block;width:1080px;height:1350px;object-fit:contain}</style></head><body><img src="${image}"></body></html>`;
+  }
+
   if (slide.type === 'lifestyle') {
     const image = pathToFileURL(path.join(root, 'assets/lifestyle', slide.image)).href;
     const dots = total > 1 ? Array.from({length: total}, (_, n) => `<i class="${n === i ? 'on' : ''}"></i>`).join('') : '';

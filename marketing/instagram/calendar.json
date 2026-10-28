@@ -411,11 +411,11 @@
           "type": "bottle",
           "flavor": "rosas-cardamomo",
           "title": "Fazemos Kombú em\nManaus desde 2017.",
-          "body": "Nossa família produz em pequenos lotes.",
+          "body": "Produzimos em pequenos lotes.",
           "bg": "brand"
         }
       ],
-      "caption": "Desde 2017, nossa família produz Kombú aqui em Manaus.\n\nTrabalhamos em pequenos lotes, com chá verde, cultura de kombucha e os ingredientes de cada sabor. É assim que fazemos as garrafas que chegam até você.\n\nSe quiser provar o que a gente produz, encontre uma Kombú gelada nos parceiros. Link na bio.\n\n#kombucha #manaus #kombuchaartesanal #amazonia"
+      "caption": "Desde 2017, produzimos Kombú aqui em Manaus.\n\nTrabalhamos em pequenos lotes, com chá verde, cultura de kombucha e os ingredientes de cada sabor. É assim que fazemos as garrafas que chegam até você.\n\nSe quiser provar o que a gente produz, encontre uma Kombú gelada nos parceiros. Link na bio.\n\n#kombucha #manaus #kombuchaartesanal #amazonia"
     },
     {
       "id": "19-como-servir",
@@ -464,6 +464,43 @@
         }
       ],
       "caption": "Seu cupom aproxima quem acompanha seu conteúdo dos sabores da Kombú.\n\nDepois da aprovação da parceria, seu público recebe 5% de desconto nos produtos. Você recebe 10% de comissão sobre os produtos pagos, após o desconto. O frete não entra no desconto nem na comissão.\n\nA gente conversa sobre a parceria antes de ativar o código. Para participar, conte seu trabalho no formulário Para criadores, no link da bio.\n\n#kombucha #manaus #criadoresdeconteudo #parcerias"
+    },
+    {
+      "id": "21-dolce-vita-fotos",
+      "family": "creme",
+      "format": "carrossel",
+      "heroFlavor": "hibisco-anis",
+      "slides": [
+        {
+          "type": "art",
+          "image": "dolce-feed-01.jpg",
+          "bg": "cream",
+          "title": "Na Dolce Vita, tem Kombú também.",
+          "body": "Uma companhia para o seu gelato."
+        },
+        {
+          "type": "art",
+          "image": "dolce-feed-02.jpg",
+          "bg": "brand",
+          "title": "Já provou kombucha?",
+          "body": "É uma bebida feita a partir da fermentação do chá. Na Kombú, usamos chá verde e combinamos frutas, flores, ervas e especiarias."
+        },
+        {
+          "type": "art",
+          "image": "dolce-feed-03.jpg",
+          "bg": "sand",
+          "title": "A nossa é feita em Manaus.",
+          "body": "Desde 2017, produzimos Kombú de forma artesanal. São doze sabores, com gás que vem da própria fermentação."
+        },
+        {
+          "type": "art",
+          "image": "dolce-feed-04.jpg",
+          "bg": "sage",
+          "title": "Na próxima visita à Dolce Vita, peça uma Kombú gelada.",
+          "body": "Pergunte à equipe quais sabores estão gelados no dia."
+        }
+      ],
+      "caption": "Na próxima visita à Dolce Vita, vale deixar espaço para conhecer a Kombú também.\n\nProduzimos nossa kombucha de forma artesanal em Manaus desde 2017. Usamos chá verde e combinamos frutas, flores, ervas e especiarias em doze sabores, com gás que vem da própria fermentação.\n\nSe você está procurando uma bebida diferente para acompanhar seu gelato, peça uma Kombú gelada na @ladolcevitagelateria. A equipe pode contar quais sabores estão disponíveis no dia.\n\n#kombucha #manaus #kombuchaartesanal #kombu #aartedonatural"
     }
   ]
 }
