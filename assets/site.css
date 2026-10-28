@@ -246,7 +246,8 @@ h3 { font-size: clamp(1.12rem, 1.6vw, 1.4rem); line-height: 1.2; }
 
 /* ---------------------------------------------------------------- how to buy */
 .buy { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; max-width: 900px; margin: 0 auto; align-items: stretch; }
-.buy article { position: relative; overflow: hidden; display: grid; grid-template-rows: auto 1fr; align-content: start; justify-items: start; gap: 20px; padding: clamp(22px, 3vw, 30px); border-radius: 16px; min-width: 0; }
+.buy article { position: relative; overflow: hidden; display: grid; grid-template-rows: auto 1fr; align-content: start; justify-items: center; text-align: center; gap: 20px; padding: clamp(22px, 3vw, 30px); border-radius: 16px; min-width: 0; }
+.buy article > div { width: 100%; }
 .buy .order-form { justify-self: stretch; }
 
 .buy-unit { background: var(--lime); color: var(--green-deep); }
@@ -254,6 +255,7 @@ h3 { font-size: clamp(1.12rem, 1.6vw, 1.4rem); line-height: 1.2; }
 .buy-unit .btn { align-self: end; }
 .buy-partners { list-style: none; margin: 14px 0 0; padding: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 8px 16px; }
 .buy-partners li { font-family: var(--serif); font-weight: 700; font-size: 1.02rem; line-height: 1.25; padding-top: 8px; border-top: 1px solid rgba(27, 47, 24, 0.18); }
+.buy-partners li:last-child:nth-child(odd) { grid-column: 1 / -1; justify-self: center; width: calc((100% - 16px) / 2); }
 .buy-facts { list-style: none; margin: 12px 0 0; padding: 0; display: grid; gap: 6px; font-size: 0.94rem; }
 .buy-facts li { display: flex; gap: 10px; align-items: baseline; }
 .buy-facts li::before { content: ""; flex: none; width: 7px; height: 7px; border-radius: 50%; background: var(--lime); transform: translateY(-2px); }
