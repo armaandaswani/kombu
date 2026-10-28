@@ -642,10 +642,13 @@ h3 { font-size: clamp(1.12rem, 1.6vw, 1.4rem); line-height: 1.2; }
 .tasting-intro { padding-top: 124px; padding-bottom: 56px; }
 .tasting-intro .section-head { margin-bottom: 32px; }
 .tasting-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; }
-.tasting-kit { display: grid; justify-items: center; text-align: center; gap: 14px; padding: 26px 16px 20px; border: 1px solid var(--line); border-radius: 16px; background: #fff; color: var(--green-deep); transition: border-color .2s, box-shadow .2s; }
+.tasting-kit { display: grid; justify-items: center; text-align: center; gap: 14px; padding: 12px 16px 20px; border: 1px solid var(--line); border-radius: 16px; background: #fff; color: var(--green-deep); transition: border-color .2s, box-shadow .2s; }
+.kit-visual { display: flex; justify-content: center; align-items: flex-end; width: 100%; height: 168px; padding: 12px 0; margin-bottom: 4px; border-radius: 10px; background: #f4f5ef; }
+.kit-visual img { display: block; flex: 0 0 auto; width: 48px; height: 144px; object-fit: contain; filter: drop-shadow(0 5px 3px rgba(27,47,24,.1)); }
+.kit-visual img + img { margin-left: -16px; }
 .tasting-kit:has(.is-selected) { border-color: var(--green-deep); box-shadow: inset 0 0 0 1px var(--green-deep); background: var(--paper-2); }
 .tasting-kit h2 { display: grid; gap: 4px; margin: 0; }
-.tasting-kit h2 strong { font: 700 3rem/1 var(--serif); }
+.tasting-kit h2 strong { font: 700 2.4rem/1 var(--serif); }
 .tasting-kit h2 span { font: 500 .85rem/1.4 var(--sans); }
 .tasting-kit .kit-flavors { margin: 0; font-size: .85rem; color: var(--ink-2); }
 .kit-price { display: grid; gap: 4px; margin: 6px 0; }
@@ -657,18 +660,26 @@ h3 { font-size: clamp(1.12rem, 1.6vw, 1.4rem); line-height: 1.2; }
 .tasting-footer nav { display:flex; flex-wrap:wrap; gap:20px; }
 @media (max-width: 1000px) {
   .tasting-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
-  .tasting-custom { grid-column: 1 / -1; display: flex; justify-content: center; align-items: center; gap: 28px; padding: 20px; }
+  .tasting-custom { grid-column: 1 / -1; display: flex; justify-content: center; align-items: center; gap: 24px; padding: 16px; }
   .tasting-custom .btn { width: auto; }
+  .tasting-custom .kit-visual { width: 130px; height: 118px; margin: 0; }
+  .tasting-custom .kit-visual img { width: 32px; height: 96px; }
+  .tasting-custom .kit-visual img + img { margin-left: -10px; }
   .tasting-custom h2 { display: flex; align-items: baseline; gap: 8px; }
   .tasting-custom h2 strong { font-size: 2rem; }
 }
 @media (max-width: 600px) {
   .tasting-intro { padding-top: 100px; padding-bottom: 36px; }
   .tasting-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
-  .tasting-kit { padding: 22px 12px 16px; gap: 10px; }
+  .tasting-kit { padding: 10px 10px 16px; gap: 10px; }
+  .kit-visual { height: 120px; padding: 12px 0; }
+  .kit-visual img { width: 32px; height: 96px; }
+  .kit-visual img + img { margin-left: -10px; }
   .tasting-custom { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-  .tasting-custom .kit-flavors { grid-column: 1; }
-  .tasting-custom .kit-price { grid-column: 2; grid-row: 1 / 3; }
+  .tasting-custom .kit-visual { grid-column: 1; grid-row: 1 / 4; width: 100%; }
+  .tasting-custom h2 { grid-column: 2; grid-row: 1; }
+  .tasting-custom .kit-flavors { grid-column: 2; grid-row: 2; }
+  .tasting-custom .kit-price { grid-column: 2; grid-row: 3; }
   .tasting-custom .btn { grid-column: 1 / -1; width: 100%; }
   .tasting-custom h2 { gap: 5px; }
 }
