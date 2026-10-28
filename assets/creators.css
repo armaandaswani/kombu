@@ -36,7 +36,7 @@
   .creator-invite-copy { gap: 20px; }
   .creators-layout { grid-template-columns: minmax(0, 1fr); padding-top: 64px; }
   .creators-art { position: static; height: clamp(260px, 70vw, 420px); }
-  .creators-art img { object-position: 50% 54%; }
+  .creators-art img { object-position: 50% 65%; }
   .creators-story { padding: 36px var(--gutter) 56px; gap: 48px; }
   .creators-story h1 { font-size: clamp(2.25rem, 9.4vw, 3.5rem); }
   .creators-story h2 { font-size: 1.9rem; }
@@ -44,8 +44,13 @@
 @media (min-width: 761px) and (max-width: 900px) {
   /* A full-width crop keeps both the creator and the phone visible on tablets. */
   .creators-layout { grid-template-columns: minmax(0, 1fr); }
-  .creators-art { position: static; height: 440px; }
-  .creators-art img { object-position: 50% 49%; }
+  .creators-art { position: static; height: 520px; }
+  .creators-art img { object-position: 50% 56%; }
   .creators-story { width: 100%; max-width: 760px; margin-inline: auto; padding: 40px 28px 56px; gap: 48px; }
   .creators-story h1 { font-size: 3.5rem; }
 }
+
+.creator-fields { min-width: 0; margin: 0; padding: 0; border: 0; display: grid; gap: 20px; }
+.creator-fields + .creator-fields { margin-top: 16px; }
+.creator-fields legend { font: 700 1.5rem/1.25 var(--serif); color: var(--green-deep); padding: 0 0 24px; }
+.creator-fields small { font-size: .875rem; color: var(--ink-2); line-height: 1.65; }

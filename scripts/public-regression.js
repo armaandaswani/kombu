@@ -307,10 +307,14 @@ async function run() {
     assert.ok(await referral.page.locator('#criadores a[href="/criadores"]').isVisible(), 'home invitation opens the dedicated creator area');
     assert.ok(await referral.page.locator('.creator-invite-art').evaluate(img => img.getBoundingClientRect().height < 500), 'home creator art stays compact');
     await referral.page.goto(`${baseUrl}/criadores`);
-    assert.equal(await referral.page.locator('h1').innerText(), 'Sua voz.\nNossa natureza.');
+    assert.equal(await referral.page.locator('h1').innerText(), 'Crie conteúdo\ncom a Kombú.');
     assert.ok(!(await referral.page.locator('main').innerText()).match(/(?:5|10)\s*%/), 'creator invitation keeps commercial rates private');
     await referral.page.selectOption('#creatorForm [name="plataforma"]', 'Instagram');
-    await referral.page.selectOption('#creatorForm [name="tema"]', 'Comida e gastronomia');
+    await referral.page.fill('#creatorForm [name="tema"]', 'Gastronomia e cultura local');
+    await referral.page.selectOption('#creatorForm [name="perfilTipo"]', 'Criador de conteúdo / influenciador');
+    await referral.page.fill('#creatorForm [name="seguidores"]', '1500');
+    await referral.page.selectOption('#creatorForm [name="formato"]', 'Reels e vídeos curtos');
+    await referral.page.selectOption('#creatorForm [name="parcerias"]', 'Sim');
     await referral.page.fill('#creatorForm [name="nome"]', "Criadora Teste");
     await referral.page.fill('#creatorForm [name="whatsapp"]', "92999990000");
     await referral.page.fill('#creatorForm [name="instagram"]', "@criadora");
@@ -321,7 +325,10 @@ async function run() {
     assert.strictEqual(leads.at(-1).type, "criador");
     assert.strictEqual(leads.at(-1).source, "site-criadores");
     assert.ok(leads.at(-1).message.includes('Rede principal: Instagram'));
-    assert.ok(leads.at(-1).message.includes('Conteúdo: Comida e gastronomia'));
+    assert.ok(leads.at(-1).message.includes('Assuntos centrais: Gastronomia e cultura local'));
+    assert.ok(leads.at(-1).message.includes('Seguidores ou inscritos: 1500'));
+    assert.ok(leads.at(-1).message.includes('Formato principal: Reels e vídeos curtos'));
+    assert.ok(leads.at(-1).message.includes('Parcerias anteriores: Sim'));
     assert.equal(leads.at(-1).instagram, '@criadora');
     assert.deepStrictEqual(referral.errors, []);
 

@@ -20,8 +20,8 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,800;1,600;1,700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" />
-    <link rel="stylesheet" href="/assets/site.css?v=20261028d" />
-      <link rel="stylesheet" href="/assets/creators.css?v=20261028d" />
+    <link rel="stylesheet" href="/assets/site.css?v=20261028e" />
+      <link rel="stylesheet" href="/assets/creators.css?v=20261028e" />
   </head>
   <body data-page="creators">
     <a class="skip" href="#main">Pular para o conteúdo</a>
@@ -44,42 +44,53 @@
     </header>
 
     <main id="main" class="creators-layout">
-      <div class="creators-art"><img src="/assets/kombu-criadora-editorial.jpg" alt="Ilustração de uma criadora gravando com o celular uma composição de frutas, flores e uma bebida, em um ambiente amazônico." width="1122" height="1402" fetchpriority="high" decoding="async" /></div>
+      <div class="creators-art"><img src="/assets/kombu-criadora-com-produto.jpg" alt="Ilustração de uma criadora gravando com o celular uma composição com uma garrafa Kombú Maracujá, frutas e flores, em um ambiente amazônico." width="1122" height="1402" fetchpriority="high" decoding="async" /></div>
       <div class="creators-story">
         <section class="creators-intro" aria-labelledby="creators-title">
-          <h1 id="creators-title"><span>Sua voz.</span><span>Nossa natureza.</span></h1>
-          <p class="creators-lead">Crie conteúdo com a Kombú e leve os sabores da Amazônia para a sua comunidade.</p>
-          <a class="btn btn-dark" href="#participar">Quero criar com a Kombú</a>
-          <p>Se você compartilha descobertas, comida, cultura ou momentos do dia a dia, queremos conhecer o seu olhar.</p>
+          <h1 id="creators-title"><span>Crie conteúdo</span><span>com a Kombú.</span></h1>
+          <p class="creators-lead">Procuramos criadores de conteúdo e influenciadores para apresentar a Kombú nas redes sociais.</p>
+          <a class="btn btn-dark" href="#participar">Quero ser parceiro</a>
+          <p>Você gosta de kombucha e compartilha conteúdo com seu público? Cadastre seu perfil para conversar com a gente.</p>
         </section>
         <section class="creators-benefits" aria-labelledby="benefits-title">
-          <h2 id="benefits-title">Uma conexão natural.</h2>
-          <div><h3>Seu jeito de criar</h3><p>Histórias que façam sentido para você e para quem acompanha o seu conteúdo.</p></div>
-          <div><h3>Mais perto da sua comunidade</h3><p>Possibilidade de cupons e ações com a marca, conforme a parceria aprovada.</p></div>
-          <div><h3>Uma parceria que reconhece</h3><p>Conversamos sobre formatos, benefícios e reconhecimento pelas indicações antes de começar.</p></div>
-        </section>
-        <section class="creators-process" aria-labelledby="process-title">
-          <h2 id="process-title">Começa com uma conversa.</h2>
-          <p>Você apresenta seu perfil. A gente conhece seu conteúdo e, se houver afinidade, combina os próximos passos com você.</p>
-          <p>Gostar da Kombú e ter uma conexão real com seu público vale mais do que seguir uma fórmula.</p>
+          <h2 id="benefits-title">Como funciona a parceria</h2>
+          <div><h3>Conteúdo com a Kombú</h3><p>Combinamos conteúdos que apresentem nossos produtos e façam sentido para quem acompanha você.</p></div>
+          <div><h3>Um cupom para compartilhar</h3><p>Criadores aprovados podem receber um código próprio para divulgar à sua comunidade.</p></div>
+          <div><h3>Condições combinadas com você</h3><p>Antes de começar, conversamos sobre as ações, os benefícios da parceria e como acompanhar suas indicações.</p></div>
         </section>
         <section class="creators-application" id="participar" aria-labelledby="application-title">
-          <h2 id="application-title">Vamos nos conhecer?</h2>
-          <p>Conte quem você é e o que gostaria de criar com a gente.</p>
+          <h2 id="application-title">Cadastre seu perfil</h2>
+          <p>Queremos conhecer seu conteúdo, seu público e sua ideia de parceria. Avaliamos o cadastro e, se houver afinidade, entramos em contato pelo WhatsApp.</p>
           <form class="lead-form" id="creatorForm">
-            <div class="row">
-              <label class="field"><span>Seu nome</span><input name="nome" required autocomplete="name" maxlength="120" /></label>
-              <label class="field"><span>WhatsApp</span><input name="whatsapp" type="tel" required inputmode="tel" autocomplete="tel" maxlength="25" /></label>
-            </div>
-            <div class="row">
-              <label class="field"><span>Principal rede</span><select name="plataforma" required><option value="">Selecione</option><option>Instagram</option><option>TikTok</option><option>YouTube</option><option>Outra</option></select></label>
-              <label class="field"><span>@ ou link do perfil</span><input name="instagram" required maxlength="80" placeholder="@seuperfil" autocomplete="off" spellcheck="false" /></label>
-            </div>
-            <label class="field"><span>Cidade e estado</span><input name="bairro" required autocomplete="address-level2" maxlength="160" placeholder="Ex.: Manaus, AM" /></label>
-            <label class="field"><span>Seu universo de conteúdo (opcional)</span><select name="tema"><option value="">Selecione</option><option>Comida e gastronomia</option><option>Cultura e descobertas locais</option><option>Rotina e lifestyle</option><option>Bem-estar</option><option>Outro</option></select></label>
-            <label class="field"><span>O que você quer criar com a Kombú?</span><textarea name="mensagem" required rows="4" maxlength="1600" placeholder="Conte sobre seu conteúdo, seu público e a ideia de parceria."></textarea></label>
+            <fieldset class="creator-fields"><legend>Sobre você</legend>
+              <label class="field"><span>Você se cadastra como</span><select name="perfilTipo" required><option value="">Selecione</option><option>Criador de conteúdo / influenciador</option><option>Agência / assessoria</option><option>Outro</option></select></label>
+              <label class="field"><span>Nome completo</span><input name="nome" required autocomplete="name" maxlength="120" /></label>
+              <div class="row">
+                <label class="field"><span>WhatsApp</span><input name="whatsapp" type="tel" required inputmode="tel" autocomplete="tel" maxlength="25" /></label>
+                <label class="field"><span>E-mail (opcional)</span><input name="email" type="email" autocomplete="email" spellcheck="false" maxlength="160" /></label>
+              </div>
+              <label class="field"><span>Cidade e estado</span><input name="bairro" required autocomplete="address-level2" maxlength="160" placeholder="Ex.: Manaus, AM" /></label>
+            </fieldset>
+            <fieldset class="creator-fields"><legend>Seu perfil nas redes</legend>
+              <label class="field"><span>Principal rede social</span><select name="plataforma" required><option value="">Selecione</option><option>Instagram</option><option>TikTok</option><option>YouTube</option><option>Outra</option></select></label>
+              <div class="row">
+                <label class="field"><span>@ do perfil</span><input name="instagram" required maxlength="80" placeholder="@seuperfil" autocomplete="off" spellcheck="false" /></label>
+                <label class="field"><span>Seguidores ou inscritos</span><input name="seguidores" type="number" min="0" max="1000000000" step="1" inputmode="numeric" required aria-describedby="followers-help" /></label>
+              </div>
+              <small id="followers-help">Informe a quantidade na rede principal, somente com números. Ex.: 1500.</small>
+              <label class="field"><span>Link do perfil (opcional)</span><input name="perfilUrl" type="url" maxlength="240" placeholder="https://…" inputmode="url" autocomplete="url" spellcheck="false" /></label>
+              <label class="field"><span>Outras redes (opcional)</span><textarea name="outrasRedes" rows="2" maxlength="400" placeholder="Rede, @ e número de seguidores ou inscritos em cada uma."></textarea></label>
+            </fieldset>
+            <fieldset class="creator-fields"><legend>Seu conteúdo e a parceria</legend>
+              <label class="field"><span>Quais assuntos você mais aborda?</span><textarea name="tema" required rows="3" maxlength="300" placeholder="Conte os temas centrais das suas publicações. Ex.: gastronomia, rotina em Manaus e cultura local."></textarea></label>
+              <label class="field"><span>Principal formato de conteúdo</span><select name="formato" required><option value="">Selecione</option><option>Reels e vídeos curtos</option><option>Stories</option><option>Vídeos longos</option><option>Fotos e carrosséis</option><option>Formatos variados</option></select></label>
+              <label class="field"><span>Quem acompanha você? (opcional)</span><textarea name="publico" rows="2" maxlength="300" placeholder="Conte de onde é seu público e quais são seus principais interesses."></textarea></label>
+              <label class="field"><span>Já fez parceria com marcas?</span><select name="parcerias" required><option value="">Selecione</option><option>Sim</option><option>Não</option></select></label>
+              <label class="field"><span>Por que você quer ser parceiro da Kombú?</span><textarea name="mensagem" required rows="4" maxlength="1200" placeholder="Conte um pouco sobre você e como gostaria de apresentar a Kombú ao seu público."></textarea></label>
+              <label class="field"><span>Disponibilidade para ações presenciais (opcional)</span><select name="presencial"><option value="">Selecione</option><option>Sim, em Manaus</option><option>Sim, em outras cidades</option><option>Apenas ações online</option></select></label>
+            </fieldset>
             <p class="form-note">Usaremos seus dados para avaliar e responder à proposta. O envio não garante aprovação. <a href="/legal#privacidade">Privacidade</a>.</p>
-            <button class="btn btn-dark" type="submit">Enviar meu perfil</button>
+            <button class="btn btn-dark" type="submit">Enviar meu cadastro</button>
             <p class="form-status" role="status" hidden></p>
           </form>
           <p class="creators-fine">Os formatos e as condições são apresentados individualmente, antes do início da parceria.</p>
@@ -116,6 +127,6 @@
         <div class="fine"><span>© <span data-year>2026</span> Kombú, Manaus</span><span>A Arte do Natural</span></div>
       </div>
     </footer>
-    <script src="/assets/site.js?v=20261028d" defer></script>
+    <script src="/assets/site.js?v=20261028e" defer></script>
   </body>
 </html>

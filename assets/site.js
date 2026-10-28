@@ -582,7 +582,20 @@
       location: data.bairro || "",
       whatsapp: data.whatsapp || "",
       instagram: data.instagram || "",
-      message: type === "criador" ? [data.plataforma ? `Rede principal: ${data.plataforma}` : "", data.tema ? `Conteúdo: ${data.tema}` : "", data.mensagem || ""].filter(Boolean).join("\n\n") : data.mensagem || "",
+      message: type === "criador" ? [
+        data.perfilTipo ? `Tipo de perfil: ${data.perfilTipo}` : "",
+        data.email ? `E-mail: ${data.email}` : "",
+        data.plataforma ? `Rede principal: ${data.plataforma}` : "",
+        data.seguidores !== undefined && data.seguidores !== "" ? `Seguidores ou inscritos: ${data.seguidores}` : "",
+        data.perfilUrl ? `Link do perfil: ${data.perfilUrl}` : "",
+        data.outrasRedes ? `Outras redes: ${data.outrasRedes}` : "",
+        data.tema ? `Assuntos centrais: ${data.tema}` : "",
+        data.formato ? `Formato principal: ${data.formato}` : "",
+        data.publico ? `Público: ${data.publico}` : "",
+        data.parcerias ? `Parcerias anteriores: ${data.parcerias}` : "",
+        data.presencial ? `Ações presenciais: ${data.presencial}` : "",
+        data.mensagem ? `Proposta de parceria: ${data.mensagem}` : "",
+      ].filter(Boolean).join("\n\n") : data.mensagem || "",
       couponCode: referralCode(data.couponCode),
       emailTo: ADMIN_EMAIL,
       createdAt: new Date().toISOString(),
@@ -791,7 +804,7 @@
       initRevenda(flavors);
       initForm($("#resellerForm"), "revenda", "Recebemos seus dados. A Kombú vai retornar pelo contato informado com sabores, valores e condições.");
     }
-    initForm($("#creatorForm"), "criador", "Recebemos sua proposta. Vamos conversar pelo contato informado antes de definir a parceria.");
+    initForm($("#creatorForm"), "criador", "Cadastro recebido. Vamos avaliar seu perfil e, se houver afinidade, entrar em contato pelo WhatsApp para conversar sobre a parceria.");
     observeReveals();
   }
   boot();
