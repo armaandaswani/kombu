@@ -24,7 +24,8 @@ async function creatorFor(rawCode) {
 async function pricedQuote(body) {
   // Public requests can select a kit/code, never a freight charge or rate.
   if (!catalog.kits.some((kit) => kit.id === body.kitId)) fail("invalid_kit");
-  return catalog.quote(body.kitId, await creatorFor(body.couponCode));
+  const creator = await creatorFor(body.couponCode);
+  try { return catalog.quote(body.kitId, creator, 0, body.quantity); } catch (error) { fail(error.message); }
 }
 async function provider(path, body) {
   const response = await fetch(`https://api.checkout.infinitepay.io/${path}`, {
@@ -61,12 +62,13 @@ async function requestOrder(body) {
   const reservation = body.orderMode === "reservation";
   const kit = catalog.kits.find(k => k.id === body.kitId);
   if (!kit) fail("invalid_kit");
+  const quote = await pricedQuote(body);
+  const bottles = quote.bottles;
   const selection = reservation
-    ? validateReservation(body.items, (await getAvailability()).reservationProducts, kit.bottles)
-    : validateSelection(body.items, await getStock(), kit.bottles);
+    ? validateReservation(body.items, (await getAvailability()).reservationProducts, bottles)
+    : validateSelection(body.items, await getStock(), bottles);
   const flavors = selection.map(item => `${item.qty} ${item.flavor}`).join("; ");
   const fingerprint = crypto.createHash("sha256").update(JSON.stringify([body.kitId, catalog.code(body.couponCode), customer, flavors, reservation])).digest("hex");
-  const quote = await pricedQuote(body);
   async function notify(required = false) {
     const summary = `${reservation ? "RESERVA DE LOTE — SEM PAGAMENTO. Prazo de produção a confirmar. " : ""}Pedido de kit: ${quote.bottles} garrafas de ${quote.sizeMl} ml. Produtos: R$ ${(quote.productsCents / 100).toFixed(2)}. Cupom: ${quote.couponCode || "nenhum"}. Frete Uber a confirmar. Sabores: ${flavors}. Endereço: ${customer.address}, ${customer.neighborhood}, ${customer.city}, CEP ${customer.cep}. Pedido: ${body.requestId}`;
     const saved = await appendLeadToState({ id: `kit-${body.requestId}`, type: "contato", name: customer.name, whatsapp: customer.phone, location: customer.neighborhood, couponCode: quote.couponCode, source: reservation ? "site-reserva-lote" : "site-kits", message: summary }).catch(() => ({ ok: false }));

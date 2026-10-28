@@ -12,7 +12,7 @@ async function getAvailability() {
   return { products: availableProducts(state), reservationProducts: reservableProducts(state) };
 }
 function validateReservation(items, products, bottles) {
-  if (![12, 20].includes(bottles)) { const e = new Error('reservation_kit_required'); e.status = 400; throw e; }
+  if (bottles !== 15 && bottles < 20) { const e = new Error('reservation_kit_required'); e.status = 400; throw e; }
   const selection = validateSelection(items, products.map(p => ({ ...p, available: bottles })), bottles);
   if (selection.some(item => item.qty < 5)) { const e = new Error('reservation_minimum'); e.status = 400; throw e; }
   return selection;
@@ -44,7 +44,7 @@ function validateSelection(items, products, bottles) {
   const seen = new Set();
   const selected = items.map(item => {
     const product = products.find(p => p.productId === item.productId);
-    if (!product || seen.has(item.productId) || !Number.isSafeInteger(item.qty) || item.qty < 1 || item.qty > product.available) invalid();
+    if (!product || seen.has(item.productId) || !Number.isSafeInteger(item.qty) || item.qty < 5 || item.qty > product.available) invalid();
     seen.add(item.productId);
     return { productId: product.productId, flavor: product.flavor, sizeMl: 500, qty: item.qty };
   });

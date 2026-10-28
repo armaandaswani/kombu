@@ -139,21 +139,18 @@ async function run() {
     await page.evaluate(() => { const el = document.querySelectorAll(".walk-step")[4]; window.scrollTo(0, el.getBoundingClientRect().top + window.scrollY - window.innerHeight / 2 + 20); });
     await page.waitForFunction(() => document.querySelector(".walk-count").textContent.startsWith("05"));
     const onStage = (await page.locator(".walk-name").innerText()).trim();
-    await page.locator(".walk-order").evaluate((a) => a.click());
-    assert.strictEqual(await page.inputValue("#order-mensagem"), onStage, "Pedir este sabor fills in the flavour on screen");
-    await page.fill("#order-mensagem", "");
+    await page.locator(".walk-order").evaluate(a => a.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true })));
+    await page.waitForURL('**/experimente?kit=kit-5&sabor=**');
+    assert.ok(new URL(page.url()).searchParams.get("sabor").includes(onStage));
+    await page.goto(`${baseUrl}/`);
     await page.evaluate(() => window.scrollTo(0, document.querySelector("#onde").getBoundingClientRect().top + window.scrollY + 300));
     await page.waitForFunction(() => !document.querySelector(".order-fab").classList.contains("is-away"));
     assert.ok(await page.locator(".order-fab").isVisible(), "the floating order button shows mid-page on a phone");
 
-    // Direct order form → /api/lead as a "contato" tagged as a 20+ order.
-    await page.fill("#order-nome", "Teste Público");
-    await page.fill("#order-whatsapp", "92 99999-0000");
-    await page.fill("#order-mensagem", "10 Maracujá");
-    await page.click('#orderForm button[type="submit"]');
-    await page.waitForSelector("#orderForm .form-status:not([hidden])");
-    assert.strictEqual(leads.at(-1).type, "contato");
-    assert.ok(leads.at(-1).message.startsWith("Pedido direto (20+ garrafas):"), "the order is recognisable in the CRM");
+    assert.strictEqual(await page.locator('#comprar .buy article').count(), 2);
+    assert.strictEqual(await page.locator('#comprar form').count(), 0, 'purchase cards stay compact');
+    assert.strictEqual(await page.locator('.buy-kit-options a').count(), 5);
+    assert.ok(!(await page.locator('#comprar').innerText()).includes('R$'), 'home cards do not show prices');
 
     // Mobile menu (the header hides while scrolling down, so come back to the top first).
     await page.evaluate(() => window.scrollTo(0, 0));
@@ -224,11 +221,11 @@ async function run() {
     // Referral survives navigation to a tasting kit, and can be changed or removed.
     const referral = await newPage(browser, leads);
     await referral.page.goto(`${baseUrl}/?cupom=amazonia10#comprar`);
-    await referral.page.waitForFunction(() => document.querySelector("input[name='couponCode']")?.value === "AMAZONIA10");
+    await referral.page.waitForFunction(() => sessionStorage.getItem("kombuReferral") === "AMAZONIA10");
     await referral.page.goto(`${baseUrl}/experimente`);
     await referral.page.waitForFunction(() => document.querySelector("input[name='couponCode']")?.value === "AMAZONIA10");
-    await referral.page.click('[data-kit="kit-6"]');
-    assert.strictEqual(await referral.page.inputValue("#kit-choice"), "kit-6");
+    await referral.page.click('[data-kit="kit-10"]');
+    assert.strictEqual(await referral.page.inputValue("#kit-choice"), "kit-10");
     await referral.page.fill('#kitForm [name="couponCode"]', "INVALID");
     await referral.page.locator('#kitForm [name="couponCode"]').blur();
     await referral.page.waitForSelector('#couponStatus[data-state="error"]');
@@ -240,25 +237,25 @@ async function run() {
     await referral.page.fill('#kitForm [name="bairro"]', "Centro");
     await referral.page.fill('#kitForm [name="cep"]', "69057-002");
     await referral.page.fill('#kitForm [name="address"]', "Rua Teste, 100");
-    await referral.page.fill('#stockProducts input[data-product-id="p1"]', "3");
-    await referral.page.fill('#stockProducts input[data-product-id="p2"]', "3");
+    await referral.page.fill('#stockProducts input[data-product-id="p1"]', "5");
+    await referral.page.fill('#stockProducts input[data-product-id="p2"]', "5");
     await referral.page.waitForFunction(() => !document.querySelector('#kitForm button[type="submit"]').disabled);
-    assert.ok((await referral.page.locator("#kitQuote").innerText()).includes("133,95"), "the approved 5% discount is shown on the six-bottle kit");
+    assert.ok((await referral.page.locator("#kitQuote").innerText()).includes("223,25"), "the approved 5% discount is shown on the ten-bottle kit");
     await referral.page.click('#kitForm button[type="submit"]');
     await referral.page.waitForSelector("#kitForm .form-status[data-state='ok']");
-    assert.strictEqual(kitOrders.at(-1).kitId, "kit-6");
+    assert.strictEqual(kitOrders.at(-1).kitId, "kit-10");
     assert.strictEqual(kitOrders.at(-1).couponCode, "AMAZONIA10");
-    assert.deepStrictEqual(kitOrders.at(-1).items, [{ productId: "p1", qty: 3 }, { productId: "p2", qty: 3 }]);
-    await referral.page.selectOption('#kitForm [name="kitId"]', 'kit-12');
+    assert.deepStrictEqual(kitOrders.at(-1).items, [{ productId: "p1", qty: 5 }, { productId: "p2", qty: 5 }]);
+    await referral.page.selectOption('#kitForm [name="kitId"]', 'kit-15');
     await referral.page.selectOption('#kitForm [name="orderMode"]', 'reservation');
     await referral.page.fill('#stockProducts input[data-product-id="p1"]', '4');
-    await referral.page.fill('#stockProducts input[data-product-id="p2"]', '8');
+    await referral.page.fill('#stockProducts input[data-product-id="p2"]', '11');
     assert.ok(await referral.page.locator('#kitForm button[type="submit"]').isDisabled(), 'minimum 5 per flavour blocks 4+8');
     await referral.page.fill('#stockProducts input[data-product-id="p1"]', '5');
-    await referral.page.fill('#stockProducts input[data-product-id="p2"]', '7');
+    await referral.page.fill('#stockProducts input[data-product-id="p2"]', '10');
     await referral.page.waitForFunction(() => !document.querySelector('#kitForm button[type="submit"]').disabled);
     assert.strictEqual(await referral.page.locator('#kitForm button[type="submit"]').textContent(), 'Reservar lote sem pagamento');
-    await referral.page.selectOption('#kitForm [name="kitId"]', 'kit-6');
+    await referral.page.selectOption('#kitForm [name="kitId"]', 'kit-10');
     assert.ok(await referral.page.locator('#kitForm button[type="submit"]').isDisabled(), 'small kits cannot reserve production');
 
     assert.strictEqual(kitOrders.at(-1).deliveryCents, undefined, "customer does not choose a delivery fee");
@@ -269,7 +266,7 @@ async function run() {
     assert.strictEqual(await referral.page.inputValue('input[name="couponCode"]'), "");
     await referral.page.goto(`${baseUrl}/?ref=%3Cscript%3E#comprar`);
     await referral.page.waitForFunction(() => document.querySelectorAll(".walk-step").length > 0);
-    assert.strictEqual(await referral.page.inputValue('input[name="couponCode"]'), "");
+    assert.strictEqual(await referral.page.locator('#comprar input[name="couponCode"]').count(), 0);
     await referral.page.fill('#creatorForm [name="nome"]', "Criadora Teste");
     await referral.page.fill('#creatorForm [name="whatsapp"]', "92999990000");
     await referral.page.fill('#creatorForm [name="instagram"]', "@criadora");

@@ -5,6 +5,8 @@
   const catalog = window.KombuKits;
   const kit = form.elements.kitId;
   const coupon = form.elements.couponCode;
+  const quantity = form.elements.quantity;
+  const bottles = () => kit.value === "kit-custom" ? Number(quantity.value) : (catalog.kits.find(k => k.id === kit.value)?.bottles || 0);
   const button = form.querySelector('button[type="submit"]');
   const status = form.querySelector(".form-status");
   const couponStatus = document.querySelector("#couponStatus");
@@ -23,7 +25,7 @@
     products.forEach(product => {
       const label = document.createElement("label"); label.className = "field";
       const text = document.createElement("span"); text.textContent = isReservation() ? `${product.flavor} · mínimo 5` : `${product.flavor} · ${product.available} disponíveis`;
-      const input = document.createElement("input"); input.type = "number"; input.min = "0"; input.max = String(isReservation() ? (catalog.kits.find(k => k.id === kit.value)?.bottles || 20) : product.available); input.step = "1"; input.value = "0"; input.dataset.productId = product.productId; input.setAttribute("aria-label", `Quantidade de ${product.flavor}`);
+      const input = document.createElement("input"); input.type = "number"; input.min = "0"; input.max = String(isReservation() ? (bottles() || 20) : product.available); input.step = "1"; input.value = "0"; input.dataset.productId = product.productId; input.setAttribute("aria-label", `Quantidade de ${product.flavor}`);
       label.append(text, input); stockProducts.append(label);
     });
   }
@@ -32,16 +34,18 @@
   const stockProducts = document.querySelector("#stockProducts");
   const selectedItems = () => [...stockProducts.querySelectorAll("input")].filter(input => Number(input.value) > 0).map(input => ({ productId: input.dataset.productId, qty: Number(input.value) }));
   function selectionValid() {
-    const expected = catalog.kits.find(k => k.id === kit.value)?.bottles || 0;
+    const expected = bottles();
     const count = selectedItems().reduce((sum, item) => sum + item.qty, 0);
     if (isReservation()) {
-      const eligible = [12, 20].includes(expected);
+      const eligible = expected === 15 || expected >= 20;
       const minimum = selectedItems().every(item => item.qty >= 5);
-      stockStatus.textContent = !eligible ? "Para reservar um lote, escolha o kit de 12 ou de 20 garrafas." : !products.length ? "Nenhum sabor disponível para reserva no momento." : `${count} de ${expected} garrafas selecionadas. ${minimum ? "Mínimo de 5 por sabor escolhido." : "Ajuste a seleção: cada sabor escolhido precisa ter pelo menos 5 garrafas."}`;
+      stockStatus.textContent = !eligible ? "Para reservar um lote, escolha o kit de 15, de 20 ou personalizado garrafas." : !products.length ? "Nenhum sabor disponível para reserva no momento." : `${count} de ${expected} garrafas selecionadas. ${minimum ? "Mínimo de 5 por sabor escolhido." : "Ajuste a seleção: cada sabor escolhido precisa ter pelo menos 5 garrafas."}`;
       return stockReady && eligible && count === expected && minimum;
     }
     if (stockReady) stockStatus.textContent = products.length ? `${count} de ${expected || "—"} garrafas selecionadas. Disponibilidade do nosso estoque; reserva após confirmação.` : "Nenhum sabor disponível para pronta entrega no momento.";
-    return stockReady && expected > 0 && count === expected;
+    const minimum = selectedItems().every(item => item.qty >= 5);
+    if (stockReady && products.length && !minimum) stockStatus.textContent = `${count} de ${expected} garrafas. Cada sabor escolhido precisa ter pelo menos 5 garrafas.`;
+    return stockReady && expected > 0 && count === expected && minimum;
   }
   async function loadStock() {
     stockReady = false;
@@ -52,6 +56,13 @@
       if (!response.ok || !data.ok || !Array.isArray(data.products)) throw new Error();
       availability = { products: data.products, reservationProducts: data.reservationProducts || [] };
       renderProducts();
+      const requestedFlavor = new URLSearchParams(location.search).get("sabor");
+      const normalize = value => String(value || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+      const chosen = products.find(product => normalize(product.flavor) === normalize(requestedFlavor));
+      if (requestedFlavor && chosen && chosen.available >= 5) {
+        const input = [...stockProducts.querySelectorAll("input")].find(input => input.dataset.productId === chosen.productId);
+        if (input) input.value = "5";
+      }
       stockReady = true;
     } catch { stockStatus.textContent = "Estoque indisponível agora. Recarregue a página para tentar novamente."; }
     refreshQuote();
@@ -65,17 +76,19 @@
     quoteText.textContent = `Produtos: ${money(quote.subtotalCents)}${quote.discountCents ? ` − ${money(quote.discountCents)} de desconto = ${money(quote.productsCents)}` : ""}. Frete à parte.`;
   }
   async function refreshQuote() {
-    if (isReservation()) stockProducts.querySelectorAll("input").forEach(input => { input.max = String(catalog.kits.find(k => k.id === kit.value)?.bottles || 20); });
+    document.querySelector("#customQuantityField").hidden = kit.value !== "kit-custom";
+    quantity.disabled = kit.value !== "kit-custom";
+    if (isReservation()) stockProducts.querySelectorAll("input").forEach(input => { input.max = String(bottles() || 20); });
     const current = ++revision;
     validQuote = false;
     button.disabled = true;
     couponStatus.textContent = "";
     if (!kit.value) { quoteText.textContent = "Escolha um kit para ver o subtotal."; return; }
-    renderQuote(catalog.quote(kit.value));
+    try { renderQuote(catalog.quote(kit.value, null, 0, Number(quantity.value))); } catch { quoteText.textContent = "Informe a quantidade do kit personalizado (20 a 500 garrafas)."; return; }
     if (!coupon.value.trim()) { validQuote = true; button.disabled = busy || !selectionValid(); return; }
     couponStatus.textContent = "Validando cupom…";
     try {
-      const response = await fetch("/api/checkout", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "quote", kitId: kit.value, couponCode: coupon.value }) });
+      const response = await fetch("/api/checkout", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "quote", kitId: kit.value, quantity: Number(quantity.value), couponCode: coupon.value }) });
       const payload = await response.json();
       if (current !== revision) return;
       if (!response.ok || !payload.ok) {
@@ -98,6 +111,7 @@
     refreshQuote();
   }));
   kit.addEventListener("change", refreshQuote);
+  quantity.addEventListener("input", refreshQuote);
   mode.addEventListener("change", () => { requestId = crypto.randomUUID(); renderProducts(); refreshQuote(); });
   coupon.addEventListener("input", () => { ++revision; validQuote = false; button.disabled = true; couponStatus.textContent = "Termine de digitar e saia do campo para validar o cupom."; });
   coupon.addEventListener("change", refreshQuote);
@@ -113,7 +127,7 @@
     try {
       const response = await fetch("/api/checkout", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "request", requestId, kitId: data.kitId, couponCode: data.couponCode, name: data.nome, phone: data.whatsapp, email: data.email, city: data.city, cep: data.cep, address: data.address, neighborhood: data.bairro, orderMode: mode.value, items: selectedItems() }),
+        body: JSON.stringify({ action: "request", requestId, kitId: data.kitId, quantity: Number(quantity.value), couponCode: data.couponCode, name: data.nome, phone: data.whatsapp, email: data.email, city: data.city, cep: data.cep, address: data.address, neighborhood: data.bairro, orderMode: mode.value, items: selectedItems() }),
       });
       const payload = await response.json();
       if (!response.ok || !payload.persisted) { if (payload.error === "stock_changed") { await loadStock(); throw new Error("stock_changed"); } throw new Error(payload.error || "not_saved"); }
@@ -134,5 +148,7 @@
       status.hidden = false;
     }
   });
+  const requestedKit = new URLSearchParams(location.search).get("kit");
+  if (catalog.kits.some(k => k.id === requestedKit)) kit.value = requestedKit;
   loadStock();
 })();

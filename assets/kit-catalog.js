@@ -7,10 +7,11 @@
 })(typeof globalThis === "object" ? globalThis : this, function () {
   "use strict";
   const kits = Object.freeze([
-    Object.freeze({ id: "kit-4", name: "Primeiros sabores", bottles: 4, sizeMl: 500, priceCents: 10000 }),
-    Object.freeze({ id: "kit-6", name: "Para compartilhar", bottles: 6, sizeMl: 500, priceCents: 14100 }),
-    Object.freeze({ id: "kit-12", name: "Mais descobertas", bottles: 12, sizeMl: 500, priceCents: 26400 }),
+    Object.freeze({ id: "kit-5", name: "Primeiros sabores", bottles: 5, sizeMl: 500, priceCents: 12500 }),
+    Object.freeze({ id: "kit-10", name: "Para compartilhar", bottles: 10, sizeMl: 500, priceCents: 23500 }),
+    Object.freeze({ id: "kit-15", name: "Mais descobertas", bottles: 15, sizeMl: 500, priceCents: 33000 }),
     Object.freeze({ id: "kit-20", name: "Sua seleção completa", bottles: 20, sizeMl: 500, priceCents: 40000 }),
+    Object.freeze({ id: "kit-custom", name: "Monte o seu kit", bottles: 20, sizeMl: 500, priceCents: 40000, custom: true }),
   ]);
   const discountBps = 500;
   const commissionBps = 1000;
@@ -18,9 +19,13 @@
     const normalized = String(value || "").trim().toUpperCase();
     return /^[A-Z0-9_-]{1,40}$/.test(normalized) ? normalized : "";
   }
-  function quote(kitId, creator = null, deliveryCents = 0) {
-    const kit = kits.find((item) => item.id === kitId);
+  function quote(kitId, creator = null, deliveryCents = 0, quantity = 20) {
+    let kit = kits.find((item) => item.id === kitId);
     if (!kit) throw new Error("invalid_kit");
+    if (kit.custom) {
+      if (!Number.isSafeInteger(quantity) || quantity < 20 || quantity > 500) throw new Error("invalid_kit_quantity");
+      kit = { ...kit, bottles: quantity, priceCents: quantity * 2000 };
+    }
     if (!Number.isSafeInteger(deliveryCents) || deliveryCents < 0) throw new Error("invalid_delivery_fee");
     if (creator && (!creator.active || !code(creator.code) || !creator.id)) throw new Error("invalid_creator_code");
     const discountCents = creator ? Math.round(kit.priceCents * discountBps / 10000) : 0;

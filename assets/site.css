@@ -668,3 +668,11 @@ h3 { font-size: clamp(1.12rem, 1.6vw, 1.4rem); line-height: 1.2; }
 #stockSelection legend { padding: 0 8px; font-weight: 600; }
 #stockProducts { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; }
 #stockStatus { margin: 0 0 16px; }
+
+.buy h2 { font-size: clamp(1.6rem, 2.5vw, 2rem); margin: 0; }
+.buy h2 small { display: block; font: 500 0.9rem var(--sans); margin-top: 8px; opacity: .7; }
+.buy-kit-options { list-style: none; padding: 0; margin: 20px 0 0; display: grid; gap: 10px; }
+.buy-kit-options a { display: inline-flex; align-items: baseline; gap: 10px; font-weight: 600; text-decoration: none; }
+.buy-kit-options a:hover { text-decoration: underline; text-underline-offset: 4px; }
+.buy-kit-options small { font-size: .82em; font-weight: 400; opacity: .65; }
+.buy .btn { align-self: end; }

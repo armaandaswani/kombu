@@ -714,10 +714,8 @@
     }
     // "Pedir este sabor" starts the order with the flavour that is on screen.
     $$(".walk-order").forEach((link) => link.addEventListener("click", () => {
-      const field = $("#order-mensagem");
       const name = $(".walk-name")?.textContent.trim();
-      if (!field || !name || field.value.includes(name)) return;
-      field.value = field.value.trim() ? `${field.value.trim()}, ${name}` : name;
+      if (name) link.href = `/experimente?kit=kit-5&sabor=${encodeURIComponent(name)}#consultar`;
     }));
   }
 
