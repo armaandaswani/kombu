@@ -12,3 +12,6 @@ marketing/instagram/out/
 marketing/instagram/.render/
 marketing/instagram/.wrangler/
 marketing/instagram/worker/.wrangler/
+
+# Local design-review tooling state
+.taste-skill/

@@ -24,7 +24,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,800;1,600;1,700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" />
-    <link rel="stylesheet" href="/assets/site.css?v=20261027k" />
+    <link rel="stylesheet" href="/assets/site.css?v=20261027l" />
     <link rel="preload" as="image" href="/assets/bottles/maracuja.webp" />
   </head>
   <body data-page="consumer">
@@ -46,19 +46,23 @@
       </div>
     </header>
 
+    <aside class="audience-welcome" id="audienceWelcome" aria-label="Escolha como conhecer a Kombú" hidden>
+      <div class="wrap"><p>Para você ou para o seu negócio?</p><div class="welcome-actions"><button type="button" data-choice="consumo">Comprar para mim</button><a href="/revenda" data-choice="revenda">Quero revender</a></div><button class="welcome-close" type="button" aria-label="Fechar escolha de público">×</button></div>
+    </aside>
     <main id="main">
       <section class="hero grain" aria-labelledby="hero-title">
         <div class="wrap">
           <div class="hero-copy">
-            <h1 id="hero-title" class="display" data-reveal><span class="l">A Arte</span> <span class="l">do Natural.</span> <span class="hero-sub" id="heroSub">Kombucha artesanal da Amazônia.</span></h1>
-            <p class="lead" id="heroLead" data-reveal style="--i:3">Feita em Manaus com chá verde, frutas, flores e especiarias. Gás natural da fermentação, sem conservantes.</p>
-            <div class="actions" data-reveal style="--i:4">
+            <h1 id="hero-title" class="display"><span class="l">A Arte</span> <span class="l">do Natural.</span></h1>
+            <p class="hero-sub" id="heroSub">Kombucha artesanal da Amazônia.</p>
+            <p class="lead" id="heroLead">Feita em Manaus com chá verde, frutas, flores e especiarias. Gás natural da fermentação, sem conservantes.</p>
+            <div class="actions">
               <a class="btn" href="/experimente" data-magnetic>Escolher meu kit</a>
-              <a class="btn btn-ghost" href="#onde" data-magnetic>Onde comprar</a>
+              <a class="hero-secondary" href="#onde">Onde comprar</a>
             </div>
           </div>
           <div class="hero-stage" id="heroStage">
-            <div class="hero-glow"></div>
+            <button class="hero-pause" type="button" aria-label="Pausar animações" aria-pressed="false">Pausar</button>
             <canvas class="bubbles" aria-hidden="true"></canvas>
             <div class="hero-bottle"></div>
             <button class="hero-arrow prev" type="button" aria-label="Sabor anterior"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
@@ -149,7 +153,7 @@
               <ul class="walk-ing"></ul>
               <div class="actions">
                 <a class="btn walk-order" href="#comprar" data-magnetic>Pedir este sabor</a>
-                <a class="btn btn-ghost" href="#onde" data-magnetic>Onde comprar</a>
+                <a class="hero-secondary" href="#onde">Onde comprar</a>
               </div>
             </div>
             <div class="walk-bottle"></div>
@@ -271,23 +275,8 @@
     <!-- Phones and tablets: ordering direct stays one tap away while scrolling (owner, 24/10). -->
     <a class="order-fab" href="#comprar" hidden>Fazer pedido</a>
 
-    <dialog class="chooser" id="audienceChooser" aria-labelledby="chooser-title">
-      <div class="chooser-in">
-        <h2 id="chooser-title">O que você procura?</h2>
-        <div class="chooser-opts">
-          <button class="opt" type="button" data-choice="consumo" autofocus>
-            <img src="/assets/bottles/maracuja.webp" alt="" width="533" height="1600" />
-            <span><b>Para consumo próprio</b><small>Quero comprar para mim.</small></span>
-          </button>
-          <a class="opt opt-dark" href="/revenda" data-choice="revenda">
-            <span class="trio" aria-hidden="true"><img src="/assets/bottles/goiaba.webp" alt="" width="533" height="1600" /><img src="/assets/bottles/uva.webp" alt="" width="533" height="1600" /><img src="/assets/bottles/pera-alecrim.webp" alt="" width="533" height="1600" /></span>
-            <span><b>Para revenda</b><small>Tenho um café, loja ou restaurante.</small></span>
-          </a>
-        </div>
-        <p class="chooser-note">Você pode trocar depois, no topo da página.</p>
-      </div>
-    </dialog>
 
-    <script src="/assets/site.js?v=20261027h" defer></script>
+
+    <script src="/assets/site.js?v=20261027l" defer></script>
   </body>
 </html>

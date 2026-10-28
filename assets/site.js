@@ -7,6 +7,7 @@
 
   const page = document.body.dataset.page || "consumer";
   const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  let motionPaused = false;
   const finePointer = window.matchMedia("(pointer: fine)").matches;
   if (!reduceMotion) document.documentElement.classList.add("js-motion");
 
@@ -261,8 +262,17 @@
       touchX = null;
       if (Math.abs(dx) > 40) pick(current + (dx < 0 ? 1 : -1));
     });
-    if (reduceMotion) return;
-    const tick = () => { if (Date.now() > pausedUntil && !document.hidden) show(current + 1); };
+    const pause = $(".hero-pause", stage);
+    pause?.addEventListener("click", () => {
+      motionPaused = !motionPaused;
+      document.documentElement.classList.toggle("motion-paused", motionPaused);
+      pause.setAttribute("aria-pressed", String(motionPaused));
+      pause.setAttribute("aria-label", motionPaused ? "Retomar animações" : "Pausar animações");
+      pause.textContent = motionPaused ? "Retomar" : "Pausar";
+      window.dispatchEvent(new Event("kombu-motion"));
+    });
+    if (reduceMotion) { if (pause) pause.hidden = true; return; }
+    const tick = () => { if (Date.now() > pausedUntil && !document.hidden && !motionPaused) show(current + 1); };
     const visible = new IntersectionObserver(([entry]) => {
       clearInterval(timer);
       if (entry.isIntersecting) timer = setInterval(tick, 2700);
@@ -324,13 +334,14 @@
       }
       if (running) raf = requestAnimationFrame(frame);
     }
-    function start() { if (!running && !document.hidden) { running = true; raf = requestAnimationFrame(frame); } }
+    function start() { if (!running && !document.hidden && !motionPaused) { running = true; raf = requestAnimationFrame(frame); } }
     function stop() { running = false; cancelAnimationFrame(raf); }
     size();
     for (let i = 0; i < 30; i++) bubbles.push(spawn(true));
     window.addEventListener("resize", size, { passive: true });
     new IntersectionObserver(([e]) => (e.isIntersecting ? start() : stop())).observe(stage);
     document.addEventListener("visibilitychange", () => (document.hidden ? stop() : start()));
+    window.addEventListener("kombu-motion", () => motionPaused ? stop() : start());
   }
 
   // ------------------------------------------------------------ marquee
@@ -339,7 +350,7 @@
     if (!track) return;
     const words = [...new Set(["chá verde", ...flavors.flatMap((f) => f.ingredients.map((i) => i.toLowerCase()))])].filter((w) => w !== "chá fermentado");
     const run = words.map((w) => `<span>${esc(w)}</span>`).join("");
-    track.innerHTML = run + run; // twice, so the -50% loop is seamless
+    track.innerHTML = run + run; // twice, so the -50% loop joins cleanly
   }
 
   // ------------------------------------------------------------ flavour walk
@@ -498,7 +509,7 @@
           <dl>
             ${p.address ? `<div>${ICONS.pin}<dd>${esc(p.address)}</dd></div>` : ""}
             ${p.hours ? `<div>${ICONS.clock}<dd>${esc(p.hours)}</dd></div>` : ""}
-            ${p.flavors.length ? `<div class="flv">${ICONS.glass}<dd>${esc(p.flavors.join(", "))}</dd></div>` : ""}
+            ${p.flavors.length ? `<div class="flv">${ICONS.glass}<dd><details><summary>Sabores disponíveis</summary><p>${esc(p.flavors.join(", "))}</p></details></dd></div>` : ""}
             ${p.instagram ? `<div>${ICONS.ig}<dd><a href="${esc(instagramUrl(p.instagram))}" target="_blank" rel="noreferrer">${esc(p.instagram.startsWith("@") ? p.instagram : "@" + p.instagram)}</a></dd></div>` : ""}
           </dl>
           <div class="actions">
@@ -709,7 +720,7 @@
         entries.forEach((e) => (e.isIntersecting ? covering.add(e.target) : covering.delete(e.target)));
         fab.classList.toggle("is-away", covering.size > 0);
       });
-      $$(".hero, .walk-stage, #comprar, .site-footer").forEach((el) => io.observe(el));
+      $$(".hero, .walk-stage, #comprar, #criadores, .site-footer").forEach((el) => io.observe(el));
       fab.hidden = false;
     }
     // "Pedir este sabor" starts the order with the flavour that is on screen.
@@ -719,11 +730,8 @@
     }));
   }
 
-  // ------------------------------------------------------------ audience chooser
-  // A first visit to the home page asks whether this is for the visitor's own consumption or for
-  // resale, so the reseller path is not left to a pill in the corner (owner, 2026-10-24). Asked
-  // once: any answer, or closing it, is remembered. Someone arriving by a direct link (#sabores,
-  // #onde...) came for that and is not interrupted.
+  // ------------------------------------------------------------ audience preference
+  // Preserve the first-visit choice as an inline prompt; the product stays readable.
   const AUDIENCE_KEY = "kombuAudience";
   const readAudience = () => { try { return localStorage.getItem(AUDIENCE_KEY); } catch { return "unknown"; } };
   const saveAudience = (value) => { try { localStorage.setItem(AUDIENCE_KEY, value); } catch { /* private mode */ } };
@@ -732,21 +740,14 @@
     if (page === "revenda") saveAudience("revenda");
     $$('.nav a[href="/revenda"]').forEach((a) => a.addEventListener("click", () => saveAudience("revenda")));
     $$('.site-header .logo[href="/"], .nav-consumer').forEach((a) => a.addEventListener("click", () => saveAudience("consumo")));
-    const dialog = $("#audienceChooser");
-    if (!dialog || typeof dialog.showModal !== "function") return;
-    if (readAudience() || location.hash) return;
-    dialog.addEventListener("click", (event) => {
+    const welcome = $("#audienceWelcome");
+    if (!welcome || readAudience() || location.hash) return;
+    welcome.hidden = false;
+    welcome.addEventListener("click", (event) => {
       const choice = event.target.closest("[data-choice]");
-      if (choice) {
-        saveAudience(choice.dataset.choice);
-        if (choice.dataset.choice === "consumo") dialog.close();
-        return;
-      }
-      // a click on the backdrop lands on the dialog element itself
-      if (event.target === dialog) dialog.close();
+      if (choice) { saveAudience(choice.dataset.choice); welcome.hidden = true; if (choice.dataset.choice === "consumo") $(".hero-copy .btn")?.focus({ preventScroll: true }); }
+      if (event.target.closest(".welcome-close")) { saveAudience("fechado"); welcome.hidden = true; $(".hero-copy .btn")?.focus({ preventScroll: true }); }
     });
-    dialog.addEventListener("close", () => { if (!readAudience()) saveAudience("fechado"); });
-    dialog.showModal();
   }
 
   // ------------------------------------------------------------ boot

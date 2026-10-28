@@ -21,11 +21,13 @@
     products = isReservation() ? availability.reservationProducts : availability.products;
     document.querySelector("#reservationHelp").hidden = !isReservation();
     button.textContent = submitLabel();
+    document.querySelector("#reserveInstead").hidden = isReservation() || products.length > 0 || !availability.reservationProducts.length;
+    document.querySelector("#orderModeNote").textContent = isReservation() ? "Reserva sem pagamento. Entramos em contato para combinar o prazo de produção." : "A confirmação do frete e o link InfinitePay chegam pelo WhatsApp.";
     stockProducts.replaceChildren();
     products.forEach(product => {
-      const label = document.createElement("label"); label.className = "field";
+      const label = document.createElement("label"); label.className = "field stock-option";
       const text = document.createElement("span"); text.textContent = isReservation() ? `${product.flavor} · mínimo 5` : `${product.flavor} · ${product.available} disponíveis`;
-      const input = document.createElement("input"); input.type = "number"; input.min = "0"; input.max = String(isReservation() ? (bottles() || 20) : product.available); input.step = "1"; input.value = "0"; input.dataset.productId = product.productId; input.setAttribute("aria-label", `Quantidade de ${product.flavor}`);
+      const input = document.createElement("input"); input.type = "number"; input.min = "0"; input.max = String(isReservation() ? (bottles() || 20) : product.available); input.step = "1"; input.value = "0"; input.dataset.productId = product.productId; input.inputMode = "numeric"; input.setAttribute("aria-label", `Quantidade de ${product.flavor}`);
       label.append(text, input); stockProducts.append(label);
     });
   }
@@ -36,19 +38,22 @@
   function selectionValid() {
     const expected = bottles();
     const count = selectedItems().reduce((sum, item) => sum + item.qty, 0);
+    if (stockReady && !expected && products.length) { stockStatus.textContent = "Escolha um kit acima para montar os sabores."; return false; }
     if (isReservation()) {
       const eligible = expected === 15 || expected >= 20;
       const minimum = selectedItems().every(item => item.qty >= 5);
-      stockStatus.textContent = !eligible ? "Para reservar um lote, escolha o kit de 15, de 20 ou personalizado garrafas." : !products.length ? "Nenhum sabor disponível para reserva no momento." : `${count} de ${expected} garrafas selecionadas. ${minimum ? "Mínimo de 5 por sabor escolhido." : "Ajuste a seleção: cada sabor escolhido precisa ter pelo menos 5 garrafas."}`;
+      stockStatus.textContent = !eligible ? "Para reservar um lote, escolha um kit de 15 ou mais garrafas." : !products.length ? "Nenhum sabor disponível para reserva no momento." : `${count} de ${expected} garrafas selecionadas. ${minimum ? "Mínimo de 5 por sabor escolhido." : "Ajuste a seleção: cada sabor escolhido precisa ter pelo menos 5 garrafas."}`;
       return stockReady && eligible && count === expected && minimum;
     }
-    if (stockReady) stockStatus.textContent = products.length ? `${count} de ${expected || "—"} garrafas selecionadas. Disponibilidade do nosso estoque; reserva após confirmação.` : "Nenhum sabor disponível para pronta entrega no momento.";
+    if (stockReady) stockStatus.textContent = products.length ? `${count} de ${expected || "—"} garrafas selecionadas. Disponibilidade do nosso estoque; reserva após confirmação.` : "Sem sabores disponíveis para pronta entrega. Você pode reservar um lote sem pagamento, a partir de 15 garrafas.";
     const minimum = selectedItems().every(item => item.qty >= 5);
     if (stockReady && products.length && !minimum) stockStatus.textContent = `${count} de ${expected} garrafas. Cada sabor escolhido precisa ter pelo menos 5 garrafas.`;
     return stockReady && expected > 0 && count === expected && minimum;
   }
   async function loadStock() {
     stockReady = false;
+    document.querySelector("#retryStock").hidden = true;
+    document.querySelector("#reserveInstead").hidden = true;
     button.disabled = true;
     try {
       const response = await fetch("/api/checkout", { cache: "no-store" });
@@ -64,9 +69,17 @@
         if (input) input.value = "5";
       }
       stockReady = true;
-    } catch { stockStatus.textContent = "Estoque indisponível agora. Recarregue a página para tentar novamente."; }
+    } catch { stockStatus.textContent = "Não foi possível consultar o estoque. Tente novamente abaixo."; document.querySelector("#retryStock").hidden = false; }
     refreshQuote();
   }
+  document.querySelector("#retryStock").addEventListener("click", loadStock);
+  document.querySelector("#reserveInstead").addEventListener("click", () => {
+    if (bottles() < 15) kit.value = "kit-15";
+    mode.value = "reservation";
+    requestId = crypto.randomUUID();
+    renderProducts(); refreshQuote();
+    stockProducts.querySelector("input")?.focus({ preventScroll: true });
+  });
   stockProducts.addEventListener("input", () => { button.disabled = busy || !validQuote || !selectionValid(); });
   let revision = 0;
   let busy = false;
@@ -88,7 +101,7 @@
     validQuote = false;
     button.disabled = true;
     couponStatus.textContent = "";
-    if (!kit.value) { quoteText.textContent = "Escolha um kit para ver o subtotal."; return; }
+    if (!kit.value) { quoteText.textContent = "Escolha um kit para ver o subtotal."; selectionValid(); return; }
     try { renderQuote(catalog.quote(kit.value, null, 0, Number(quantity.value))); } catch { quoteText.textContent = "Informe a quantidade do kit personalizado (20 a 500 garrafas)."; return; }
     if (!coupon.value.trim()) { validQuote = true; button.disabled = busy || !selectionValid(); return; }
     couponStatus.textContent = "Validando cupom…";

@@ -124,6 +124,8 @@ async function run() {
     assert.ok(names.some((n) => n.includes("<img")), "a partner name containing markup is shown as text");
     assert.strictEqual(await page.evaluate(() => window.__xss), undefined, "partner data is never executed");
     const divina = page.locator(".partner", { hasText: "Divina Terra" });
+    assert.equal(await divina.locator("details").getAttribute("open"), null, "long flavor lists begin collapsed");
+    await divina.locator("summary").click();
     assert.ok((await divina.innerText()).includes("Maçã & Canela"), "hand-typed flavour names are shown canonically");
     assert.ok((await divina.innerText()).includes("Flor Fada Azul & Blueberry"));
     assert.ok((await divina.locator('a:has-text("Ver rota")').getAttribute("href")).startsWith("https://www.google.com/maps/search/"));
@@ -175,26 +177,29 @@ async function run() {
       await new Promise((r) => setTimeout(r, 50));
     }
 
-    // ---------------------------------------------------------------- first-visit chooser
+    // First visits show the product immediately; the audience switch stays available.
     const first = await newPage(browser, leads, { firstVisit: true });
     await first.page.goto(`${baseUrl}/`);
-    await first.page.waitForSelector("#audienceChooser[open]");
-    await first.page.keyboard.press("Escape");
-    assert.ok(!(await first.page.locator("#audienceChooser").evaluate((d) => d.open)), "Escape closes the chooser");
-    await first.page.reload();
     await first.page.waitForFunction(() => document.querySelectorAll(".walk-step").length > 0);
-    assert.ok(!(await first.page.locator("#audienceChooser").evaluate((d) => d.open)), "closing it once is remembered");
-
-    const resale = await newPage(browser, leads, { firstVisit: true });
-    await resale.page.goto(`${baseUrl}/`);
-    await resale.page.waitForSelector("#audienceChooser[open]");
-    await resale.page.click('#audienceChooser [data-choice="revenda"]');
-    await resale.page.waitForURL(/\/revenda(\.html)?$/);
+    assert.equal(await first.page.locator('dialog[open]').count(), 0, 'first visit does not obscure the product');
+    assert.ok(await first.page.locator('#audienceWelcome').isVisible(), 'audience choice remains visible inline');
+    await first.page.locator('#audienceWelcome [data-choice=consumo]').click();
+    assert.ok(await first.page.locator('#audienceWelcome').isHidden());
+    assert.ok(await first.page.locator('#hero-title').isVisible());
+    await first.page.locator('.hero-pause').click();
+    assert.equal(await first.page.locator('.hero-pause').getAttribute('aria-pressed'), 'true');
+    assert.ok(await first.page.evaluate(() => document.documentElement.classList.contains('motion-paused')));
+    await first.page.locator('.hero-pause').click();
+    assert.equal(await first.page.locator('.hero-pause').getAttribute('aria-pressed'), 'false');
+    await first.page.locator('.menu-btn').click();
+    await first.page.locator('.nav-reseller').click();
+    await first.page.waitForURL(/\/revenda(\.html)?$/);
+    assert.equal(await first.page.evaluate(() => localStorage.getItem('kombuAudience')), 'revenda');
 
     const deep = await newPage(browser, leads, { firstVisit: true });
     await deep.page.goto(`${baseUrl}/#onde`);
     await deep.page.waitForFunction(() => document.querySelectorAll(".partner").length > 0);
-    assert.ok(!(await deep.page.locator("#audienceChooser").evaluate((d) => d.open)), "a direct link is not interrupted");
+    assert.equal(await deep.page.locator('dialog[open]').count(), 0, 'deep links stay uninterrupted');
 
     // ---------------------------------------------------------------- revenda
     const b = await newPage(browser, leads);
@@ -226,6 +231,7 @@ async function run() {
     await referral.page.waitForFunction(() => document.querySelector("input[name='couponCode']")?.value === "AMAZONIA10");
     await referral.page.click('[data-kit="kit-10"]');
     assert.strictEqual(await referral.page.inputValue("#kit-choice"), "kit-10");
+    assert.equal(await referral.page.locator("#customQuantityField").isVisible(), false, "normal kits hide custom quantity");
     await referral.page.fill('#kitForm [name="couponCode"]', "INVALID");
     await referral.page.locator('#kitForm [name="couponCode"]').blur();
     await referral.page.waitForSelector('#couponStatus[data-state="error"]');
@@ -278,6 +284,29 @@ async function run() {
     assert.strictEqual(leads.at(-1).source, "site-criadores");
     assert.deepStrictEqual(referral.errors, []);
 
+    // Stock errors offer retry, and empty ready-stock leads to an unpaid production request.
+    const empty = await newPage(browser, leads);
+    let firstStockAttempt = true;
+    await empty.page.route('**/api/checkout', async route => {
+      if (route.request().method() !== 'GET') return route.fallback();
+      if (firstStockAttempt) { firstStockAttempt = false; return route.fulfill({status:503,json:{ok:false}}); }
+      return route.fulfill({json:{ok:true,products:[],reservationProducts:[{productId:'p1',flavor:'Maracujá'},{productId:'p2',flavor:'Uva'}]}});
+    });
+    await empty.page.goto(`${baseUrl}/experimente?kit=kit-15#consultar`);
+    await empty.page.waitForSelector('#retryStock:not([hidden])');
+    await empty.page.locator('#retryStock').click();
+    await empty.page.waitForSelector('#reserveInstead:not([hidden])');
+    assert.ok(await empty.page.locator('#customQuantityField').isHidden());
+    await empty.page.locator('#reserveInstead').click();
+    assert.equal(await empty.page.locator('[name=orderMode]').inputValue(), 'reservation');
+    await empty.page.locator('#stockProducts input[data-product-id=p1]').fill('5');
+    await empty.page.locator('#stockProducts input[data-product-id=p2]').fill('10');
+    for (const [name,value] of Object.entries({nome:'Reserva Teste',whatsapp:'92999990000',bairro:'Centro',cep:'69057002',address:'Rua Teste, 1'})) await empty.page.locator(`[name=${name}]`).fill(value);
+    await empty.page.locator('#kitForm button[type=submit]').click();
+    await empty.page.waitForSelector('#kitForm .form-status[data-state=ok]');
+    assert.equal(kitOrders.at(-1).orderMode, 'reservation');
+    assert.ok((await empty.page.locator('#kitForm .form-status').innerText()).includes('sem pagamento'));
+
     // ---------------------------------------------------------------- blog and SEO
     const blog = await newPage(browser, leads);
     for (const url of ["/", "/experimente", "/revenda", "/legal", "/blog", "/blog/o-que-e-kombucha", "/blog/como-a-kombu-e-feita", "/blog/como-servir-kombucha"]) {
@@ -306,7 +335,7 @@ async function run() {
     for (const rel of await readingLinks.evaluateAll((as) => as.map((a) => a.rel))) assert.ok(rel.includes("noopener"), "external reading opens safely");
     assert.deepStrictEqual(blog.errors, [], "no script errors on the blog");
 
-    console.log("Public regression: walk, admin overrides, partner order and escaping, both forms, menu, legal redirects, first-visit chooser, mobile layout, blog and SEO basics passed.");
+    console.log("Public regression: walk, admin overrides, partner order and escaping, both forms, menu, legal redirects, uninterrupted first visit and motion controls, mobile layout, blog and SEO basics passed.");
   } finally {
     await browser.close();
   }
