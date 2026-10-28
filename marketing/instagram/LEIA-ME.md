@@ -70,3 +70,5 @@ não o repete.
 - Testes do publicador, com respostas simuladas e sem Instagram: `node --test worker/stories.test.mjs`.
 
 - Correção do titular: não usar referências à família na comunicação. Os validadores impedem esses termos e o nome inexistente “Vitalidade”; o sabor correto é Imunidade. A fila inclui o novo carrossel 21-dolce-vita-fotos, com quatro artes finais do tipo art, preservadas em assets/partners/.
+
+- A variedade do chá é informação confidencial e não deve aparecer em comunicação nova. Os validadores bloqueiam a divulgação nos posts futuros e Stories. Reforçar produção artesanal premium em Manaus, suavidade e sabor intenso. O post21 já publicado permanece registrado para impedir duplicidade; a segunda tela e a legenda corrigidas estão disponíveis nos downloads, sem republicação automática.

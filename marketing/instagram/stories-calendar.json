@@ -19,8 +19,8 @@
           "type": "art",
           "imageSource": "assets/partners/dolce-story-02.jpg",
           "image": "stories/2026-10-28/dolce-vita-02.jpg",
-          "title": "Ainda não conhece kombucha?",
-          "body": "É uma bebida feita a partir da fermentação do chá. Na Kombú, a base é o chá verde.",
+          "title": "O que faz a Kombú diferente?",
+          "body": "Nossa kombucha artesanal premium é produzida em Manaus e combina suavidade com sabor intenso.",
           "partner": "@ladolcevitagelateria"
         },
         {
@@ -186,7 +186,7 @@
           "id": "conversa-4",
           "type": "text",
           "title": "O que vai na Kombú?",
-          "body": "Nossa kombucha é feita com chá verde, cultura e ingredientes como frutas, flores, ervas e especiarias.",
+          "body": "Nossa kombucha artesanal premium combina fermentação natural com ingredientes como frutas, flores, ervas e especiarias.",
           "bg": "#F6F2E8",
           "image": "stories/2026-10-31/conversa-4.jpg"
         },

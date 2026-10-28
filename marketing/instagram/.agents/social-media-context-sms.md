@@ -13,7 +13,7 @@ copy) conflicts with them, follow the rules.
 - **Handle(s)**: @kombu.amazonia on Instagram
 - **Role**: Artisan kombucha made in Manaus since 2017
 - **Industry/niche**: Premium artisan kombucha in Manaus. B2B first (cafés, empórios, bakeries, restaurants), with consumers buying at partners
-- **Positioning**: A Arte do Natural. Green tea, live culture, real fruit, flowers, herbs and spices, and time. The bubbles come from the fermentation itself.
+- **Positioning**: A Arte do Natural. Kombucha artesanal premium de Manaus, suave e com sabor intenso. Frutas, flores, ervas e especiarias, com gás da própria fermentação.
 
 ---
 
@@ -61,7 +61,7 @@ copy) conflicts with them, follow the rules.
 
 ## Example Posts
 ### Example 1 — Instagram (post 01)
-Kombú é kombucha artesanal feita em Manaus: chá verde, fermentação natural e sabor de ingredientes de verdade.
+Kombú é kombucha artesanal feita em Manaus: fermentação natural e sabor de ingredientes de verdade.
 
 Doze sabores, todos gaseificados pela própria fermentação. Encontre gelada na @divinaterramanaus, na @casaagridoceam, na @ladolcevitagelateria e na @cafeteriagarden_.
 
@@ -167,3 +167,10 @@ This section updates the earlier voice and CTA notes where they differ.
 Nunca usar “feita pela nossa família”, “nossa família”, “produção familiar” ou equivalentes no conteúdo da marca. O titular considera esse enquadramento amador. Valorizar produção artesanal, ingredientes, cuidado no processo e a experiência em Manaus desde 2017, com tom profissional. Esta regra vale para feed, Stories, legendas e futuras automações.
 
 - O sabor é **Imunidade**. “Vitalidade” não existe no catálogo. A IA já inventou esse nome em um rótulo; revisar a embalagem visualmente após toda edição, além de validar os textos.
+
+## Receita confidencial e posicionamento — orientação do titular, 27/10/2026
+
+- Não divulgar o tipo de chá usado na receita. Tratar essa informação como segredo da marca, inclusive em prompts destinados a aparecer em peças, legendas, Stories e automações.
+- Posicionamento prioritário: Kombucha Artesanal Premium de Manaus. A característica sensorial confirmada pelo titular é suavidade com sabor intenso. Integrar esses diferenciais em frases naturais e situações de consumo, sem slogans desconectados ou repetir tudo em cada post.
+- O titular afirma que a Kombú é a única marca de kombucha artesanal premium de Manaus. Registrar como afirmação do titular; não extrapolar para superioridade absoluta ou afirmar que todas as outras marcas têm características inferiores. A comparação de exclusividade requer evidência de mercado atual antes de virar alegação categórica publicada.
+- Conteúdos já publicados permanecem como histórico. Aplicar as correções nos futuros conteúdos e nos arquivos para download; alterações no Instagram já publicado dependem do titular.

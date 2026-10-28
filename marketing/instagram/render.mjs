@@ -43,6 +43,7 @@ function lint() {
   for (const post of calendar.posts) {
     const text = [post.caption, ...post.slides.flatMap(s => [s.kicker, s.title, s.accent, s.body, ...(s.items || [])])].filter(Boolean).join('\n');
     for (const [re, why] of FORBIDDEN) if (re.test(text)) problems.push(`${post.id}: ${why} (“${text.match(re)[0]}”)`);
+    if (!post.publishedAt && /ch[aá]\s+verde|green\s+tea/i.test(text)) problems.push(`${post.id}: ingrediente confidencial na comunicação`);
     const tags = post.caption.match(/#[\p{L}\d_]+/gu) || [];
     if (tags.length > 5) problems.push(`${post.id}: ${tags.length} hashtags, o máximo é 5`);
     if (!tags.some(t => t.toLowerCase() === '#manaus')) problems.push(`${post.id}: falta #manaus`);
