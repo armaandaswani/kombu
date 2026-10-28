@@ -11,6 +11,9 @@ export function validateDay(manifest, date) {
   return day;
 }
 // Cloudflare supplies the scheduled timestamp, so a delayed invocation keeps its slot.
+export function isFeedTime(now) {
+  return now.getUTCMinutes() === 30 && [16, 22].includes(now.getUTCHours());
+}
 export function storySlot(now) {
   const minute = now.getUTCMinutes();
   if (minute % 5 || minute > 20) return null;

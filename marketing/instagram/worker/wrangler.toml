@@ -9,10 +9,10 @@ preview_urls = false
 binding = "STATE"
 id = "b59df63d5f8d4b91a087a818f4252c3e"
 
-# Manaus is UTC-4 with no daylight saving. 16:30 UTC = 12:30 in Manaus (the post),
-# 22:30 UTC = 18:30 (a retry, which only publishes if the noon run did not).
-# The posts themselves go out every two days; the worker skips the days in between.
+# Manaus is UTC-4. A single shared trigger stays within the account's free quota.
+# Stories: 11:00..11:20 UTC (07:00..07:20 Manaus), one image per five minutes.
+# Feed: only 16:30/22:30 UTC (12:30/18:30 Manaus), gated in index.mjs.
+# 14:00..14:20 UTC is enabled in code only on 28/10/2026 for today's catch-up.
+# All remaining ticks are no-ops; other Workers and their schedules are untouched.
 [triggers]
-# Owner requested five Stories, one every five minutes from 07:00 Manaus.
-# Today's already-missed morning window is replaced by 10:00..10:20, on 28 October only.
-crons = ["30 16 * * *", "30 22 * * *", "0,5,10,15,20 11 * * *", "0,5,10,15,20 14 28 10 *"]
+crons = ["0,5,10,15,20,30 11,14,16,22 * * *"]

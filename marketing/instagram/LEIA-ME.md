@@ -76,3 +76,5 @@ não o repete.
 ## Horário autorizado pelo titular em 28/10/2026
 
 Cinco Stories em escadinha, um a cada cinco minutos a partir de 07:00 Manaus. O titular autorizou expressamente essa alteração dos crons de Stories. As execuções de feed não publicam Stories e os horários do feed foram preservados. Como o pedido chegou após as 07:00, somente em 28/10 haverá a sequência de 10:00 a 10:20. A regra anual do cron excepcional é neutralizada no código fora da data exata 28/10/2026. A elegibilidade Business e a permissão real da Meta continuam pendentes da primeira execução.
+
+- O limite gratuito de cinco crons é por conta e já estava ocupado por outros publicadores. Para manter tudo gratuito sem modificar outros Workers, este publicador usa um único cron compartilhado. O código só libera Stories nas cinco janelas da manhã e o feed em 16:30/22:30 UTC, mantendo os horários locais anteriores. Os demais disparos não publicam nada.

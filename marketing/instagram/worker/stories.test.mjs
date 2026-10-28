@@ -1,6 +1,6 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {runStories,localDate,validateDay,storySlot} from './stories.mjs';
+import {runStories,localDate,validateDay,storySlot,isFeedTime} from './stories.mjs';
 const date='2026-10-27';
 const frames=Array.from({length:5},(_,i)=>({id:'frame-'+i,image:'stories/2026-10-27/frame-'+i+'.jpg'}));
 const manifest={days:[{date,frames}]};
@@ -47,4 +47,12 @@ test('one-day catch-up uses 10:00 Manaus, never on a later date',()=>{
  assert.equal(storySlot(new Date('2026-10-28T14:20:00Z')),4);
  assert.equal(storySlot(new Date('2026-10-29T14:00:00Z')),null);
  assert.equal(storySlot(new Date('2027-10-28T14:00:00Z')),null);
+});
+
+test('shared free-plan trigger preserves feed times and excludes Stories slots',()=>{
+ for(const time of ['16:30','22:30'])assert.equal(isFeedTime(new Date(date+'T'+time+':00Z')),true);
+ for(const hour of [11,14,16,22])for(const minute of [0,5,10,15,20,30]){
+  if((hour===16||hour===22)&&minute===30)continue;
+  assert.equal(isFeedTime(new Date(date+'T'+hour+':'+String(minute).padStart(2,'0')+':00Z')),false);
+ }
 });

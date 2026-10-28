@@ -8,7 +8,7 @@
 // KV: "published:<id>" -> {mediaId, at}; "last" -> {id, at}; "token" -> {accessToken, refreshedAt};
 //     "user" -> {id, username}; "log" -> last 50 runs.
 import calendar from '../calendar.json';
-import {runStories} from './stories.mjs';
+import {runStories, isFeedTime} from './stories.mjs';
 
 const api = 'https://graph.instagram.com/v21.0';
 const imageBase = 'https://kombu-social.pages.dev';
@@ -163,7 +163,7 @@ export default {
   async scheduled(event, env) {
     try { await runStories(env, {call, currentToken, account, waitFinished, log}, new Date(event.scheduledTime)); }
     catch (e) { await log(env, 'erro nos Stories: ' + e.message); }
-    if (event.cron === '30 16 * * *' || event.cron === '30 22 * * *') await run(env);
+    if (isFeedTime(new Date(event.scheduledTime))) await run(env);
   },
   async fetch() { return new Response('Not found', {status: 404}); },
 };
