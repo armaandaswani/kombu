@@ -115,7 +115,7 @@ async function run() {
     assert.strictEqual(await page.evaluate(() => document.querySelector(".walk-stage .btn") && getComputedStyle(document.querySelector(".walk-stage .btn")).backgroundColor !== getComputedStyle(document.querySelector(".walk-stage")).backgroundColor), true, "the stage button is not the colour of the stage");
 
     // Admin overrides still apply.
-    assert.strictEqual(await page.locator("#heroSub").innerText(), "Kombucha artesanal da Amazônia.");
+    assert.strictEqual(await page.locator("#heroSub").innerText(), "Kombucha Artesanal da Amazônia");
     assert.ok((await page.locator("#flavorList").innerText()).includes("Ângulo vindo do admin."), "an admin description wins over the default");
 
     // Partners: Solar Café last, flavour names normalised, markup escaped.
@@ -177,14 +177,14 @@ async function run() {
       await new Promise((r) => setTimeout(r, 50));
     }
 
-    // First visits show the product immediately; the audience switch stays available.
+    // First visits restore the dedicated audience chooser; direct links stay uninterrupted.
     const first = await newPage(browser, leads, { firstVisit: true });
     await first.page.goto(`${baseUrl}/`);
     await first.page.waitForFunction(() => document.querySelectorAll(".walk-step").length > 0);
-    assert.equal(await first.page.locator('dialog[open]').count(), 0, 'first visit does not obscure the product');
-    assert.ok(await first.page.locator('#audienceWelcome').isVisible(), 'audience choice remains visible inline');
-    await first.page.locator('#audienceWelcome [data-choice=consumo]').click();
-    assert.ok(await first.page.locator('#audienceWelcome').isHidden());
+    assert.equal(await first.page.locator('dialog[open]').count(), 1, 'first visit opens the dedicated chooser');
+    assert.ok(await first.page.locator('#audienceChooser').isVisible(), 'audience chooser is visible');
+    await first.page.locator('#audienceChooser [data-choice=consumo]').click();
+    assert.ok(await first.page.locator('#audienceChooser').isHidden());
     assert.ok(await first.page.locator('#hero-title').isVisible());
     await first.page.locator('.hero-pause').click();
     assert.equal(await first.page.locator('.hero-pause').getAttribute('aria-pressed'), 'true');
@@ -335,7 +335,7 @@ async function run() {
     for (const rel of await readingLinks.evaluateAll((as) => as.map((a) => a.rel))) assert.ok(rel.includes("noopener"), "external reading opens safely");
     assert.deepStrictEqual(blog.errors, [], "no script errors on the blog");
 
-    console.log("Public regression: walk, admin overrides, partner order and escaping, both forms, menu, legal redirects, uninterrupted first visit and motion controls, mobile layout, blog and SEO basics passed.");
+    console.log("Public regression: walk, admin overrides, partner order and escaping, both forms, menu, legal redirects, dedicated first-visit chooser and motion controls, mobile layout, blog and SEO basics passed.");
   } finally {
     await browser.close();
   }

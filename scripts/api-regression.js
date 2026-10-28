@@ -102,6 +102,12 @@ async function run() {
   assert.strictEqual(res.statusCode, 401);
   assert.strictEqual(jsonBody(res).error, "not_authenticated");
 
+  const privateRecipe = { cms: { headline: "Texto anterior", flavors: [{ ingredients: "Maçã, chá verde", description: "Chá verde" }] } };
+  const publicCopy = backend.sanitizePublicState(privateRecipe);
+  assert.ok(!/chá verde/i.test(JSON.stringify(publicCopy)), "public CMS must not reveal the tea variety");
+  assert.equal(publicCopy.cms.headline, "Kombucha Artesanal da Amazônia");
+  assert.equal(privateRecipe.cms.flavors[0].ingredients, "Maçã, chá verde", "public sanitization preserves operational records");
+
   // --- public partner data ----------------------------------------------------
   // Partners used to be sent to the public site whole, exposing each one's
   // negotiated payment terms and restock history to anyone.

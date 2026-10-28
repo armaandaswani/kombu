@@ -15,3 +15,5 @@ marketing/instagram/worker/.wrangler/
 
 # Local design-review tooling state
 .taste-skill/
+
+.playwright-cli/

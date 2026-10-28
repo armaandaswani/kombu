@@ -767,26 +767,45 @@ h3 { font-size: clamp(1.12rem, 1.6vw, 1.4rem); line-height: 1.2; }
 .form-note, .order-form small, .kit-price span, .tasting-kit .kit-flavors, .tasting-kit h2 span, .checkout-group small, .checkout-summary .form-note { font-size: 1rem; }
 .tasting-kit .btn { font-size: 1rem; }
 
-.audience-welcome { margin-top: 66px; background: var(--paper-2); color: var(--green-deep); }
-.audience-welcome .wrap { display: flex; align-items: center; justify-content: center; gap: 28px; padding-block: 14px; position: relative; }
-.audience-welcome p { margin: 0; font-weight: 600; font-size: 1rem; }
-.welcome-actions { display: flex; flex-wrap: wrap; gap: 20px; }
-.welcome-actions a, .welcome-actions button { display: inline-flex; align-items: center; min-height: 44px; background: transparent; border: 0; padding: 0; font: 600 1rem var(--sans); text-decoration: underline; text-underline-offset: 4px; cursor: pointer; color: var(--green-deep); }
-.welcome-close { position: absolute; right: 4px; top: 50%; transform: translateY(-50%); border: 0; background: transparent; min-width: 44px; min-height: 44px; font-size: 1.5rem; color: var(--green-deep); cursor: pointer; }
-.audience-welcome:not([hidden]) + main .hero .wrap { padding-top: 40px; }
-@media (max-width: 760px) {
-  .audience-welcome { margin-top: 64px; }
-  .audience-welcome .wrap { align-items: flex-start; flex-direction: column; gap: 0; padding-right: 52px; }
-  .welcome-actions { gap: 24px; }
-  .welcome-actions a, .welcome-actions button { font-size: .9rem; }
-  .audience-welcome:not([hidden]) + main .hero .wrap { padding-top: 28px; }
-}
-.audience-welcome { margin-top: 0; padding-top: 66px; background: var(--green-deep); color: var(--cream); }
-.welcome-actions a, .welcome-actions button, .welcome-close { color: var(--cream); }
-@media (max-width:760px) { .audience-welcome { margin-top: 0; padding-top: 64px; } }
+
 /* Keep flavor chips legible and dot targets usable on phones. */
 .hero-now { font-size: .875rem; }
 .walk-ing li { font-size: .875rem; }
 @media (max-width:560px) { .walk-rail { gap: 2px; } .walk-rail button { width: 26px; height: 44px; } }
 
 .motion-paused [data-reveal] { animation: none !important; opacity: 1; transform: none; }
+
+/* ---------------------------------------------------------------- audience chooser
+   Shown once, on a first visit to the home page, so nobody misses that there is a separate
+   path for resellers. Native <dialog>: focus is trapped and Escape closes it. */
+.chooser { overscroll-behavior: contain; width: min(720px, calc(100% - 32px)); max-height: calc(100svh - 32px); padding: 0; border: 0; border-radius: 28px; background: var(--paper); color: var(--ink); box-shadow: 0 50px 120px -30px rgba(0, 0, 0, 0.6); overflow: auto; }
+.chooser::backdrop { background: rgba(14, 24, 12, 0.72); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
+.chooser[open] { animation: chooserIn 0.6s var(--ease); }
+.chooser[open]::backdrop { animation: fadeIn 0.5s ease; }
+@keyframes chooserIn { from { opacity: 0; transform: translateY(24px) scale(0.97); } }
+@keyframes fadeIn { from { opacity: 0; } }
+.chooser-in { display: grid; gap: 18px; padding: clamp(26px, 5vw, 46px); text-align: center; justify-items: center; }
+.chooser h2 { font-size: clamp(1.8rem, 4.6vw, 2.8rem); max-width: 16ch; }
+.chooser-opts { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; width: 100%; margin-top: 8px; }
+.opt { position: relative; display: grid; justify-items: center; gap: 14px; padding: 26px 18px 24px; border: 0; border-radius: 22px; cursor: pointer; text-decoration: none; text-align: center; font: inherit; background: var(--lime); color: var(--green-deep); transition: transform 0.45s var(--ease), box-shadow 0.45s var(--ease); min-width: 0; }
+.opt:hover { transform: translateY(-5px); box-shadow: 0 24px 50px -24px rgba(27, 47, 24, 0.6); }
+.opt-dark { background: var(--green-deep); color: var(--cream); }
+.opt img { height: 150px; width: auto; filter: drop-shadow(0 16px 18px rgba(0, 0, 0, 0.25)); transition: transform 0.6s var(--ease); }
+.opt:hover img { transform: translateY(-6px) rotate(-3deg); }
+.trio { display: flex; align-items: flex-end; height: 150px; }
+.trio img { height: 128px; width: auto; margin: 0 -3px; }
+.trio img:nth-child(2) { height: 150px; position: relative; z-index: 1; }
+.opt b { display: block; font-family: var(--serif); font-size: clamp(1.25rem, 2.6vw, 1.6rem); line-height: 1.15; }
+.opt small { display: block; margin-top: 6px; font-size: 0.92rem; opacity: 0.8; }
+.chooser-note { margin: 4px 0 0; font-size: 0.88rem; color: var(--ink-2); }
+@media (max-width: 560px) {
+  .chooser-opts { grid-template-columns: 1fr; }
+  .opt { grid-template-columns: auto 1fr; justify-items: start; text-align: left; align-items: center; padding: 16px 18px; }
+  .opt img { height: 96px; }
+  .trio { height: 96px; }
+  .trio img { height: 78px; margin: 0 -2px; }
+  .trio img:nth-child(2) { height: 96px; }
+}
+
+
+html:has(.chooser[open]) { overflow: hidden; }

@@ -19,18 +19,18 @@
   // Base catalogue. The admin can override order, visibility, family, texts, ingredients and image
   // for each of these, and add new flavours of its own.
   const FLAVORS = [
-    { slug: "maracuja", name: "Maracujá", imageKey: "maracuja", profile: "Frutados", ingredients: ["Maracujá", "chá verde"], angle: "Tropical, ácida e refrescante.", description: "Polpa de maracujá de verdade, com as sementes." },
+    { slug: "maracuja", name: "Maracujá", imageKey: "maracuja", profile: "Frutados", ingredients: ["Maracujá"], angle: "Tropical, ácida e refrescante.", description: "Polpa de maracujá de verdade, com as sementes." },
     { slug: "frutas-vermelhas", name: "Frutas Vermelhas", imageKey: "frutasVermelhas", profile: "Frutados", ingredients: ["Morango", "blueberry", "oxicoco"], angle: "Frutada, vibrante e equilibrada.", description: "Morango, blueberry e oxicoco num perfil frutado e levemente ácido." },
-    { slug: "hibisco-anis-estrelado", name: "Hibisco & Anis Estrelado", imageKey: "hibisco", profile: "Florais", ingredients: ["Hibisco", "anis estrelado", "chá verde"], angle: "Floral, acidulada e aromática.", description: "O hibisco traz a cor e a acidez. O anis estrelado, o perfume." },
-    { slug: "flor-fada-azul-blueberry", name: "Flor Fada Azul & Blueberry", imageKey: "mirtilo", profile: "Florais", ingredients: ["Flor fada azul", "blueberry", "chá verde"], angle: "Floral e frutada.", description: "A cor vem da flor e da fruta. Nenhum corante." },
-    { slug: "maca-canela", name: "Maçã & Canela", imageKey: "macaCanela", profile: "Especiados", ingredients: ["Maçã", "canela em pau", "chá verde"], angle: "Aconchegante, frutada e especiada.", description: "Maçã e canela em pau sobre uma base de chá verde fermentado." },
-    { slug: "pera-alecrim", name: "Pêra & Alecrim", imageKey: "peraAlecrim", profile: "Herbais", ingredients: ["Pêra", "alecrim", "chá verde"], angle: "Delicada, herbal e aromática.", description: "O frescor da pêra com o aroma do alecrim." },
+    { slug: "hibisco-anis-estrelado", name: "Hibisco & Anis Estrelado", imageKey: "hibisco", profile: "Florais", ingredients: ["Hibisco", "anis estrelado"], angle: "Floral, acidulada e aromática.", description: "O hibisco traz a cor e a acidez. O anis estrelado, o perfume." },
+    { slug: "flor-fada-azul-blueberry", name: "Flor Fada Azul & Blueberry", imageKey: "mirtilo", profile: "Florais", ingredients: ["Flor fada azul", "blueberry"], angle: "Floral e frutada.", description: "A cor vem da flor e da fruta. Nenhum corante." },
+    { slug: "maca-canela", name: "Maçã & Canela", imageKey: "macaCanela", profile: "Especiados", ingredients: ["Maçã", "canela em pau"], angle: "Aconchegante, frutada e especiada.", description: "Maçã e canela em pau em uma combinação frutada e especiada." },
+    { slug: "pera-alecrim", name: "Pêra & Alecrim", imageKey: "peraAlecrim", profile: "Herbais", ingredients: ["Pêra", "alecrim"], angle: "Delicada, herbal e aromática.", description: "O frescor da pêra com o aroma do alecrim." },
     { slug: "imunidade", name: "Imunidade", imageKey: "imunidade", profile: "Cítricos", ingredients: ["Limão", "gengibre", "cúrcuma"], angle: "Cítrica, picante e terrosa.", description: "Limão, gengibre e cúrcuma: cítrica, com a picância do gengibre." },
-    { slug: "rosas-cardamomo", name: "Rosas & Cardamomo", imageKey: "rosasCardamomo", profile: "Florais", ingredients: ["Rosas", "cardamomo", "chá verde"], angle: "Floral e levemente especiada.", description: "Pétalas de rosa e o toque especiado do cardamomo." },
-    { slug: "lavanda-limao", name: "Lavanda & Limão", imageKey: "lavandaLimao", profile: "Cítricos", ingredients: ["Lavanda", "limão", "chá verde"], angle: "Cítrica à frente, floral no fim.", description: "O limão abre. A lavanda fica." },
-    { slug: "jasmim-manga", name: "Manga & Jasmim", imageKey: "jasmimManga", profile: "Frutados", ingredients: ["Manga", "jasmim", "chá verde"], angle: "Tropical, perfumada e floral.", description: "Manga madura com o perfume do jasmim." },
-    { slug: "goiaba", name: "Goiaba", imageKey: "goiaba", profile: "Frutados", ingredients: ["Goiaba", "chá verde"], angle: "Tropical e naturalmente frutada.", description: "Goiaba de verdade, suave e refrescante." },
-    { slug: "uva", name: "Uva", imageKey: "uva", profile: "Frutados", ingredients: ["Uva", "chá verde"], angle: "Frutada, encorpada e refrescante.", description: "Uva de verdade, encorpada e refrescante." },
+    { slug: "rosas-cardamomo", name: "Rosas & Cardamomo", imageKey: "rosasCardamomo", profile: "Florais", ingredients: ["Rosas", "cardamomo"], angle: "Floral e levemente especiada.", description: "Pétalas de rosa e o toque especiado do cardamomo." },
+    { slug: "lavanda-limao", name: "Lavanda & Limão", imageKey: "lavandaLimao", profile: "Cítricos", ingredients: ["Lavanda", "limão"], angle: "Cítrica à frente, floral no fim.", description: "O limão abre. A lavanda fica." },
+    { slug: "jasmim-manga", name: "Manga & Jasmim", imageKey: "jasmimManga", profile: "Frutados", ingredients: ["Manga", "jasmim"], angle: "Tropical, perfumada e floral.", description: "Manga madura com o perfume do jasmim." },
+    { slug: "goiaba", name: "Goiaba", imageKey: "goiaba", profile: "Frutados", ingredients: ["Goiaba"], angle: "Tropical e naturalmente frutada.", description: "Goiaba de verdade, suave e refrescante." },
+    { slug: "uva", name: "Uva", imageKey: "uva", profile: "Frutados", ingredients: ["Uva"], angle: "Frutada, encorpada e refrescante.", description: "Uva de verdade, encorpada e refrescante." },
   ];
 
   // Each bottle's label colour, tuned for a full-screen background (same values as the Instagram
@@ -150,6 +150,10 @@
       color: o.color,
     }));
     return [...base, ...custom]
+      .map((flavor) => ({ ...flavor,
+        ingredients: flavor.ingredients.filter((item) => !/ch[áa]\s+(verde|fermentado)/i.test(item)),
+        description: /ch[áa]\s+verde/i.test(flavor.description) ? FLAVORS.find((item) => item.slug === flavor.slug)?.description || "Frutas, flores e especiarias em uma combinação natural." : flavor.description,
+      }))
       .filter((flavor) => flavor.visible && flavor.image)
       .sort((a, b) => a.order - b.order || a.name.localeCompare(b.name));
   }
@@ -222,8 +226,8 @@
     const nowName = $("#heroNow");
     const sub = $("#heroSub");
     const lead = $("#heroLead");
-    if (sub && String(cms().headline || "").trim()) sub.textContent = cms().headline.trim();
-    if (lead && String(cms().subheadline || "").trim()) lead.textContent = cms().subheadline.trim();
+    if (sub) sub.textContent = "Kombucha Artesanal da Amazônia";
+    if (lead) lead.textContent = "Feita em Manaus, com frutas, flores e especiarias";
 
     holder.innerHTML = flavors.map((f, i) => `<img src="${esc(f.image)}" alt="Garrafa Kombú ${esc(f.name)}" width="533" height="1600" ${i ? 'loading="lazy"' : 'fetchpriority="high"'} decoding="async">`).join("");
     dots.innerHTML = flavors.map((f, i) => `<button type="button" aria-label="Ver ${esc(f.name)}" aria-pressed="${i === 0}" data-i="${i}"></button>`).join("");
@@ -348,7 +352,7 @@
   function initMarquee(flavors) {
     const track = $(".marquee-track");
     if (!track) return;
-    const words = [...new Set(["chá verde", ...flavors.flatMap((f) => f.ingredients.map((i) => i.toLowerCase()))])].filter((w) => w !== "chá fermentado");
+    const words = [...new Set(flavors.flatMap((f) => f.ingredients.map((i) => i.toLowerCase())))].filter((w) => w !== "chá fermentado");
     const run = words.map((w) => `<span>${esc(w)}</span>`).join("");
     track.innerHTML = run + run; // twice, so the -50% loop joins cleanly
   }
@@ -730,8 +734,11 @@
     }));
   }
 
-  // ------------------------------------------------------------ audience preference
-  // Preserve the first-visit choice as an inline prompt; the product stays readable.
+  // ------------------------------------------------------------ audience chooser
+  // A first visit to the home page asks whether this is for the visitor's own consumption or for
+  // resale, so the reseller path is not left to a pill in the corner (owner, 2026-10-24). Asked
+  // once: any answer, or closing it, is remembered. Someone arriving by a direct link (#sabores,
+  // #onde...) came for that and is not interrupted.
   const AUDIENCE_KEY = "kombuAudience";
   const readAudience = () => { try { return localStorage.getItem(AUDIENCE_KEY); } catch { return "unknown"; } };
   const saveAudience = (value) => { try { localStorage.setItem(AUDIENCE_KEY, value); } catch { /* private mode */ } };
@@ -740,14 +747,21 @@
     if (page === "revenda") saveAudience("revenda");
     $$('.nav a[href="/revenda"]').forEach((a) => a.addEventListener("click", () => saveAudience("revenda")));
     $$('.site-header .logo[href="/"], .nav-consumer').forEach((a) => a.addEventListener("click", () => saveAudience("consumo")));
-    const welcome = $("#audienceWelcome");
-    if (!welcome || readAudience() || location.hash) return;
-    welcome.hidden = false;
-    welcome.addEventListener("click", (event) => {
+    const dialog = $("#audienceChooser");
+    if (!dialog || typeof dialog.showModal !== "function") return;
+    if (readAudience() || location.hash) return;
+    dialog.addEventListener("click", (event) => {
       const choice = event.target.closest("[data-choice]");
-      if (choice) { saveAudience(choice.dataset.choice); welcome.hidden = true; if (choice.dataset.choice === "consumo") $(".hero-copy .btn")?.focus({ preventScroll: true }); }
-      if (event.target.closest(".welcome-close")) { saveAudience("fechado"); welcome.hidden = true; $(".hero-copy .btn")?.focus({ preventScroll: true }); }
+      if (choice) {
+        saveAudience(choice.dataset.choice);
+        if (choice.dataset.choice === "consumo") dialog.close();
+        return;
+      }
+      // a click on the backdrop lands on the dialog element itself
+      if (event.target === dialog) dialog.close();
     });
+    dialog.addEventListener("close", () => { if (!readAudience()) saveAudience("fechado"); $(".hero-copy .btn")?.focus({ preventScroll: true }); });
+    dialog.showModal();
   }
 
   // ------------------------------------------------------------ boot

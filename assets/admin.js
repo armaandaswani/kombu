@@ -391,7 +391,7 @@ const CMS_FLAVOR_SEED = [
     recommended: FLAVOR_IMAGE_RECOMMENDED,
     imageUrl:
       "https://static.wixstatic.com/media/716adf_2b695c9743c344a2a91acf67ed69ff5f~mv2.png/v1/fill/w_760,h_1368,al_c,q_92,usm_0.66_1.00_0.01,enc_auto/6_edited_edited.png",
-    ingredients: "Pêra, alecrim, chá verde",
+    ingredients: "Pêra, alecrim",
     angle: "Leve, frutada e herbal.",
     description: "Une o frescor da pêra ao aroma herbal do alecrim.",
   },
@@ -419,7 +419,7 @@ const CMS_FLAVOR_SEED = [
     recommended: FLAVOR_IMAGE_RECOMMENDED,
     imageUrl:
       "https://static.wixstatic.com/media/716adf_4d2ae2c8e77d48ea8aa11ceffef05be4~mv2.png/v1/fill/w_760,h_1368,al_c,q_92,usm_0.66_1.00_0.01,enc_auto/3_edited.png",
-    ingredients: "Rosas, cardamomo, chá verde",
+    ingredients: "Rosas, cardamomo",
     angle: "Floral, aromática e especiada.",
     description: "Uma combinação floral e aromática, com o toque especiado do cardamomo.",
   },

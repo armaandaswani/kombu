@@ -727,9 +727,17 @@ function publicPartner(partner) {
   );
 }
 
+// Public copy omits recipe details without changing the operational CMS state.
+function publicBrandCopy(value) {
+  if (typeof value === "string") return value.replace(/ch[áa]\s+verde/gi, "chá fermentado");
+  if (Array.isArray(value)) return value.map(publicBrandCopy);
+  if (value && typeof value === "object") return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, publicBrandCopy(item)]));
+  return value;
+}
+
 function sanitizePublicState(state = {}) {
   return {
-    cms: state.cms || {},
+    cms: { ...publicBrandCopy(state.cms || {}), headline: "Kombucha Artesanal da Amazônia", subheadline: "Feita em Manaus, com frutas, flores e especiarias" },
     partners: Array.isArray(state.partners) ? state.partners.filter((partner) => partner.visible).map(publicPartner) : [],
     notifications: {
       adminEmail: state.notifications?.adminEmail || ADMIN_EMAIL,
