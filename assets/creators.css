@@ -1,0 +1,51 @@
+/* Kombú creator invitations: botanical editorial art and a clear application. */
+.creator-invite { padding-block: clamp(48px, 6vw, 88px); background: var(--paper-2); }
+.creator-invite-layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: center; gap: clamp(28px, 5vw, 72px); }
+.creator-invite-art { width: 100%; height: auto; aspect-ratio: 1.2; object-fit: cover; object-position: center 64%; border-radius: 18px; }
+.creator-invite-copy { display: grid; justify-items: start; gap: 24px; max-width: 30rem; }
+.creator-invite-copy h2 { font-size: clamp(2rem, 4vw, 3.25rem); color: var(--green-deep); }
+.creator-invite-copy p { margin: 0; font-size: 1.125rem; line-height: 1.7; color: var(--ink-2); }
+.creators-layout { display: grid; grid-template-columns: minmax(0, 46fr) minmax(0, 54fr); align-items: start; padding-top: 66px; background: var(--cream); }
+.creators-art { position: sticky; top: 66px; height: calc(100svh - 66px); }
+.creators-art img { width: 100%; height: 100%; object-fit: cover; object-position: 50% 55%; }
+.creators-story { min-width: 0; padding: clamp(40px, 5vw, 80px) clamp(28px, 4vw, 72px); display: grid; gap: 64px; }
+.creators-story section { min-width: 0; display: grid; gap: 24px; }
+.creators-story h1 { font-size: clamp(2.5rem, 4.1vw, 4rem); color: var(--green-deep); line-height: 1.07; }
+.creators-story h1 span { display: block; }
+.creators-story h2 { font-size: clamp(1.8rem, 2.5vw, 2.5rem); line-height: 1.15; color: var(--green-deep); }
+.creators-story h3 { font-size: 1.4rem; line-height: 1.25; color: var(--green-deep); }
+.creators-story p { margin: 0; font-size: 1rem; line-height: 1.7; color: var(--ink-2); }
+.creators-story .creators-lead { font-size: 1.125rem; color: var(--green-deep); }
+.creators-story .btn { justify-self: start; min-height: 48px; padding: 12px 22px; font-size: 1rem; line-height: 1.5; }
+.creators-benefits > div { display: grid; gap: 8px; }
+.creators-story .lead-form { background: transparent; padding: 0; border-radius: 0; gap: 20px; }
+.creators-story .lead-form .row { gap: 16px; }
+.creators-story .field span { font-size: 1rem; }
+.creators-story .field input, .creators-story .field select, .creators-story .field textarea { background: #fff; }
+.creators-story .lead-form .form-note, .creators-story .creators-fine { font-size: .875rem; line-height: 1.65; }
+.creators-story .lead-form .form-status { padding: 16px; border-radius: 12px; background: var(--paper-2); }
+.creators-story .lead-form .form-status[data-state="error"] { color: #8a251b; }
+@media (max-width: 1100px) {
+  .creators-layout { grid-template-columns: minmax(0, 40fr) minmax(0, 60fr); }
+  .creators-story { padding-inline: 28px; }
+  .creators-story .lead-form .row { grid-template-columns: 1fr; }
+}
+@media (max-width: 760px) {
+  .creator-invite-layout { grid-template-columns: minmax(0, 1fr); }
+  .creator-invite-art { max-height: 360px; aspect-ratio: 1.25; }
+  .creator-invite-copy { gap: 20px; }
+  .creators-layout { grid-template-columns: minmax(0, 1fr); padding-top: 64px; }
+  .creators-art { position: static; height: clamp(260px, 70vw, 420px); }
+  .creators-art img { object-position: 50% 54%; }
+  .creators-story { padding: 36px var(--gutter) 56px; gap: 48px; }
+  .creators-story h1 { font-size: clamp(2.25rem, 9.4vw, 3.5rem); }
+  .creators-story h2 { font-size: 1.9rem; }
+}
+@media (min-width: 761px) and (max-width: 900px) {
+  /* A full-width crop keeps both the creator and the phone visible on tablets. */
+  .creators-layout { grid-template-columns: minmax(0, 1fr); }
+  .creators-art { position: static; height: 440px; }
+  .creators-art img { object-position: 50% 49%; }
+  .creators-story { width: 100%; max-width: 760px; margin-inline: auto; padding: 40px 28px 56px; gap: 48px; }
+  .creators-story h1 { font-size: 3.5rem; }
+}

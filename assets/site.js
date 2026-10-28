@@ -582,7 +582,7 @@
       location: data.bairro || "",
       whatsapp: data.whatsapp || "",
       instagram: data.instagram || "",
-      message: data.mensagem || "",
+      message: type === "criador" ? [data.plataforma ? `Rede principal: ${data.plataforma}` : "", data.tema ? `Conteúdo: ${data.tema}` : "", data.mensagem || ""].filter(Boolean).join("\n\n") : data.mensagem || "",
       couponCode: referralCode(data.couponCode),
       emailTo: ADMIN_EMAIL,
       createdAt: new Date().toISOString(),

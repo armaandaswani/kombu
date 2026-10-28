@@ -304,6 +304,13 @@ async function run() {
     await referral.page.goto(`${baseUrl}/?ref=%3Cscript%3E#comprar`);
     await referral.page.waitForFunction(() => document.querySelectorAll(".walk-step").length > 0);
     assert.strictEqual(await referral.page.locator('#comprar input[name="couponCode"]').count(), 0);
+    assert.ok(await referral.page.locator('#criadores a[href="/criadores"]').isVisible(), 'home invitation opens the dedicated creator area');
+    assert.ok(await referral.page.locator('.creator-invite-art').evaluate(img => img.getBoundingClientRect().height < 500), 'home creator art stays compact');
+    await referral.page.goto(`${baseUrl}/criadores`);
+    assert.equal(await referral.page.locator('h1').innerText(), 'Sua voz.\nNossa natureza.');
+    assert.ok(!(await referral.page.locator('main').innerText()).match(/(?:5|10)\s*%/), 'creator invitation keeps commercial rates private');
+    await referral.page.selectOption('#creatorForm [name="plataforma"]', 'Instagram');
+    await referral.page.selectOption('#creatorForm [name="tema"]', 'Comida e gastronomia');
     await referral.page.fill('#creatorForm [name="nome"]', "Criadora Teste");
     await referral.page.fill('#creatorForm [name="whatsapp"]', "92999990000");
     await referral.page.fill('#creatorForm [name="instagram"]', "@criadora");
@@ -313,6 +320,9 @@ async function run() {
     await referral.page.waitForSelector("#creatorForm .form-status[data-state='ok']");
     assert.strictEqual(leads.at(-1).type, "criador");
     assert.strictEqual(leads.at(-1).source, "site-criadores");
+    assert.ok(leads.at(-1).message.includes('Rede principal: Instagram'));
+    assert.ok(leads.at(-1).message.includes('Conteúdo: Comida e gastronomia'));
+    assert.equal(leads.at(-1).instagram, '@criadora');
     assert.deepStrictEqual(referral.errors, []);
 
     // Stock errors offer retry, and empty ready-stock leads to an unpaid production request.

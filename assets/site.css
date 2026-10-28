@@ -105,7 +105,7 @@ h3 { font-size: clamp(1.12rem, 1.6vw, 1.4rem); line-height: 1.2; }
 .nav .nav-buy { padding: 11px 22px; border-radius: 999px; background: var(--cream); color: var(--green-deep); opacity: 1; }
 .site-header.is-solid .nav-buy { background: var(--green-deep); color: var(--cream); }
 .audience { display: inline-flex; flex-shrink: 0; white-space: nowrap; padding: 4px; border-radius: 999px; border: 1.5px solid currentColor; }
-.audience a { padding: 7px 14px; border-radius: 999px; font-size: 0.8rem; font-weight: 700; text-decoration: none; opacity: 0.8; transition: background 0.25s, color 0.25s, opacity 0.25s; }
+.audience a { padding: 7px 14px; border-radius: 999px; font-size: .8125rem; font-weight: 700; text-decoration: none; opacity: 0.8; transition: background 0.25s, color 0.25s, opacity 0.25s; }
 .audience a.is-selected { background: currentColor; opacity: 1; }
 .audience a.is-selected span { color: var(--green-deep); }
 .site-header.is-solid .audience a.is-selected span { color: var(--cream); }
@@ -413,7 +413,7 @@ h3 { font-size: clamp(1.12rem, 1.6vw, 1.4rem); line-height: 1.2; }
     overflow-y: auto; padding: 90px var(--gutter-r) 40px var(--gutter); background: var(--green-deep); color: var(--cream);
   }
   .menu-open .nav > a { font-family: var(--serif); font-size: 2.1rem; opacity: 1; }
-  .menu-open .nav .audience a { font-size: clamp(0.72rem, 3.1vw, 0.95rem); padding: 11px 12px; }
+  .menu-open .nav .audience a { font-size: clamp(.8125rem, 3.1vw, .95rem); padding: 11px 12px; }
   .menu-open .nav .audience { margin-top: 18px; }
   .menu-open .nav .nav-buy { margin-top: 8px; padding: 12px 26px; background: var(--lime); color: var(--green-deep); font-family: var(--sans); font-size: 1rem; }
   .menu-open { color: var(--cream); }
