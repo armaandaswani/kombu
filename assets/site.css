@@ -775,18 +775,6 @@ h3 { font-size: clamp(1.12rem, 1.6vw, 1.4rem); line-height: 1.2; }
 
 .motion-paused [data-reveal] { animation: none !important; opacity: 1; transform: none; }
 
-/* ---------------------------------------------------------------- audience chooser
-   Shown once, on a first visit to the home page, so nobody misses that there is a separate
-   path for resellers. Native <dialog>: focus is trapped and Escape closes it. */
-.chooser { overscroll-behavior: contain; width: min(720px, calc(100% - 32px)); max-height: calc(100svh - 32px); padding: 0; border: 0; border-radius: 28px; background: var(--paper); color: var(--ink); box-shadow: 0 50px 120px -30px rgba(0, 0, 0, 0.6); overflow: auto; }
-.chooser::backdrop { background: rgba(14, 24, 12, 0.72); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
-.chooser[open] { animation: chooserIn 0.6s var(--ease); }
-.chooser[open]::backdrop { animation: fadeIn 0.5s ease; }
-@keyframes chooserIn { from { opacity: 0; transform: translateY(24px) scale(0.97); } }
-@keyframes fadeIn { from { opacity: 0; } }
-.chooser-in { display: grid; gap: 18px; padding: clamp(26px, 5vw, 46px); text-align: center; justify-items: center; }
-.chooser h2 { font-size: clamp(1.8rem, 4.6vw, 2.8rem); max-width: 16ch; }
-.chooser-opts { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; width: 100%; margin-top: 8px; }
 .opt { position: relative; display: grid; justify-items: center; gap: 14px; padding: 26px 18px 24px; border: 0; border-radius: 22px; cursor: pointer; text-decoration: none; text-align: center; font: inherit; background: var(--lime); color: var(--green-deep); transition: transform 0.45s var(--ease), box-shadow 0.45s var(--ease); min-width: 0; }
 .opt:hover { transform: translateY(-5px); box-shadow: 0 24px 50px -24px rgba(27, 47, 24, 0.6); }
 .opt-dark { background: var(--green-deep); color: var(--cream); }
@@ -797,9 +785,7 @@ h3 { font-size: clamp(1.12rem, 1.6vw, 1.4rem); line-height: 1.2; }
 .trio img:nth-child(2) { height: 150px; position: relative; z-index: 1; }
 .opt b { display: block; font-family: var(--serif); font-size: clamp(1.25rem, 2.6vw, 1.6rem); line-height: 1.15; }
 .opt small { display: block; margin-top: 6px; font-size: 0.92rem; opacity: 0.8; }
-.chooser-note { margin: 4px 0 0; font-size: 0.88rem; color: var(--ink-2); }
 @media (max-width: 560px) {
-  .chooser-opts { grid-template-columns: 1fr; }
   .opt { grid-template-columns: auto 1fr; justify-items: start; text-align: left; align-items: center; padding: 16px 18px; }
   .opt img { height: 96px; }
   .trio { height: 96px; }
@@ -808,7 +794,7 @@ h3 { font-size: clamp(1.12rem, 1.6vw, 1.4rem); line-height: 1.2; }
 }
 
 
-html:has(.chooser[open]) { overflow: hidden; }
+
 
 /* The reseller introduction needs its own mobile rows, outside the old dissolved grid. */
 @media (max-width: 760px) {
@@ -827,4 +813,30 @@ html:has(.chooser[open]) { overflow: hidden; }
 @media (max-width: 1100px) {
   /* Short landscape windows must scroll from the first link, below the header. */
   .menu-open .nav { justify-content: safe center; }
+}
+
+/* A separate welcome document, before either audience's landing page. */
+.entry-page { background: var(--paper); color: var(--green-deep); }
+.entry-screen { min-height: 100svh; padding: max(28px, env(safe-area-inset-top)) var(--gutter) max(28px, env(safe-area-inset-bottom)); display: grid; grid-template-rows: auto 1fr; gap: 32px; }
+.entry-brand { display: grid; justify-items: center; gap: 6px; }
+.entry-brand b { font: 700 2rem/1.2 var(--serif); letter-spacing: .22em; padding-left: .22em; }
+.entry-brand span { font: italic 600 1.1rem/1.4 var(--serif); }
+.entry-content { align-self: center; justify-self: center; width: min(100%, 880px); display: grid; justify-items: center; gap: 28px; padding-bottom: 24px; }
+.entry-content h1 { font-size: clamp(2rem, 4vw, 3.2rem); line-height: 1.15; text-align: center; }
+.entry-options { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; width: 100%; }
+.entry-options .opt { padding: 32px 24px; min-height: 320px; align-content: center; }
+.entry-options .opt img, .entry-options .trio { height: 170px; }
+.entry-options .trio img { height: 145px; }
+.entry-options .trio img:nth-child(2) { height: 170px; }
+.entry-options .opt b { font-size: clamp(1.4rem, 2.5vw, 1.8rem); }
+.entry-note { margin: 0; font-size: 1rem; line-height: 1.6; text-align: center; color: var(--ink-2); }
+@media (max-width: 560px) {
+  .entry-screen { gap: 28px; }
+  .entry-content { gap: 24px; padding-bottom: 0; }
+  .entry-options { grid-template-columns: 1fr; gap: 14px; }
+  .entry-options .opt { min-height: 140px; padding: 22px 18px; gap: 16px; }
+  .entry-options .opt img, .entry-options .trio { height: 106px; }
+  .entry-options .trio img { height: 90px; }
+  .entry-options .trio img:nth-child(2) { height: 106px; }
+  .entry-options .opt b { font-size: 1.4rem; }
 }

@@ -759,34 +759,12 @@
     }));
   }
 
-  // ------------------------------------------------------------ audience chooser
-  // A first visit to the home page asks whether this is for the visitor's own consumption or for
-  // resale, so the reseller path is not left to a pill in the corner (owner, 2026-10-24). Asked
-  // once: any answer, or closing it, is remembered. Someone arriving by a direct link (#sabores,
-  // #onde...) came for that and is not interrupted.
-  const AUDIENCE_KEY = "kombuAudience";
-  const readAudience = () => { try { return localStorage.getItem(AUDIENCE_KEY); } catch { return "unknown"; } };
-  const saveAudience = (value) => { try { localStorage.setItem(AUDIENCE_KEY, value); } catch { /* private mode */ } };
-
+  // The dedicated /entrada page precedes the home; the header keeps both paths available.
   function initChooser() {
-    if (page === "revenda") saveAudience("revenda");
-    $$('.nav a[href="/revenda"]').forEach((a) => a.addEventListener("click", () => saveAudience("revenda")));
-    $$('.site-header .logo[href="/"], .nav-consumer').forEach((a) => a.addEventListener("click", () => saveAudience("consumo")));
-    const dialog = $("#audienceChooser");
-    if (!dialog || typeof dialog.showModal !== "function") return;
-    if (readAudience() || location.hash) return;
-    dialog.addEventListener("click", (event) => {
-      const choice = event.target.closest("[data-choice]");
-      if (choice) {
-        saveAudience(choice.dataset.choice);
-        if (choice.dataset.choice === "consumo") dialog.close();
-        return;
-      }
-      // a click on the backdrop lands on the dialog element itself
-      if (event.target === dialog) dialog.close();
-    });
-    dialog.addEventListener("close", () => { if (!readAudience()) saveAudience("fechado"); $(".hero-copy .btn")?.focus({ preventScroll: true }); });
-    dialog.showModal();
+    const save = value => { try { localStorage.setItem("kombuAudience", value); sessionStorage.setItem("kombuEntryAudience", value); } catch { /* private mode */ } };
+    if (page === "revenda") save("revenda");
+    $$('.nav a[href="/revenda"]').forEach(a => a.addEventListener("click", () => save("revenda")));
+    $$('.site-header .logo[href="/"], .nav-consumer').forEach(a => a.addEventListener("click", () => save("consumo")));
   }
 
   // ------------------------------------------------------------ boot

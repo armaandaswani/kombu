@@ -27,7 +27,7 @@ const kitOrders = [];
 
 async function newPage(browser, leads, { firstVisit = false } = {}) {
   const context = await browser.newContext({ viewport: { width: 390, height: 844 }, locale: "pt-BR", reducedMotion: "no-preference" });
-  if (!firstVisit) await context.addInitScript(() => localStorage.setItem("kombuAudience", "consumo"));
+  if (!firstVisit) await context.addInitScript(() => { localStorage.setItem("kombuAudience", "consumo"); sessionStorage.setItem("kombuEntryAudience", "consumo"); });
   const page = await context.newPage();
   const errors = [];
   page.on("pageerror", (e) => errors.push(e.message));
@@ -193,15 +193,19 @@ async function run() {
       await new Promise((r) => setTimeout(r, 50));
     }
 
-    // First visits restore the dedicated audience chooser; direct links stay uninterrupted.
+    // The entry is a separate document, including for someone with an old saved preference.
     const first = await newPage(browser, leads, { firstVisit: true });
-    await first.page.goto(`${baseUrl}/`);
-    await first.page.waitForFunction(() => document.querySelectorAll(".walk-step").length > 0);
-    assert.equal(await first.page.locator('dialog[open]').count(), 1, 'first visit opens the dedicated chooser');
-    assert.ok(await first.page.locator('#audienceChooser').isVisible(), 'audience chooser is visible');
-    await first.page.locator('#audienceChooser [data-choice=consumo]').click();
-    assert.ok(await first.page.locator('#audienceChooser').isHidden());
+    await first.page.context().addInitScript(() => localStorage.setItem('kombuAudience', 'consumo'));
+    await first.page.goto(`${baseUrl}/?ref=AMAZONIA10`);
+    await first.page.waitForURL(/\/entrada(?:\.html)?\?ref=AMAZONIA10$/);
+    assert.equal(await first.page.locator('.site-header, .hero, dialog').count(), 0, 'entry has no home or modal behind it');
+    assert.ok(await first.page.locator('.entry-screen').isVisible());
+    await first.page.locator('[data-choice=consumo]').click();
+    await first.page.waitForFunction(() => document.querySelectorAll('.walk-step').length > 0);
     assert.ok(await first.page.locator('#hero-title').isVisible());
+    assert.equal(new URL(first.page.url()).searchParams.get('ref'), 'AMAZONIA10', 'entry preserves creator attribution');
+    await first.page.goto(`${baseUrl}/`);
+    assert.ok(await first.page.locator('#hero-title').isVisible(), 'entry choice lasts for this browsing session');
     await first.page.locator('.hero-pause').click();
     assert.equal(await first.page.locator('.hero-pause').getAttribute('aria-pressed'), 'true');
     assert.ok(await first.page.evaluate(() => document.documentElement.classList.contains('motion-paused')));
@@ -362,7 +366,7 @@ async function run() {
     for (const rel of await readingLinks.evaluateAll((as) => as.map((a) => a.rel))) assert.ok(rel.includes("noopener"), "external reading opens safely");
     assert.deepStrictEqual(blog.errors, [], "no script errors on the blog");
 
-    console.log("Public regression: walk, admin overrides, partner order and escaping, both forms, menu, legal redirects, dedicated first-visit chooser and motion controls, mobile layout, blog and SEO basics passed.");
+    console.log("Public regression: walk, admin overrides, partner order and escaping, both forms, menu, legal redirects, separate pre-landing entry and motion controls, mobile layout, blog and SEO basics passed.");
   } finally {
     await browser.close();
   }
