@@ -21,3 +21,14 @@ for (const post of calendar.posts) {
   await fs.copyFile(path.join(source, 'legenda.txt'), path.join(dest, 'legenda.txt'));
 }
 console.log(`${images} imagens de ${calendar.posts.length} posts prontas em ${target}`);
+
+// Include dated Story batches without dropping the existing feed assets.
+const stories = JSON.parse(await fs.readFile(path.join(root, 'out/stories/manifest.json'), 'utf8'));
+for (const day of stories.days) for (const frame of day.frames) {
+  if (!/^stories\/\d{4}-\d{2}-\d{2}\/[a-z0-9-]+\.jpg$/.test(frame.image)) throw new Error('Story inválido');
+  const dest = path.join(target, frame.image);
+  await fs.mkdir(path.dirname(dest), {recursive: true});
+  await fs.copyFile(path.join(root, 'out', frame.image), dest);
+}
+await fs.copyFile(path.join(root, 'out/stories/manifest.json'), path.join(target, 'stories/manifest.json'));
+console.log(stories.days.length * 5 + ' Stories incluídos.');

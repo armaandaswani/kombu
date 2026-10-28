@@ -1,0 +1,353 @@
+{
+  "timezone": "America/Manaus",
+  "dailyCount": 5,
+  "days": [
+    {
+      "date": "2026-10-28",
+      "frames": [
+        {
+          "id": "dolce-vita-01",
+          "type": "art",
+          "imageSource": "assets/partners/dolce-story-01.jpg",
+          "image": "stories/2026-10-28/dolce-vita-01.jpg",
+          "title": "Na Dolce Vita, o gelato tem companhia.",
+          "body": "Tem Kombú gelada por lá. Na próxima visita, vale experimentar os dois.",
+          "partner": "@ladolcevitagelateria"
+        },
+        {
+          "id": "dolce-vita-02",
+          "type": "art",
+          "imageSource": "assets/partners/dolce-story-02.jpg",
+          "image": "stories/2026-10-28/dolce-vita-02.jpg",
+          "title": "Ainda não conhece kombucha?",
+          "body": "É uma bebida feita a partir da fermentação do chá. Na Kombú, a base é o chá verde.",
+          "partner": "@ladolcevitagelateria"
+        },
+        {
+          "id": "dolce-vita-03",
+          "type": "art",
+          "imageSource": "assets/partners/dolce-story-03.jpg",
+          "image": "stories/2026-10-28/dolce-vita-03.jpg",
+          "title": "Uma opção para quem quer variar a bebida.",
+          "body": "A Kombú tem acidez e gás natural da fermentação, com sabores que combinam frutas, flores, ervas e especiarias.",
+          "partner": "@ladolcevitagelateria"
+        },
+        {
+          "id": "dolce-vita-04",
+          "type": "art",
+          "imageSource": "assets/partners/dolce-story-04.jpg",
+          "image": "stories/2026-10-28/dolce-vita-04.jpg",
+          "title": "Feita pela nossa família, aqui em Manaus.",
+          "body": "Produzimos Kombú de forma artesanal desde 2017, com ingredientes como frutas, flores, ervas e especiarias.",
+          "partner": "@ladolcevitagelateria"
+        },
+        {
+          "id": "dolce-vita-05",
+          "type": "art",
+          "imageSource": "assets/partners/dolce-story-05.jpg",
+          "image": "stories/2026-10-28/dolce-vita-05.jpg",
+          "title": "Na próxima ida à Dolce Vita...",
+          "body": "Peça uma Kombú gelada e pergunte à equipe quais sabores estão disponíveis no dia.",
+          "partner": "@ladolcevitagelateria"
+        }
+      ]
+    },
+    {
+      "date": "2026-10-29",
+      "frames": [
+        {
+          "id": "dolce-vita-2",
+          "type": "bottle",
+          "title": "Tem Kombú na Divina Terra.",
+          "body": "Na próxima visita, pergunte quais sabores estão gelados no dia.",
+          "partner": "@divinaterramanaus",
+          "image": "stories/2026-10-29/dolce-vita-2.jpg",
+          "flavor": "uva",
+          "bg": "#4A2352"
+        },
+        {
+          "id": "goiaba",
+          "type": "bottle",
+          "flavor": "goiaba",
+          "title": "Goiaba",
+          "body": "Para quem gosta de goiaba, ela também tem lugar na nossa kombucha.",
+          "bg": "#D9535F",
+          "image": "stories/2026-10-29/goiaba.jpg"
+        },
+        {
+          "id": "pera-alecrim",
+          "type": "bottle",
+          "flavor": "pera-alecrim",
+          "title": "Pera & Alecrim",
+          "body": "Uma combinação de pera e alecrim para conhecer em forma de kombucha.",
+          "bg": "#C2D371",
+          "image": "stories/2026-10-29/pera-alecrim.jpg"
+        },
+        {
+          "id": "conversa-2",
+          "type": "text",
+          "title": "Kombú é feita em Manaus.",
+          "body": "Nossa família produz kombucha artesanal aqui desde 2017.",
+          "bg": "#F6F2E8",
+          "image": "stories/2026-10-29/conversa-2.jpg"
+        },
+        {
+          "id": "pausa-2",
+          "type": "lifestyle",
+          "imageSource": "assets/lifestyle/yoga-500ml.png",
+          "title": "Uma pausa depois da prática.",
+          "body": "Encontre Kombú gelada nos nossos parceiros. Veja os endereços no site da bio.",
+          "image": "stories/2026-10-29/pausa-2.jpg"
+        }
+      ]
+    },
+    {
+      "date": "2026-10-30",
+      "frames": [
+        {
+          "id": "dolce-vita-3",
+          "type": "bottle",
+          "title": "Tem Kombú na Casa Agridoce.",
+          "body": "Na próxima visita, pergunte quais sabores estão gelados no dia.",
+          "partner": "@casaagridoceam",
+          "image": "stories/2026-10-30/dolce-vita-3.jpg",
+          "flavor": "rosas-cardamomo",
+          "bg": "#E3889E"
+        },
+        {
+          "id": "manga-jasmim",
+          "type": "bottle",
+          "flavor": "manga-jasmim",
+          "title": "Manga & Jasmim",
+          "body": "A manga entra na receita com o jasmim. Uma combinação para conhecer com calma.",
+          "bg": "#F2C46E",
+          "image": "stories/2026-10-30/manga-jasmim.jpg"
+        },
+        {
+          "id": "uva",
+          "type": "bottle",
+          "flavor": "uva",
+          "title": "Uva",
+          "body": "Se você prefere começar por uma fruta conhecida, vale conhecer a Kombú de Uva.",
+          "bg": "#4A2352",
+          "image": "stories/2026-10-30/uva.jpg"
+        },
+        {
+          "id": "conversa-3",
+          "type": "text",
+          "title": "Na hora de servir, mantenha gelada.",
+          "body": "A orientação está na garrafa: manter sempre gelado. Sirva a sua Kombú gelada também.",
+          "bg": "#2D4B28",
+          "image": "stories/2026-10-30/conversa-3.jpg"
+        },
+        {
+          "id": "criadores-3",
+          "type": "creator",
+          "title": "Que tal apresentar a Kombú ao seu público?",
+          "body": "Conheça nosso programa para criadores. Após a aprovação, você recebe um cupom com 5% de desconto em produtos para compartilhar.",
+          "cta": "Inscreva-se em “Para criadores”, no site da bio.",
+          "bg": "#F6F2E8",
+          "image": "stories/2026-10-30/criadores-3.jpg"
+        }
+      ]
+    },
+    {
+      "date": "2026-10-31",
+      "frames": [
+        {
+          "id": "dolce-vita-4",
+          "type": "bottle",
+          "title": "Tem Kombú na Cafeteria Garden.",
+          "body": "Na próxima visita, pergunte quais sabores estão gelados no dia.",
+          "partner": "@cafeteriagarden_",
+          "image": "stories/2026-10-31/dolce-vita-4.jpg",
+          "flavor": "manga-jasmim",
+          "bg": "#F2C46E"
+        },
+        {
+          "id": "rosas-cardamomo",
+          "type": "bottle",
+          "flavor": "rosas-cardamomo",
+          "title": "Rosas & Cardamomo",
+          "body": "Rosas e cardamomo dão nome a essa combinação da Kombú.",
+          "bg": "#E3889E",
+          "image": "stories/2026-10-31/rosas-cardamomo.jpg"
+        },
+        {
+          "id": "frutas-vermelhas",
+          "type": "bottle",
+          "flavor": "frutas-vermelhas",
+          "title": "Frutas Vermelhas",
+          "body": "Uma Kombú de sabor frutado, com um pouco de acidez.",
+          "bg": "#7A1A2B",
+          "image": "stories/2026-10-31/frutas-vermelhas.jpg"
+        },
+        {
+          "id": "conversa-4",
+          "type": "text",
+          "title": "O que vai na Kombú?",
+          "body": "Nossa kombucha é feita com chá verde, cultura e ingredientes como frutas, flores, ervas e especiarias.",
+          "bg": "#F6F2E8",
+          "image": "stories/2026-10-31/conversa-4.jpg"
+        },
+        {
+          "id": "pausa-4",
+          "type": "lifestyle",
+          "imageSource": "assets/lifestyle/corrida-500ml.png",
+          "title": "Depois da corrida, uma pausa.",
+          "body": "Encontre Kombú gelada nos nossos parceiros. Veja os endereços no site da bio.",
+          "image": "stories/2026-10-31/pausa-4.jpg"
+        }
+      ]
+    },
+    {
+      "date": "2026-11-01",
+      "frames": [
+        {
+          "id": "dolce-vita-5",
+          "type": "bottle",
+          "title": "Tem Kombú na Gelateria Dolce Vita.",
+          "body": "Na próxima visita, pergunte quais sabores estão gelados no dia.",
+          "partner": "@ladolcevitagelateria",
+          "image": "stories/2026-11-01/dolce-vita-5.jpg",
+          "flavor": "lavanda-limao",
+          "bg": "#8277AE"
+        },
+        {
+          "id": "maca-canela",
+          "type": "bottle",
+          "flavor": "maca-canela",
+          "title": "Maçã & Canela",
+          "body": "Maçã com canela também combina na garrafa de Kombú.",
+          "bg": "#C78E51",
+          "image": "stories/2026-11-01/maca-canela.jpg"
+        },
+        {
+          "id": "flor-fada-blueberry",
+          "type": "bottle",
+          "flavor": "flor-fada-blueberry",
+          "title": "Flor Fada Azul & Blueberry",
+          "body": "Nesta receita, combinamos a flor fada azul com blueberry.",
+          "bg": "#3A2147",
+          "image": "stories/2026-11-01/flor-fada-blueberry.jpg"
+        },
+        {
+          "id": "conversa-5",
+          "type": "text",
+          "title": "Tem espaço para Kombú na sua geladeira?",
+          "body": "Se você tem um café, empório ou restaurante em Manaus, fale com a gente para conversar sobre revenda.",
+          "bg": "#2D4B28",
+          "image": "stories/2026-11-01/conversa-5.jpg"
+        },
+        {
+          "id": "criadores-5",
+          "type": "creator",
+          "title": "Um cupom para quem acompanha você.",
+          "body": "Conheça nosso programa para criadores. Após a aprovação, você recebe um cupom com 5% de desconto em produtos para compartilhar.",
+          "cta": "Inscreva-se em “Para criadores”, no site da bio.",
+          "bg": "#F6F2E8",
+          "image": "stories/2026-11-01/criadores-5.jpg"
+        }
+      ]
+    },
+    {
+      "date": "2026-11-02",
+      "frames": [
+        {
+          "id": "dolce-vita-6",
+          "type": "bottle",
+          "title": "Tem Kombú na Divina Terra.",
+          "body": "Na próxima visita, pergunte quais sabores estão gelados no dia.",
+          "partner": "@divinaterramanaus",
+          "image": "stories/2026-11-02/dolce-vita-6.jpg",
+          "flavor": "goiaba",
+          "bg": "#D9535F"
+        },
+        {
+          "id": "maracuja",
+          "type": "bottle",
+          "flavor": "maracuja",
+          "title": "Maracujá",
+          "body": "O maracujá é uma das frutas que fazem parte dos sabores da Kombú.",
+          "bg": "#EDB43E",
+          "image": "stories/2026-11-02/maracuja.jpg"
+        },
+        {
+          "id": "imunidade",
+          "type": "bottle",
+          "flavor": "imunidade",
+          "title": "Imunidade",
+          "body": "Esse é o nome do sabor que combina limão, gengibre e cúrcuma.",
+          "bg": "#CF6526",
+          "image": "stories/2026-11-02/imunidade.jpg"
+        },
+        {
+          "id": "conversa-6",
+          "type": "text",
+          "title": "Cada receita começa com uma combinação.",
+          "body": "Frutas, flores, ervas e especiarias aparecem em diferentes sabores da Kombú.",
+          "bg": "#F6F2E8",
+          "image": "stories/2026-11-02/conversa-6.jpg"
+        },
+        {
+          "id": "pausa-6",
+          "type": "lifestyle",
+          "imageSource": "assets/lifestyle/tenis-500ml.png",
+          "title": "Uma pausa depois do jogo.",
+          "body": "Encontre Kombú gelada nos nossos parceiros. Veja os endereços no site da bio.",
+          "image": "stories/2026-11-02/pausa-6.jpg"
+        }
+      ]
+    },
+    {
+      "date": "2026-11-03",
+      "frames": [
+        {
+          "id": "dolce-vita-7",
+          "type": "bottle",
+          "title": "Tem Kombú na Casa Agridoce.",
+          "body": "Na próxima visita, pergunte quais sabores estão gelados no dia.",
+          "partner": "@casaagridoceam",
+          "image": "stories/2026-11-03/dolce-vita-7.jpg",
+          "flavor": "pera-alecrim",
+          "bg": "#C2D371"
+        },
+        {
+          "id": "hibisco-anis",
+          "type": "bottle",
+          "flavor": "hibisco-anis",
+          "title": "Hibisco & Anis",
+          "body": "O hibisco se combina com o anis estrelado nessa receita da Kombú.",
+          "bg": "#D63E79",
+          "image": "stories/2026-11-03/hibisco-anis.jpg"
+        },
+        {
+          "id": "lavanda-limao",
+          "type": "bottle",
+          "flavor": "lavanda-limao",
+          "title": "Lavanda & Limão",
+          "body": "Lavanda e limão se encontram numa Kombú que vale provar gelada.",
+          "bg": "#8277AE",
+          "image": "stories/2026-11-03/lavanda-limao.jpg"
+        },
+        {
+          "id": "conversa-7",
+          "type": "text",
+          "title": "Uma bebida feita aqui perto.",
+          "body": "A Kombú é uma kombucha artesanal produzida em Manaus pela nossa família.",
+          "bg": "#2D4B28",
+          "image": "stories/2026-11-03/conversa-7.jpg"
+        },
+        {
+          "id": "criadores-7",
+          "type": "creator",
+          "title": "Vamos conversar sobre uma parceria?",
+          "body": "Conheça nosso programa para criadores. Após a aprovação, você recebe um cupom com 5% de desconto em produtos para compartilhar.",
+          "cta": "Inscreva-se em “Para criadores”, no site da bio.",
+          "bg": "#F6F2E8",
+          "image": "stories/2026-11-03/criadores-7.jpg"
+        }
+      ]
+    }
+  ]
+}

@@ -153,3 +153,11 @@ This section updates the earlier voice and CTA notes where they differ.
 - Include creator recruitment and affiliate-coupon posts. The public site confirms approval before activation, 5% off products for the audience, and 10% commission on paid products after the discount, excluding freight. Do not promise automatic approval, free products, minimum earnings, or invented eligibility thresholds.
 - Creator posts may invite applications via the “Para criadores” section of the website; this is an owner-authorized exception to the older two-CTA rule. This is not authorization to message creators directly.
 - The current site also offers kits of 4, 6, 12 and 20 bottles of 500 ml. Do not describe 20 bottles as the minimum for all direct purchases; distinguish standard production orders from the kit options. Do not publish monetary prices.
+
+
+## Direção visual e Stories — 27/10/2026, à noite
+
+- O titular rejeitou apenas colocar título sobre as fotos da Dolce Vita. Quer composição mais trabalhada com IA, fundo limpo/recriado, luz melhor e logo K pequena no topo. Preserve a embalagem real e não apresente a montagem como o interior real da parceira.
+- Formatos: carrossel de feed 1080×1350; Stories 1080×1920, cinco diferentes por dia.
+- As fotos IMG_7015/7017/7018 foram tiradas pelo titular na parceira Gelateria Dolce Vita. A sequência deve valorizar o local e explicar sutilmente por que experimentar kombucha e por que escolher Kombú. Conecte a ocasião de consumo com chá fermentado, sabores, gás da fermentação, produção artesanal familiar em Manaus desde 2017 e ingredientes. Não transforme o pedido de benefícios em promessas de saúde.
+- Stories devem formar uma conversa, com cada arte acrescentando uma informação. Evite cinco anúncios soltos ou a mesma foto com títulos diferentes dia após dia.

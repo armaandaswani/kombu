@@ -8,6 +8,7 @@
 // KV: "published:<id>" -> {mediaId, at}; "last" -> {id, at}; "token" -> {accessToken, refreshedAt};
 //     "user" -> {id, username}; "log" -> last 50 runs.
 import calendar from '../calendar.json';
+import {runStories} from './stories.mjs';
 
 const api = 'https://graph.instagram.com/v21.0';
 const imageBase = 'https://kombu-social.pages.dev';
@@ -159,6 +160,10 @@ async function run(env) {
 
 export default {
   // Await the run itself: waitUntil() tasks are cut off shortly after the event ends (Reveja, 23/10).
-  async scheduled(event, env) { await run(env); },
+  async scheduled(event, env) {
+    try { await runStories(env, {call, currentToken, account, waitFinished, log}); }
+    catch (e) { await log(env, 'erro nos Stories: ' + e.message); }
+    await run(env);
+  },
   async fetch() { return new Response('Not found', {status: 404}); },
 };
