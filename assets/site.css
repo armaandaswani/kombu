@@ -564,7 +564,7 @@ h3 { font-size: clamp(1.12rem, 1.6vw, 1.4rem); line-height: 1.2; }
   .b2b-hero .wrap { grid-template-areas: "for stage" "title stage" "lead lead" "actions actions"; }
   .hero-copy { display: contents; }
   .hero h1, .b2b-hero h1 { grid-area: title; align-self: center; }
-  .b2b-for { grid-area: for; align-self: end; margin-bottom: 8px; font-size: 0.8rem; line-height: 1.4; }
+  .b2b-for { grid-area: for; align-self: end; margin-bottom: 8px; font-size: 1rem; line-height: 1.4; }
   .b2b-hero h1 { align-self: start; }
   .display { font-size: clamp(1.75rem, 8vw, 2.2rem); line-height: 1.05; }
   .b2b-hero .display { font-size: clamp(1.3rem, 6vw, 1.75rem); }
@@ -809,3 +809,22 @@ h3 { font-size: clamp(1.12rem, 1.6vw, 1.4rem); line-height: 1.2; }
 
 
 html:has(.chooser[open]) { overflow: hidden; }
+
+/* The reseller introduction needs its own mobile rows, outside the old dissolved grid. */
+@media (max-width: 760px) {
+  .b2b-hero .wrap { grid-template-areas: none; grid-template-columns: minmax(0, 1fr); gap: 28px; padding-top: 96px; padding-bottom: 36px; }
+  .b2b-hero .hero-copy { display: grid; grid-template-areas: none; gap: 18px; max-width: none; }
+  .b2b-hero h1, .b2b-for, .b2b-hero .lead, .b2b-hero .actions { grid-area: auto; margin: 0; }
+  .b2b-for { align-self: auto; font-size: 1rem; line-height: 1.5; max-width: 34ch; }
+  .b2b-hero .display { font-size: clamp(1.9rem, 8.4vw, 2.5rem); line-height: 1.1; }
+  .b2b-hero .lead { font-size: 1rem; line-height: 1.6; max-width: 38rem; }
+  .b2b-hero .actions { display: flex; flex-wrap: wrap; gap: 12px; }
+  .b2b-hero .actions .btn { width: auto; min-height: 46px; padding: 0 20px; font-size: 1rem; }
+  .b2b-hero .fan { grid-area: auto; justify-self: center; width: 100%; height: 240px; min-height: 0; }
+  .b2b-hero .fan img:nth-child(2), .b2b-hero .fan img:nth-child(4) { margin: 0 -18px; height: 84%; }
+  .b2b-hero .fan img:nth-child(3) { margin: 0; height: 100%; }
+}
+@media (max-width: 1100px) {
+  /* Short landscape windows must scroll from the first link, below the header. */
+  .menu-open .nav { justify-content: safe center; }
+}

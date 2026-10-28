@@ -635,16 +635,41 @@
     // it when scrolling instead of resetting it based on a page-name list.
     const solidAtTop = header.classList.contains("is-solid");
     const toggle = $(".menu-btn", header);
-    toggle?.addEventListener("click", () => {
-      const open = header.classList.toggle("menu-open");
-      toggle.setAttribute("aria-expanded", String(open));
-      document.body.style.overflow = open ? "hidden" : "";
+    const nav = $(".nav", header);
+    if (nav && toggle) {
+      nav.id ||= "primary-navigation";
+      toggle.setAttribute("aria-controls", nav.id);
+    }
+    let previousOverflow = "";
+    function setMenu(open, returnFocus = false) {
+      const wasOpen = header.classList.contains("menu-open");
+      if (open && !wasOpen) previousOverflow = document.body.style.overflow;
+      header.classList.toggle("menu-open", open);
+      toggle?.setAttribute("aria-expanded", String(open));
+      if (open) {
+        header.classList.remove("is-hidden");
+        document.body.style.overflow = "hidden";
+      } else if (wasOpen) {
+        document.body.style.overflow = previousOverflow;
+        if (returnFocus) toggle?.focus({ preventScroll: true });
+      }
+    }
+    toggle?.addEventListener("click", () => setMenu(!header.classList.contains("menu-open")));
+    $$(".nav a", header).forEach((a) => a.addEventListener("click", () => setMenu(false)));
+    document.addEventListener("keydown", (event) => {
+      if (!header.classList.contains("menu-open")) return;
+      if (event.key === "Escape") { event.preventDefault(); setMenu(false, true); return; }
+      if (event.key !== "Tab") return;
+      const controls = $$("a[href], button:not([disabled])", header).filter(el => el.getClientRects().length);
+      const firstControl = controls[0], lastControl = controls.at(-1);
+      if (event.shiftKey && (document.activeElement === firstControl || !header.contains(document.activeElement))) {
+        event.preventDefault(); lastControl?.focus();
+      } else if (!event.shiftKey && (document.activeElement === lastControl || !header.contains(document.activeElement))) {
+        event.preventDefault(); firstControl?.focus();
+      }
     });
-    $$(".nav a", header).forEach((a) => a.addEventListener("click", () => {
-      header.classList.remove("menu-open");
-      toggle?.setAttribute("aria-expanded", "false");
-      document.body.style.overflow = "";
-    }));
+    window.matchMedia("(min-width: 1101px)").addEventListener("change", (event) => { if (event.matches) setMenu(false); });
+    header.addEventListener("focusin", () => header.classList.remove("is-hidden"));
     const first = document.querySelector("main > section, main > header");
     let lastY = window.scrollY;
     function onScroll() {

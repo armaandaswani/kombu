@@ -161,6 +161,22 @@ async function run() {
     assert.strictEqual(await page.locator(".nav .nav-buy").innerText(), "Comprar");
     assert.strictEqual(await page.locator(".nav .nav-reseller").innerText(), "Para revenda");
     assert.ok(await page.locator(".site-header").evaluate((h) => h.classList.contains("menu-open")));
+    // Overlay navigation must work with keyboard and release the scroll lock on resize.
+    await page.locator('.menu-btn').focus();
+    await page.keyboard.press('Tab');
+    assert.ok(await page.evaluate(() => document.querySelector('.site-header').contains(document.activeElement)), 'Tab stays inside the open menu');
+    await page.keyboard.press('Shift+Tab');
+    assert.ok(await page.locator('.menu-btn').evaluate(el => el === document.activeElement), 'reverse Tab returns to the menu toggle');
+    await page.keyboard.press('Escape');
+    assert.equal(await page.locator('.menu-btn').getAttribute('aria-expanded'), 'false');
+    assert.equal(await page.evaluate(() => document.body.style.overflow), '', 'Escape releases the scroll lock');
+    assert.ok(await page.locator('.menu-btn').evaluate(el => el === document.activeElement), 'Escape restores focus');
+    await page.click('.menu-btn');
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.waitForFunction(() => !document.querySelector('.site-header').classList.contains('menu-open'));
+    assert.equal(await page.evaluate(() => document.body.style.overflow), '', 'desktop resize releases the scroll lock');
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.click('.menu-btn');
     await page.click('.nav a[href="#onde"]');
     assert.ok(!(await page.locator(".site-header").evaluate((h) => h.classList.contains("menu-open"))), "following a menu link closes the menu");
 
@@ -206,6 +222,17 @@ async function run() {
     await b.page.goto(`${baseUrl}/revenda.html`);
     await b.page.waitForFunction(() => document.querySelectorAll("#fan img").length > 0);
     assert.ok((await b.page.locator("#fan img").count()) >= 3, "the hero shows a fan of bottles");
+    for (const width of [320, 390, 768]) {
+      await b.page.setViewportSize({ width, height: 900 });
+      const layout = await b.page.locator('.b2b-hero').evaluate(hero => {
+        const selectors = ['.b2b-for', 'h1', '.lead', '.actions'];
+        const boxes = selectors.map(selector => hero.querySelector(selector).getBoundingClientRect());
+        return { ordered: boxes.every((box, i) => !i || box.top >= boxes[i - 1].bottom - 1), overflow: document.documentElement.scrollWidth > innerWidth };
+      });
+      assert.ok(layout.ordered, `reseller heading, text and actions do not overlap at ${width}px`);
+      assert.ok(!layout.overflow, `reseller page fits ${width}px`);
+    }
+    await b.page.setViewportSize({ width: 390, height: 844 });
     const proof = await b.page.locator("#proofNames b").allInnerTexts();
     assert.strictEqual(proof.at(-1), "Solar Café Regional", "Solar Café is last in the proof strip too");
     assert.strictEqual(await b.page.evaluate(() => window.__xss), undefined);
