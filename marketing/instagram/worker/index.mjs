@@ -161,9 +161,9 @@ async function run(env) {
 export default {
   // Await the run itself: waitUntil() tasks are cut off shortly after the event ends (Reveja, 23/10).
   async scheduled(event, env) {
-    try { await runStories(env, {call, currentToken, account, waitFinished, log}); }
+    try { await runStories(env, {call, currentToken, account, waitFinished, log}, new Date(event.scheduledTime)); }
     catch (e) { await log(env, 'erro nos Stories: ' + e.message); }
-    await run(env);
+    if (event.cron === '30 16 * * *' || event.cron === '30 22 * * *') await run(env);
   },
   async fetch() { return new Response('Not found', {status: 404}); },
 };

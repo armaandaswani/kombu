@@ -13,4 +13,6 @@ id = "b59df63d5f8d4b91a087a818f4252c3e"
 # 22:30 UTC = 18:30 (a retry, which only publishes if the noon run did not).
 # The posts themselves go out every two days; the worker skips the days in between.
 [triggers]
-crons = ["30 16 * * *", "30 22 * * *"]
+# Owner requested five Stories, one every five minutes from 07:00 Manaus.
+# Today's already-missed morning window is replaced by 10:00..10:20, on 28 October only.
+crons = ["30 16 * * *", "30 22 * * *", "0,5,10,15,20 11 * * *", "0,5,10,15,20 14 28 10 *"]

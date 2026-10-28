@@ -174,3 +174,7 @@ Nunca usar “feita pela nossa família”, “nossa família”, “produção 
 - Posicionamento prioritário: Kombucha Artesanal Premium de Manaus. A característica sensorial confirmada pelo titular é suavidade com sabor intenso. Integrar esses diferenciais em frases naturais e situações de consumo, sem slogans desconectados ou repetir tudo em cada post.
 - O titular afirma que a Kombú é a única marca de kombucha artesanal premium de Manaus. Registrar como afirmação do titular; não extrapolar para superioridade absoluta ou afirmar que todas as outras marcas têm características inferiores. A comparação de exclusividade requer evidência de mercado atual antes de virar alegação categórica publicada.
 - Conteúdos já publicados permanecem como histórico. Aplicar as correções nos futuros conteúdos e nos arquivos para download; alterações no Instagram já publicado dependem do titular.
+
+## Stories em escadinha — pedido do titular, 28/10/2026
+
+Publicar cinco Stories diferentes todos os dias às 07:00, 07:05, 07:10, 07:15 e 07:20 de Manaus. Preparar/revisar antes da primeira publicação e conferir o resultado às 07:30. Não publicar o lote inteiro de uma vez. Excepcionalmente em 28/10/2026, a sequência será de 10:00 a 10:20, pois o pedido foi feito após a janela da manhã.
