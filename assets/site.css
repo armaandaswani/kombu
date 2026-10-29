@@ -210,7 +210,6 @@ h3 { font-size: clamp(1.12rem, 1.6vw, 1.4rem); line-height: 1.2; }
 .walk-stage .btn { --bg: var(--sfg); --fg: var(--c); width: fit-content; }
 .walk-bottle { position: relative; height: 100%; display: grid; place-items: center; cursor: grab; user-select: none; -webkit-user-select: none; }
 .walk-bottle.is-dragging { cursor: grabbing; }
-.walk-bottle::before { content: ""; position: absolute; width: min(92%, 58svh); aspect-ratio: 1; border-radius: 50%; background: color-mix(in srgb, var(--sfg) 6%, transparent); border: 1px solid color-mix(in srgb, var(--sfg) 12%, transparent); transform: translateY(calc(var(--walk-depth, 0px) * -1.5)); }
 .walk-bottle img { position: absolute; height: 86%; width: auto; max-width: none; opacity: 0; transform: translateX(calc(var(--walk-direction, 1) * 24px)) scale(0.97) rotate(calc(var(--walk-direction, 1) * 2deg)); transition: opacity 0.35s var(--ease), transform 0.5s var(--ease); }
 .walk-bottle img.is-on { opacity: 1; transform: none; }
 .walk-rail { position: absolute; z-index: 2; left: 0; right: 0; bottom: 18px; display: flex; justify-content: center; gap: 4px; padding: 0 var(--gutter); }
@@ -842,19 +841,14 @@ h3 { font-size: clamp(1.12rem, 1.6vw, 1.4rem); line-height: 1.2; }
 }
 
 /* Scroll Craft refinement: independent depth, native scroll, anchored controls. */
-.hero-stage::before { content: ""; position: absolute; width: min(92%, 54svh); aspect-ratio: 1; border-radius: 50%; background: rgba(217,249,157,.05); border: 1px solid rgba(217,249,157,.12); transform: translateY(calc(var(--hero-depth, 0px) * .35)); pointer-events: none; }
 .hero-product { position: absolute; inset: 0 0 34px; translate: 0 calc(var(--hero-depth, 0px) * -.75); transform: perspective(900px) rotateY(var(--pointer-x, 0deg)) rotateX(var(--pointer-y, 0deg)); transition: transform .5s var(--ease); }
 .walk-bottle { translate: 0 var(--walk-depth, 0px); }
 .walk-stage { transition: background .45s var(--ease); }
 .walk-stage.walk-cut { transition: none; }
 @media (max-width: 760px) {
   .hero-product { bottom: 42px; }
-  .hero-stage::before { width: min(76%, 240px); }
 }
-@media (max-width: 900px) { .walk-bottle::before { width: min(65%, 28svh); } }
 .motion-paused .hero-product, .motion-paused .walk-bottle { translate: none; transform: none; }
-.motion-paused .hero-stage::before, .motion-paused .walk-bottle::before { transform: none; }
 @media (prefers-reduced-motion: reduce) {
   .hero-product, .walk-bottle { translate: none; transform: none; }
-  .hero-stage::before, .walk-bottle::before { transform: none; }
 }
