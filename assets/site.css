@@ -210,19 +210,19 @@ h3 { font-size: clamp(1.12rem, 1.6vw, 1.4rem); line-height: 1.2; }
 .walk-stage .btn { --bg: var(--sfg); --fg: var(--c); width: fit-content; }
 .walk-bottle { position: relative; height: 100%; display: grid; place-items: center; cursor: grab; user-select: none; -webkit-user-select: none; }
 .walk-bottle.is-dragging { cursor: grabbing; }
-.walk-bottle::before { content: ""; position: absolute; width: 92%; aspect-ratio: 1; border-radius: 50%; background: transparent; }
-.walk-bottle img { position: absolute; height: 86%; width: auto; max-width: none;  opacity: 0; transform: translateY(30px) scale(0.95) rotate(4deg); transition: opacity 0.6s var(--ease), transform 0.8s var(--ease); }
+.walk-bottle::before { content: ""; position: absolute; width: min(92%, 58svh); aspect-ratio: 1; border-radius: 50%; background: color-mix(in srgb, var(--sfg) 6%, transparent); border: 1px solid color-mix(in srgb, var(--sfg) 12%, transparent); transform: translateY(calc(var(--walk-depth, 0px) * -1.5)); }
+.walk-bottle img { position: absolute; height: 86%; width: auto; max-width: none; opacity: 0; transform: translateX(calc(var(--walk-direction, 1) * 24px)) scale(0.97) rotate(calc(var(--walk-direction, 1) * 2deg)); transition: opacity 0.35s var(--ease), transform 0.5s var(--ease); }
 .walk-bottle img.is-on { opacity: 1; transform: none; }
 .walk-rail { position: absolute; z-index: 2; left: 0; right: 0; bottom: 18px; display: flex; justify-content: center; gap: 4px; padding: 0 var(--gutter); }
 .walk-rail button { position: relative; flex: 0 1 40px; width: 40px; min-width: 0; height: 44px; padding: 0; border: 0; background: transparent; color: var(--sfg); cursor: pointer; }
 .walk-rail button::before { content: ""; position: absolute; left: 50%; top: 50%; width: 15px; height: 15px; border-radius: 50%; border: 2px solid var(--sfg); background: var(--sw); opacity: 0.7; transform: translate(-50%, -50%); transition: transform 0.35s var(--ease), opacity 0.3s; }
 .walk-rail button[aria-current="true"]::before { transform: translate(-50%, -50%) scale(1.5); opacity: 1; }
-.walk-progress { position: absolute; left: 0; top: 0; height: 3px; background: var(--acc); width: var(--p, 0%); transition: width 0.4s var(--ease); }
+.walk-progress { position: absolute; left: 0; right: 0; top: 0; height: 3px; background: var(--acc); transform: scaleX(var(--p, 0)); transform-origin: left; transition: transform 0.3s var(--ease); }
 .walk-steps { position: relative; margin-top: -100svh; pointer-events: none; }
-/* Each flavour holds the stage for about half a screen of scrolling. The first and last get a
+/* Each flavour holds the stage for about two-fifths of a screen. The first and last get a
    full screen: the first so it is already showing when the stage pins, the last so it is not
    cut short when the stage releases. */
-.walk-step { height: 52svh; }
+.walk-step { height: 42svh; }
 .walk-step:first-child, .walk-step:last-child { height: 100svh; }
 
 /* ---------------------------------------------------------------- partners */
@@ -493,7 +493,7 @@ h3 { font-size: clamp(1.12rem, 1.6vw, 1.4rem); line-height: 1.2; }
   .walk-ing { justify-content: center; }
   .walk-copy .actions { justify-content: center; }
   .walk-copy .btn-ghost { display: none; }
-  .walk-step { height: 46svh; }
+  .walk-step { height: 40svh; }
 
   /* partners: a row to swipe through instead of a tall stack */
   .filters { flex-wrap: nowrap; justify-content: flex-start; overflow-x: auto; scrollbar-width: none; margin: 0 calc(-1 * var(--gutter)) 16px; padding: 2px var(--gutter); }
@@ -839,4 +839,22 @@ h3 { font-size: clamp(1.12rem, 1.6vw, 1.4rem); line-height: 1.2; }
   .entry-options .trio img { height: 90px; }
   .entry-options .trio img:nth-child(2) { height: 106px; }
   .entry-options .opt b { font-size: 1.4rem; }
+}
+
+/* Scroll Craft refinement: independent depth, native scroll, anchored controls. */
+.hero-stage::before { content: ""; position: absolute; width: min(92%, 54svh); aspect-ratio: 1; border-radius: 50%; background: rgba(217,249,157,.05); border: 1px solid rgba(217,249,157,.12); transform: translateY(calc(var(--hero-depth, 0px) * .35)); pointer-events: none; }
+.hero-product { position: absolute; inset: 0 0 34px; translate: 0 calc(var(--hero-depth, 0px) * -.75); transform: perspective(900px) rotateY(var(--pointer-x, 0deg)) rotateX(var(--pointer-y, 0deg)); transition: transform .5s var(--ease); }
+.walk-bottle { translate: 0 var(--walk-depth, 0px); }
+.walk-stage { transition: background .45s var(--ease); }
+.walk-stage.walk-cut { transition: none; }
+@media (max-width: 760px) {
+  .hero-product { bottom: 42px; }
+  .hero-stage::before { width: min(76%, 240px); }
+}
+@media (max-width: 900px) { .walk-bottle::before { width: min(65%, 28svh); } }
+.motion-paused .hero-product, .motion-paused .walk-bottle { translate: none; transform: none; }
+.motion-paused .hero-stage::before, .motion-paused .walk-bottle::before { transform: none; }
+@media (prefers-reduced-motion: reduce) {
+  .hero-product, .walk-bottle { translate: none; transform: none; }
+  .hero-stage::before, .walk-bottle::before { transform: none; }
 }

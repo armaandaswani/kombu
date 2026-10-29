@@ -6,10 +6,16 @@
   "use strict";
 
   const page = document.body.dataset.page || "consumer";
-  const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const motionPreference = window.matchMedia("(prefers-reduced-motion: reduce)");
+  let reduceMotion = motionPreference.matches;
   let motionPaused = false;
   const finePointer = window.matchMedia("(pointer: fine)").matches;
   if (!reduceMotion) document.documentElement.classList.add("js-motion");
+  motionPreference.addEventListener("change", (event) => {
+    reduceMotion = event.matches;
+    document.documentElement.classList.toggle("js-motion", !reduceMotion);
+    window.dispatchEvent(new Event("kombu-motion"));
+  });
 
   const ADMIN_EMAIL = "armaandaswani@icloud.com";
   const DEFAULT_WHATSAPP = "5592992097165";
@@ -245,6 +251,7 @@
       if (nowName) nowName.textContent = flavors[current].name;
     }
     show(0);
+    initHeroDepth(stage);
     // The visitor can browse the flavours here too: dots, arrows, a tap on the bottle, or a swipe.
     // Any of them pauses the rotation for a while so it doesn't move on under the visitor's finger.
     const pick = (i) => { show(i); pausedUntil = Date.now() + 9000; };
@@ -276,7 +283,7 @@
       window.dispatchEvent(new Event("kombu-motion"));
     });
     if (reduceMotion) { if (pause) pause.hidden = true; return; }
-    const tick = () => { if (Date.now() > pausedUntil && !document.hidden && !motionPaused) show(current + 1); };
+    const tick = () => { if (Date.now() > pausedUntil && !document.hidden && !motionPaused && !reduceMotion) show(current + 1); };
     const visible = new IntersectionObserver(([entry]) => {
       clearInterval(timer);
       if (entry.isIntersecting) timer = setInterval(tick, 2700);
@@ -288,12 +295,39 @@
         const r = stage.getBoundingClientRect();
         const x = (event.clientX - r.left) / r.width - 0.5;
         const y = (event.clientY - r.top) / r.height - 0.5;
-        holder.style.transform = `perspective(900px) rotateY(${x * 14}deg) rotateX(${-y * 8}deg)`;
+        if (motionPaused || reduceMotion) return;
+        stage.style.setProperty("--pointer-x", `${x * 8}deg`);
+        stage.style.setProperty("--pointer-y", `${-y * 5}deg`);
       });
-      stage.addEventListener("pointerleave", () => { holder.style.transform = ""; });
-      holder.style.transition = "transform .6s cubic-bezier(.22,1,.36,1)";
+      const resetPointer = () => {
+        stage.style.setProperty("--pointer-x", "0deg");
+        stage.style.setProperty("--pointer-y", "0deg");
+      };
+      stage.addEventListener("pointerleave", resetPointer);
+      window.addEventListener("kombu-motion", resetPointer);
     }
     initBubbles(stage);
+  }
+
+  // Scroll Craft's independent depth planes, scoped to the existing photography.
+  // Event-driven rather than a permanent animation loop; controls and copy stay anchored.
+  function initHeroDepth(stage) {
+    if (reduceMotion) return;
+    const hero = stage.closest(".hero");
+    let queued = false;
+    const update = () => {
+      queued = false;
+      const rect = hero.getBoundingClientRect();
+      if (rect.bottom < 0 || rect.top > innerHeight) return;
+      const p = Math.max(0, Math.min(1, -rect.top / rect.height));
+      const travel = motionPaused || reduceMotion ? 0 : p * (innerWidth <= 760 ? 20 : 70);
+      stage.style.setProperty("--hero-depth", `${travel.toFixed(2)}px`);
+    };
+    const schedule = () => { if (!queued) { queued = true; requestAnimationFrame(update); } };
+    window.addEventListener("scroll", schedule, { passive: true });
+    window.addEventListener("resize", schedule, { passive: true });
+    window.addEventListener("kombu-motion", schedule);
+    update();
   }
 
   // Natural carbonation is one of the things that sets Kombú apart, so the hero shows it: small
@@ -302,7 +336,7 @@
     const canvas = $(".bubbles", stage);
     if (!canvas || reduceMotion) return;
     const ctx = canvas.getContext("2d");
-    let w = 0, h = 0, dpr = 1, running = false, raf = 0;
+    let w = 0, h = 0, dpr = 1, running = false, raf = 0, visible = false;
     const bubbles = [];
     function size() {
       dpr = Math.min(window.devicePixelRatio || 1, 2);
@@ -338,14 +372,14 @@
       }
       if (running) raf = requestAnimationFrame(frame);
     }
-    function start() { if (!running && !document.hidden && !motionPaused) { running = true; raf = requestAnimationFrame(frame); } }
+    function start() { if (!running && visible && !document.hidden && !motionPaused && !reduceMotion) { running = true; raf = requestAnimationFrame(frame); } }
     function stop() { running = false; cancelAnimationFrame(raf); }
     size();
     for (let i = 0; i < 30; i++) bubbles.push(spawn(true));
     window.addEventListener("resize", size, { passive: true });
-    new IntersectionObserver(([e]) => (e.isIntersecting ? start() : stop())).observe(stage);
+    new IntersectionObserver(([e]) => { visible = e.isIntersecting; visible ? start() : stop(); }).observe(stage);
     document.addEventListener("visibilitychange", () => (document.hidden ? stop() : start()));
-    window.addEventListener("kombu-motion", () => motionPaused ? stop() : start());
+    window.addEventListener("kombu-motion", () => motionPaused || reduceMotion ? stop() : start());
   }
 
   // ------------------------------------------------------------ marquee
@@ -377,17 +411,25 @@
     const imgs = $$("img", bottle);
     const stepEls = $$(".walk-step", steps);
     let current = -1;
+    let copyAnimations = [];
+    const copyLines = $$(".walk-name, .walk-angle, .walk-desc, .walk-ing", stage);
 
     function show(i) {
       if (i === current || i < 0 || i >= flavors.length) return;
+      const direction = current < 0 || i > current ? 1 : -1;
+      const animate = current >= 0 && !reduceMotion && !motionPaused;
       current = i;
       const f = flavors[i];
       const c = palette(f);
+      // A light/dark ink change cuts the ground with it, so white copy never
+      // waits over the previous yellow scene while a background fade catches up.
+      stage.classList.toggle("walk-cut", stage.style.getPropertyValue("--sfg") !== c.fg);
       stage.style.setProperty("--c", c.bg);
       stage.style.setProperty("--sfg", c.fg);
       stage.style.setProperty("--sfg2", c.fg2);
       stage.style.setProperty("--acc", c.acc);
-      stage.style.setProperty("--p", `${((i + 1) / flavors.length) * 100}%`);
+      stage.style.setProperty("--p", (i + 1) / flavors.length);
+      stage.style.setProperty("--walk-direction", direction);
       $(".walk-count", stage).textContent = `${String(i + 1).padStart(2, "0")} / ${String(flavors.length).padStart(2, "0")}`;
       $(".walk-family", stage).textContent = f.profile;
       $(".walk-name", stage).textContent = f.name;
@@ -396,26 +438,52 @@
       $(".walk-ing", stage).innerHTML = f.ingredients.map((x) => `<li>${esc(x)}</li>`).join("");
       imgs.forEach((img, n) => img.classList.toggle("is-on", n === i));
       $$("button", rail).forEach((b, n) => b.setAttribute("aria-current", String(n === i)));
+      copyAnimations.forEach((animation) => animation.cancel());
+      copyAnimations = animate ? copyLines.map((el, n) => el.animate([
+        { opacity: .65, transform: `translateY(${direction * 10}px)` },
+        { opacity: 1, transform: "translateY(0)" },
+      ], { duration: 300, delay: n * 25, easing: "cubic-bezier(.22,1,.36,1)" })) : [];
     }
     show(0);
 
-    // The flavour on stage is whichever step spans the middle of the screen, read on each scroll
-    // frame. An IntersectionObserver on a zero-height line was tried first: it lagged and skipped
-    // flavours under fast scrolling, and Safari is inconsistent with zero-area roots.
+    // Cache all marker geometry on layout changes. A scroll frame reads only the scene rect,
+    // then writes selection/depth, avoiding twelve layout reads interleaved with style writes.
+    let metrics = [];
+    const measure = () => {
+      const top = walk.getBoundingClientRect().top;
+      metrics = stepEls.map((el) => {
+        const r = el.getBoundingClientRect();
+        return { top: r.top - top, height: r.height };
+      });
+    };
     let queued = false;
     function sync() {
       queued = false;
       const box = walk.getBoundingClientRect();
       if (box.bottom < 0 || box.top > window.innerHeight) return;
-      const mid = window.innerHeight / 2;
-      for (let n = 0; n < stepEls.length; n++) {
-        const r = stepEls[n].getBoundingClientRect();
-        if (r.top <= mid && r.bottom > mid) { show(n); return; }
+      const mid = window.innerHeight / 2 - box.top;
+      for (let n = 0; n < metrics.length; n++) {
+        const r = metrics[n];
+        if (r.top <= mid && r.top + r.height > mid) {
+          const p = Math.max(0, Math.min(1, (mid - r.top) / r.height));
+          const depth = reduceMotion || motionPaused ? 0 : (p - .5) * (innerWidth <= 900 ? 12 : 32);
+          stage.style.setProperty("--walk-depth", `${depth.toFixed(2)}px`);
+          show(n);
+          return;
+        }
       }
     }
     const onScroll = () => { if (!queued) { queued = true; requestAnimationFrame(sync); } };
     window.addEventListener("scroll", onScroll, { passive: true });
-    window.addEventListener("resize", onScroll, { passive: true });
+    const layout = () => { measure(); onScroll(); };
+    window.addEventListener("resize", layout, { passive: true });
+    window.addEventListener("kombu-motion", () => {
+      if (motionPaused || reduceMotion) copyAnimations.forEach((animation) => animation.cancel());
+      stage.style.setProperty("--walk-depth", "0px");
+      onScroll();
+    });
+    new ResizeObserver(layout).observe(walk);
+    measure();
     sync();
 
     rail.addEventListener("click", (event) => {
