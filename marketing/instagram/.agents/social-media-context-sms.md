@@ -178,3 +178,9 @@ Nunca usar “feita pela nossa família”, “nossa família”, “produção 
 ## Stories em escadinha — pedido do titular, 28/10/2026
 
 Publicar cinco Stories diferentes todos os dias às 07:00, 07:05, 07:10, 07:15 e 07:20 de Manaus. Preparar/revisar antes da primeira publicação e conferir o resultado às 07:30. Não publicar o lote inteiro de uma vez. Excepcionalmente em 28/10/2026, a sequência será de 10:00 a 10:20, pois o pedido foi feito após a janela da manhã.
+
+
+## Vídeos — direção aprovada em 28/10/2026
+- O titular aprovou ocasionalmente a estética ilustrada de uma criadora em uma cena tropical de Manaus, com a embalagem Kombú. Não apresentar personagem gerada como depoimento real.
+- O estúdio local fica em `../video-studio/`; gera prévias verticais com embalagens oficiais, narração e legendas. Não publica vídeos nem altera o calendário automaticamente.
+- O titular escolheu Rayssa Original (`rayssa`) no HumanVoice existente para a prévia. O motor instalado informa avaliação privada não comercial; as prévias com essa voz não estão liberadas para publicação comercial. Não confundir com `rayssa2`.

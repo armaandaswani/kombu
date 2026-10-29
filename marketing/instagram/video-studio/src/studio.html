@@ -1,0 +1,494 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#2d4b28" />
+    <title>Kombú · Vídeo Studio</title>
+    <link rel="icon" href="/assets/partners/kombu-k-logo.png" />
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+      [hidden] {
+        display: none !important;
+      }
+      body {
+        margin: 0;
+        background: #fafaf7;
+        color: #252c24;
+        font:
+          15px/1.6 system-ui,
+          sans-serif;
+      }
+      a {
+        color: #2d4b28;
+        text-underline-offset: 4px;
+      }
+      button,
+      input,
+      textarea,
+      select {
+        font: inherit;
+      }
+      button,
+      a,
+      select,
+      textarea,
+      input {
+        outline-offset: 4px;
+      }
+      button:focus-visible,
+      a:focus-visible,
+      select:focus-visible,
+      textarea:focus-visible,
+      input:focus-visible {
+        outline: 3px solid #719b4b;
+      }
+      header {
+        padding: 22px 36px;
+        border-bottom: 1px solid #ddd;
+        display: flex;
+        align-items: center;
+        gap: 13px;
+        background: white;
+      }
+      header img {
+        width: 38px;
+        height: 38px;
+      }
+      header b {
+        font-size: 17px;
+        font-weight: 600;
+      }
+      header span {
+        margin-left: auto;
+        color: #63695f;
+        font-size: 13px;
+      }
+      main {
+        max-width: 1220px;
+        margin: 32px auto;
+        padding: 0 30px;
+        display: grid;
+        grid-template-columns: minmax(280px, 470px) minmax(280px, 1fr);
+        gap: 60px;
+      }
+      .preview {
+        background: #eeeadd;
+        border: 1px solid #dedbce;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 500px;
+      }
+      video {
+        display: block;
+        width: 100%;
+        max-height: 720px;
+        aspect-ratio: 9/16;
+      }
+      h1 {
+        font:
+          500 27px/1.2 Georgia,
+          serif;
+        margin: 0 0 12px;
+      }
+      h2 {
+        font-size: 15px;
+        font-weight: 600;
+        margin: 25px 0 12px;
+      }
+      .intro {
+        color: #60665c;
+        max-width: 500px;
+        margin: 0 0 24px;
+      }
+      .field {
+        margin-bottom: 19px;
+      }
+      label {
+        display: block;
+        font-size: 13px;
+        font-weight: 600;
+        margin-bottom: 7px;
+      }
+      textarea,
+      input,
+      select {
+        width: 100%;
+        border: 1px solid #bfc4b9;
+        border-radius: 4px;
+        padding: 10px 12px;
+        background: white;
+        color: inherit;
+      }
+      textarea {
+        resize: vertical;
+        min-height: 144px;
+        line-height: 1.6;
+      }
+      textarea#caption {
+        min-height: 114px;
+      }
+      .flavors {
+        display: grid;
+        grid-template-columns: 1fr 1fr 1fr;
+        gap: 10px;
+      }
+      button {
+        background: #2d4b28;
+        color: #fff;
+        border: 0;
+        border-radius: 4px;
+        padding: 13px 22px;
+        cursor: pointer;
+        font-weight: 600;
+      }
+      button:disabled {
+        opacity: 0.55;
+        cursor: wait;
+      }
+      .status {
+        margin: 16px 0 8px;
+        min-height: 24px;
+        color: #555d4e;
+      }
+      .downloads {
+        display: flex;
+        gap: 24px;
+        flex-wrap: wrap;
+        margin: 16px 0;
+      }
+      .downloads a {
+        font-weight: 500;
+      }
+      .hint {
+        font-size: 12px;
+        color: #6a7065;
+      }
+      .rail {
+        display: flex;
+        height: 5px;
+        margin-top: 20px;
+        gap: 2px;
+      }
+      .rail i {
+        flex: 1;
+        background: #d6c09b;
+      }
+      .rail i:nth-child(2) {
+        background: #bc4467;
+      }
+      .rail i:nth-child(3) {
+        background: #9ba764;
+      }
+      details {
+        border-top: 1px solid #ddd;
+        margin-top: 30px;
+        padding-top: 16px;
+        font-size: 13px;
+      }
+      summary {
+        cursor: pointer;
+      }
+      details p {
+        color: #61685c;
+      }
+      .skip {
+        position: absolute;
+        top: -100px;
+      }
+      .skip:focus {
+        top: 4px;
+        left: 5px;
+        background: white;
+        z-index: 10;
+      }
+      #empty {
+        text-align: center;
+        padding: 50px;
+        color: #646b5c;
+      }
+      #error {
+        color: #982f37;
+      }
+      footer {
+        max-width: 1220px;
+        margin: 0 auto;
+        padding: 0 30px 30px;
+        font-size: 12px;
+        color: #6a7065;
+      }
+      @media (max-width: 760px) {
+        header {
+          padding: 16px 20px;
+        }
+        header span {
+          font-size: 11px;
+        }
+        main {
+          display: flex;
+          flex-direction: column;
+          gap: 28px;
+          padding: 0 20px;
+          margin: 22px auto;
+        }
+        .preview {
+          max-width: 380px;
+          min-height: 0;
+          width: 100%;
+          margin: auto;
+        }
+        video {
+          max-height: 600px;
+        }
+        .controls {
+          padding: 0 0 20px;
+        }
+        .flavors {
+          grid-template-columns: 1fr;
+        }
+        .hint {
+          font-size: 13px;
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        * {
+          scroll-behavior: auto;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <a class="skip" href="#editor">Pular para o roteiro</a>
+    <header>
+      <img src="/assets/partners/kombu-k-logo.png" alt="Kombú" /><b
+        >Vídeo Studio</b
+      ><span>1080 × 1920 · Produção local</span>
+    </header>
+    <main>
+      <section aria-label="Prévia do vídeo">
+        <div class="preview">
+          <video
+            id="video"
+            controls
+            playsinline
+            preload="metadata"
+            aria-label="Prévia do Reel Kombú, com legendas incorporadas"
+            hidden
+          ></video>
+          <p id="empty">
+            A prévia aparece aqui<br />quando o vídeo estiver pronto.
+          </p>
+        </div>
+        <div class="rail" aria-hidden="true"><i></i><i></i><i></i></div>
+        <div class="downloads" id="downloads" hidden>
+          <a id="mp4" download>Baixar Reel</a
+          ><a id="pack" download>Pacote para OpenCut</a
+          ><a id="srt" download>Legendas SRT</a>
+        </div>
+        <p class="hint">
+          Vídeo com narração em português e legendas. Você revisa antes de
+          publicar.
+        </p>
+      </section>
+      <section class="controls" id="editor">
+        <h1>Um novo momento da Kombú.</h1>
+        <p class="intro">
+          Escolha os sabores e escreva como você falaria com quem está
+          conhecendo a Kombú.
+        </p>
+        <form id="form">
+          <div class="field">
+            <label for="title">Nome do vídeo</label
+            ><input
+              id="title"
+              name="title"
+              autocomplete="off"
+              maxlength="100"
+              required
+            />
+          </div>
+          <div class="field">
+            <label for="narration">Narração</label
+            ><textarea
+              id="narration"
+              name="narration"
+              autocomplete="off"
+              maxlength="650"
+              required
+            ></textarea>
+            <p class="hint">
+              Narração gerada por IA, com a voz selecionada abaixo.
+            </p>
+          </div>
+          <div class="field">
+            <label for="voice">Voz da narração</label
+            ><select id="voice" name="voice">
+              <option value="rayssa">Rayssa Original · prévia privada</option>
+              <option value="chatterbox">
+                Chatterbox · voz sintética padrão
+              </option>
+            </select>
+            <p class="hint">
+              A instalação atual do HumanVoice limita a Rayssa a avaliação
+              privada. Esta opção não libera uso comercial.
+            </p>
+          </div>
+          <h2>Sabores em cena</h2>
+          <div class="flavors">
+            <div class="field">
+              <label for="flavor0">Principal</label
+              ><select id="flavor0" name="flavor0"></select>
+            </div>
+            <div class="field">
+              <label for="flavor1">Segundo</label
+              ><select id="flavor1" name="flavor1"></select>
+            </div>
+            <div class="field">
+              <label for="flavor2">Terceiro</label
+              ><select id="flavor2" name="flavor2"></select>
+            </div>
+          </div>
+          <div class="field">
+            <label for="caption">Legenda da publicação</label
+            ><textarea
+              id="caption"
+              name="caption"
+              autocomplete="off"
+              maxlength="1500"
+            ></textarea>
+          </div>
+          <button id="render" type="submit">Gerar vídeo</button>
+          <p class="status" role="status" aria-live="polite" id="status">
+            Carregando projeto…
+          </p>
+          <p id="error" role="alert"></p>
+        </form>
+        <details>
+          <summary>Como este vídeo é feito</summary>
+          <p>
+            HyperFrames organiza o filme. Three.js cria o cenário e Anime.js
+            move a câmera. HumanVoice usa Rayssa Original para prévia privada;
+            Chatterbox oferece a voz padrão em português; faster-whisper
+            sincroniza as legendas. Remotion monta o MP4. O pacote OpenCut
+            inclui vídeo sem legendas, áudio e SRT para edição em faixas
+            separadas.
+          </p>
+          <p>
+            Os arquivos ficam neste Mac. Este estúdio prepara vídeos para
+            revisão e não publica no Instagram.
+          </p>
+        </details>
+      </section>
+    </main>
+    <footer>Kombú · Artesanal premium de Manaus desde 2017.</footer>
+    <script>
+      const $ = (id) => document.getElementById(id);
+      let initialized = false,
+        lastReady = "",
+        dirty = false;
+      const names = {
+        uva: "Uva",
+        goiaba: "Goiaba",
+        maracuja: "Maracujá",
+        "rosas-cardamomo": "Rosas & Cardamomo",
+        "pera-alecrim": "Pera & Alecrim",
+        "hibisco-anis": "Hibisco & Anis",
+        "lavanda-limao": "Lavanda & Limão",
+        "frutas-vermelhas": "Frutas Vermelhas",
+        imunidade: "Imunidade",
+        "flor-fada-blueberry": "Flor Fada Azul & Blueberry",
+        "manga-jasmim": "Jasmim & Manga",
+        "maca-canela": "Maçã & Canela",
+      };
+      async function poll() {
+        try {
+          const s = await (await fetch("/api/state")).json();
+          if (!initialized) {
+            for (const key of ["title", "narration", "caption", "voice"])
+              $(key).value = s.project[key] || "";
+            for (let i = 0; i < 3; i++) {
+              for (const f of s.flavors) {
+                const o = document.createElement("option");
+                o.value = f;
+                o.textContent = names[f];
+                $("flavor" + i).append(o);
+              }
+              $("flavor" + i).value = s.project.flavors[i];
+            }
+            initialized = true;
+          }
+          $("render").disabled = s.busy;
+          $("status").textContent =
+            s.status.step || "Pronto para gerar a primeira versão.";
+          if (s.status.step === "Pronto para revisar" && lastReady !== s.id) {
+            lastReady = s.id;
+            const base = "/output/" + s.id + "/";
+            $("video").src = base + "Kombu-Reel.mp4";
+            $("video").hidden = false;
+            $("empty").hidden = true;
+            $("downloads").hidden = false;
+            $("mp4").href = base + "Kombu-Reel.mp4";
+            $("mp4").textContent =
+              s.project.voice === "rayssa"
+                ? "Baixar prévia com Rayssa"
+                : "Baixar Reel";
+            $("mp4").download =
+              s.project.voice === "rayssa"
+                ? "Kombu-Previa-Privada-Rayssa.mp4"
+                : "Kombu-Reel.mp4";
+            $("pack").href = base + "Kombu-OpenCut.zip";
+            $("srt").href = base + "captions.srt";
+          }
+        } catch {
+          $("status").textContent =
+            "Não foi possível atualizar o estúdio. Recarregue a página.";
+        }
+      }
+      $("form").addEventListener("input", () => (dirty = true));
+      window.addEventListener("beforeunload", (e) => {
+        if (dirty) {
+          e.preventDefault();
+          e.returnValue = "";
+        }
+      });
+      $("form").addEventListener("submit", async (e) => {
+        e.preventDefault();
+        $("error").textContent = "";
+        const flavors = [0, 1, 2].map((i) => $("flavor" + i).value);
+        if (new Set(flavors).size !== 3) {
+          $("error").textContent = "Escolha três sabores diferentes.";
+          $("flavor0").focus();
+          return;
+        }
+        $("render").disabled = true;
+        try {
+          const r = await fetch("/api/render", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              title: $("title").value,
+              narration: $("narration").value,
+              caption: $("caption").value,
+              voice: $("voice").value,
+              flavors,
+            }),
+          });
+          const result = await r.json();
+          if (!r.ok) throw Error(result.error);
+          dirty = false;
+          $("status").textContent = "Iniciando a produção…";
+          await poll();
+        } catch (err) {
+          $("error").textContent = err.message;
+          $("narration").focus();
+          $("render").disabled = false;
+        }
+      });
+      poll();
+      setInterval(poll, 3500);
+    </script>
+  </body>
+</html>

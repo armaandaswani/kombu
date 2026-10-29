@@ -1,0 +1,7 @@
+output/
+public/generated/
+.env
+*.log
+
+.playwright-cli/
+projects/reel-*.json

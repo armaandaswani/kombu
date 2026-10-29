@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <title>Kombú · Filme</title>
+    <style>
+      @font-face {
+        font-family: Jakarta;
+        src: url(assets/sans.woff2);
+      }
+      @font-face {
+        font-family: Playfair;
+        src: url(assets/serif.woff2);
+      }
+      * {
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        margin: 0;
+        width: 1080px;
+        height: 1920px;
+        overflow: hidden;
+        background: #f3eddd;
+        color: #2d4b28;
+      }
+      canvas {
+        position: absolute;
+        inset: 0;
+        width: 1080px;
+        height: 1920px;
+      }
+      #root {
+        position: relative;
+        width: 1080px;
+        height: 1920px;
+      }
+      h1,
+      p {
+        margin: 0;
+      }
+      #heading {
+        text-align: center;
+        position: absolute;
+        left: 96px;
+        top: 190px;
+        width: 888px;
+        font:
+          68px/1.16 Playfair,
+          serif;
+        letter-spacing: -2px;
+      }
+      #origin {
+        position: absolute;
+        left: 96px;
+        top: 200px;
+        font:
+          28px/1.5 Jakarta,
+          sans-serif;
+        letter-spacing: 1px;
+      }
+      #closing {
+        text-align: center;
+        position: absolute;
+        left: 96px;
+        top: 285px;
+        width: 888px;
+        font:
+          68px/1.17 Playfair,
+          serif;
+        letter-spacing: -1.5px;
+      }
+      #mark {
+        position: absolute;
+        left: 497px;
+        top: 160px;
+        width: 86px;
+        height: 86px;
+      }
+      #handle {
+        position: absolute;
+        left: 96px;
+        top: 1610px;
+        font:
+          30px/1.5 Jakarta,
+          sans-serif;
+      }
+    </style>
+  </head>
+  <body>
+    <main
+      id="root"
+      data-composition-id="kombu"
+      data-width="1080"
+      data-height="1920"
+      data-duration="__DURATION__"
+    >
+      <canvas id="world"></canvas>
+      <h1 id="heading" class="clip" data-start="0" data-duration="__INTRO__">
+        Você vai se surpreender<br />com o primeiro gole.
+      </h1>
+      <p
+        id="origin"
+        class="clip"
+        data-start="__MID__"
+        data-duration="__INTRO__"
+      >
+        Feita em Manaus desde 2017.
+      </p>
+      <img
+        id="mark"
+        class="clip"
+        data-start="__CLOSE__"
+        data-duration="__INTRO__"
+        src="assets/logo.png"
+        alt="Kombú"
+      />
+      <p
+        id="closing"
+        class="clip"
+        data-start="__CLOSE__"
+        data-duration="__INTRO__"
+      >
+        Encontre seu sabor<br />nos nossos parceiros.
+      </p>
+    </main>
+    <script src="scene.js"></script>
+  </body>
+</html>

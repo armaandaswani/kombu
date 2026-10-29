@@ -1,0 +1,30 @@
+{
+  "name": "kombu-video-studio",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "studio": "node scripts/studio.mjs",
+    "preview": "remotion studio src/index.jsx",
+    "render": "node scripts/render.mjs",
+    "doctor": "node scripts/doctor.mjs",
+    "test": "node --test scripts/*.test.mjs"
+  },
+  "dependencies": {
+    "@remotion/bundler": "4.0.539",
+    "@remotion/cli": "4.0.539",
+    "@remotion/player": "4.0.539",
+    "@remotion/renderer": "4.0.539",
+    "animejs": "4.5.0",
+    "esbuild": "0.28.2",
+    "gsap": "3.15.0",
+    "hyperframes": "0.8.214",
+    "react": "19.3.1",
+    "react-dom": "19.3.1",
+    "remotion": "4.0.539",
+    "three": "0.186.1"
+  },
+  "overrides": {
+    "zod": "^4.6.6"
+  }
+}

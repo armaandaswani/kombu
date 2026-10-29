@@ -1,0 +1,56 @@
+import { copyFile, mkdir, readFile, writeFile } from "node:fs/promises";
+import { resolve, dirname } from "node:path";
+import { fileURLToPath } from "node:url";
+import { build } from "esbuild";
+export const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
+export async function prepare(p, out) {
+  await mkdir(resolve(out, "assets"), { recursive: true });
+  for (const f of p.flavors)
+    await copyFile(
+      resolve(root, "../assets/bottles", f + ".webp"),
+      resolve(out, "assets", f + ".webp"),
+    );
+  await copyFile(
+    resolve(root, "../assets/partners/kombu-k-logo.png"),
+    resolve(out, "assets/logo.png"),
+  );
+  for (const [name, file] of Object.entries({
+    sans: "LDIoaomQNQcsA88c7O9yZ4KMCoOg4Ko20yygg_vb.woff2",
+    serif: "nuFiD-vYSZviVYUb_rj3ij__anPXDTzYgEM86xQ.woff2",
+  }))
+    await copyFile(
+      resolve(root, "../fonts", file),
+      resolve(out, "assets", name + ".woff2"),
+    );
+  await writeFile(resolve(out, "project.json"), JSON.stringify(p, null, 2));
+  await build({
+    entryPoints: [resolve(root, "src/scene.js")],
+    bundle: true,
+    outfile: resolve(out, "scene.js"),
+    format: "iife",
+    minify: true,
+  });
+  let html = await readFile(resolve(root, "src/film.html"), "utf8");
+  const d = p.duration || 20;
+  html = html
+    .replaceAll("__DURATION__", String(d))
+    .replaceAll("__INTRO__", String(d * 0.3))
+    .replaceAll("__MID__", String(d * 0.35))
+    .replaceAll("__CLOSE__", String(d * 0.78));
+  html = html.replace(
+    '<script src="scene.js"></script>',
+    '<script>window.__timelines=window.__timelines||{};</script><script src="scene.js"></script>',
+  );
+  await writeFile(resolve(out, "index.html"), html);
+  await writeFile(
+    resolve(out, "events.json"),
+    JSON.stringify([
+      { type: "cut", t: d * 0.35 },
+      { type: "cut", t: d * 0.78 },
+    ]),
+  );
+}
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
+  let p = JSON.parse(await readFile(process.argv[2], "utf8"));
+  await prepare(p, resolve(process.argv[3]));
+}
