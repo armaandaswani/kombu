@@ -340,8 +340,8 @@
             <label for="scene">Cena do vídeo</label
             ><select id="scene" name="scene">
               <option value="product">Garrafas e detalhes</option>
-              <option value="rosas-real">
-                Rosas &amp; Cardamomo com servir real
+              <option value="created-pour">
+                Cena original · Rosas &amp; Cardamomo sendo servida
               </option>
             </select>
           </div>
@@ -427,7 +427,7 @@
               }
               $("flavor" + i).value = s.project.flavors[i];
             }
-            $("scene").value = s.project.pourAsset || "product";
+            $("scene").value = s.project.sceneMode || "product";
             initialized = true;
           }
           $("render").disabled = s.busy;
@@ -484,8 +484,8 @@
               caption: $("caption").value,
               voice: $("voice").value,
               flavors,
-              ...($("scene").value === "rosas-real"
-                ? { pourAsset: "rosas-real" }
+              ...($("scene").value === "created-pour"
+                ? { sceneMode: "created-pour" }
                 : {}),
             }),
           });

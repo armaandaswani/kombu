@@ -58,6 +58,12 @@ Os roteiros passam por uma validação de termos rejeitados antes de gerar voz. 
 
 ## Revisão sensorial v2
 
-`projects/sensorial-v2.json` usa Rosas & Cardamomo, gotas discretas no close e uma filmagem real do mesmo sabor sendo servido. A filmagem do titular é recortada para o copo e o líquido, sem mostrar a embalagem antiga. O seletor “Cena do vídeo” permite escolher esse servir. Essa opção exige Rosas & Cardamomo como sabor principal. Para outros sabores, use a composição de produto até haver filmagem correspondente.
+`projects/sensorial-v2.json` usa Rosas & Cardamomo, gotas discretas no close e uma filmagem real do mesmo sabor sendo servido. A filmagem do titular é recortada para o copo e o líquido, sem mostrar a embalagem antiga. Essa versão foi preservada como histórico; o seletor atual oferece o servir criado do zero, conforme a correção posterior do titular.
 
 As fotografias das embalagens agora ficam fora do efeito de névoa da cena, preservando suas cores. As legendas usam trechos naturais da fala, menores e sem caixa de fundo. As 20 referências enviadas pelo titular estão documentadas em `references/2026-10-28/LEITURA-VISUAL.md`; arquivos dos terceiros não são usados nos filmes da Kombú.
+
+## Cena original v3
+
+O pedido de 29/10 substitui a direção anterior de reaproveitar o servir filmado. `projects/created-pour-v3.json` usa `sceneMode: created-pour`: cenário tropical novo gerado por IA e objetos volumétricos, condensação, fluxo e copo enchendo em Three.js. Reutiliza somente a identidade e o rótulo oficial. É uma cena CGI ilustrativa; não representa uma instalação real ou parceiro. O modelo atual é calibrado para Rosas & Cardamomo. A validação impede misturar esse modo com filmagem antiga ou outro sabor principal.
+
+O seletor do estúdio oferece agora a cena original. O projeto v2 permanece apenas como histórico. O arquivo `MELHORIAS-GERACAO.md` registra a pesquisa de skills e motores de imagem para vídeo, com limitações do Mac de 16 GB e sem ativar serviço pago. A voz Rayssa continua sujeita à restrição de prévia privada descrita acima.

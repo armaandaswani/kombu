@@ -47,3 +47,18 @@ A v2 substitui o detalhe parado por condensação discreta e ação real do serv
 | 10,70–13,70 s | Onde encontrar | Volta ao trio, K pequeno, convite aos parceiros e aproximação que resolve por 0,6 s |
 
 A cor âmbar e o sabor fazem a ligação entre detalhe e servir. Há diferença entre a luz do cenário ilustrativo e a da gravação real. Uma nova filmagem dirigida no mesmo cenário pode melhorar essa continuidade; não apresentamos a montagem como um take real contínuo.
+
+## v3: servir criado do zero, 29/10/2026
+
+Ideia: acompanhar a bebida da garrafa gelada até o copo em uma varanda tropical criada para este filme. A alternativa de reaproveitar filmagem foi rejeitada pelo titular; a alternativa de fotos com zoom não mostraria a ação. Escolhido CGI original para garantir movimento e rótulo controlados sem serviço pago.
+
+Inventário: Penta 500 ml, rótulo oficial Rosas & Cardamomo, logo K pequeno, Playfair/Jakarta, luz quente lateral e líquido âmbar. O cenário gerado não é local real da marca ou de parceiro.
+
+| Plano | Tempo | O que demonstra | Mundo e ação |
+| --- | --- | --- | --- |
+| Garrafa e copo | 0–2,3 s | Apresenta o produto e a ocasião | Travertino, plantas e rio desfocado; aproximação discreta da câmera |
+| Condensação | 2,3–4,6 s | Torna o frio visível | Mesmo cenário; close com gotas e pequenos trajetos na superfície |
+| Servir | 4,6–10,5 s | Mostra a bebida chegando ao copo | Garrafa inclinada em CGI, fluxo contínuo, nível subindo e ondulações |
+| Copo servido | 10,5–13,7 s | Convida a encontrar a marca | Garrafa aberta e copo cheio; câmera desacelera, logo e convite discretos |
+
+A narração Rayssa é a mesma avaliação privada aprovada, sem trocar voz ou alterar velocidade. Cenário: assets/generated/veranda-v3.png. Objetos e líquido: src/pour-scene.js. Identidade: rótulo e logo oficiais. Nenhum arquivo de vídeo externo ou antigo compõe este modo. A condensação e a dinâmica são ilustrativas, com espaço para elevar o realismo em uma futura etapa de imagem para vídeo.

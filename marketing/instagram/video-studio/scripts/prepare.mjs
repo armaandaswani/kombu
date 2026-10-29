@@ -22,9 +22,10 @@ export async function prepare(p, out) {
       resolve(root, "../fonts", file),
       resolve(out, "assets", name + ".woff2"),
     );
+  if(p.sceneMode==='created-pour')await copyFile(resolve(root,'assets/generated/veranda-v3.png'),resolve(out,'assets/veranda.png'));
   await writeFile(resolve(out, "project.json"), JSON.stringify(p, null, 2));
   await build({
-    entryPoints: [resolve(root, "src/scene.js")],
+    entryPoints: [resolve(root,p.sceneMode==='created-pour'?"src/pour-scene.js":"src/scene.js")],
     bundle: true,
     outfile: resolve(out, "scene.js"),
     format: "iife",
@@ -41,10 +42,11 @@ export async function prepare(p, out) {
     '<script src="scene.js"></script>',
     '<script>window.__timelines=window.__timelines||{};</script><script src="scene.js"></script>',
   );
+  if(p.sceneMode==='created-pour')html=html.replace('</style>', 'body{background-image:url(assets/veranda.png);background-size:cover;background-position:center} #origin{display:none} #closing{top:265px;font-size:54px;line-height:1.12}</style>');
   await writeFile(resolve(out, "index.html"), html);
   await writeFile(
     resolve(out, "events.json"),
-    JSON.stringify([
+    JSON.stringify(p.sceneMode==='created-pour'?[2.3,4.6,10.5].map(t=>({type:"cut",t})):[
       { type: "cut", t: d * 0.35 },
       { type: "cut", t: d * 0.78 },
     ]),

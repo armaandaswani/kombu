@@ -84,3 +84,12 @@ test("filmagem do servir só corresponde ao mesmo sabor e não aceita caminhos",
   assert.throws(() => validate({ ...p, pourAsset: "rosas-real" }));
   assert.throws(() => validate({ ...base, pourAsset: "../../arquivo" }));
 });
+
+
+test("cena original impede filmagem antiga e sabor incompatível", () => {
+  const fresh={...p,sceneMode:"created-pour",flavors:["rosas-cardamomo","goiaba","uva"]};
+  assert.doesNotThrow(()=>validate(fresh));
+  assert.throws(()=>validate({...fresh,pourAsset:"rosas-real"}));
+  assert.throws(()=>validate({...p,sceneMode:"created-pour"}));
+  assert.throws(()=>validate({...p,sceneMode:"inventada"}));
+});

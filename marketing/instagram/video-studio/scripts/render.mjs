@@ -103,7 +103,7 @@ try {
     );
   await writeFile(join(out, "narration.txt"), p.narration);
   await status("Transcrevendo e sincronizando legendas");
-  await run(join(root, "../.render/video-tools/python/bin/python"), [
+  if (!reuse || !(await exists(join(out, "captions.json"))) || !(await exists(join(out, "captions.srt")))) await run(join(root, "../.render/video-tools/python/bin/python"), [
     "scripts/transcribe.py",
     join(out, "voice.wav"),
     join(out, "captions.json"),

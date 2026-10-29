@@ -28,6 +28,12 @@ export function validate(p) {
     p.narration.length > 650
   )
     throw Error("Use uma narração entre 30 e 650 caracteres.");
+  if (p.sceneMode !== undefined && !["product", "created-pour"].includes(p.sceneMode))
+    throw Error("Cena inválida.");
+  if (p.sceneMode === "created-pour" && p.pourAsset)
+    throw Error("A cena criada do zero não pode incluir filmagem antiga.");
+  if (p.sceneMode === "created-pour" && p.flavors[0] !== "rosas-cardamomo")
+    throw Error("O cenário atual foi calibrado para Rosas & Cardamomo.");
   if (p.pourAsset !== undefined && p.pourAsset !== "rosas-real")
     throw Error("Filmagem não autorizada.");
   if (p.pourAsset && p.flavors[0] !== "rosas-cardamomo")
