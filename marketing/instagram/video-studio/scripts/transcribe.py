@@ -14,9 +14,8 @@ if len(sys.argv)>4:
     score=SequenceMatcher(None,norm(' '.join(w['text'] for w in words)),norm(Path(sys.argv[4]).read_text())).ratio()
     if score<.75:
         raise RuntimeError(f'A narração não corresponde suficientemente ao roteiro ({score:.0%}). Revise a voz antes de exportar.')
-cues=[]
-for i in range(0,len(words),6):
- group=words[i:i+6];cues.append({'text':' '.join(w['text'] for w in group),'start':group[0]['start'],'end':group[-1]['end']})
+from caption_chunks import chunks
+cues=chunks(words)
 Path(sys.argv[2]).write_text(json.dumps({'words':words,'cues':cues,'language':info.language},ensure_ascii=False,indent=2))
 def stamp(t):
  ms=round(t*1000);return f'{ms//3600000:02}:{ms//60000%60:02}:{ms//1000%60:02},{ms%1000:03}'

@@ -55,3 +55,9 @@ Arquivos gerados: `output/<id>/Kombu-Reel.mp4`, `captions.srt`, `captions.json`,
 Rótulos e proporção da Penta 500 ml são preservados. Texto humano e conectado; sabores alternados; sem divulgar tipo de chá, detalhes da receita, referências à família ou alegações de saúde. Imunidade é nome de sabor. O cenário do primeiro filme é ilustrativo, não uma instalação real ou um parceiro. A arte ilustrada de criadora em Manaus foi aprovada como referência para uso ocasional; não é depoimento real nem padrão obrigatório para todos os vídeos.
 
 Os roteiros passam por uma validação de termos rejeitados antes de gerar voz. Essa checagem ajuda a prevenir erros, mas a revisão humana continua necessária para nomes, pronúncia, ritmo e veracidade. Nenhum vídeo é publicado automaticamente por este estúdio.
+
+## Revisão sensorial v2
+
+`projects/sensorial-v2.json` usa Rosas & Cardamomo, gotas discretas no close e uma filmagem real do mesmo sabor sendo servido. A filmagem do titular é recortada para o copo e o líquido, sem mostrar a embalagem antiga. O seletor “Cena do vídeo” permite escolher esse servir. Essa opção exige Rosas & Cardamomo como sabor principal. Para outros sabores, use a composição de produto até haver filmagem correspondente.
+
+As fotografias das embalagens agora ficam fora do efeito de névoa da cena, preservando suas cores. As legendas usam trechos naturais da fala, menores e sem caixa de fundo. As 20 referências enviadas pelo titular estão documentadas em `references/2026-10-28/LEITURA-VISUAL.md`; arquivos dos terceiros não são usados nos filmes da Kombú.

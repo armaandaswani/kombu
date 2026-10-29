@@ -28,6 +28,12 @@ export function validate(p) {
     p.narration.length > 650
   )
     throw Error("Use uma narração entre 30 e 650 caracteres.");
+  if (p.pourAsset !== undefined && p.pourAsset !== "rosas-real")
+    throw Error("Filmagem não autorizada.");
+  if (p.pourAsset && p.flavors[0] !== "rosas-cardamomo")
+    throw Error(
+      "Esta filmagem é do sabor Rosas & Cardamomo. Escolha o mesmo sabor principal.",
+    );
   if (p.voice !== undefined && !["rayssa", "chatterbox"].includes(p.voice))
     throw Error("Voz inválida.");
   let text = [p.title, p.narration, p.caption].filter(Boolean).join(" ");

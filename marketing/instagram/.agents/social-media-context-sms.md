@@ -184,3 +184,8 @@ Publicar cinco Stories diferentes todos os dias às 07:00, 07:05, 07:10, 07:15 e
 - O titular aprovou ocasionalmente a estética ilustrada de uma criadora em uma cena tropical de Manaus, com a embalagem Kombú. Não apresentar personagem gerada como depoimento real.
 - O estúdio local fica em `../video-studio/`; gera prévias verticais com embalagens oficiais, narração e legendas. Não publica vídeos nem altera o calendário automaticamente.
 - O titular escolheu Rayssa Original (`rayssa`) no HumanVoice existente para a prévia. O motor instalado informa avaliação privada não comercial; as prévias com essa voz não estão liberadas para publicação comercial. Não confundir com `rayssa2`.
+
+
+### Revisão dos vídeos e referências, 28/10/2026
+O titular rejeitou o final desbotado e as caixas verdes das legendas da primeira prévia. Prefere cores preservadas, legendas discretas sem tarja e ação sensorial: close da garrafa gelada com condensação, seguido do servir no copo. Usar filmagem própria do mesmo sabor e embalagem atual; recortes de filmagens antigas só podem preservar informações corretas e não divulgar formulação confidencial.
+As 20 referências que ele escolheu para vídeos e posts estão em `../video-studio/references/2026-10-28/links.json`, com observações em `LEITURA-VISUAL.md` na mesma pasta. O repertório inclui materialidade de líquido/frio, cenas reais, CGI pontual, composição com sabores e humor visual ocasional. Adaptar a mecânica à Kombú e manter os fatos e a voz da marca; não reutilizar materiais, música, personagens ou identidade de terceiros. A leitura registrou amostras visuais, sem alegar análise integral do áudio.

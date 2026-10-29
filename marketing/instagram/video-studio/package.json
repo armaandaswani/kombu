@@ -8,7 +8,7 @@
     "preview": "remotion studio src/index.jsx",
     "render": "node scripts/render.mjs",
     "doctor": "node scripts/doctor.mjs",
-    "test": "node --test scripts/*.test.mjs"
+    "test": "node --test scripts/*.test.mjs && python3 -m unittest discover -s scripts -p \"*_test.py\""
   },
   "dependencies": {
     "@remotion/bundler": "4.0.539",

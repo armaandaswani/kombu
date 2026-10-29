@@ -5,3 +5,5 @@ public/generated/
 
 .playwright-cli/
 projects/reel-*.json
+
+__pycache__/

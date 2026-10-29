@@ -34,3 +34,16 @@ Chão e pedestal de pedra clara, luz quente lateral, sombras botânicas, profund
 | 78–100% | Onde encontrar                 | Câmera resolve em enquadramento mais amplo, K discreto                  | Trio reconhecível de embalagens e espaço para leitura |
 
 Hero: a garrafa de Jasmim & Manga iluminada, com os outros sabores aparecendo atrás. O produto é a evidência; o cenário não afirma nada sobre produção. Duração final deriva da narração local, com margem de encerramento. Legendas serão transcritas com faster-whisper e ficam fora do rótulo. Chatterbox foi instalado e testado como opção padrão. O titular escolheu depois a Rayssa Original, via catálogo autorizado do HumanVoice, para a prévia privada. A narração respeita o ritmo salvo e não usa gravação de consentimento como referência. Música não é acrescentada nesta primeira versão para priorizar a leitura e a narração.
+
+## Revisão sensorial solicitada pelo titular
+
+A v2 substitui o detalhe parado por condensação discreta e ação real do servir. Origem das imagens e limites estão em `NOTE-v2.md`.
+
+| Tempo no filme de 13,7 s | O que o plano entrega | Imagem, luz e passagem |
+|---|---|---|
+| 0–2,47 s | Reconhecimento da Kombú | Trio sobre pedra clara, produto principal Rosas & Cardamomo, cores preservadas |
+| 2,47–5,90 s | Sensação de garrafa fria | Close da foto aprovada com microgotas refrativas animadas, câmera em deslocamento |
+| 5,90–10,70 s | A bebida em ação | Filmagem própria do mesmo sabor, líquido entrando no copo; bancada e luz da gravação original |
+| 10,70–13,70 s | Onde encontrar | Volta ao trio, K pequeno, convite aos parceiros e aproximação que resolve por 0,6 s |
+
+A cor âmbar e o sabor fazem a ligação entre detalhe e servir. Há diferença entre a luz do cenário ilustrativo e a da gravação real. Uma nova filmagem dirigida no mesmo cenário pode melhorar essa continuidade; não apresentamos a montagem como um take real contínuo.

@@ -336,6 +336,15 @@
               privada. Esta opção não libera uso comercial.
             </p>
           </div>
+          <div class="field">
+            <label for="scene">Cena do vídeo</label
+            ><select id="scene" name="scene">
+              <option value="product">Garrafas e detalhes</option>
+              <option value="rosas-real">
+                Rosas &amp; Cardamomo com servir real
+              </option>
+            </select>
+          </div>
           <h2>Sabores em cena</h2>
           <div class="flavors">
             <div class="field">
@@ -418,6 +427,7 @@
               }
               $("flavor" + i).value = s.project.flavors[i];
             }
+            $("scene").value = s.project.pourAsset || "product";
             initialized = true;
           }
           $("render").disabled = s.busy;
@@ -474,6 +484,9 @@
               caption: $("caption").value,
               voice: $("voice").value,
               flavors,
+              ...($("scene").value === "rosas-real"
+                ? { pourAsset: "rosas-real" }
+                : {}),
             }),
           });
           const result = await r.json();

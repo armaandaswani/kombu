@@ -135,6 +135,62 @@ try {
     "1",
     "--low-memory-mode",
   ]);
+  if (p.pourAsset === "rosas-real") {
+    await status("Montando o servir real da Kombú");
+    const start = Math.round(p.duration * 0.43 * 30) / 30,
+      end = Math.round(p.duration * 0.78 * 30) / 30;
+    await run("/opt/homebrew/bin/ffmpeg", [
+      "-y",
+      "-ss",
+      "5.5",
+      "-i",
+      "/Users/armaandaswani/Desktop/Kombucha/KB Rosas Closeup.mov",
+      "-t",
+      String(end - start),
+      "-vf",
+      "crop=1460:2596:700:1050,scale=1080:1920,eq=contrast=1.07:saturation=1.06:brightness=-0.015",
+      "-r",
+      "30",
+      "-an",
+      "-c:v",
+      "h264_videotoolbox",
+      "-b:v",
+      "10M",
+      "-pix_fmt",
+      "yuv420p",
+      join(out, "pour.mp4"),
+    ]);
+    await copyFile(join(out, "base.mp4"), join(out, "graphics.mp4"));
+    await run("/opt/homebrew/bin/ffmpeg", [
+      "-y",
+      "-i",
+      join(out, "graphics.mp4"),
+      "-i",
+      join(out, "pour.mp4"),
+      "-filter_complex",
+      `[0:v]trim=end=${start},setpts=PTS-STARTPTS[a];[1:v]trim=duration=${end - start},setpts=PTS-STARTPTS[b];[0:v]trim=start=${end},setpts=PTS-STARTPTS[c];[a][b][c]concat=n=3:v=1:a=0[v]`,
+      "-map",
+      "[v]",
+      "-r",
+      "30",
+      "-an",
+      "-c:v",
+      "h264_videotoolbox",
+      "-b:v",
+      "10M",
+      "-pix_fmt",
+      "yuv420p",
+      join(out, "base.mp4"),
+    ]);
+    await writeFile(
+      join(out, "film/events.json"),
+      JSON.stringify([
+        { type: "cut", t: p.duration * 0.18 },
+        { type: "cut", t: start },
+        { type: "cut", t: end },
+      ]),
+    );
+  }
   const pub = join(root, "public/generated", p.id);
   await mkdir(join(pub, "assets"), { recursive: true });
   for (const f of ["base.mp4", "voice-master.wav"])
@@ -147,6 +203,10 @@ try {
     await readFile(join(out, "captions.json"), "utf8"),
   );
   const props = { id: p.id, cues, duration: p.duration };
+  await writeFile(
+    join(root, "public/generated/latest.json"),
+    JSON.stringify(props),
+  );
   await status("Finalizando com Remotion");
   const serveUrl = await bundle({
     entryPoint: join(root, "src/index.jsx"),

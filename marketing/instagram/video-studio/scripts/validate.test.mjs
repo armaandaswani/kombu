@@ -77,3 +77,10 @@ test("limita hashtags e mantém Manaus na legenda", () => {
   );
   assert.doesNotThrow(() => validate({ ...p, caption: "#kombu #manaus" }));
 });
+
+test("filmagem do servir só corresponde ao mesmo sabor e não aceita caminhos", () => {
+  const base = { ...p, flavors: ["rosas-cardamomo", "goiaba", "uva"] };
+  assert.doesNotThrow(() => validate({ ...base, pourAsset: "rosas-real" }));
+  assert.throws(() => validate({ ...p, pourAsset: "rosas-real" }));
+  assert.throws(() => validate({ ...base, pourAsset: "../../arquivo" }));
+});

@@ -26,29 +26,21 @@ export function Film({ id, cues = [] }) {
         <div
           style={{
             position: "absolute",
-            bottom: 235,
+            bottom: 290,
             left: 100,
             right: 100,
             textAlign: "center",
             fontFamily: "Jakarta",
             fontWeight: 500,
-            fontSize: 43,
-            lineHeight: 1.4,
+            fontSize: 40,
+            lineHeight: 1.22,
             color: "#fff",
             textWrap: "balance",
+            textShadow: "0 2px 4px rgba(0,0,0,.8), 0 0 10px rgba(0,0,0,.22)",
+            WebkitTextStroke: ".35px rgba(0,0,0,.25)",
           }}
         >
-          <span
-            style={{
-              backgroundColor: "#243e26",
-              padding: "12px 23px",
-              boxDecorationBreak: "clone",
-              WebkitBoxDecorationBreak: "clone",
-              borderRadius: 5,
-            }}
-          >
-            {cue.text}
-          </span>
+          <span>{cue.text}</span>
         </div>
       )}
     </AbsoluteFill>
@@ -62,9 +54,15 @@ registerRoot(() => (
     height={1920}
     fps={30}
     durationInFrames={600}
-    defaultProps={{ id: "primeiro-reel", cues: [] }}
-    calculateMetadata={({ props }) => ({
-      durationInFrames: Math.ceil((props.duration || 20) * 30),
-    })}
+    defaultProps={{ id: null, cues: [] }}
+    calculateMetadata={async ({ props }) => {
+      const input = props.id
+        ? props
+        : await (await fetch(staticFile("generated/latest.json"))).json();
+      return {
+        props: input,
+        durationInFrames: Math.ceil((input.duration || 20) * 30),
+      };
+    }}
   />
 ));

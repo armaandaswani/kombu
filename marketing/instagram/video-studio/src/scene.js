@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import { gsap } from "gsap";
 import { createTimeline } from "animejs";
+import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
 (async () => {
   const p = await (await fetch("project.json")).json();
   const duration = p.duration || 20;
@@ -65,7 +66,8 @@ import { createTimeline } from "animejs";
       new THREE.PlaneGeometry(h * aspect, h),
       new THREE.MeshBasicMaterial({
         map: tex,
-        transparent: true,
+        transparent: false,
+        fog: false,
         alphaTest: 0.015,
         toneMapped: false,
         side: THREE.DoubleSide,
@@ -103,6 +105,39 @@ import { createTimeline } from "animejs";
     sh.position.set(m.position.x, 0.19, m.position.z);
     s.add(sh);
   }
+  // Seeded surface condensation. The droplets refract the opaque photographic bottle,
+  // not an unrelated background; a few grow and run under gravity in the macro shot.
+  const pmrem = new THREE.PMREMGenerator(r);
+  s.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+  const dew = new THREE.Group();
+  const drops = [];
+  const water = new THREE.MeshPhysicalMaterial({
+    color: "#ffffff",
+    metalness: 0,
+    roughness: 0.035,
+    transmission: 1,
+    thickness: 0.06,
+    ior: 1.333,
+    envMapIntensity: 1.2,
+    clearcoat: 1,
+    fog: false,
+  });
+  const bead = new THREE.SphereGeometry(1, 12, 10);
+  const rand = (n) => {
+    const v = Math.sin(n * 127.13 + 17.7) * 43758.5453;
+    return v - Math.floor(v);
+  };
+  for (let i = 0; i < 38; i++) {
+    const x = (rand(i + 1) - 0.5) * 1.38;
+    const y = i < 35 ? 3.9 + rand(i + 100) * 0.66 : 0.35 + rand(i + 100) * 0.65;
+    const radius = i % 17 === 0 ? 0.011 : 0.0025 + rand(i + 200) * 0.0045;
+    const mesh = new THREE.Mesh(bead, water);
+    mesh.position.set(x, y, 0.645 + radius * 0.6);
+    mesh.scale.set(radius, radius * 1.35, radius * 0.38);
+    dew.add(mesh);
+    drops.push({ mesh, x, y, radius, seed: rand(i + 400) });
+  }
+  s.add(dew);
   // Out-of-focus botanical shadows and edge leaves anchor a warm, tropical product set.
   const leaves = new THREE.Group();
   for (let i = 0; i < 9; i++) {
@@ -140,7 +175,7 @@ import { createTimeline } from "animejs";
       {
         c: [0, 1],
         duration: Math.max(1, duration * 220 - 650),
-        ease: "outSine",
+        ease: "linear",
       },
       duration * 780,
     );
@@ -152,7 +187,14 @@ import { createTimeline } from "animejs";
   const clock = { t: 0 };
   function draw(t) {
     motion.seek(t * 1000);
-    if (t < duration * 0.35) {
+    const macroStart = duration * 0.18,
+      macroEnd = duration * (p.pourAsset ? 0.43 : 0.78);
+    const progress = Math.max(
+      0,
+      Math.min(1, (t - macroStart) / (macroEnd - macroStart)),
+    );
+
+    if (t < duration * 0.18) {
       camera.position.set(
         1.1 - cameraBeat.a * 1.4,
         4.4,
@@ -161,17 +203,32 @@ import { createTimeline } from "animejs";
       camera.lookAt(0, 3.8, 0);
       state.side = 0;
     } else if (t < duration * 0.78) {
-      camera.position.set(-1 + cameraBeat.b * 2, 3.5, 9.8);
-      camera.lookAt(0, 3.95 - cameraBeat.b * 0.6, 0);
+      camera.position.set(-0.45 + progress * 0.9, 4.2, 8.8);
+      camera.lookAt(0, 4 - progress * 0.2, 0);
       state.side = 0;
     } else {
       camera.position.set(
         -0.25 + cameraBeat.c * 0.5,
         4.9,
-        18.5 - cameraBeat.c * 1.3,
+        18.5 - cameraBeat.c * 3.5,
       );
       camera.lookAt(0, 3.7, 0);
       state.side = 1;
+    }
+    dew.visible = t >= macroStart && t < macroEnd;
+    for (let i = 0; i < drops.length; i++) {
+      const d = drops[i];
+      const grow = 0.62 + 0.38 * Math.min(1, progress * 1.7 + d.seed * 0.35);
+      const run =
+        i % 17 === 0
+          ? Math.pow(Math.max(0, progress - 0.3 - d.seed * 0.18), 2) * 0.7
+          : 0;
+      d.mesh.position.y = d.y - run;
+      d.mesh.scale.set(
+        d.radius * grow,
+        d.radius * grow * (1.35 + run * 1.5),
+        d.radius * grow * 0.38,
+      );
     }
     bottles[1].scale.setScalar(0.82 + 0.18 * state.side);
     bottles[2].scale.setScalar(0.82 + 0.18 * state.side);
