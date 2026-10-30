@@ -214,3 +214,10 @@ Nunca colocar contadores de sequência como “1 de 5”, “2 de 5”, “3/5�
 - Não publicar feed, Reels nem Stories à tarde ou à noite, inclusive como recuperação de falhas. Feed/Reels às 09:00; Stories às 07:00, 07:05, 07:10, 07:15 e 07:20, sempre em Manaus. A recuperação automática já autorizada dos Stories fica somente na manhã.
 - O Worker verifica também o relógio real da execução: fora de 07:00–11:59 de Manaus, bloqueia publicações mesmo se um cron antigo chegar atrasado. Preparar arquivos ou conferir logs não autoriza publicar fora das janelas.
 - O titular decidiu aplicar a correção da arte de afiliados somente aos próximos Stories. Não apagar nem republicar o Story de afiliados de 30/10.
+
+## Manual e acervo oficial recebidos — 30/10/2026
+O titular enviou o Manual da Marca Kombú, versão 2, e os arquivos em `/Users/armaandaswani/Desktop/Kombucha/Marca Kombú/logo`. Cópias fiéis, com hashes e guia de aplicação, estão em `assets/brand/`. O PDF foi localizado em `/Users/armaandaswani/Desktop/Kombucha/Manual da Marca Kombú.pdf`; não o publicar, pois contém informação confidencial.
+
+Esta referência substitui a seleção anterior de V4/V.3 como assinatura padrão para novos conteúdos: o manual classifica as versões com a linha KOMBUCHA como anteriores. Usar assinaturas atuais `kombu-assinatura-*` ou símbolo botânico `kombu-simbolo*` conforme a aplicação. O K circular foi entregue como ícone digital e fica reservado a favicon/atalho, não ao topo de posts. Preservar cores, proporções, contraste e área livre; não reescrever a marca em outra fonte.
+
+Receber o manual não autoriza executar sua lista de pendências, editar o site, trocar rótulos ou substituir peças já aprovadas/publicadas. Aplicar a referência na criação/revisão das próximas peças. As orientações diretas mais recentes do titular prevalecem sobre os trechos do manual acerca de comunicação familiar, ingredientes confidenciais, redação e afiliados. Não copiar os trechos conflitantes para posts, prompts públicos ou legendas.

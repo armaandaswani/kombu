@@ -1,0 +1,51 @@
+{
+  "received": "2026-10-30",
+  "sourceDirectory": "/Users/armaandaswani/Desktop/Kombucha/Marca Kombú/logo",
+  "manual": "/Users/armaandaswani/Desktop/Kombucha/Manual da Marca Kombú.pdf",
+  "files": [
+    {
+      "file": "kombu-assinatura-colorida-creme.png",
+      "sha256": "2c19cc09dc946c789af4e67051e6d1b0752a3a6a5ff3315b33b99eec83ff1f5c"
+    },
+    {
+      "file": "kombu-assinatura-colorida-tinta.png",
+      "sha256": "c7e724c6e4997548d53208cceedd00b1029bcf520e2660bc464dff5329580dc6"
+    },
+    {
+      "file": "kombu-assinatura-mono-creme.png",
+      "sha256": "d8a7c84c521d3748c0d473a9c503440df71a7f923a6c0d7f6cc71483ca9d705d"
+    },
+    {
+      "file": "kombu-assinatura-mono-escura.png",
+      "sha256": "b4b2449016b5a9a014bb9733448462cab8dd9d288b05c3a941c7a676a5d21bc5"
+    },
+    {
+      "file": "kombu-logo-principal-fundo-claro.png",
+      "sha256": "18406a4c507df6d315d433782efcd79971b8dfe8b22d92defdb10bb7a18ed2c7"
+    },
+    {
+      "file": "kombu-logo-principal-fundo-escuro.png",
+      "sha256": "a17b07f3db2efc8c5eab1fc15d46d55c68ae2cb6dde197884fe94c1f05811f81"
+    },
+    {
+      "file": "kombu-simbolo-k.png",
+      "sha256": "c130d5ab591a5598067f817c446b0350735cf792d93867765837d5528c981134"
+    },
+    {
+      "file": "kombu-simbolo-k.svg",
+      "sha256": "13236e99ee078a500a1df9f81d014d32ab9a39aa2814d034b2b4a6ef0d8410c4"
+    },
+    {
+      "file": "kombu-simbolo-mono-creme.png",
+      "sha256": "206c17d17e6da96ce0de5ef14b90e0939abcd60d1a60ac7a8789a9ca6fa5cc59"
+    },
+    {
+      "file": "kombu-simbolo-mono-escuro.png",
+      "sha256": "06545d7b1cefdc45bc5c6fc911b69d441dbb2de890fc748627721e5ae34e6f4d"
+    },
+    {
+      "file": "kombu-simbolo.png",
+      "sha256": "bcd98150034b69d223d3ce1b55a722f7f6e2fadef2017c6fe9461cf6c86796e4"
+    }
+  ]
+}
