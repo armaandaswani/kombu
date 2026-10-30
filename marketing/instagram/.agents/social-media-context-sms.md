@@ -192,3 +192,6 @@ As 20 referências que ele escolheu para vídeos e posts estão em `../video-stu
 
 ### Correção mais recente sobre vídeos, 29/10/2026
 O titular quer que o cenário e a ação de servir sejam criados do zero. Não reutilizar a filmagem antiga do Instagram para esse vídeo. Esta orientação substitui a anterior sobre usar filmagem própria no servir. Logo e rótulo oficial são referências de identidade, não autorização para reaproveitar posts. O modo `created-pour` do estúdio é CGI original com cenário gerado; não apresentar como filmagem real.
+
+### Acabamento fotográfico dos vídeos, 29/10/2026
+O titular rejeitou a aparência CGI da prévia v3. Quer cenas geradas com aparência de filmagem real, com materiais, mão, condensação e servir naturais. Usar imagem para vídeo a partir de referências fotográficas novas; não apresentar animação 3D ou fotografia estática com zoom como se fosse filmagem realista concluída. Manter a exigência de custo zero e registrar honestamente os testes e limitações do motor.

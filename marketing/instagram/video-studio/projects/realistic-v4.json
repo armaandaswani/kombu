@@ -1,0 +1,23 @@
+{
+  "id": "realistic-v4",
+  "flavor": "rosas-cardamomo",
+  "mode": "local-image-to-video",
+  "approved": false,
+  "frameRate": 24,
+  "frames": 81,
+  "width": 576,
+  "height": 1024,
+  "seed": 291026,
+  "shots": {
+    "pour": {
+      "image": "assets/generated/realistic-v4/pour-corrected.png",
+      "prompt": "A real close-up beverage commercial filmed on a full-frame camera. A natural tan hand steadily holds this exact chilled 500 ml PET bottle, pink Kombu Rosas and Cardamomo label facing the camera, and pours clear amber kombucha into the real glass on the stone tabletop. Continue the action in the reference photograph: the amber stream moves fluidly under gravity, makes tiny ripples and a few small bubbles where it lands, and the glass gradually fills from one quarter to about three quarters. The hand makes only a small natural wrist tilt. Keep the same hand, bottle shape, pink label, cap on the table, daylight and background. Natural realistic reflections and refraction, tiny condensation beads on the bottle, slight organic fluctuation in the thin liquid stream. Locked camera, shallow depth of field, warm natural daylight, realistic filmed material detail. One continuous take, no cuts. No dramatic splash, no overflow, no floating objects, no extra fingers, no new objects, no artificial camera orbit. The liquid remains translucent amber, not opaque juice."
+    },
+    "close": {
+      "image": "assets/generated/realistic-v4/close-start.png",
+      "prompt": "Locked-off real-camera close-up of this exact chilled Kombú bottle. The bottle remains perfectly still and identical in shape and label throughout. One tiny condensation drop slowly slides down the shoulder. Warm natural sunlight and real optical depth of field. No camera movement. Preserve all printed label artwork, letters and colors exactly. No zoom, no morphing, no new objects.",
+      "anchorEnd": true,
+      "frames": 49
+    }
+  }
+}
