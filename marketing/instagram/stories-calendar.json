@@ -107,47 +107,53 @@
         {
           "id": "dolce-vita-3",
           "type": "bottle",
-          "title": "Tem Kombú na Casa Agridoce.",
-          "body": "Na próxima visita, pergunte quais sabores estão gelados no dia.",
+          "title": "Uma parada na Casa Agridoce?",
+          "body": "Aproveite a visita para conhecer a Kombú, nossa kombucha artesanal premium de Manaus. Pergunte à equipe pelos sabores do dia.",
           "partner": "@casaagridoceam",
           "image": "stories/2026-10-30/dolce-vita-3.jpg",
           "flavor": "rosas-cardamomo",
-          "bg": "#E3889E"
+          "bg": "#E3889E",
+          "layout": "partner"
         },
         {
           "id": "manga-jasmim",
           "type": "bottle",
           "flavor": "manga-jasmim",
-          "title": "Manga & Jasmim",
-          "body": "A manga entra na receita com o jasmim. Uma combinação para conhecer com calma.",
+          "title": "Manga com jasmim. Já provou?",
+          "body": "Essa é uma das combinações da Kombú: suave ao beber, com sabor intenso. Vale conhecer bem gelada.",
           "bg": "#F2C46E",
-          "image": "stories/2026-10-30/manga-jasmim.jpg"
+          "image": "stories/2026-10-30/manga-jasmim.jpg",
+          "layout": "flavor"
         },
         {
           "id": "uva",
           "type": "bottle",
           "flavor": "uva",
-          "title": "Uva",
-          "body": "Se você prefere começar por uma fruta conhecida, vale conhecer a Kombú de Uva.",
+          "title": "O gás vem da própria fermentação.",
+          "body": "Kombucha é uma bebida fermentada. Na Kombú, esse processo também forma o gás, sem precisar adicioná-lo.",
           "bg": "#4A2352",
-          "image": "stories/2026-10-30/uva.jpg"
+          "image": "stories/2026-10-30/uva.jpg",
+          "layout": "process"
         },
         {
           "id": "conversa-3",
-          "type": "text",
-          "title": "Na hora de servir, mantenha gelada.",
-          "body": "A orientação está na garrafa: manter sempre gelado. Sirva a sua Kombú gelada também.",
-          "bg": "#2D4B28",
-          "image": "stories/2026-10-30/conversa-3.jpg"
+          "type": "lifestyle",
+          "title": "Depois do jogo, dá vontade de uma pausa.",
+          "body": "Uma Kombú gelada pode fazer parte desse momento. Veja onde encontrar no site da bio.",
+          "bg": "#F6F2E8",
+          "image": "stories/2026-10-30/conversa-3.jpg",
+          "imageSource": "assets/lifestyle/tenis-500ml.png",
+          "layout": "lifestyle"
         },
         {
           "id": "criadores-3",
           "type": "creator",
-          "title": "Que tal apresentar a Kombú ao seu público?",
-          "body": "Conheça nosso programa para criadores. Após a aprovação, você recebe um cupom com 5% de desconto em produtos para compartilhar.",
-          "cta": "Inscreva-se em “Para criadores”, no site da bio.",
+          "title": "Você cria conteúdo em Manaus?",
+          "body": "Quer apresentar a Kombú do seu jeito? Conte sua ideia no nosso programa de criadores. Depois da aprovação, ativamos seu cupom de 5% para compartilhar.",
+          "cta": "Conte sua proposta em “Para criadores”, no site da bio.",
           "bg": "#F6F2E8",
-          "image": "stories/2026-10-30/criadores-3.jpg"
+          "image": "stories/2026-10-30/criadores-3.jpg",
+          "layout": "creator"
         }
       ]
     },

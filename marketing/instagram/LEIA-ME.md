@@ -82,3 +82,9 @@ Cinco Stories em escadinha, um a cada cinco minutos a partir de 07:00 Manaus. O 
 ## Horário do feed atualizado em 30/10/2026
 
 A pedido do titular, o feed passa a publicar somente às 09:00 de Manaus (13:00 UTC), a cada dois dias. Foram removidas as janelas de 12:30 e 18:30. Os Stories continuam às 07:00, 07:05, 07:10, 07:15 e 07:20. O cron compartilhado dispara nas horas 11 e 13 UTC; o código bloqueia o feed fora das 13:00 UTC e os Stories fora de suas cinco janelas.
+
+## Preparação de 30/10/2026
+
+Os cinco Stories foram revisados antes da janela das 07:00: Casa Agridoce, Manga & Jasmim, gás da fermentação, pausa após o tênis e convite a criadores. Composições distintas e cenas aprovadas; sem alegar estoque de sabor no parceiro. Prévia em `research/2026-10-27/dolce-vita-fotos/stories-2026-10-30.jpg`. A sequência de ontem foi confirmada pelo log seguro e pela chave `stories:done:2026-10-29` (cinco publicações).
+
+`node render-stories.mjs --date=2026-10-30` renderiza somente a data selecionada, preservando os demais dias; sem argumento, usa a data local de Manaus. Datas passadas são recusadas. Confira sempre o estado remoto do dia antes de renderizar. O manifesto mantém todos os dias e `prepare-publish.mjs` preserva os 44 JPEGs do feed.
