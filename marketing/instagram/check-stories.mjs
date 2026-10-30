@@ -11,13 +11,18 @@ const plan=JSON.parse(await fs.readFile(new URL('./stories-calendar.json',import
 const day=plan.days.find(d=>d.date===date);
 if(!day)throw Error('Sem artes para '+date);
 const env={...process.env,CI:'1',CLOUDFLARE_ACCOUNT_ID:'d96b1341ef54c6d28ad6415f18220aaf'};
-async function read(key){
+async function read(key,attempt=0){
  try{
-  const {stdout}=await exec('npx',['--yes','wrangler@4.156.0','kv','key','get',key,'--namespace-id','b59df63d5f8d4b91a087a818f4252c3e','--remote'],{cwd:root+'worker',env,maxBuffer:1024*1024});
+  const {stdout}=await exec('npx',['--yes','wrangler@4.156.0','kv','key','get',key,'--namespace-id','b59df63d5f8d4b91a087a818f4252c3e','--remote'],{cwd:root+'worker',env,maxBuffer:1024*1024,timeout:30000});
   return JSON.parse(stdout);
  }catch(e){
   const message=String(e.stderr||e.stdout||'');
   if(/404: Not Found/.test(message))return null;
+  if(/401: Unauthorized/.test(message)&&attempt<2){
+   // Bound retries to handle intermittent OAuth/API failures without reading credentials.
+   await exec('npx',['--yes','wrangler@4.156.0','whoami'],{cwd:root+'worker',env,maxBuffer:1024*1024,timeout:30000}).catch(()=>{});
+   return read(key,attempt+1);
+  }
   throw Error('Não foi possível consultar '+key+(/401: Unauthorized/.test(message)?': autenticação do Cloudflare recusada':': consulta remota falhou'));
  }
 }
