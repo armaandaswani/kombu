@@ -46,6 +46,8 @@ test('incident catch-up exists only on October 30 after 08:30 Manaus',()=>{
  assert.equal(storySlot(new Date('2026-10-30T12:30:00Z')),5);
  assert.equal(storySlot(new Date('2026-10-30T12:55:00Z')),10);
  assert.equal(storySlot(new Date('2026-10-31T12:30:00Z')),null);
+ assert.equal(storySlot(new Date('2026-10-30T13:55:00Z')),22);
+ assert.equal(storySlot(new Date('2026-10-31T13:00:00Z')),null);
  assert.equal(storySlot(new Date('2026-10-30T12:25:00Z')),null);
 });
 

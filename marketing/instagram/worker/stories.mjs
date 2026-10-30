@@ -20,7 +20,7 @@ export function storySlot(now) {
   // Normal sequence 07:00..07:20; remaining ticks only recover unfinished frames.
   if (now.getUTCHours() === 11) return minute / 5;
   // Incident catch-up authorized by the owner's request to fix the missed sequence.
-  if (localDate(now) === '2026-10-30' && now.getUTCHours() === 12 && minute >= 30) return 5 + (minute - 30) / 5;
+  if (localDate(now) === '2026-10-30' && ((now.getUTCHours() === 12 && minute >= 30) || now.getUTCHours() === 13)) return 5 + ((now.getUTCHours()-12)*60+minute-30)/5;
   return null;
 }
 export async function runStories(env, {call, currentToken, account, waitFinished, log}, now = new Date()) {
