@@ -16,54 +16,82 @@ export function isFeedTime(now) {
 }
 export function storySlot(now) {
   const minute = now.getUTCMinutes();
-  if (minute % 5 || minute > 20) return null;
-  if (now.getUTCHours() === 11) return minute / 5; // 07:00..07:20 Manaus
-  if (localDate(now) === '2026-10-28' && now.getUTCHours() === 14) return minute / 5; // today's exception
+  if (minute % 5) return null;
+  // Normal sequence 07:00..07:20; remaining ticks only recover unfinished frames.
+  if (now.getUTCHours() === 11) return minute / 5;
+  // Incident catch-up authorized by the owner's request to fix the missed sequence.
+  if (localDate(now) === '2026-10-30' && now.getUTCHours() === 12 && minute >= 30) return 5 + (minute - 30) / 5;
   return null;
 }
 export async function runStories(env, {call, currentToken, account, waitFinished, log}, now = new Date()) {
-  if (!env.IG_TOKEN) return;
-  const slot = storySlot(now);
-  if (slot === null) return;
-  const date = localDate(now);
-  const slotKey = 'stories:slot:' + date + ':' + now.toISOString().slice(11,16);
-  if (await env.STATE.get(slotKey)) return;
-  if (await env.STATE.get('stories:done:' + date)) return;
-  const base = 'https://kombu-social.pages.dev/';
-  const res = await fetch(base + 'stories/manifest.json', {cache: 'no-store'});
-  if (!res.ok) throw new Error('Stories: manifesto indisponível (' + res.status + ')');
-  const day = validateDay(await res.json(), date);
-  if (!day) return log(env, 'Stories: sem artes para ' + date);
-  // At most one image per invocation. Retry an earlier failed slot before advancing.
-  let frame;
-  for (const candidate of day.frames.slice(0, slot + 1)) {
-    const state = JSON.parse(await env.STATE.get('story:' + date + ':' + candidate.id) || 'null');
-    if (state?.status === 'publishing') throw new Error('Stories: confirmação pendente para ' + candidate.id + '; não repetir automaticamente');
-    if (state?.status !== 'published') { frame = candidate; break; }
+  const slot=storySlot(now);
+  if(slot===null)return;
+  if(!env.IG_TOKEN)throw Error('Stories: conexão da conta indisponível');
+  const date=localDate(now), slotKey='stories:slot:'+date+':'+now.toISOString().slice(11,16);
+  if(await env.STATE.get(slotKey)||await env.STATE.get('stories:done:'+date))return;
+  const base='https://kombu-social.pages.dev/';
+  const res=await fetch(base+'stories/manifest.json',{cache:'no-store'});
+  if(!res.ok)throw Error('Stories: manifesto indisponível ('+res.status+')');
+  const day=validateDay(await res.json(),date);
+  if(!day)throw Error('Stories: sem artes para '+date);
+  const token=await currentToken(env), user=await account(env,token);
+  const info=await call('GET','/'+user.id,{fields:'account_type'},token);
+  if(info.account_type!=='BUSINESS')throw Error('Stories: a Meta exige conta Business; tipo recebido: '+info.account_type);
+  const complete=async()=>{
+    const states=await Promise.all(day.frames.map(f=>env.STATE.get('story:'+date+':'+f.id)));
+    if(states.every(s=>s&&JSON.parse(s).status==='published')){
+      await env.STATE.put('stories:done:'+date,JSON.stringify({count:5,at:new Date().toISOString()}));
+      await env.STATE.put('stories:health:'+date,JSON.stringify({status:'complete',count:5,at:new Date().toISOString()}));
+      await log(env,'Stories: cinco artes publicadas para '+date);
+    }
+  };
+  // Reconcile pending containers before any POST. Reuse the same container; never
+  // recreate it following an ambiguous response or an inaccessible status.
+  for(const frame of day.frames.slice(0,Math.min(slot+1,5))){
+    const key='story:'+date+':'+frame.id;
+    let state=JSON.parse(await env.STATE.get(key)||'null');
+    if(state?.status==='published')continue;
+    if(state?.status==='publishing'){
+      if(!state.containerId)throw Error('Stories: confirmação pendente para '+frame.id+'; falta container');
+      const result=await call('GET','/'+state.containerId,{fields:'status_code'},token);
+      await log(env,'Stories: conciliação '+date+'/'+frame.id+' = '+result.status_code);
+      if(result.status_code==='PUBLISHED'){
+        await env.STATE.put(key,JSON.stringify({...state,status:'published',confirmedBy:'container-status',confirmedAt:new Date().toISOString()}));
+        await complete();
+        continue;
+      }
+      if(result.status_code==='FINISHED'){
+        // FINISHED explicitly confirms this exact container is not yet published.
+        if(Date.parse(now)-Date.parse(state.at)<120000)throw Error('Stories: aguardando conciliação para '+frame.id);
+      }else if(['ERROR','EXPIRED'].includes(result.status_code)){
+        await log(env,'Stories: container não publicado '+result.status_code+'; recriando '+frame.id);
+        state=null;
+      }else throw Error('Stories: confirmação pendente para '+frame.id+'; estado '+result.status_code);
+    }
+    let containerId=state?.containerId;
+    if(!containerId){
+      const image=await fetch(base+frame.image,{method:'HEAD'});
+      if(!image.ok||!image.headers.get('content-type')?.includes('image/jpeg'))throw Error('Stories: imagem indisponível: '+frame.image);
+      const container=await call('POST','/'+user.id+'/media',{media_type:'STORIES',image_url:base+frame.image},token);
+      containerId=container.id;
+      await waitFinished(containerId,token);
+    }
+    const attempt={status:'publishing',containerId,at:now.toISOString(),attempts:(state?.attempts||0)+1};
+    await env.STATE.put(key,JSON.stringify(attempt));
+    let published;
+    try{
+      published=await call('POST','/'+user.id+'/media_publish',{creation_id:containerId},token);
+      if(!published?.id)throw Error('Stories: resposta sem confirmação da publicação');
+    }catch(e){
+      await env.STATE.put(key,JSON.stringify({...attempt,lastError:{httpStatus:e.httpStatus,code:e.code,subcode:e.subcode,definitive:!!e.definitive}}));
+      throw e;
+    }
+    await env.STATE.put(key,JSON.stringify({...attempt,status:'published',mediaId:published.id,at:new Date().toISOString()}));
+    await env.STATE.put(slotKey,JSON.stringify({id:frame.id,at:new Date().toISOString()}));
+    await env.STATE.put('stories:health:'+date,JSON.stringify({status:'in-progress',lastFrame:frame.id,at:new Date().toISOString()}));
+    await log(env,'Story publicado: '+date+'/'+frame.id);
+    await complete();
+    return; // one new Story per invocation, always five minutes apart
   }
-  if (!frame) return;
-  const token = await currentToken(env);
-  const user = await account(env, token);
-  const info = await call('GET', '/' + user.id, {fields: 'account_type'}, token);
-  if (info.account_type !== 'BUSINESS') throw new Error('Stories: a Meta exige conta Business; tipo recebido: ' + info.account_type);
-  {
-    const key = 'story:' + date + ':' + frame.id;
-    const state = JSON.parse(await env.STATE.get(key) || 'null');
-    if (state?.status === 'published') return;
-    // A lost response after publishing must never cause a duplicate in a later slot.
-    if (state?.status === 'publishing') throw new Error('Stories: confirmação pendente para ' + frame.id + '; não repetir automaticamente');
-    const image = await fetch(base + frame.image, {method: 'HEAD'});
-    if (!image.ok || !image.headers.get('content-type')?.includes('image/jpeg')) throw new Error('Stories: imagem indisponível: ' + frame.image);
-    const container = await call('POST', '/' + user.id + '/media', {media_type: 'STORIES', image_url: base + frame.image}, token);
-    await waitFinished(container.id, token);
-    await env.STATE.put(key, JSON.stringify({status: 'publishing', containerId: container.id, at: now.toISOString()}));
-    const published = await call('POST', '/' + user.id + '/media_publish', {creation_id: container.id}, token);
-    await env.STATE.put(key, JSON.stringify({status: 'published', mediaId: published.id, at: new Date().toISOString()}));
-    await env.STATE.put(slotKey, JSON.stringify({id: frame.id, at: new Date().toISOString()}));
-    await log(env, 'Story publicado: ' + date + '/' + frame.id);
-  }
-  const publishedStates = await Promise.all(day.frames.map(f => env.STATE.get('story:' + date + ':' + f.id)));
-  if (!publishedStates.every(s => s && JSON.parse(s).status === 'published')) return;
-  await env.STATE.put('stories:done:' + date, JSON.stringify({count: 5, at: new Date().toISOString()}));
-  await log(env, 'Stories: cinco artes publicadas para ' + date);
+  await complete();
 }

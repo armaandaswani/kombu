@@ -8,7 +8,7 @@
 // KV: "published:<id>" -> {mediaId, at}; "last" -> {id, at}; "token" -> {accessToken, refreshedAt};
 //     "user" -> {id, username}; "log" -> last 50 runs.
 import calendar from '../calendar.json';
-import {runStories, isFeedTime} from './stories.mjs';
+import {runStories, isFeedTime, localDate} from './stories.mjs';
 
 const api = 'https://graph.instagram.com/v21.0';
 const imageBase = 'https://kombu-social.pages.dev';
@@ -21,7 +21,12 @@ async function call(method, endpoint, params, token) {
   const body = new URLSearchParams({...params, access_token: token});
   const res = method === 'GET' ? await fetch(url + '?' + body) : await fetch(url, {method, body});
   const data = await res.json().catch(() => ({}));
-  if (!res.ok || data.error) throw new Error(`${endpoint}: ${data.error?.message || res.status}`);
+  if (!res.ok || data.error) {
+    const error = new Error(`${endpoint}: ${data.error?.message || res.status}`);
+    error.httpStatus=res.status; error.code=data.error?.code; error.subcode=data.error?.error_subcode;
+    error.definitive=!!data.error && res.status>=400 && res.status<500;
+    throw error;
+  }
   return data;
 }
 
@@ -162,7 +167,11 @@ export default {
   // Await the run itself: waitUntil() tasks are cut off shortly after the event ends (Reveja, 23/10).
   async scheduled(event, env) {
     try { await runStories(env, {call, currentToken, account, waitFinished, log}, new Date(event.scheduledTime)); }
-    catch (e) { await log(env, 'erro nos Stories: ' + e.message); }
+    catch (e) {
+      const detail=[e.httpStatus&&'HTTP '+e.httpStatus,e.code&&'code '+e.code,e.subcode&&'subcode '+e.subcode].filter(Boolean).join(', ');
+      await env.STATE.put('stories:health:'+localDate(new Date(event.scheduledTime)),JSON.stringify({status:'error',at:new Date().toISOString(),message:e.message,httpStatus:e.httpStatus,code:e.code,subcode:e.subcode}));
+      await log(env, 'erro nos Stories: ' + e.message + (detail?' ('+detail+')':''));
+    }
     if (isFeedTime(new Date(event.scheduledTime))) await run(env);
   },
   async fetch() { return new Response('Not found', {status: 404}); },
