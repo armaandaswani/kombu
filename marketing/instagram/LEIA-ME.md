@@ -102,3 +102,7 @@ Conferência segura: `node check-stories.mjs 2026-10-30`. O script usa Wrangler 
 ## Sem contador nas artes de Stories
 
 Correção do titular em 30/10/2026: retirar toda numeração visível de lote, como “2 de 5”. O gerador não inclui mais contador. As próximas 20 artes de 31/10–03/11 e os dois Stories de 30/10 ainda não iniciados foram renderizados novamente. Os três de 30/10 já publicados permanecem preservados; apagar e republicar exige aprovação do titular. `--only=id1,id2` seleciona artes específicas; `--preview` gera cópias privadas em `.render/stories-preview/`, sem alterar os arquivos publicados ou o manifesto.
+
+### Substituição autorizada em 30/10
+
+O titular aprovou expressamente apagar e republicar os três Stories de hoje com contador. Foram excluídos pela interface autenticada do Instagram: Uva (4019354028647237021), Manga & Jasmim (4019351552925856963) e Casa Agridoce (4019300721979991338), com retorno da interface confirmado após cada exclusão. Os dois Stories sem contador e os Stories manuais anteriores foram preservados. As substituições têm IDs novos com sufixo `-sem-contador` e imagens novas; o histórico dos IDs antigos fica no KV. A marca de conclusão agora inclui os cinco `frameIds`, e uma marca de uma versão anterior só é aceita se os cinco estados do manifesto atual estiverem publicados. A verificação de leitura também confere os cinco estados atuais. Assim, o Worker publica somente as três substituições, a cinco minutos de intervalo, e preserva as duas artes já publicadas.

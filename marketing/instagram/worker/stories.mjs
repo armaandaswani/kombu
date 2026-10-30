@@ -28,19 +28,26 @@ export async function runStories(env, {call, currentToken, account, waitFinished
   if(slot===null)return;
   if(!env.IG_TOKEN)throw Error('Stories: conexão da conta indisponível');
   const date=localDate(now), slotKey='stories:slot:'+date+':'+now.toISOString().slice(11,16);
-  if(await env.STATE.get(slotKey)||await env.STATE.get('stories:done:'+date))return;
+  if(await env.STATE.get(slotKey))return;
   const base='https://kombu-social.pages.dev/';
   const res=await fetch(base+'stories/manifest.json',{cache:'no-store'});
   if(!res.ok)throw Error('Stories: manifesto indisponível ('+res.status+')');
   const day=validateDay(await res.json(),date);
   if(!day)throw Error('Stories: sem artes para '+date);
+  const frameIds=day.frames.map(f=>f.id);
+  const done=JSON.parse(await env.STATE.get('stories:done:'+date)||'null');
+  if(done?.count===5){
+    if(JSON.stringify(done.frameIds)===JSON.stringify(frameIds))return;
+    const states=await Promise.all(day.frames.map(f=>env.STATE.get('story:'+date+':'+f.id)));
+    if(states.every(s=>s&&JSON.parse(s).status==='published'))return;
+  }
   const token=await currentToken(env), user=await account(env,token);
   const info=await call('GET','/'+user.id,{fields:'account_type'},token);
   if(info.account_type!=='BUSINESS')throw Error('Stories: a Meta exige conta Business; tipo recebido: '+info.account_type);
   const complete=async()=>{
     const states=await Promise.all(day.frames.map(f=>env.STATE.get('story:'+date+':'+f.id)));
     if(states.every(s=>s&&JSON.parse(s).status==='published')){
-      await env.STATE.put('stories:done:'+date,JSON.stringify({count:5,at:new Date().toISOString()}));
+      await env.STATE.put('stories:done:'+date,JSON.stringify({count:5,frameIds,at:new Date().toISOString()}));
       await env.STATE.put('stories:health:'+date,JSON.stringify({status:'complete',count:5,at:new Date().toISOString()}));
       await log(env,'Stories: cinco artes publicadas para '+date);
     }

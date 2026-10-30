@@ -25,8 +25,8 @@ const done=await read('stories:done:'+date);
 const health=await read('stories:health:'+date);
 const log=(await read('log')||[]).filter(line=>line.startsWith(date)&&/Stor(?:y|ies)/.test(line));
 const states=[];
-if(!done)for(const frame of day.frames){
+for(const frame of day.frames){
  const state=await read('story:'+date+':'+frame.id);
  states.push({id:frame.id,status:state?.status||'not-started',at:state?.at,confirmedAt:state?.confirmedAt,lastError:state?.lastError});
 }
-console.log(JSON.stringify({date,checkedAt:new Date().toISOString(),complete:done?.count===5,done,health,states,log},null,2));
+console.log(JSON.stringify({date,checkedAt:new Date().toISOString(),complete:done?.count===5&&states.every(s=>s.status==='published'),done,health,states,log},null,2));

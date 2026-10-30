@@ -110,7 +110,16 @@ test('expired or failed container can be replaced only after Meta confirms its t
  }
 });
 test('recovery ticks do nothing after all five Stories are confirmed',async()=>{
- const s=setup();s.map.set('stories:done:'+date,JSON.stringify({count:5}));
+ const s=setup();s.map.set('stories:done:'+date,JSON.stringify({count:5,frameIds:frames.map(f=>f.id)}));
  for(const minute of [25,30,35,40,45,50,55])await runStories(s.env,s.deps,new Date(date+'T11:'+minute+':00Z'));
  assert.equal(s.calls.length,0);
+});
+
+test('owner-approved replacements ignore obsolete done marker and preserve retained Stories',async()=>{
+ const s=setup();s.map.set('stories:done:'+date,JSON.stringify({count:5,frameIds:['old-0','old-1','old-2','frame-3','frame-4']}));
+ for(const id of ['old-0','old-1','old-2','frame-3','frame-4'])s.map.set('story:'+date+':'+id,JSON.stringify({status:'published'}));
+ for(const minute of [25,30,35])await runStories(s.env,s.deps,new Date(date+'T11:'+minute+':00Z'));
+ assert.equal(s.calls.filter(c=>c.url.endsWith('/media_publish')).length,3);
+ assert.deepEqual(JSON.parse(s.map.get('stories:done:'+date)).frameIds,frames.map(f=>f.id));
+ assert.equal(JSON.parse(s.map.get('story:'+date+':old-0')).status,'published');
 });

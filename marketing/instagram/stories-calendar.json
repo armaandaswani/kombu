@@ -105,35 +105,38 @@
       "date": "2026-10-30",
       "frames": [
         {
-          "id": "dolce-vita-3",
+          "id": "dolce-vita-3-sem-contador",
           "type": "bottle",
           "title": "Uma parada na Casa Agridoce?",
           "body": "Aproveite a visita para conhecer a Kombú, nossa kombucha artesanal premium de Manaus. Pergunte à equipe pelos sabores do dia.",
           "partner": "@casaagridoceam",
-          "image": "stories/2026-10-30/dolce-vita-3.jpg",
+          "image": "stories/2026-10-30/dolce-vita-3-sem-contador.jpg",
           "flavor": "rosas-cardamomo",
           "bg": "#E3889E",
-          "layout": "partner"
+          "layout": "partner",
+          "replaces": "dolce-vita-3"
         },
         {
-          "id": "manga-jasmim",
+          "id": "manga-jasmim-sem-contador",
           "type": "bottle",
           "flavor": "manga-jasmim",
           "title": "Manga com jasmim. Já provou?",
           "body": "Essa é uma das combinações da Kombú: suave ao beber, com sabor intenso. Vale conhecer bem gelada.",
           "bg": "#F2C46E",
-          "image": "stories/2026-10-30/manga-jasmim.jpg",
-          "layout": "flavor"
+          "image": "stories/2026-10-30/manga-jasmim-sem-contador.jpg",
+          "layout": "flavor",
+          "replaces": "manga-jasmim"
         },
         {
-          "id": "uva",
+          "id": "uva-sem-contador",
           "type": "bottle",
           "flavor": "uva",
           "title": "O gás vem da própria fermentação.",
           "body": "Kombucha é uma bebida fermentada. Na Kombú, esse processo também forma o gás, sem precisar adicioná-lo.",
           "bg": "#4A2352",
-          "image": "stories/2026-10-30/uva.jpg",
-          "layout": "process"
+          "image": "stories/2026-10-30/uva-sem-contador.jpg",
+          "layout": "process",
+          "replaces": "uva"
         },
         {
           "id": "conversa-3",
