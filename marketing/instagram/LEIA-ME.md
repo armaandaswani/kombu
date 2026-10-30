@@ -119,3 +119,6 @@ O Worker prepara o container às 08:50/08:55; somente o evento de 09:00 pode cha
 Para conferir depois da janela, consulte somente `log`, `reel:22-rosas-cardamomo-filme`, `published:22-rosas-cardamomo-filme` e `last` com Wrangler 4.156.0. Não leia `token`. A primeira publicação de Reel ainda será validada pela execução real da Meta. A preparação de container segue o fluxo documentado pela Meta: https://www.postman.com/meta/instagram/documentation/6yqw8pt/instagram-api
 
 As futuras artes usam as logos originais V4/V.3, sem recriar o K em uma fonte. Para uma revisão privada da peça de afiliados já publicada: `node render-stories.mjs --date=2026-10-30 --preview --draft=drafts/afiliados-2026-10-30.json`. Rascunhos são permitidos apenas em modo de prévia e não alteram a imagem publicada.
+
+### Bloqueio de tarde/noite
+Por orientação expressa do titular, feed, Reels e Stories nunca são publicados à tarde ou à noite, nem para compensar falhas. Os horários permanecem 09:00 no feed e 07:00–07:20 nos Stories, em Manaus. Além dos horários de cron, o Worker verifica a hora real da execução e bloqueia qualquer publicação fora da manhã (07:00–11:59), impedindo que uma execução atrasada publique à tarde. Não há recuperação vespertina/noturna. A correção de afiliados foi autorizada somente para futuras peças, preservando o Story de 30/10 já publicado.

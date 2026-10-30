@@ -209,3 +209,8 @@ Nunca colocar contadores de sequência como “1 de 5”, “2 de 5”, “3/5�
 - Não usar “Cria conteúdo?” como chamada. Preferir “Você é influenciador em Manaus?” e “Conheça nosso programa de afiliados”. Convidar a fazer parte do time da Kombú, com aprovação antes da ativação do cupom. O formulário atual do site ainda se chama “Para criadores”; não inventar outro destino.
 - O titular rejeitou o K reconstruído nas artes. Usar os arquivos de marca originais: `assets/partners/kombu-logo-oficial-escura.png` (Kombú Logo V4, fundo transparente) em fundos claros e `kombu-logo-oficial-clara.png` (V.3) nos escuros. Não recriar letras com fontes. Esta correção não altera o site nem as artes já publicadas.
 - O titular sugeriu exclusividade no Norte; esta abrangência ainda não foi verificada. A redação publicada usa produção artesanal premium em Manaus desde 2017, sem ampliar uma comparação categórica sem evidência.
+
+## Somente publicações de manhã — reforço do titular em 30/10/2026
+- Não publicar feed, Reels nem Stories à tarde ou à noite, inclusive como recuperação de falhas. Feed/Reels às 09:00; Stories às 07:00, 07:05, 07:10, 07:15 e 07:20, sempre em Manaus. A recuperação automática já autorizada dos Stories fica somente na manhã.
+- O Worker verifica também o relógio real da execução: fora de 07:00–11:59 de Manaus, bloqueia publicações mesmo se um cron antigo chegar atrasado. Preparar arquivos ou conferir logs não autoriza publicar fora das janelas.
+- O titular decidiu aplicar a correção da arte de afiliados somente aos próximos Stories. Não apagar nem republicar o Story de afiliados de 30/10.

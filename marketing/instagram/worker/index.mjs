@@ -10,6 +10,7 @@
 import calendar from '../calendar.json';
 import reels from '../reels-calendar.json';
 import {runReel,reelPreparationTime} from './reels.mjs';
+import {isMorningPublicationTime} from './publication-window.mjs';
 import {runStories, isFeedTime, localDate} from './stories.mjs';
 
 const api = 'https://graph.instagram.com/v21.0';
@@ -19,6 +20,7 @@ const imageBase = 'https://kombu-social.pages.dev';
 const minHours = calendar.everyDays * 24 - 8;
 
 async function call(method, endpoint, params, token) {
+  if(method==='POST'&&endpoint.endsWith('/media_publish')&&!isMorningPublicationTime(new Date()))throw new Error('Publicação bloqueada: fora da manhã de Manaus');
   const url = new URL(api + endpoint);
   const body = new URLSearchParams({...params, access_token: token});
   const res = method === 'GET' ? await fetch(url + '?' + body) : await fetch(url, {method, body});
@@ -173,6 +175,7 @@ async function run(env, {publishAllowed=true, now=new Date()}={}) {
 export default {
   // Await the run itself: waitUntil() tasks are cut off shortly after the event ends (Reveja, 23/10).
   async scheduled(event, env) {
+    if(!isMorningPublicationTime(new Date()))return log(env,'execução fora da manhã de Manaus: publicação bloqueada, inclusive recuperações');
     try { await runStories(env, {call, currentToken, account, waitFinished, log}, new Date(event.scheduledTime)); }
     catch (e) {
       const detail=[e.httpStatus&&'HTTP '+e.httpStatus,e.code&&'code '+e.code,e.subcode&&'subcode '+e.subcode].filter(Boolean).join(', ');
