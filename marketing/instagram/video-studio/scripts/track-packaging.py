@@ -1,33 +1,46 @@
 """Analyze label motion in video; writes only geometry, never edits source images."""
-import json,sys
+import json,sys,re
 from pathlib import Path
 import cv2
 import numpy as np
 root=Path(__file__).resolve().parents[1]
 name=sys.argv[1]
-if name not in ('pour','close'): raise ValueError('Invalid shot')
-p=json.loads((root/'projects/realistic-v4.json').read_text())
-cap=cv2.VideoCapture(str(root/'output/realistic-v4'/f'{name}.mp4'))
+project_id=sys.argv[2] if len(sys.argv)>2 else 'realistic-v4'
+if not re.fullmatch(r'[a-z0-9-]+',name) or not re.fullmatch(r'[a-z0-9-]+',project_id):raise ValueError('Invalid identifier')
+p=json.loads((root/'projects'/f'{project_id}.json').read_text())
+if name not in p['shots']:raise ValueError('Invalid shot')
+cap=cv2.VideoCapture(str(root/'output'/project_id/f'{name}.mp4'))
 w,h=int(cap.get(cv2.CAP_PROP_FRAME_WIDTH)),int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
 if not w or not h: raise ValueError('Missing video')
 source=cv2.imread(str(root/p['shots'][name]['image']))
 # Scale for feature analysis only; the compositor uses the unchanged original PNG.
 source=cv2.resize(source,(w,h))
-if name=='pour':
+if p['shots'][name].get('labelPolygon'):
+    polygon=np.array(p['shots'][name]['labelPolygon'],np.float32)
+elif name=='pour':
     polygon=np.array([[268,465],[497,510],[438,765],[133,679],[166,494],[183,509],[208,525],[248,519],[263,488]],np.float32)/[940,1672]
-else:
+elif name=='close':
     polygon=np.array([[.29,.37],[.415,.37],[.44,.335],[.50,.325],[.56,.34],[.585,.37],[.71,.37],[.71,.75],[.29,.75]],np.float32)
+else:raise ValueError('Missing label polygon')
 points=(polygon*[w,h]).astype(np.int32)
 mask=np.zeros((h,w),np.uint8);cv2.fillPoly(mask,[points],255)
 search=cv2.dilate(mask,np.ones((51,51),np.uint8))
 sift=cv2.SIFT_create(nfeatures=2500)
 k0,d0=sift.detectAndCompute(cv2.cvtColor(source,cv2.COLOR_BGR2GRAY),mask)
 matcher=cv2.BFMatcher()
-rows=[];previous=np.eye(3);accepted=0;previous_gray=None
+rows=[];previous=np.eye(3);accepted=0;previous_gray=None;hidden=0
+max_step=p['shots'][name].get('maxLabelStep',10)
+may_exit=p['shots'][name].get('labelMayExit',False)
 while True:
     ok,frame=cap.read()
     if not ok:break
     gray=cv2.cvtColor(frame,cv2.COLOR_BGR2GRAY)
+    if may_exit:
+        hsv=cv2.cvtColor(frame,cv2.COLOR_BGR2HSV)
+        pink=cv2.inRange(hsv,np.array([140,50,50]),np.array([179,255,255]))
+        if int((pink>0).sum())<1000:
+            rows.append({'matrix':previous.tolist(),'inliers':0,'matched':False,'visible':False})
+            hidden+=1;previous_gray=gray;continue
     keys,desc=sift.detectAndCompute(gray,search)
     pairs=matcher.knnMatch(d0,desc,k=2) if desc is not None and d0 is not None else []
     good=[a for pair in pairs if len(pair)==2 for a,b in [pair] if a.distance<.75*b.distance]
@@ -41,7 +54,7 @@ while True:
             mapped=cv2.perspectiveTransform(points.astype(np.float32)[None],H)[0]
             prev=cv2.perspectiveTransform(points.astype(np.float32)[None],previous)[0]
             area=abs(cv2.contourArea(mapped))/max(1,abs(cv2.contourArea(points)))
-            if inliers<12 or not .75<area<1.4 or np.max(np.linalg.norm(mapped-prev,axis=1))>10:H=None
+            if inliers<12 or not .75<area<1.4 or np.max(np.linalg.norm(mapped-prev,axis=1))>max_step:H=None
     if H is None and previous_gray is not None:
         previous_mask=np.zeros((h,w),np.uint8)
         projected=cv2.perspectiveTransform(points.astype(np.float32)[None],previous)[0]
@@ -55,13 +68,14 @@ while True:
                 if affine is not None and int(keep.sum())>=15:
                     delta=np.vstack([affine,[0,0,1]])
                     displacement=np.max(np.linalg.norm(cv2.perspectiveTransform(projected[None],delta)[0]-projected,axis=1))
-                    if displacement<15 and .9<np.linalg.det(affine[:,:2])<1.1:
+                    if displacement<max(15,max_step) and .9<np.linalg.det(affine[:,:2])<1.1:
                         H=delta@previous;inliers=int(keep.sum())
     if H is not None:previous=H;accepted+=1
-    rows.append({'matrix':previous.tolist(),'inliers':inliers,'matched':H is not None})
+    rows.append({'matrix':previous.tolist(),'inliers':inliers,'matched':H is not None,'visible':True})
     previous_gray=gray
 cap.release()
-if accepted<.8*len(rows):raise RuntimeError(f'Insufficient tracking coverage: {accepted}/{len(rows)}')
+visible_count=len(rows)-hidden
+if not visible_count or accepted<.8*visible_count:raise RuntimeError(f'Insufficient tracking coverage: {accepted}/{visible_count} visible frames')
 # Offline zero-phase filtering suppresses isolated feature-match jitter without
 # changing the underlying video or introducing a tracking delay.
 quad=np.array([[points[:,0].min(),points[:,1].min()],[points[:,0].max(),points[:,1].min()],[points[:,0].max(),points[:,1].max()],[points[:,0].min(),points[:,1].max()]],np.float32)
@@ -73,6 +87,6 @@ weights=np.array([1,2,3,2,1])/9
 for i,row in enumerate(rows):
     destination=np.sum(padded[i:i+5]*weights[:,None,None],axis=0).astype(np.float32)
     row['matrix']=cv2.getPerspectiveTransform(quad,destination).tolist()
-result={'shot':name,'width':w,'height':h,'polygon':polygon.tolist(),'frames':rows,'coverage':accepted/len(rows),'geometry_smoothed':True}
-(root/'output/realistic-v4'/f'{name}-tracking.json').write_text(json.dumps(result))
-print(f'{name}: label geometry tracked in {accepted}/{len(rows)} frames')
+result={'shot':name,'width':w,'height':h,'polygon':polygon.tolist(),'frames':rows,'coverage':accepted/visible_count,'visible_frames':visible_count,'hidden_frames':hidden,'geometry_smoothed':True}
+(root/'output'/project_id/f'{name}-tracking.json').write_text(json.dumps(result))
+print(f'{name}: label geometry tracked in {accepted}/{visible_count} visible frames; absent in {hidden}')

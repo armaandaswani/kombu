@@ -1,0 +1,68 @@
+{
+  "id": "realistic-v5",
+  "title": "Kombú — uma pausa no calor de Manaus",
+  "flavor": "rosas-cardamomo",
+  "approved": false,
+  "voice": "rayssa",
+  "narration": "No calor de Manaus, uma pausa dessas faz diferença. Bem gelada, a Kombú combina suavidade com sabor intenso e o gás da própria fermentação. Essa é a nossa Rosas e Cardamomo. Kombucha artesanal premium, produzida em Manaus desde dois mil e dezessete.",
+  "frameRate": 24,
+  "frames": 81,
+  "width": 576,
+  "height": 1024,
+  "seed": 301026,
+  "shots": {
+    "macro": {
+      "image": "assets/generated/realistic-v5/macro.png",
+      "prompt": "Extreme macro live-action film of the exact cold PET beverage bottle in the reference. A single larger condensation droplet slowly slides about one centimetre down the bottle shoulder, while the small droplets remain naturally attached. Tiny real reflections change with the water. Camera fixed. Preserve the bottle shape, cap, plastic texture, warm amber liquid, pink label edge and tropical bokeh exactly. Real macro lens optics. No camera orbit, no moving label, no new objects, no bubbles appearing outside the bottle, no CGI look. A quiet sensory product detail."
+    },
+    "overhead": {
+      "image": "assets/generated/realistic-v5/overhead.png",
+      "prompt": "A real filmed overhead close-up of this exact hand pouring translucent amber kombucha from the chilled PET bottle into this glass. Continue the pouring stream naturally for a moment, then the wrist gently raises the bottle neck and the stream tapers and stops. The glass level rises modestly and never overflows. Natural small ripples and bubbles. Keep the exact hand anatomy, glass shape, bottle shape, pink Kombu label, label orientation and cap position on the table. Camera locked in this overhead angle. Same sunlight, shadow and stone surface. No orbit, no extra fingers, no new objects, no opaque liquid, no dramatic splash. Looks recorded on a real camera.",
+      "labelPolygon": [
+        [
+          0.2667375132837407,
+          0.3803827751196172
+        ],
+        [
+          0.361317747077577,
+          0.3929425837320574
+        ],
+        [
+          0.41870350690754515,
+          0.3815789473684211
+        ],
+        [
+          0.46865037194473963,
+          0.3977272727272727
+        ],
+        [
+          0.5005313496280552,
+          0.42523923444976075
+        ],
+        [
+          0.5526036131774708,
+          0.4706937799043062
+        ],
+        [
+          0.34006376195536664,
+          0.7033492822966507
+        ],
+        [
+          0.0924548352816153,
+          0.6435406698564593
+        ]
+      ],
+      "labelMayExit": true,
+      "maxLabelStep": 45
+    },
+    "glass": {
+      "image": "assets/generated/realistic-v5/glass.png",
+      "prompt": "A real close-up beverage commercial filmed on a camera. The hand naturally lifts the amber kombucha glass about three centimetres and holds it calmly. A small realistic ripple moves across the liquid surface, tiny bubbles rise slowly, natural reflections shift. Keep the exact hand, thumb, glass proportions, liquid color and fill level. The pink Kombu bottle remains still and softly out of focus in the background. Warm natural veranda sunlight, camera locked. No camera orbit, no text changes, no new objects, no extra fingers, no spilling, no morphing. A quiet genuine human gesture."
+    }
+  },
+  "duration": 18.5,
+  "flavors": [
+    "rosas-cardamomo"
+  ],
+  "caption": "Uma pausa no calor de Manaus com a Kombú bem gelada. Rosas & Cardamomo combina um sabor marcante com a suavidade da nossa kombucha artesanal premium. O gás vem da própria fermentação, e a produção acontece aqui em Manaus desde 2017. Para experimentar, conheça os nossos parceiros no perfil. #kombu #kombucha #manaus"
+}

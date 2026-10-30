@@ -195,3 +195,5 @@ O titular quer que o cenário e a ação de servir sejam criados do zero. Não r
 
 ### Acabamento fotográfico dos vídeos, 29/10/2026
 O titular rejeitou a aparência CGI da prévia v3. Quer cenas geradas com aparência de filmagem real, com materiais, mão, condensação e servir naturais. Usar imagem para vídeo a partir de referências fotográficas novas; não apresentar animação 3D ou fotografia estática com zoom como se fosse filmagem realista concluída. Manter a exigência de custo zero e registrar honestamente os testes e limitações do motor.
+
+- Revisão do filme em 30/10/2026: o titular rejeitou a v4 de cinco segundos por ser curta, sem voz e sem diversidade de takes. Para este filme, desenvolver uma sequência narrada com a Rayssa Original e setups de câmera distintos; não entregar um ensaio silencioso de movimento como substituto da peça completa. A v5 é uma avaliação privada de aproximadamente 19 s, com cinco enquadramentos e sete planos.
