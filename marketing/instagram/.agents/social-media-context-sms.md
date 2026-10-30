@@ -197,3 +197,7 @@ O titular quer que o cenário e a ação de servir sejam criados do zero. Não r
 O titular rejeitou a aparência CGI da prévia v3. Quer cenas geradas com aparência de filmagem real, com materiais, mão, condensação e servir naturais. Usar imagem para vídeo a partir de referências fotográficas novas; não apresentar animação 3D ou fotografia estática com zoom como se fosse filmagem realista concluída. Manter a exigência de custo zero e registrar honestamente os testes e limitações do motor.
 
 - Revisão do filme em 30/10/2026: o titular rejeitou a v4 de cinco segundos por ser curta, sem voz e sem diversidade de takes. Para este filme, desenvolver uma sequência narrada com a Rayssa Original e setups de câmera distintos; não entregar um ensaio silencioso de movimento como substituto da peça completa. A v5 é uma avaliação privada de aproximadamente 19 s, com cinco enquadramentos e sete planos.
+
+## Stories sem numeração — correção do titular em 30/10/2026
+
+Nunca colocar contadores de sequência como “1 de 5”, “2 de 5”, “3/5” ou equivalentes nas artes publicadas. Cada Story deve funcionar sozinho, sem numeração visível de lote. Aplicar também a novas peças geradas por IA.
