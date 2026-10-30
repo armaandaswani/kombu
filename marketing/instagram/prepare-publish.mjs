@@ -1,6 +1,7 @@
 // Prepare only the current calendar's canonical files. Ignore stale slides and iCloud conflict copies.
 import fs from 'node:fs/promises';
 import path from 'node:path';
+import {createHash} from 'node:crypto';
 import {fileURLToPath} from 'node:url';
 
 const root = path.dirname(fileURLToPath(import.meta.url));
@@ -32,3 +33,19 @@ for (const day of stories.days) for (const frame of day.frames) {
 }
 await fs.copyFile(path.join(root, 'out/stories/manifest.json'), path.join(target, 'stories/manifest.json'));
 console.log(stories.days.length * 5 + ' Stories incluídos.');
+
+// Include only explicitly approved exports. Never copy the private evaluation soundtrack.
+const reels=JSON.parse(await fs.readFile(path.join(root,'reels-calendar.json'),'utf8'));
+for(const post of reels.posts){
+ if(!/^[a-z0-9-]+$/.test(post.id)||!post.approvedAt||post.voice!=='none')throw Error('Reel não liberado');
+ const sourceVideo=await fs.readFile(path.join(root,'out',post.id,post.video));
+ if(createHash('sha256').update(sourceVideo).digest('hex')!==post.sha256)throw Error('Reel diverge da versão liberada');
+ const dest=path.join(target,post.id);await fs.mkdir(dest,{recursive:true});
+ for(const file of [post.video,post.cover,'legenda.txt']){
+  if(!/^[a-z0-9.-]+$/.test(file))throw Error('Arquivo de Reel inválido');
+  const source=path.join(root,'out',post.id,file);
+  if((await fs.stat(source)).size>25*1024*1024)throw Error('Arquivo acima do limite Pages: '+file);
+  await fs.copyFile(source,path.join(dest,file));
+ }
+}
+console.log(reels.posts.length+' Reels aprovados incluídos.');

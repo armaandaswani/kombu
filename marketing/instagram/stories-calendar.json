@@ -251,11 +251,12 @@
         {
           "id": "criadores-5",
           "type": "creator",
-          "title": "Um cupom para quem acompanha você.",
-          "body": "Conheça nosso programa para criadores. Após a aprovação, você recebe um cupom com 5% de desconto em produtos para compartilhar.",
-          "cta": "Inscreva-se em “Para criadores”, no site da bio.",
+          "title": "Você é influenciador em Manaus?",
+          "body": "Conheça nosso programa de afiliados e apresente ao seu público uma kombucha artesanal premium feita em Manaus desde 2017.",
+          "cta": "Envie sua proposta pelo link da bio. Após a aprovação, você recebe seu cupom para compartilhar.",
           "bg": "#F6F2E8",
-          "image": "stories/2026-11-01/criadores-5.jpg"
+          "image": "stories/2026-11-01/criadores-5.jpg",
+          "layout": "creator"
         }
       ]
     },
@@ -350,11 +351,12 @@
         {
           "id": "criadores-7",
           "type": "creator",
-          "title": "Vamos conversar sobre uma parceria?",
-          "body": "Conheça nosso programa para criadores. Após a aprovação, você recebe um cupom com 5% de desconto em produtos para compartilhar.",
-          "cta": "Inscreva-se em “Para criadores”, no site da bio.",
+          "title": "Faça parte do time da Kombú.",
+          "body": "Nossa kombucha é suave, tem sabor intenso e é feita aqui em Manaus. Conheça o programa de afiliados e apresente a Kombú do seu jeito.",
+          "cta": "Envie sua proposta pelo link da bio. Após a aprovação, você recebe seu cupom para compartilhar.",
           "bg": "#F6F2E8",
-          "image": "stories/2026-11-03/criadores-7.jpg"
+          "image": "stories/2026-11-03/criadores-7.jpg",
+          "layout": "creator"
         }
       ]
     }

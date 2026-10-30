@@ -177,7 +177,7 @@ function slideHtml(slide, i, total, fonts) {
     .photo-copy{position:absolute;bottom:185px;left:90px;right:90px;text-align:center;font-size:82px;line-height:1.06;white-space:pre-line;text-shadow:0 2px 18px rgba(0,0,0,.18)}
     </style></head><body style="--bg:#2D4B28;--fg:#FFF7ED;--accent:#FFF7ED;--muted:rgba(255,247,237,.9)">
     <img class="lifestyle" src="${image}"><div class="shade"></div>
-    <div class="top"><span class="mark">KOMBÚ</span></div>
+    <div class="top"><img src="${pathToFileURL(path.join(root, 'assets/partners/kombu-logo-oficial-clara.png')).href}" style="height:110px;width:170px;object-fit:contain" alt="Kombú"></div>
     ${slide.title ? `<h1 class="photo-copy">${esc(slide.title)}</h1>` : ''}
     <div class="foot">${dots ? `<span class="dots">${dots}</span>` : ''}<span class="handle">@kombu.amazonia</span></div></body></html>`;
   }
@@ -207,14 +207,14 @@ function slideHtml(slide, i, total, fonts) {
   const dots = total > 1 ? Array.from({length: total}, (_, n) => `<i class="${n === i ? 'on' : ''}"></i>`).join('') : '';
   return `<!doctype html><html><head><meta charset="utf-8"><style>${fonts}${css}</style></head>
 <body style="${vars}">${visual ? '<div class="glow"></div>' : ''}
-<div class="top"><span class="mark">KOMBÚ</span></div>
+<div class="top"><img src="${pathToFileURL(path.join(root, 'assets/partners/kombu-logo-oficial-'+(t.fg==='#FFF7ED'?'clara':'escura')+'.png')).href}" style="height:110px;width:170px;object-fit:contain" alt="Kombú"></div>
 <div class="stage${visual ? ' with-bottle' : ''}">${visual}${words}</div>
 <div class="foot">${dots ? `<span class="dots">${dots}</span>` : ''}<span class="handle">@kombu.amazonia</span></div></body></html>`;
 }
 
 // ---------------------------------------------------------------- render
 const fonts = await fontCss();
-const tmp = path.join(root, '.render');
+const tmp = path.join(root, '.render', 'feed-temp');
 await fs.mkdir(tmp, {recursive: true});
 const port = 9344;
 const proc = spawn(chrome, ['--headless=new', `--remote-debugging-port=${port}`, '--disable-gpu', '--hide-scrollbars', '--allow-file-access-from-files', '--user-data-dir=' + path.join(tmp, 'profile'), 'about:blank'], {stdio: 'ignore'});

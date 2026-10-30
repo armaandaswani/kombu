@@ -8,6 +8,8 @@
 // KV: "published:<id>" -> {mediaId, at}; "last" -> {id, at}; "token" -> {accessToken, refreshedAt};
 //     "user" -> {id, username}; "log" -> last 50 runs.
 import calendar from '../calendar.json';
+import reels from '../reels-calendar.json';
+import {runReel,reelPreparationTime} from './reels.mjs';
 import {runStories, isFeedTime, localDate} from './stories.mjs';
 
 const api = 'https://graph.instagram.com/v21.0';
@@ -107,15 +109,16 @@ async function publish(post, user, token, tags) {
   return (await call('POST', `/${user.id}/media_publish`, {creation_id: container.id}, token)).id;
 }
 
-async function run(env) {
+async function run(env, {publishAllowed=true, now=new Date()}={}) {
   if (!env.IG_TOKEN) return log(env, 'aguardando conexão da conta (rode node connect.mjs)');
   const last = JSON.parse(await env.STATE.get('last') || 'null');
   if (last && (Date.now() - Date.parse(last.at)) / 36e5 < minHours) return log(env, `aguardando intervalo (último: ${last.id})`);
 
   let post = null;
-  for (const p of calendar.posts) if (!(await env.STATE.get('published:' + p.id))) { post = p; break; }
+  for (const p of [...reels.posts,...calendar.posts]) if (!(await env.STATE.get('published:' + p.id))) { post = p; break; }
   if (!post) return log(env, 'calendário esgotado: adicione posts e rode wrangler deploy');
 
+  if(!publishAllowed&&post.format!=='reel')return;
   const token = await currentToken(env);
   const user = await account(env, token);
 
@@ -130,6 +133,10 @@ async function run(env) {
     return log(env, `${post.id} já estava na conta (media ${existing.id}); registrado sem repostar`);
   }
 
+  if(post.format==='reel'){
+    try{return await runReel(env,{call,log,user,token,imageBase},post,{publishAllowed,now});}
+    catch(e){await log(env,'erro no Reel '+post.id+': '+e.message);throw e;}
+  }
   const tags = userTags(post, user.username);
   try {
     let mediaId;
@@ -172,7 +179,8 @@ export default {
       await env.STATE.put('stories:health:'+localDate(new Date(event.scheduledTime)),JSON.stringify({status:'error',at:new Date().toISOString(),message:e.message,httpStatus:e.httpStatus,code:e.code,subcode:e.subcode}));
       await log(env, 'erro nos Stories: ' + e.message + (detail?' ('+detail+')':''));
     }
-    if (isFeedTime(new Date(event.scheduledTime))) await run(env);
+    const now=new Date(event.scheduledTime);
+    if(isFeedTime(now)||reelPreparationTime(now))await run(env,{now,publishAllowed:isFeedTime(now)});
   },
   async fetch() { return new Response('Not found', {status: 404}); },
 };

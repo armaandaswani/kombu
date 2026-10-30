@@ -203,3 +203,9 @@ O titular rejeitou a aparência CGI da prévia v3. Quer cenas geradas com aparê
 Nunca colocar contadores de sequência como “1 de 5”, “2 de 5”, “3/5” ou equivalentes nas artes publicadas. Cada Story deve funcionar sozinho, sem numeração visível de lote. Aplicar também a novas peças geradas por IA.
 
 - Continuação do vídeo em 30/10/2026: a v6 tem 21 s, seis setups e oito planos, acrescentando um primeiro gole em personagem adulta fictícia. Captions menores, sem tarja ou contador, e rosto livre no encerramento. A versão Rayssa continua privada; há também uma exportação com trilha/foley sem locução. Não colocar nenhuma automaticamente no calendário antes da avaliação do titular.
+
+## Aprovação do filme e afiliados — 30/10/2026
+- O titular aprovou o filme v6 e pediu sua inclusão no pipeline. A fila comercial em `reels-calendar.json` usa exclusivamente o export com trilha/foley sem locução; a Rayssa Original continua limitada à avaliação privada. O Reel aprovado tem prioridade antes do próximo post estático e respeita o intervalo do feed às 09:00 de Manaus.
+- Não usar “Cria conteúdo?” como chamada. Preferir “Você é influenciador em Manaus?” e “Conheça nosso programa de afiliados”. Convidar a fazer parte do time da Kombú, com aprovação antes da ativação do cupom. O formulário atual do site ainda se chama “Para criadores”; não inventar outro destino.
+- O titular rejeitou o K reconstruído nas artes. Usar os arquivos de marca originais: `assets/partners/kombu-logo-oficial-escura.png` (Kombú Logo V4, fundo transparente) em fundos claros e `kombu-logo-oficial-clara.png` (V.3) nos escuros. Não recriar letras com fontes. Esta correção não altera o site nem as artes já publicadas.
+- O titular sugeriu exclusividade no Norte; esta abrangência ainda não foi verificada. A redação publicada usa produção artesanal premium em Manaus desde 2017, sem ampliar uma comparação categórica sem evidência.

@@ -1,0 +1,22 @@
+{
+  "account": "@kombu.amazonia",
+  "timezone": "America/Manaus",
+  "postTime": "09:00",
+  "priority": "Antes do próximo post estático ainda não publicado; preserva intervalo do feed.",
+  "posts": [
+    {
+      "id": "22-rosas-cardamomo-filme",
+      "format": "reel",
+      "approvedAt": "2026-10-30",
+      "source": "video-studio/output/realistic-v6/Kombu-Filme-v6-Sem-Locucao.mp4",
+      "video": "video.mp4",
+      "cover": "cover.jpg",
+      "durationSeconds": 21,
+      "voice": "none",
+      "rights": "Trilha original e efeito CC0; sem narração Rayssa de avaliação privada.",
+      "caption": "Uma pausa bem gelada no calor de Manaus.\n\nRosas & Cardamomo combina a suavidade da Kombú com sabor intenso e o gás da própria fermentação. Produzimos nossa kombucha artesanal premium aqui em Manaus desde 2017.\n\nEncontre sua Kombú nos parceiros. Link na bio.\n\n#kombucha #manaus #kombuchaartesanal #kombu",
+      "sha256": "b01c38724f7859f86bb6538b7fb7ea55c612aea4e0c7a55168ac85b99d3f160d",
+      "bytes": 13596664
+    }
+  ]
+}
