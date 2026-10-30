@@ -201,3 +201,5 @@ O titular rejeitou a aparência CGI da prévia v3. Quer cenas geradas com aparê
 ## Stories sem numeração — correção do titular em 30/10/2026
 
 Nunca colocar contadores de sequência como “1 de 5”, “2 de 5”, “3/5” ou equivalentes nas artes publicadas. Cada Story deve funcionar sozinho, sem numeração visível de lote. Aplicar também a novas peças geradas por IA.
+
+- Continuação do vídeo em 30/10/2026: a v6 tem 21 s, seis setups e oito planos, acrescentando um primeiro gole em personagem adulta fictícia. Captions menores, sem tarja ou contador, e rosto livre no encerramento. A versão Rayssa continua privada; há também uma exportação com trilha/foley sem locução. Não colocar nenhuma automaticamente no calendário antes da avaliação do titular.

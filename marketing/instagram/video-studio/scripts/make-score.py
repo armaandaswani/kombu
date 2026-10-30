@@ -1,9 +1,13 @@
 """An original quiet plucked instrumental bed, with no third-party samples."""
 from pathlib import Path
 import wave
+import argparse
+import re
 import numpy as np
 root=Path(__file__).resolve().parents[1]
-sr=48000;duration=18.5;audio=np.zeros((int(sr*duration),2),np.float64)
+parser=argparse.ArgumentParser();parser.add_argument('--project',default='realistic-v5');parser.add_argument('--duration',type=float,default=18.5);args=parser.parse_args()
+if not re.fullmatch('[a-z0-9-]+',args.project) or not 1 <= args.duration <= 90: raise ValueError('Projeto ou duração inválida')
+sr=48000;duration=args.duration;audio=np.zeros((int(sr*duration),2),np.float64)
 rng=np.random.default_rng(301026);beat=60/92
 # Dmaj9 / Gmaj7, a restrained original arpeggio under the spoken voice.
 chords=[[146.832,184.997,220.,277.183,329.628],[146.832,195.998,246.942,293.665,369.994]]
@@ -23,7 +27,8 @@ for start in np.arange(0,duration,beat*4):
     offset=int(start*sr);audio[offset:offset+len(t)]+=tone[:,None]
 fade=np.minimum(np.arange(len(audio))/(sr*.3),1)*np.minimum((len(audio)-1-np.arange(len(audio)))/(sr*.9),1)
 audio*=fade[:,None]
-out=root/'output/realistic-v5/music-original.wav'
+out=root/'output'/args.project/'music-original.wav'
+out.parent.mkdir(parents=True,exist_ok=True)
 with wave.open(str(out),'wb') as f:
     f.setnchannels(2);f.setsampwidth(2);f.setframerate(sr);f.writeframes((np.clip(audio,-1,1)*32767).astype('<i2').tobytes())
 print('Original instrumental written:',duration,'seconds')

@@ -1,0 +1,24 @@
+{
+  "id": "realistic-v6",
+  "title": "Kombú — do gelado ao primeiro gole",
+  "flavor": "rosas-cardamomo",
+  "approved": false,
+  "voice": "rayssa",
+  "narration": "No calor de Manaus, uma pausa dessas faz diferença. Bem gelada, a Kombú combina suavidade com sabor intenso e o gás da própria fermentação. Essa é a nossa Rosas e Cardamomo. Kombucha artesanal premium, produzida em Manaus desde dois mil e dezessete.",
+  "frameRate": 24,
+  "frames": 81,
+  "width": 576,
+  "height": 1024,
+  "seed": 301026,
+  "shots": {
+    "finish": {
+      "image": "assets/generated/realistic-v6/finish.png",
+      "prompt": "Photorealistic live-action beverage film. Fixed 50 mm camera in this exact warm sunlit veranda. The same woman calmly lifts the same amber kombucha glass two centimetres to her lips, takes one small natural sip and begins to lower it slightly. Subtle real breathing and eyelid movement, relaxed neutral expression, no speaking, no exaggerated acting, no big smile. Keep her identity, face, hand and five fingers anatomically consistent. Glass stays rigid, rim meets the lips naturally, liquid obeys gravity and never spills or overflows. The pink 500 ml PET bottle on the table remains stationary and softly out of focus. Same natural sun, cane chair, palm shadows and pale stone table. No zoom or orbit, no cuts, no extra fingers, no melting face, no distorted teeth, no exaggerated mouth opening, no cartoon, no CGI, no shiny synthetic skin, no text changes."
+    }
+  },
+  "duration": 21,
+  "flavors": [
+    "rosas-cardamomo"
+  ],
+  "caption": "Uma pausa no calor de Manaus com a Kombú bem gelada. Rosas & Cardamomo combina um sabor marcante com a suavidade da nossa kombucha artesanal premium. O gás vem da própria fermentação, e a produção acontece aqui em Manaus desde 2017. Para experimentar, conheça os nossos parceiros no perfil. #kombu #kombucha #manaus"
+}
