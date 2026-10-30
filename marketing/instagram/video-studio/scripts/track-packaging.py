@@ -16,7 +16,7 @@ source=cv2.resize(source,(w,h))
 if name=='pour':
     polygon=np.array([[268,465],[497,510],[438,765],[133,679],[166,494],[183,509],[208,525],[248,519],[263,488]],np.float32)/[940,1672]
 else:
-    polygon=np.array([[.29,.39],[.70,.39],[.70,.745],[.29,.745]],np.float32)
+    polygon=np.array([[.29,.37],[.415,.37],[.44,.335],[.50,.325],[.56,.34],[.585,.37],[.71,.37],[.71,.75],[.29,.75]],np.float32)
 points=(polygon*[w,h]).astype(np.int32)
 mask=np.zeros((h,w),np.uint8);cv2.fillPoly(mask,[points],255)
 search=cv2.dilate(mask,np.ones((51,51),np.uint8))
@@ -41,7 +41,7 @@ while True:
             mapped=cv2.perspectiveTransform(points.astype(np.float32)[None],H)[0]
             prev=cv2.perspectiveTransform(points.astype(np.float32)[None],previous)[0]
             area=abs(cv2.contourArea(mapped))/max(1,abs(cv2.contourArea(points)))
-            if inliers<12 or not .75<area<1.4 or np.max(np.linalg.norm(mapped-prev,axis=1))>45:H=None
+            if inliers<12 or not .75<area<1.4 or np.max(np.linalg.norm(mapped-prev,axis=1))>10:H=None
     if H is None and previous_gray is not None:
         previous_mask=np.zeros((h,w),np.uint8)
         projected=cv2.perspectiveTransform(points.astype(np.float32)[None],previous)[0]
@@ -62,6 +62,17 @@ while True:
     previous_gray=gray
 cap.release()
 if accepted<.8*len(rows):raise RuntimeError(f'Insufficient tracking coverage: {accepted}/{len(rows)}')
-result={'shot':name,'width':w,'height':h,'polygon':polygon.tolist(),'frames':rows,'coverage':accepted/len(rows)}
+# Offline zero-phase filtering suppresses isolated feature-match jitter without
+# changing the underlying video or introducing a tracking delay.
+quad=np.array([[points[:,0].min(),points[:,1].min()],[points[:,0].max(),points[:,1].min()],[points[:,0].max(),points[:,1].max()],[points[:,0].min(),points[:,1].max()]],np.float32)
+trajectory=np.array([cv2.perspectiveTransform(quad[None],np.array(row['matrix']))[0] for row in rows])
+padded=np.pad(trajectory,((2,2),(0,0),(0,0)),mode='edge')
+median=np.array([np.median(padded[i:i+5],axis=0) for i in range(len(rows))])
+padded=np.pad(median,((2,2),(0,0),(0,0)),mode='edge')
+weights=np.array([1,2,3,2,1])/9
+for i,row in enumerate(rows):
+    destination=np.sum(padded[i:i+5]*weights[:,None,None],axis=0).astype(np.float32)
+    row['matrix']=cv2.getPerspectiveTransform(quad,destination).tolist()
+result={'shot':name,'width':w,'height':h,'polygon':polygon.tolist(),'frames':rows,'coverage':accepted/len(rows),'geometry_smoothed':True}
 (root/'output/realistic-v4'/f'{name}-tracking.json').write_text(json.dumps(result))
 print(f'{name}: label geometry tracked in {accepted}/{len(rows)} frames')

@@ -44,3 +44,5 @@ A ordem local é: `setup-realistic-video.py`, `generate-realistic.mjs close`, `g
 O plano de servir levou 510,4 s e o close seguinte 390,0 s. Pico Metal da decodificação informado: 9,27 GB e 8,09 GB, respectivamente. A configuração e os resultados permanecem em `projects/realistic-v4.json` e `output/realistic-v4/`.
 
 Testes existentes: oito Node e dois Python passaram. Também foram verificados sintaxe dos scripts Python/Node e bundle JSX. O ambiente HumanVoice, o feed, os Stories e o Worker de publicação não foram alterados. Nenhuma credencial foi extraída da conta Hugging Face.
+
+O acabamento do rastreamento aplica mediana temporal e filtro simétrico de cinco quadros às coordenadas, sem alterar o vídeo de origem. Movimento máximo entre quadros dos cantos do rótulo na resolução nativa: close: 0.21 px, pour: 7.07 px. A impressão foi reinspecionada após a composição.
