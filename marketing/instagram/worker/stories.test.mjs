@@ -39,7 +39,7 @@ test('missing day does not use yesterday or future content',async()=>{const s=se
 
 test('outside Stories slots, including feed schedules, cannot publish Stories',async()=>{
  const s=setup();
- for(const hour of ['10:55','11:03','11:25','16:30','22:30']) await runStories(s.env,s.deps,new Date(date+'T'+hour+':00Z'));
+ for(const hour of ['10:55','11:03','11:25','13:00','16:30','22:30']) await runStories(s.env,s.deps,new Date(date+'T'+hour+':00Z'));
  assert.equal(s.calls.length,0);
 });
 test('one-day catch-up uses 10:00 Manaus, never on a later date',()=>{
@@ -49,10 +49,17 @@ test('one-day catch-up uses 10:00 Manaus, never on a later date',()=>{
  assert.equal(storySlot(new Date('2027-10-28T14:00:00Z')),null);
 });
 
-test('shared free-plan trigger preserves feed times and excludes Stories slots',()=>{
- for(const time of ['16:30','22:30'])assert.equal(isFeedTime(new Date(date+'T'+time+':00Z')),true);
- for(const hour of [11,14,16,22])for(const minute of [0,5,10,15,20,30]){
-  if((hour===16||hour===22)&&minute===30)continue;
-  assert.equal(isFeedTime(new Date(date+'T'+hour+':'+String(minute).padStart(2,'0')+':00Z')),false);
+test('feed publishes only at 09:00 Manaus and the deployed cron includes every allowed slot',async()=>{
+ const {readFile}=await import('node:fs/promises');
+ const config=await readFile(new URL('./wrangler.toml',import.meta.url),'utf8');
+ assert.match(config,/crons = \["0,5,10,15,20 11,13 \* \* \*"\]/);
+ const calendar=JSON.parse(await readFile(new URL('../calendar.json',import.meta.url),'utf8'));
+ assert.equal(calendar.postTime,'09:00');
+ for(let hour=0;hour<24;hour++)for(let minute=0;minute<60;minute++){
+  const now=new Date('2026-10-30T'+String(hour).padStart(2,'0')+':'+String(minute).padStart(2,'0')+':00Z');
+  assert.equal(isFeedTime(now),hour===13&&minute===0);
+  if(isFeedTime(now)||storySlot(now)!==null){
+   assert.ok([11,13].includes(hour)&&[0,5,10,15,20].includes(minute));
+  }
  }
 });

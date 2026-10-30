@@ -1,6 +1,6 @@
 # Instagram da Kombú (@kombu.amazonia): publicação automática
 
-Gêmeo do publicador da Reveja. Um post a cada dois dias, às 12:30 de Manaus.
+Gêmeo do publicador da Reveja. Um post a cada dois dias, às 09:00 de Manaus.
 
 ## Como funciona
 - `calendar.json`: os posts, em ordem, com slides e legendas. As regras de conteúdo estão no topo do arquivo.
@@ -10,8 +10,8 @@ Gêmeo do publicador da Reveja. Um post a cada dois dias, às 12:30 de Manaus.
 - As imagens ficam em `https://kombu-social.pages.dev/<post>/<n>.jpg` (Cloudflare Pages). A API do
   Instagram exige URL pública; não usamos o domínio .com.br para que um vencimento de domínio não
   derrube a publicação.
-- Worker Cloudflare `kombu-instagram` (pasta `worker/`): sem URL pública, roda às 12:30 e às 18:30
-  de Manaus (`30 16 * * *` e `30 22 * * *` UTC). Publica **o próximo post da fila** quando já se
+- Worker Cloudflare `kombu-instagram` (pasta `worker/`): sem URL pública, publica às 09:00
+  de Manaus (13:00 UTC), sem tentativa de publicação à tarde ou à noite. Publica **o próximo post da fila** quando já se
   passaram ~2 dias do último. Se começar atrasado, não dispara posts acumulados.
 - Estado no KV `KOMBU_IG_STATE` (id `b59df63d5f8d4b91a087a818f4252c3e`): `published:<id>`, `last`,
   `token` (renovado a cada 30 dias, sozinho), `user`, `log`.
@@ -63,7 +63,7 @@ não o repete.
 - `stories-calendar.json` guarda cinco artes por data local de Manaus. A primeira sequência, em 28/10, apresenta Dolce Vita, explica kombucha, o sabor/gás da fermentação e a produção artesanal da Kombú em Manaus desde 2017. Benefícios são apresentados pela experiência e pelos diferenciais verificáveis, sem promessas de saúde.
 - `render-stories.mjs` valida e gera `out/stories/<data>/<id>.jpg`. O tipo `art` usa uma arte final aprovada; os demais montam fotos e garrafas com a logo pequena. A área segura de texto evita a interface do Instagram.
 - Fluxo: `node render-stories.mjs --check`, `node render-stories.mjs`, revisão visual, `node prepare-publish.mjs`, deploy de `.render/publish` no Pages `kombu-social`. A preparação preserva os arquivos do feed e copia somente os Stories manifestados.
-- O Worker publica um Story por execução às 07:00, 07:05, 07:10, 07:15 e 07:20 de Manaus. O feed mantém os horários de 12:30 e 18:30 e o intervalo de dois dias. Não existem chamadas manuais de publicação.
+- O Worker publica um Story por execução às 07:00, 07:05, 07:10, 07:15 e 07:20 de Manaus. O feed publica às 09:00 de Manaus e mantém o intervalo de dois dias. Não existem chamadas manuais de publicação.
 - Chaves: `story:<data>:<id>` e `stories:done:<data>`. A chave stories:slot:<data>:<horaUTC> impede mais de uma publicação bem-sucedida no mesmo horário. Uma publicação com resposta incerta fica retida para revisão, em vez de duplicar na tentativa seguinte. Stories requerem conta Business e permissão de publicação da Meta; a primeira execução real confirma a elegibilidade.
 - A automação deste chat prepara/revisa a fila diariamente às 06:30 de Manaus e confere o resultado às 07:30. Em 28/10, a conferência excepcional ocorre às 10:30. Ela depende do ambiente local disponível. A publicação no horário é feita no Cloudflare, com as artes já preparadas.
 - Antes de mudar um dia, confira o log e `stories:done:<data>` sem ler tokens. Nunca substitua arte já publicada. Preserve também o feed e as alterações de terceiros.
@@ -77,4 +77,8 @@ não o repete.
 
 Cinco Stories em escadinha, um a cada cinco minutos a partir de 07:00 Manaus. O titular autorizou expressamente essa alteração dos crons de Stories. As execuções de feed não publicam Stories e os horários do feed foram preservados. Como o pedido chegou após as 07:00, somente em 28/10 haverá a sequência de 10:00 a 10:20. A regra anual do cron excepcional é neutralizada no código fora da data exata 28/10/2026. A elegibilidade Business e a permissão real da Meta continuam pendentes da primeira execução.
 
-- O limite gratuito de cinco crons é por conta e já estava ocupado por outros publicadores. Para manter tudo gratuito sem modificar outros Workers, este publicador usa um único cron compartilhado. O código só libera Stories nas cinco janelas da manhã e o feed em 16:30/22:30 UTC, mantendo os horários locais anteriores. Os demais disparos não publicam nada.
+- O limite gratuito de cinco crons é por conta e já estava ocupado por outros publicadores. Para manter tudo gratuito sem modificar outros Workers, este publicador usa um único cron compartilhado. O código só libera Stories nas cinco janelas da manhã e o feed às 13:00 UTC (09:00 Manaus), conforme alteração autorizada em 30/10/2026. Os demais disparos não publicam nada.
+
+## Horário do feed atualizado em 30/10/2026
+
+A pedido do titular, o feed passa a publicar somente às 09:00 de Manaus (13:00 UTC), a cada dois dias. Foram removidas as janelas de 12:30 e 18:30. Os Stories continuam às 07:00, 07:05, 07:10, 07:15 e 07:20. O cron compartilhado dispara nas horas 11 e 13 UTC; o código bloqueia o feed fora das 13:00 UTC e os Stories fora de suas cinco janelas.

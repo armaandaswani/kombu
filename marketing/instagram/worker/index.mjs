@@ -12,8 +12,8 @@ import {runStories, isFeedTime} from './stories.mjs';
 
 const api = 'https://graph.instagram.com/v21.0';
 const imageBase = 'https://kombu-social.pages.dev';
-// A little under two days, so the daily noon run lands on alternate days and a run that slipped
-// to the evening retry drifts back to noon on the next post instead of staying late forever.
+// A little under two days, so the daily 09:00 Manaus run lands on alternate days
+// even when the previous post was published manually at a different time.
 const minHours = calendar.everyDays * 24 - 8;
 
 async function call(method, endpoint, params, token) {
