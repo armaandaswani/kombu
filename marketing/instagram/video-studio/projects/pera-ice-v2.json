@@ -1,0 +1,206 @@
+{
+  "id": "pera-ice-v2",
+  "title": "Kombú Pera & Alecrim · do gelo ao copo",
+  "flavor": "pera-alecrim",
+  "approved": false,
+  "voice": "none",
+  "frameRate": 24,
+  "frames": 121,
+  "width": 576,
+  "height": 1024,
+  "seed": 311027,
+  "shots": {
+    "hero": {
+      "image": "assets/generated/pera-ice-v1/hero.png",
+      "prompt": "Photorealistic live-action product cinematography, real 500 ml PET kombucha bottle resting in shallow clear water on natural sage limestone exactly as in this image. Locked overhead camera, no zoom, no cuts. Water ripples travel gently from upper right to lower left and natural sunlight caustics shimmer across the stone. One ice piece on the upper right slowly drifts one centimetre and makes a delicate ripple. The actual bottle stays firmly supported, almost perfectly stationary, with the exact same proportions and lime-green printed label facing the camera. Preserve every printed letter and original label illustration, no relabeling or text morphing. Small condensation droplets glisten naturally on exposed plastic, one tiny droplet slides slowly down the shoulder. Natural tiny movements in the rosemary tip. Ice is irregular and transparent, never grows or melts into a shape. Physically real slow fluid motion, consistent contact and shadows, bright detail preserved. No artificial glow, no CGI look, no 3D rendering, no splash sculpture, no floating fruit, no spinning bottle, no warping, no plastic stretching, no additional objects, no on-screen text.",
+      "labelPolygon": [
+        [
+          0.258,
+          0.407
+        ],
+        [
+          0.381,
+          0.376
+        ],
+        [
+          0.392,
+          0.349
+        ],
+        [
+          0.437,
+          0.33
+        ],
+        [
+          0.481,
+          0.328
+        ],
+        [
+          0.524,
+          0.334
+        ],
+        [
+          0.567,
+          0.356
+        ],
+        [
+          0.655,
+          0.344
+        ],
+        [
+          0.777,
+          0.72
+        ],
+        [
+          0.42,
+          0.76
+        ]
+      ],
+      "maxLabelStep": 8
+    },
+    "detail": {
+      "image": "assets/generated/pera-ice-v1/detail.png",
+      "prompt": "Real live-action macro product film at the same low three-quarter camera angle. This exact 500 ml PET bottle stays solid and firmly resting on the pale natural stone, with its exact printed green pear and rosemary label unchanged and facing the camera. The camera is locked, no zoom, no orbit, no cuts, no focus pumping. Clear shallow water moves gently past the bottle from upper right toward lower left, making real delicate moving sunlight caustics on the stone and the bottle shoulder. Tiny condensation beads glint in natural light; one small droplet slowly creeps on the shoulder. The nearby foreground ice fragment drifts a few millimetres with a soft ripple. Preserve the exact KOMBÚ, PÊRA & ALECRIM, 500 ml print, its letters and label artwork throughout. Keep the paper label and bottle geometry completely rigid, no stretching, no morphing or relabeling. Natural optical depth of field, same real sunlight and material textures. No artificial glow, CGI look, cartoon, splash sculpture, floating bottle, giant ice, spinning objects, extra fruit or overlay graphics.",
+      "labelPolygon": [
+        [
+          0.191,
+          0.451
+        ],
+        [
+          0.393,
+          0.394
+        ],
+        [
+          0.415,
+          0.36
+        ],
+        [
+          0.461,
+          0.336
+        ],
+        [
+          0.502,
+          0.331
+        ],
+        [
+          0.554,
+          0.338
+        ],
+        [
+          0.601,
+          0.353
+        ],
+        [
+          0.7,
+          0.339
+        ],
+        [
+          1,
+          0.774
+        ],
+        [
+          0.566,
+          0.883
+        ]
+      ],
+      "maxLabelStep": 8
+    },
+    "pour": {
+      "image": "assets/generated/pera-ice-v2/pour.png",
+      "prompt": "Real live-action beverage film, locked camera, same light. The hand holds this exact 500 ml PET bottle steadily in the same tilted pose. Golden kombucha flows in a narrow continuous stream into the glass, with small ripples and the liquid level rising slowly. Preserve the exact green printed label, natural hand and rigid bottle shape. Tiny condensation beads glisten. Soft breeze moves background leaves. No zoom, no cuts, no extra fingers, no warping, no overflow, no CGI, no overlay text.",
+      "labelPolygon": [
+        [
+          0.115,
+          0.192
+        ],
+        [
+          0.55,
+          0.285
+        ],
+        [
+          0.527,
+          0.32
+        ],
+        [
+          0.512,
+          0.342
+        ],
+        [
+          0.509,
+          0.371
+        ],
+        [
+          0.498,
+          0.402
+        ],
+        [
+          0.474,
+          0.433
+        ],
+        [
+          0.455,
+          0.463
+        ],
+        [
+          0.45,
+          0.482
+        ],
+        [
+          0.04,
+          0.357
+        ],
+        [
+          0.02,
+          0.332
+        ],
+        [
+          0.07,
+          0.25
+        ]
+      ],
+      "maxLabelStep": 8,
+      "frames": 81
+    },
+    "glass": {
+      "image": "assets/generated/pera-ice-v2/glass.png",
+      "frames": 81,
+      "prompt": "Photorealistic live-action close-up of this real glass of golden kombucha on stone. Locked camera. Delicate small carbonation bubbles slowly rise through the drink. One ice piece gently rotates a few degrees and liquid surface ripples softly, then settles. Condensation beads glisten in natural morning sunlight. Background leaves shift slightly in a breeze. Keep exact glass shape, glass rim and base, liquid color and volume. No camera zoom, no cuts, no hands, no bottle, no floating glass, no big foam, no CGI, no added text."
+    }
+  },
+  "edit": [
+    {
+      "clip": "hero",
+      "frames": 48,
+      "sourceStart": 0
+    },
+    {
+      "clip": "detail",
+      "frames": 36,
+      "sourceStart": 0
+    },
+    {
+      "clip": "pour",
+      "frames": 40,
+      "sourceStart": 0
+    },
+    {
+      "clip": "glass",
+      "frames": 40,
+      "sourceStart": 0
+    },
+    {
+      "clip": "hero",
+      "frames": 48,
+      "sourceStart": 48
+    },
+    {
+      "clip": "detail",
+      "frames": 31,
+      "sourceStart": 36
+    },
+    {
+      "clip": "glass",
+      "frames": 41,
+      "sourceStart": 40
+    }
+  ]
+}

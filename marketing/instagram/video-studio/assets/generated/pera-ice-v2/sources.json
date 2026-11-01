@@ -1,0 +1,18 @@
+[
+  {
+    "file": "pour.png",
+    "sha256": "0a277ed509de305a7101ec68cde1453d88b70549435265ba75124edc9d8bc281",
+    "provider": "built-in imagegen",
+    "generatedFile": "exec-0a8740fc-e615-43e0-879f-265ebc5325d6.png",
+    "reference": "../pera-ice-v1/detail.png",
+    "synthetic": true
+  },
+  {
+    "file": "glass.png",
+    "sha256": "56970975ecb4b52454a56f88e5f9952b4c29f007698ebb13e66b25fc87520e2a",
+    "provider": "built-in imagegen",
+    "generatedFile": "exec-acc2a503-7b2c-483d-95d1-b212e3a3ca07.png",
+    "reference": "pour.png",
+    "synthetic": true
+  }
+]

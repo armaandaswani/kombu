@@ -224,3 +224,5 @@ Receber o manual não autoriza executar sua lista de pendências, editar o site,
 
 ## Próximo Reel inspirado na referência Vih — 31/10/2026
 O titular pediu criar um Reel inspirado em https://www.instagram.com/reel/DfH_SAlTME_/. Projeto `video-studio/projects/pera-ice-v1.json`: Pera & Alecrim em água rasa com gelo, dois setups gerados novos, seis planos editados, 10,091 s, trilha original, sem usar mídia da referência nem voz restrita. Arquivo para revisão em `video-studio/output/pera-ice-v1/Kombu-Pera-Alecrim-Gelo-v1.mp4`, com cópia em Downloads/Kombu-Reel-Pera-Alecrim-Gelo.mp4. Nota e storyboard no estúdio. Ainda aguarda avaliação do titular: não substituir o Reel v6 aprovado nem inserir esta nova prévia automaticamente na fila.
+
+- Revisão do Reel Pera & Alecrim: o titular pediu mais variação. V2 acrescenta servir e macro do copo, quatro setups e sete planos em 11,84 s. Download: Kombu-Reel-Pera-Alecrim-Gelo-v2.mp4. Mantém aparência fotográfica e trilha original. Não publicar/agendar sem avaliação do titular; v1 e Reel v6 aprovado preservados.
