@@ -23,6 +23,7 @@ for(const clip of Object.keys(config.shots)){
 }
 const shots=(config.edit||[{clip:'hero',frames:48,sourceStart:0},{clip:'detail',frames:42,sourceStart:0},{clip:'hero',frames:45,sourceStart:48},{clip:'detail',frames:54,sourceStart:42},{clip:'hero',frames:28,sourceStart:93},{clip:'detail',frames:25,sourceStart:96}]).map(s=>({...s,tracking:tracks[s.clip]}));
 for(const shot of shots){if(!config.shots[shot.clip]||shot.sourceStart+shot.frames>(config.shots[shot.clip].frames||config.frames))throw Error('Trecho excede o take: '+shot.clip);}
+if(config.uniqueTakes&&new Set(shots.map(s=>config.shots[s.clip].image)).size!==shots.length)throw Error('Cada corte deve usar um take distinto; repetição bloqueada.');
 const frames=shots.reduce((n,s)=>n+s.frames,0),duration=frames/24;
 let cue=0;const accents=[0],pourCue=[];for(const shot of shots){if(cue)accents.push(cue/24);if(shot.clip==='pour')pourCue.push(cue/24,(cue+shot.frames)/24);cue+=shot.frames;}
 const soundArgs=id==='pera-ice-v1'?[]:['--cuts',accents.filter((_,i)=>i%2===0).join(','),...(pourCue.length?['--pour-start',String(pourCue[0]),'--pour-end',String(pourCue[1])]:[])];
