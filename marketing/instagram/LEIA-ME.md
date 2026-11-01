@@ -116,7 +116,7 @@ Execute `node prepare-reel.mjs`, depois `node prepare-publish.mjs`. O primeiro p
 
 O Worker prepara o container às 08:50/08:55; somente o evento de 09:00 pode chamar a publicação. O estado seguro fica em `reel:<id>`, além de `published:<id>` e `last`. Container em processamento não é publicado prematuramente; resposta incerta não abre um novo container nem repete a publicação. Erros terminais exigem revisão. Nenhum endpoint público ou chamada manual de publicação foi adicionado.
 
-Para conferir depois da janela, consulte somente `log`, `reel:22-rosas-cardamomo-filme`, `published:22-rosas-cardamomo-filme` e `last` com Wrangler 4.156.0. Não leia `token`. A primeira publicação de Reel ainda será validada pela execução real da Meta. A preparação de container segue o fluxo documentado pela Meta: https://www.postman.com/meta/instagram/documentation/6yqw8pt/instagram-api
+Para conferir depois da janela, consulte somente `log`, `reel:22-rosas-cardamomo-filme`, `published:22-rosas-cardamomo-filme` e `last` com Wrangler 4.156.0. Não leia `token`. A primeira publicação de Reel foi confirmada pela Meta em 01/11/2026: `22-rosas-cardamomo-filme`, media `18133700947799339`, publicado às 09:00:56 e confirmado no log às 09:01:21 de Manaus. As chaves `published:<id>`, `reel:<id>` e `last` concordam. A preparação de container segue o fluxo documentado pela Meta: https://www.postman.com/meta/instagram/documentation/6yqw8pt/instagram-api
 
 As futuras artes usam as logos originais V4/V.3, sem recriar o K em uma fonte. Para uma revisão privada da peça de afiliados já publicada: `node render-stories.mjs --date=2026-10-30 --preview --draft=drafts/afiliados-2026-10-30.json`. Rascunhos são permitidos apenas em modo de prévia e não alteram a imagem publicada.
 

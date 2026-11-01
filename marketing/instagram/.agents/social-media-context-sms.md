@@ -229,3 +229,6 @@ O titular pediu criar um Reel inspirado em https://www.instagram.com/reel/DfH_SA
 
 ## Takes sem repetição — orientação do titular em 01/11/2026
 Cada corte de um Reel deve trazer um take diferente. Nunca voltar ao mesmo take, mesmo em outro trecho, com recorte, zoom ou reenquadramento. A v3 de Pera & Alecrim usa quatro takes distintos, uma única vez cada: overhead, close oblíquo, servir e copo pronto. Aplicar a regra aos próximos vídeos; não alterar automaticamente peças já publicadas/aprovadas.
+
+## Primeiro Reel automático confirmado — 01/11/2026
+O filme v6 comercial sem locução, `22-rosas-cardamomo-filme`, foi publicado às 09:00:56 de Manaus e confirmado às 09:01:21 pelo Worker. Media ID 18133700947799339; estados reel/published/last e log concordam. Os cinco Stories do dia também foram confirmados, sequência concluída às 07:21. Não repetir o Reel. As versões Pera & Alecrim ainda aguardam aprovação para fila.
