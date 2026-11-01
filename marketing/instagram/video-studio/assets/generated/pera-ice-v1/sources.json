@@ -1,0 +1,17 @@
+{
+  "created": "2026-10-31",
+  "kind": "Original generated photographic scene references",
+  "packagingReference": "marketing/instagram/assets/bottles/pera-alecrim.webp",
+  "referenceReel": "https://www.instagram.com/reel/DfH_SAlTME_/",
+  "referenceMediaReused": false,
+  "files": [
+    {
+      "file": "hero.png",
+      "sha256": "c70b8579f1414c037116f04d04585e99aaa2f656da5708e69a0fd7245bb3aff5"
+    },
+    {
+      "file": "detail.png",
+      "sha256": "da00202a6c867677fc36f83b62841fc320489d8d631e6c84df44a0ffe0e5c833"
+    }
+  ]
+}

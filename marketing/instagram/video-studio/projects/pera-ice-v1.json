@@ -1,0 +1,108 @@
+{
+  "id": "pera-ice-v1",
+  "title": "Kombú Pera & Alecrim · frescor em movimento",
+  "flavor": "pera-alecrim",
+  "approved": false,
+  "voice": "none",
+  "frameRate": 24,
+  "frames": 121,
+  "width": 576,
+  "height": 1024,
+  "seed": 311026,
+  "shots": {
+    "hero": {
+      "image": "assets/generated/pera-ice-v1/hero.png",
+      "prompt": "Photorealistic live-action product cinematography, real 500 ml PET kombucha bottle resting in shallow clear water on natural sage limestone exactly as in this image. Locked overhead camera, no zoom, no cuts. Water ripples travel gently from upper right to lower left and natural sunlight caustics shimmer across the stone. One ice piece on the upper right slowly drifts one centimetre and makes a delicate ripple. The actual bottle stays firmly supported, almost perfectly stationary, with the exact same proportions and lime-green printed label facing the camera. Preserve every printed letter and original label illustration, no relabeling or text morphing. Small condensation droplets glisten naturally on exposed plastic, one tiny droplet slides slowly down the shoulder. Natural tiny movements in the rosemary tip. Ice is irregular and transparent, never grows or melts into a shape. Physically real slow fluid motion, consistent contact and shadows, bright detail preserved. No artificial glow, no CGI look, no 3D rendering, no splash sculpture, no floating fruit, no spinning bottle, no warping, no plastic stretching, no additional objects, no on-screen text.",
+      "labelPolygon": [
+        [
+          0.258,
+          0.407
+        ],
+        [
+          0.381,
+          0.376
+        ],
+        [
+          0.392,
+          0.349
+        ],
+        [
+          0.437,
+          0.33
+        ],
+        [
+          0.481,
+          0.328
+        ],
+        [
+          0.524,
+          0.334
+        ],
+        [
+          0.567,
+          0.356
+        ],
+        [
+          0.655,
+          0.344
+        ],
+        [
+          0.777,
+          0.72
+        ],
+        [
+          0.42,
+          0.76
+        ]
+      ],
+      "maxLabelStep": 8
+    },
+    "detail": {
+      "image": "assets/generated/pera-ice-v1/detail.png",
+      "prompt": "Real live-action macro product film at the same low three-quarter camera angle. This exact 500 ml PET bottle stays solid and firmly resting on the pale natural stone, with its exact printed green pear and rosemary label unchanged and facing the camera. The camera is locked, no zoom, no orbit, no cuts, no focus pumping. Clear shallow water moves gently past the bottle from upper right toward lower left, making real delicate moving sunlight caustics on the stone and the bottle shoulder. Tiny condensation beads glint in natural light; one small droplet slowly creeps on the shoulder. The nearby foreground ice fragment drifts a few millimetres with a soft ripple. Preserve the exact KOMBÚ, PÊRA & ALECRIM, 500 ml print, its letters and label artwork throughout. Keep the paper label and bottle geometry completely rigid, no stretching, no morphing or relabeling. Natural optical depth of field, same real sunlight and material textures. No artificial glow, CGI look, cartoon, splash sculpture, floating bottle, giant ice, spinning objects, extra fruit or overlay graphics.",
+      "labelPolygon": [
+        [
+          0.191,
+          0.451
+        ],
+        [
+          0.393,
+          0.394
+        ],
+        [
+          0.415,
+          0.36
+        ],
+        [
+          0.461,
+          0.336
+        ],
+        [
+          0.502,
+          0.331
+        ],
+        [
+          0.554,
+          0.338
+        ],
+        [
+          0.601,
+          0.353
+        ],
+        [
+          0.7,
+          0.339
+        ],
+        [
+          1,
+          0.774
+        ],
+        [
+          0.566,
+          0.883
+        ]
+      ],
+      "maxLabelStep": 8
+    }
+  }
+}
