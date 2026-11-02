@@ -4,6 +4,11 @@
   const image=document.querySelector('#tradeHeroBottle');
   document.querySelectorAll('[data-trade-preview]').forEach(button=>button.addEventListener('click',()=>{
     if(!image)return;
+    if(image.getAttribute('src')!==button.dataset.tradePreview){
+      image.classList.add('is-swapping');
+      const done=()=>requestAnimationFrame(()=>image.classList.remove('is-swapping'));
+      image.addEventListener('load',done,{once:true});image.addEventListener('error',done,{once:true});
+    }
     image.src=button.dataset.tradePreview;image.alt=`Kombú ${button.dataset.name}, garrafa de 500 ml`;
     document.querySelectorAll('[data-trade-preview]').forEach(b=>b.setAttribute('aria-pressed',String(b===button)));
   }));
@@ -41,4 +46,70 @@
     },true);
     form.addEventListener('reset',()=>show(0));
   });
+})();
+
+// Scroll motion for the trade pages. Content is fully readable without it:
+// words, steps and photos only change once this script has prepared them.
+(() => {
+  'use strict';
+  const calm=window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const clamp=(v,a,b)=>Math.min(b,Math.max(a,v));
+
+  // Partner marquee: copies the names (aria-hidden) so the loop has no gap.
+  const track=document.querySelector('#proofNames');
+  const fillMarquee=()=>{
+    if(!track)return;
+    track.querySelectorAll('[data-copy]').forEach(n=>n.remove());
+    const names=[...track.children];
+    if(!names.length||calm)return;
+    for(let r=0;r<3;r++)names.forEach(n=>{const c=n.cloneNode(true);c.setAttribute('aria-hidden','true');c.dataset.copy='';track.appendChild(c);});
+    track.style.setProperty('--n',String(names.length));
+    track.classList.add('is-moving');
+  };
+  if(track){fillMarquee();new MutationObserver(m=>{if(m.some(x=>[...x.addedNodes].some(n=>n.nodeType===1&&!('copy' in n.dataset))))fillMarquee();}).observe(track,{childList:true});}
+
+  if(calm)return;
+
+  // Statement: one span per word, lit in reading order as the paragraph scrolls by.
+  const statements=[...document.querySelectorAll('[data-words]')].map(el=>{
+    const words=el.textContent.trim().split(/\s+/);
+    el.setAttribute('aria-label',el.textContent.trim());
+    el.innerHTML=words.map(w=>`<span aria-hidden="true">${w.replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]))} </span>`).join('');
+    el.classList.add('is-split');
+    return{el,spans:[...el.children]};
+  });
+  const progressEls=[...document.querySelectorAll('[data-progress]')];
+  const parallaxEls=[...document.querySelectorAll('[data-parallax]')];
+
+  let ticking=false;
+  const update=()=>{
+    ticking=false;
+    const vh=window.innerHeight;
+    statements.forEach(({el,spans})=>{
+      const r=el.getBoundingClientRect();
+      const p=clamp((vh*0.9-r.top)/(vh*0.55+r.height*0.6),0,1);
+      const lit=Math.round(p*spans.length);
+      spans.forEach((s,i)=>s.classList.toggle('on',i<lit));
+    });
+    progressEls.forEach(el=>{
+      const r=el.getBoundingClientRect();
+      el.style.setProperty('--p',clamp((vh*0.7-r.top)/(r.height*0.85),0,1).toFixed(3));
+    });
+    parallaxEls.forEach(el=>{
+      const r=el.getBoundingClientRect();
+      if(r.bottom<0||r.top>vh)return;
+      const c=(r.top+r.height/2-vh/2)/(vh/2+r.height/2);
+      el.style.setProperty('--py',(c*-28).toFixed(1)+'px');
+    });
+  };
+  const request=()=>{if(!ticking){ticking=true;requestAnimationFrame(update);}};
+  window.addEventListener('scroll',request,{passive:true});
+  window.addEventListener('resize',request);
+  update();
+
+  // Catalogue and other groups arrive in a short cascade once.
+  if('IntersectionObserver' in window){
+    const io=new IntersectionObserver(entries=>entries.forEach(e=>{if(e.isIntersecting){e.target.classList.add('is-in');io.unobserve(e.target);}}),{threshold:0.08});
+    document.querySelectorAll('[data-stagger]').forEach(el=>{el.classList.add('is-armed');io.observe(el);});
+  }
 })();

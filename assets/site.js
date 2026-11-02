@@ -901,6 +901,18 @@
 
   // ------------------------------------------------------------ boot
   async function boot() {
+    // Pré-contato (assets/precontato.js): grava o lead no CRM sem segurar o
+    // WhatsApp. keepalive deixa a requisição terminar com a aba indo embora.
+    window.KombuLead = {
+      send(data, type) {
+        return fetch("/api/lead", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ lead: normalizeLead(data, type) }),
+          keepalive: true,
+        }).catch(() => {});
+      },
+    };
     legacyLegalLinks();
     initChooser();
     initReferrals();
@@ -912,6 +924,7 @@
     renderAnnouncement();
     initLinks();
     const flavors = mergedFlavors();
+    window.KombuFlavors = flavors;
     if (page === "consumer") {
       initHero(flavors);
       initMarquee(flavors);

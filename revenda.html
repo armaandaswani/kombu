@@ -24,7 +24,8 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,800;1,600;1,700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" />
 <link rel="stylesheet" href="/assets/site.css?v=20261029b" />
-<link rel="stylesheet" href="/assets/trade.css?v=20261102" />
+<link rel="stylesheet" href="/assets/trade.css?v=20261102b" />
+<link rel="stylesheet" href="/assets/precontato.css?v=20261102" />
 <script type="application/ld+json">{"@context": "https://schema.org", "@graph": [{"@type": "Organization", "@id": "https://www.kombukombucha.com.br/#org", "name": "Kombú", "url": "https://www.kombukombucha.com.br/", "logo": "https://www.kombukombucha.com.br/assets/brand/kombu-assinatura-colorida-tinta.png", "sameAs": ["https://www.instagram.com/kombu.amazonia/"]}, {"@type": "WebPage", "name": "Revenda Kombú", "url": "https://www.kombukombucha.com.br/revenda", "about": {"@id": "https://www.kombukombucha.com.br/#org"}, "inLanguage": "pt-BR"}]}</script>
 </head>
 <body data-page="revenda" class="trade-page">
@@ -54,11 +55,11 @@
 <section class="trade-hero">
 <div class="wrap trade-hero-grid">
 <div class="trade-hero-copy">
-<h1>Kombú no seu cardápio.</h1>
-<p>Suave ao beber, com sabor intenso. Conheça as combinações da nossa kombucha artesanal premium, feita em Manaus desde 2017.</p>
-<a class="btn btn-dark" href="#contato">Quero revender</a>
-<a class="trade-text-link" href="#sabores">Conhecer os sabores <span aria-hidden="true">↗</span>
-</a>
+<h1 class="tx-lines"><span class="tx-line" style="--l:0"><span>Kombú no</span></span><span class="tx-line" style="--l:1"><span>seu cardápio.</span></span></h1>
+<p class="tx-fade" style="--l:2">Suave ao beber, com sabor intenso. Conheça as combinações da nossa kombucha artesanal premium, feita em Manaus desde 2017.</p>
+<div class="tx-actions tx-fade" style="--l:3"><a class="btn btn-dark" href="#contato" data-precontato="revenda">Quero revender</a>
+<a class="trade-text-link" href="#sabores">Conhecer os sabores <span aria-hidden="true">↓</span>
+</a></div>
 </div>
 <div class="trade-hero-showcase">
 <div class="trade-specimen">
@@ -74,15 +75,21 @@
 </div>
 </div>
 </section>
-<section class="trade-intro wrap">
-<h2>Uma escolha a mais<br>para quem senta à sua mesa.</h2>
-<div>
-<p>Às vezes, o cliente quer uma bebida gelada que saia do habitual. A Kombú tem o gás da própria fermentação e combina frutas, flores, ervas e especiarias em sabores que acompanham uma refeição, um café ou uma pausa.</p>
-<p>Você conhece seu público. Nós ajudamos a escolher as combinações para começar.</p>
+<section class="tx-band proof" aria-label="Onde a Kombú já está">
+<div class="wrap tx-band-row">
+<p class="tx-band-label">Já está em</p>
+<div class="tx-marquee"><div class="tx-marquee-track" id="proofNames"><b>Divina Terra</b><b>Casa Agridoce</b><b>Gelateria Dolce Vita</b><b>Cafeteria Garden</b><b>Solar Café Regional</b></div></div>
+</div>
+</section>
+<section class="tx-statement wrap">
+<p class="tx-statement-text" data-words>Uma bebida gelada que sai do habitual, para quem senta à sua mesa.</p>
+<div class="tx-statement-cols">
+<p data-reveal>A Kombú tem o gás da própria fermentação e combina frutas, flores, ervas e especiarias em sabores que acompanham uma refeição, um café ou uma pausa.</p>
+<p data-reveal style="--i:1">Você conhece seu público. Nós ajudamos a escolher as combinações para começar.</p>
 </div>
 </section>
 <section class="trade-catalog wrap" id="sabores">
-<div class="trade-section-head">
+<div class="trade-section-head" data-reveal>
 <div>
 <h2>Conheça os sabores.</h2>
 <p>Da fruta às combinações florais, uma seleção para o seu espaço.</p>
@@ -98,7 +105,7 @@
 </label>
 </div>
 <p id="resellerFlavorCount" class="sr-only" aria-live="polite">12 sabores</p>
-<div class="trade-flavors" id="resellerFlavors">
+<div class="trade-flavors" id="resellerFlavors" data-stagger>
 <article class="trade-flavor">
 <figure>
 <img src="/assets/bottles/maracuja.webp" alt="Garrafa de Kombú Maracujá" width="320" height="480" loading="lazy" />
@@ -211,127 +218,46 @@
 <p class="trade-catalog-note">Garrafas de 500 ml. Valores e condições de revenda são apresentados na conversa com nossa equipe.</p>
 </section>
 <section class="trade-partner-proof wrap">
-<figure>
+<figure class="tx-parallax" data-parallax>
 <img src="/assets/kombu-dolce-vita-real.jpg" width="1368" height="1824" loading="lazy" alt="Garrafas de diferentes sabores da Kombú na Gelateria Dolce Vita."/>
 <figcaption>Kombú na Gelateria Dolce Vita, em Manaus.</figcaption>
 </figure>
-<div>
+<div data-reveal>
 <h2>Da nossa produção<br>para a sua geladeira.</h2>
 <p>Produzimos em Manaus e combinamos o fornecimento com cada parceiro. Antes do primeiro pedido, conversamos sobre seu espaço, seu público e os sabores que você gostaria de apresentar.</p>
-<p>Os lotes levam cerca de duas semanas para ficar prontos. A Kombú deve permanecer refrigerada.</p>
-<a class="trade-text-link" href="#contato">Vamos conversar <span aria-hidden="true">↗</span>
-</a>
+<p>A Kombú deve permanecer sempre refrigerada, entre 0 e 5 °C.</p>
 </div>
 </section>
-<section class="trade-contact" id="contato">
-<div class="wrap trade-contact-grid">
-<div class="trade-contact-copy">
-<h2>Vamos conhecer<br>seu espaço.</h2>
-<p>Conte um pouco sobre seu negócio. Assim, nossa primeira conversa já começa pelos sabores e pelas condições que fazem sentido para você.</p>
-<a class="trade-text-link" href="#contato" data-whatsapp="Olá! Tenho um estabelecimento em Manaus e gostaria de conhecer a revenda da Kombú.">Prefere conversar pelo WhatsApp? <span aria-hidden="true">↗</span>
-</a>
+<section class="tx-steps" data-progress>
+<div class="wrap tx-steps-grid">
+<div class="tx-steps-head">
+<h2>Como começa.</h2>
+<p>Do primeiro contato à sua geladeira, tudo combinado com você.</p>
 </div>
-<form id="resellerForm" class="lead-form trade-form" data-step-form>
-<ol class="form-steps" aria-label="Etapas do contato">
-<li data-step-label>Seu negócio</li>
-<li data-step-label>Seu público</li>
-<li data-step-label>Contato</li>
+<ol class="tx-steps-list">
+<li data-reveal><span class="tx-step-n" aria-hidden="true">1</span><h3>Pré-contato</h3><p>Você responde algumas perguntas rápidas e envia pelo WhatsApp.</p></li>
+<li data-reveal><span class="tx-step-n" aria-hidden="true">2</span><h3>Conversa</h3><p>Conhecemos seu espaço e apresentamos valores e condições de revenda.</p></li>
+<li data-reveal><span class="tx-step-n" aria-hidden="true">3</span><h3>Seleção de sabores</h3><p>Escolhemos juntos as combinações para o seu público.</p></li>
+<li data-reveal><span class="tx-step-n" aria-hidden="true">4</span><h3>Produção e fornecimento</h3><p>O lote fica pronto em cerca de duas semanas, e combinamos o fornecimento com você.</p></li>
 </ol>
-<p class="step-announcement sr-only" aria-live="polite">
-</p>
-<fieldset data-form-step>
-<legend>Conte sobre seu negócio.</legend>
-<label class="field">
-<span>Nome do estabelecimento</span>
-<input name="negocio" type="text" required maxlength="160" autocomplete="organization"    />
-</label>
-<div class="row">
-<label class="field">
-<span>Tipo de estabelecimento</span>
-<select name="tipo" required>
-<option value="">Selecione</option>
-<option>Café ou confeitaria</option>
-<option>Restaurante</option>
-<option>Empório ou mercado</option>
-<option>Academia ou estúdio</option>
-<option>Hotel ou pousada</option>
-<option>Outro</option>
-</select>
-</label>
-<label class="field">
-<span>Bairro</span>
-<input name="bairro" type="text" required maxlength="160" autocomplete="address-level3"    />
-</label>
 </div>
-</fieldset>
-<fieldset data-form-step>
-<legend>Quem frequenta seu espaço?</legend>
-<p class="field-help" id="publicos-help">Escolha os perfis que mais combinam com seu público.</p>
-<div class="audience-options" data-multi-required aria-describedby="publicos-help">
-<label>
-<input type="checkbox" name="publicos" value="Alimentação natural e bem-estar">
-<span>Alimentação natural e bem-estar</span>
-</label>
-<label>
-<input type="checkbox" name="publicos" value="Esporte e vida ativa">
-<span>Esporte e vida ativa</span>
-</label>
-<label>
-<input type="checkbox" name="publicos" value="Gastronomia e novas experiências">
-<span>Gastronomia e novas experiências</span>
-</label>
-<label>
-<input type="checkbox" name="publicos" value="Público variado do bairro">
-<span>Público variado do bairro</span>
-</label>
+</section>
+<section class="tx-cta" id="contato">
+<div class="wrap tx-cta-grid">
+<div class="tx-cta-copy" data-reveal>
+<h2>Vamos conhecer<br>seu espaço.</h2>
+<p>São 8 perguntas rápidas. Suas respostas chegam organizadas no WhatsApp da Kombú, e a conversa já começa pelos sabores e condições que fazem sentido para você.</p>
+<ul class="tx-cta-facts"><li>Cerca de 2 minutos</li><li>Sem cadastro</li><li>Resposta pelo WhatsApp</li></ul>
+<a class="btn tx-btn-lime" href="https://wa.me/5592992097165?text=Ol%C3%A1%21%20Vim%20pelo%20site%20da%20Komb%C3%BA%20e%20quero%20revender%20no%20meu%20espa%C3%A7o." target="_blank" rel="noopener" data-precontato="revenda">Começar pré-contato</a>
 </div>
-<label class="field">
-<span>Como conheceu a Kombú?</span>
-<select name="origem" required>
-<option value="">Selecione</option>
-<option>Feira</option>
-<option>Instagram</option>
-<option>Amigo ou conhecido</option>
-<option>Outro</option>
-</select>
-</label>
-<label class="field" data-origin-other hidden>
-<span>Onde você conheceu a Kombú?</span>
-<input name="origemOutro" maxlength="160" autocomplete="off" disabled />
-</label>
-</fieldset>
-<fieldset data-form-step>
-<legend>Como podemos falar com você?</legend>
-<label class="field">
-<span>Seu nome</span>
-<input name="nome" type="text" required maxlength="120" autocomplete="name"    />
-</label>
-<div class="row">
-<label class="field">
-<span>WhatsApp</span>
-<input name="whatsapp" type="tel" required maxlength="25" autocomplete="tel" inputmode="tel"   />
-</label>
-<label class="field">
-<span>@ do estabelecimento</span>
-<input name="instagram" type="text" required maxlength="80" autocomplete="off"  spellcheck="false" placeholder="@seunegocio…" />
-</label>
+<div class="tx-cta-preview" aria-hidden="true">
+<div class="tx-mock">
+<div class="tx-mock-top"><i></i><span class="tx-mock-bar"><span></span></span><i></i></div>
+<p class="tx-mock-count">1 de 9</p>
+<p class="tx-mock-title">Que tipo de espaço você tem?</p>
+<div class="tx-mock-opts"><span class="tx-mock-opt" style="--i:0"><b>Café ou confeitaria</b><i></i></span><span class="tx-mock-opt is-on" style="--i:1"><b>Restaurante ou bistrô</b><i></i></span><span class="tx-mock-opt" style="--i:2"><b>Empório ou mercado</b><i></i></span></div>
 </div>
-<label class="field">
-<span>Quer nos contar mais alguma coisa? <small>Opcional</small>
-</span>
-<textarea name="mensagem" rows="3" maxlength="1200" placeholder="Conte o que você tem em mente…">
-</textarea>
-</label>
-</fieldset>
-<div class="step-actions">
-<button class="trade-back" type="button" data-step-back hidden>Voltar</button>
-<button class="btn btn-dark" type="button" data-step-next hidden>Continuar</button>
-<button class="btn btn-dark" type="submit" data-step-submit>Enviar pré-contato</button>
 </div>
-<p class="form-note">Seus dados serão usados para responder a este contato. <a href="/legal#privacidade">Privacidade</a>.</p>
-<p class="form-status" role="status" aria-live="polite" hidden>
-</p>
-</form>
 </div>
 </section>
 <section class="trade-faq wrap">
@@ -342,7 +268,7 @@
 </details>
 <details>
 <summary>Como recebo os valores e as condições?</summary>
-<p>Envie o pré-contato. Nossa equipe retorna para conversar sobre seu estabelecimento e apresentar as condições de revenda.</p>
+<p>Responda o pré-contato e envie pelo WhatsApp. Nossa equipe conversa sobre seu estabelecimento e apresenta as condições de revenda.</p>
 </details>
 <details>
 <summary>Preciso de refrigeração?</summary>
@@ -372,9 +298,11 @@
 <div class="fine">© <span data-year>2026</span> Kombú · A Arte do Natural</div>
 </div>
 </footer>
-<script src="/assets/site.js?v=20261102" defer>
+<script src="/assets/site.js?v=20261102b" defer>
 </script>
-<script src="/assets/trade.js?v=20261102" defer>
+<script src="/assets/trade.js?v=20261102b" defer>
+</script>
+<script src="/assets/precontato.js?v=20261102" defer>
 </script>
 </body>
 </html>
