@@ -1,3 +1,5 @@
+> REVISÃO 02/11: a primeira entrega visual foi rejeitada por embalagem deformada e repetição. As artes atuais são V2, com quatro cenários novos e garrafas oficiais preservadas. Veja ARTES-LEIA-ME.md. O estudo editorial abaixo permanece como referência.
+
 # O que aprender com a Vih e como transformar em conteúdo da Kombú
 
 02/11/2026. Pesquisa editorial e rascunhos; não altera calendário nem publica.

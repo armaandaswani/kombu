@@ -1,11 +1,12 @@
-# Cena Lavanda & Limão — image_gen integrada
+# Cenas novas V2 — ChatGPT, 02/11/2026
 
-Referência: fotografia oficial `marketing/instagram/assets/bottles/lavanda-limao.webp`. Primeira tentativa usada somente como alvo da revisão, não entregue como arte elegível.
+Quatro gerações independentes, sem garrafas, embalagens, texto ou marca. Todos os cenários são sintéticos e editoriais.
+- Café: balcão de madeira castanha, barista entregando copo gelado a cliente, luz natural lateral, fotografia documental.
+- Empório: flat lay verde floresta, cesta, pão, peras, alecrim e copo, espaço para produto oficial.
+- Lavanda: macro de limão, lavanda e copo âmbar sobre superfície violeta, espaço à direita para fotografia oficial.
+- Parceria: dois adultos fictícios conversando com copos à sombra de árvore tropical, cena ampla em Manaus, detalhe azul e terracota.
 
-## Prompt inicial
+Fonte nativa: /Users/armaandaswani/.codex/generated_images/01a17ab8-9df3-7790-9c36-9b6208ea1654/
+Arquivos: exec-a2190951-48ba-4afb-ba69-6bcc92d09d34.png (café), exec-fb652882-e34c-4635-9bb0-2472ce641826.png (empório), exec-11329d93-59c8-43b9-8bb8-8526675daac4.png (lavanda), exec-37c7e621-b12b-41bd-a739-f93c9a4c6e5e.png (pessoas).
 
-Create one beautiful photorealistic editorial product photograph, vertical 4:5, for Kombú premium artisan kombucha from Manaus. Reference image is the exact bottle packaging, preserve original Penta clear PET 500ml silhouette, white cap, lavender label and its correct text LAVANDA & LIMÃO, logo KOM BÚ continuous as KOM BÚ brand shown in reference, label design and amber beverage. Do not redesign or invent flavor. Product resting on a warm natural pale limestone table beside one small sprig of lavender and one cut lemon, with a simple clear glass half-filled with amber kombucha. Low-angle natural window sunlight, soft irregular botanical shadows on cream plaster wall, quiet authentic imperfections in the stone, realistic fine condensation droplets. Bottle occupies middle-right of composition, all of bottle visible from cap to bottom, glass a little behind toward left. Room above subject (upper 35%) has uncluttered cream plaster negative space for later editorial heading added in code. Nice tactile warm photographic lighting, soft depth but label sharply legible, no artificial CGI shine, no dramatic fake foam, no medical props, no humans, no text added outside physical bottle label, no added logo outside bottle. This is an original editorial still life, no clinic or partner location represented.
-
-## Revisão específica de embalagem
-
-Edit target image1 only the bottle: replace the tall slim glasslike cylindrical bottle with the EXACT short wider clear PET Penta500ml bottle in reference2. Essential actual packaging proportions: PET plastic soft shoulders, wider shorter shape, visibly petaloid five-foot lobed indented Penta base, white ribbed screwcap. Preserve original label from reference2 including lavender color, botanical drawings, accurate KOM BÚ brand displayed as KOM BÚ/ KOM BÚ exact reference and LAVANDA & LIMÃO. Do not use glass bottle, no flat rounded base. Keep the nice warm limestone scene, natural condensation, lavender and cut lemon, glass, lighting identical otherwise. The bottle should be broad enough like exact reference photograph. No added text or logo outside bottle. Original photo editorial background can stay, upper25% spacious cream for type.
+Garrafa deformada da primeira entrega removida dos ativos elegíveis. Preservar somente a fotografia oficial para a embalagem.

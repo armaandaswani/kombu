@@ -1,3 +1,5 @@
+> REVISÃO 02/11: a primeira entrega visual foi rejeitada por embalagem deformada e repetição. As artes atuais são V2, com quatro cenários novos e garrafas oficiais preservadas. Veja ARTES-LEIA-ME.md. O estudo editorial abaixo permanece como referência.
+
 # Doze propostas para a Kombú
 
 02/11/2026. Rascunhos para revisão, sem agendamento. As legendas e direções completas estão em `posts.json`.

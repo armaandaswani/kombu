@@ -7,11 +7,18 @@
     ],
     "bounds": [
       {
-        "text": "Uma bebida daqui\nno seu café.",
+        "text": "Seu cardápio pode\nsurpreender.",
+        "left": 70,
+        "right": 1020,
+        "top": 210,
+        "bottom": 408.875
+      },
+      {
+        "text": "Para cafés e restaurantes de Manaus.",
         "left": 72,
-        "right": 1008,
-        "top": 1074.40625,
-        "bottom": 1246
+        "right": 575.5,
+        "top": 450,
+        "bottom": 496.390625
       }
     ]
   },
@@ -23,25 +30,25 @@
     ],
     "bounds": [
       {
-        "text": "Antes de escolher os sabores,\nconte sobre o seu negócio.",
-        "left": 72,
-        "right": 1008,
-        "top": 935.578125,
-        "bottom": 1064.390625
+        "text": "Que sabores combinam\ncom o seu público?",
+        "left": 70,
+        "right": 630,
+        "top": 220,
+        "bottom": 527.3125
       },
       {
-        "text": "Conheça a Kombú e apresente seu estabelecimento.\nA conversa sobre revenda começa por aí.",
-        "left": 72,
-        "right": 992,
-        "top": 1086.390625,
-        "bottom": 1172.203125
+        "text": "Conheça as combinações da Kombú e conte um pouco sobre seu café ou restaurante. A conversa sobre revenda começa pelo seu espaço.",
+        "left": 70,
+        "right": 540,
+        "top": 610,
+        "bottom": 841.953125
       },
       {
         "text": "Conheça a revenda no site da bio.",
-        "left": 72,
-        "right": 912,
-        "top": 1192.203125,
-        "bottom": 1246
+        "left": 70,
+        "right": 497.765625,
+        "top": 1186.8125,
+        "bottom": 1230
       }
     ]
   },
@@ -53,25 +60,25 @@
     ],
     "bounds": [
       {
-        "text": "Uma bebida feita em Manaus\npode entrar no seu cardápio.",
-        "left": 72,
-        "right": 992,
-        "top": 1069.234375,
-        "bottom": 1421.234375
+        "text": "Uma nova escolha\npara a mesa\ndo seu café.",
+        "left": 70,
+        "right": 1020,
+        "top": 315,
+        "bottom": 633.65625
       },
       {
-        "text": "Conheça os sabores e apresente\nseu estabelecimento.",
+        "text": "Para cafés e restaurantes de Manaus.",
         "left": 72,
-        "right": 992,
-        "top": 1451.234375,
-        "bottom": 1551.859375
+        "right": 575.5,
+        "top": 680,
+        "bottom": 726.390625
       },
       {
         "text": "Conheça a revenda no site da bio.",
-        "left": 72,
-        "right": 962,
-        "top": 1583.859375,
-        "bottom": 1650
+        "left": 70,
+        "right": 593.296875,
+        "top": 1581,
+        "bottom": 1665
       }
     ]
   },
@@ -83,11 +90,11 @@
     ],
     "bounds": [
       {
-        "text": "Tem espaço para a Kombú\nno seu negócio?",
-        "left": 72,
-        "right": 1008,
-        "top": 1074.40625,
-        "bottom": 1246
+        "text": "Uma novidade\nna sua geladeira.",
+        "left": 70,
+        "right": 850,
+        "top": 220,
+        "bottom": 405.3125
       }
     ]
   },
@@ -99,25 +106,25 @@
     ],
     "bounds": [
       {
-        "text": "Empórios e estúdios,\nvamos conversar.",
-        "left": 72,
-        "right": 1008,
-        "top": 935.578125,
-        "bottom": 1064.390625
+        "text": "Você conhece\nquem passa\npelo seu espaço.",
+        "left": 70,
+        "right": 1020,
+        "top": 210,
+        "bottom": 498.140625
       },
       {
-        "text": "Conte onde seu negócio fica e quem ele recebe.\nA gente quer conhecer o seu espaço.",
-        "left": 72,
-        "right": 992,
-        "top": 1086.390625,
-        "bottom": 1172.203125
+        "text": "Conte onde seu negócio fica e o que seu público costuma procurar. Queremos ajudar a escolher os sabores para começar.",
+        "left": 70,
+        "right": 940,
+        "top": 570,
+        "bottom": 733.171875
       },
       {
         "text": "Apresente seu negócio em Revenda.",
-        "left": 72,
-        "right": 912,
-        "top": 1192.203125,
-        "bottom": 1246
+        "left": 70,
+        "right": 536.484375,
+        "top": 1156.8125,
+        "bottom": 1200
       }
     ]
   },
@@ -129,25 +136,18 @@
     ],
     "bounds": [
       {
-        "text": "Seu espaço tem um jeito\npróprio de receber.",
-        "left": 72,
-        "right": 992,
-        "top": 1245.234375,
-        "bottom": 1421.234375
-      },
-      {
-        "text": "Empórios e estúdios de Manaus, vamos\nconhecer o seu negócio?",
-        "left": 72,
-        "right": 992,
-        "top": 1451.234375,
-        "bottom": 1551.859375
+        "text": "Seu espaço recebe\npessoas que gostam\nde descobrir sabores?",
+        "left": 70,
+        "right": 850,
+        "top": 320,
+        "bottom": 581
       },
       {
         "text": "Apresente seu negócio em Revenda.",
-        "left": 72,
-        "right": 962,
-        "top": 1583.859375,
-        "bottom": 1650
+        "left": 70,
+        "right": 636.3125,
+        "top": 1581,
+        "bottom": 1665
       }
     ]
   },
@@ -159,11 +159,11 @@
     ],
     "bounds": [
       {
-        "text": "Nutricionistas e nutrólogos,\nqueremos conhecer vocês.",
-        "left": 72,
-        "right": 992,
+        "text": "Nutricionistas e\nnutrólogos de Manaus,\nvamos conversar?",
+        "left": 70,
+        "right": 1010,
         "top": 190,
-        "bottom": 325.59375
+        "bottom": 410.3125
       }
     ]
   },
@@ -175,25 +175,25 @@
     ],
     "bounds": [
       {
-        "text": "Conheça a Kombú\nantes da parceria.",
-        "left": 72,
-        "right": 1008,
-        "top": 935.578125,
-        "bottom": 1064.390625
+        "text": "O primeiro passo\né conhecer a Kombú.",
+        "left": 70,
+        "right": 820,
+        "top": 220,
+        "bottom": 396.25
       },
       {
-        "text": "Conte sobre sua atuação e sua proposta.\nConversamos sobre o formato após avaliar o perfil.",
-        "left": 72,
-        "right": 992,
-        "top": 1086.390625,
-        "bottom": 1172.203125
+        "text": "Apresente sua atuação e sua proposta. Conversamos sobre as possibilidades de parceria de acordo com seu perfil e seu trabalho.",
+        "left": 70,
+        "right": 670,
+        "top": 490,
+        "bottom": 682
       },
       {
-        "text": "Converse com a gente em Parcerias.",
-        "left": 72,
-        "right": 912,
-        "top": 1192.203125,
-        "bottom": 1246
+        "text": "Conheça Parcerias no site da bio.",
+        "left": 70,
+        "right": 460,
+        "top": 1215,
+        "bottom": 1255
       }
     ]
   },
@@ -205,25 +205,18 @@
     ],
     "bounds": [
       {
-        "text": "Você é nutricionista\nou nutrólogo em Manaus?",
-        "left": 72,
-        "right": 992,
+        "text": "Antes da parceria,\nqueremos conhecer\no seu trabalho.",
+        "left": 70,
+        "right": 1010,
         "top": 315,
-        "bottom": 491.25
+        "bottom": 586.171875
       },
       {
-        "text": "Conheça a marca e apresente sua proposta.\nO formato é conversado após a avaliação.",
-        "left": 72,
-        "right": 992,
-        "top": 521.25,
-        "bottom": 621.875
-      },
-      {
-        "text": "Converse com a gente em Parcerias.",
-        "left": 72,
-        "right": 962,
-        "top": 645.875,
-        "bottom": 685.015625
+        "text": "Conheça Parcerias no site da bio.",
+        "left": 70,
+        "right": 586,
+        "top": 1581,
+        "bottom": 1665
       }
     ]
   },
@@ -235,11 +228,18 @@
     ],
     "bounds": [
       {
-        "text": "Você é personal trainer\nou influenciador em Manaus?",
-        "left": 72,
-        "right": 1008,
-        "top": 1092,
-        "bottom": 1246
+        "text": "Sua indicação começa\npela afinidade.",
+        "left": 70,
+        "right": 1020,
+        "top": 205,
+        "bottom": 392.5625
+      },
+      {
+        "text": "Parcerias para personal trainerse influenciadores de Manaus.",
+        "left": 70,
+        "right": 557.90625,
+        "top": 1073.21875,
+        "bottom": 1210
       }
     ]
   },
@@ -251,25 +251,25 @@
     ],
     "bounds": [
       {
-        "text": "Uma parceria começa pelo\nseu jeito de trabalhar.",
-        "left": 72,
-        "right": 1008,
-        "top": 935.578125,
-        "bottom": 1064.390625
+        "text": "Queremos conhecer\nseu trabalho.",
+        "left": 70,
+        "right": 1020,
+        "top": 200,
+        "bottom": 389.8125
       },
       {
-        "text": "Apresente seu perfil e sua ideia. As condições\nsão conversadas depois da avaliação.",
-        "left": 72,
-        "right": 992,
-        "top": 1086.390625,
-        "bottom": 1172.203125
+        "text": "Personal trainers e influenciadores de Manaus: apresente seu perfil e sua ideia. As condições exclusivas são conversadas após a avaliação.",
+        "left": 70,
+        "right": 940,
+        "top": 460,
+        "bottom": 618.390625
       },
       {
-        "text": "Conheça o programa em Parcerias.",
-        "left": 72,
-        "right": 912,
-        "top": 1192.203125,
-        "bottom": 1246
+        "text": "Converse com a gente em Parcerias.",
+        "left": 70,
+        "right": 516.578125,
+        "top": 1206.40625,
+        "bottom": 1248
       }
     ]
   },
@@ -281,25 +281,25 @@
     ],
     "bounds": [
       {
-        "text": "Seu trabalho pode ter\num encontro com a Kombú.",
-        "left": 72,
-        "right": 992,
-        "top": 1153.953125,
-        "bottom": 1421.234375
+        "text": "A Kombú combina\ncom o que você\ngosta de compartilhar?",
+        "left": 70,
+        "right": 1020,
+        "top": 320,
+        "bottom": 608.140625
       },
       {
-        "text": "Personal trainers e influenciadores de Manaus,\napresentem sua ideia.",
-        "left": 72,
-        "right": 992,
-        "top": 1451.234375,
-        "bottom": 1551.859375
+        "text": "Parcerias para personal trainerse influenciadores de Manaus.",
+        "left": 70,
+        "right": 557.90625,
+        "top": 1418.21875,
+        "bottom": 1555
       },
       {
-        "text": "Conheça o programa em Parcerias.",
-        "left": 72,
-        "right": 962,
-        "top": 1583.859375,
-        "bottom": 1650
+        "text": "Converse com a gente em Parcerias.",
+        "left": 70,
+        "right": 633.28125,
+        "top": 1581,
+        "bottom": 1665
       }
     ]
   }
