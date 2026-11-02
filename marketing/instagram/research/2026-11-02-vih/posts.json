@@ -1,0 +1,313 @@
+{
+  "status": "editorial_drafts_only",
+  "created_on": "2026-11-02",
+  "owner_request": "Emular mecanismos de conteúdo da Vih com voz própria e ampliar revenda/parcerias.",
+  "not_scheduled": true,
+  "destinations_require_implementation": [
+    "/revenda",
+    "/parcerias"
+  ],
+  "approval_note": "Rascunhos para revisão e produção. Nenhum item entrou no calendário, Worker ou Pages.",
+  "posts": [
+    {
+      "id": "vih-kombu-01",
+      "status": "draft_not_scheduled",
+      "category": "consumo",
+      "format": "reel",
+      "featured_flavor": "Pera & Alecrim",
+      "title": "Primeiro, o copo.",
+      "slides": [],
+      "caption": "Antes de explicar a Kombú, a gente prefere mostrar como ela chega ao copo. Bem gelada, com o gás que se forma na fermentação e o sabor de Pera & Alecrim.\n\nÉ a nossa kombucha artesanal feita em Manaus desde 2017: suave ao beber, com sabor intenso. Encontre nos parceiros pelo site da bio.\n\n#manaus #kombucha #kombuchaartesanal",
+      "visual_direction": "4 takes inéditos, cada um usado uma vez: condensação na Penta PET500ml, abertura, servir e copo na mesa. Cada corte muda ação e posição de câmera; não repetir a cena com zoom. Som discreto real ou original. Sem legenda obrigatória em cada plano. Não usar a prévia Pera já produzida como se estivesse aprovada.",
+      "cta": {
+        "label": "Encontrar um parceiro",
+        "path": "/#onde-encontrar"
+      },
+      "review_required": [
+        "Revisar embalagem oficial, proporções e identidade atual antes de renderizar."
+      ]
+    },
+    {
+      "id": "vih-kombu-02",
+      "status": "draft_not_scheduled",
+      "category": "revenda",
+      "format": "carousel",
+      "featured_flavor": "Goiaba",
+      "title": "Seu café pode ter uma bebida feita aqui.",
+      "slides": [
+        {
+          "text": "Seu café pode ter uma bebida feita aqui."
+        },
+        {
+          "text": "Produzimos Kombú em Manaus desde 2017. Nossa kombucha artesanal tem suavidade e sabor intenso, para quem quer experimentar algo diferente no copo."
+        },
+        {
+          "text": "Você pode conhecer os sabores antes de conversar com a gente sobre revenda. Assim, a escolha começa pelo que combina com o seu estabelecimento."
+        },
+        {
+          "text": "Conte o nome do seu negócio e em qual bairro ele fica. A gente conversa sobre a proposta para o seu espaço."
+        }
+      ],
+      "caption": "Quem escolhe o que vai para a geladeira do café também pensa no que os clientes vão gostar de descobrir.\n\nA Kombú é produzida em Manaus desde 2017, com fermentação natural e combinações de frutas, flores, ervas e especiarias. Para conhecer os sabores e conversar sobre revenda, preencha o primeiro contato na página Revenda, no site da bio.\n\n#manaus #kombucha #kombuchaartesanal",
+      "visual_direction": "Fotografia real de café ou cena editorial nova identificável como composição. Goiaba no balcão; página seguinte mostra rótulo e copo; terceiro catálogo real; final formulário. Não simular estabelecimento já parceiro nem giro de vendas.",
+      "cta": {
+        "label": "Conhecer a revenda",
+        "path": "/revenda"
+      },
+      "review_required": [
+        "Revisar embalagem oficial, proporções e identidade atual antes de renderizar."
+      ]
+    },
+    {
+      "id": "vih-kombu-03",
+      "status": "draft_not_scheduled",
+      "category": "parcerias",
+      "format": "single",
+      "featured_flavor": "Rosas & Cardamomo",
+      "title": "Você é nutricionista ou nutrólogo em Manaus?",
+      "slides": [
+        {
+          "text": "Você é nutricionista ou nutrólogo em Manaus?\n\nConheça a Kombú e converse com a gente sobre parcerias."
+        }
+      ],
+      "caption": "Antes de qualquer parceria, vale conhecer o que está na garrafa e como a marca trabalha.\n\nSe você é nutricionista ou nutrólogo em Manaus e quer conhecer a Kombú, conte um pouco sobre sua atuação na página Parcerias. Avaliamos cada proposta para conversar sobre um formato adequado ao seu perfil e às regras da sua profissão.\n\n#manaus #kombucha #kombuchaartesanal",
+      "visual_direction": "Composição editorial com rótulo Rosas & Cardamomo e luz natural. Não mostrar profissional gerado recomendando produto, jaleco, estetoscópio, consultório fictício ou selo de endosso.",
+      "cta": {
+        "label": "Conversar sobre uma parceria",
+        "path": "/parcerias"
+      },
+      "review_required": [
+        "Validar formato com o profissional e regras aplicáveis antes de qualquer indicação comercial. Não prometer comissão, benefício clínico ou cupom em troca de recomendação."
+      ]
+    },
+    {
+      "id": "vih-kombu-04",
+      "status": "draft_not_scheduled",
+      "category": "consumo",
+      "format": "carousel",
+      "featured_flavor": "Manga & Jasmim",
+      "title": "Para quem gosta de descobrir sabores.",
+      "slides": [
+        {
+          "text": "Para quem gosta de descobrir sabores."
+        },
+        {
+          "text": "Manga & Jasmim é uma das combinações da Kombú. Fruta e flor entram na mesma garrafa, numa bebida suave e de sabor intenso."
+        },
+        {
+          "text": "Quando visitar um parceiro, pergunte quais sabores estão gelados. É um bom jeito de começar a conhecer a Kombú."
+        }
+      ],
+      "caption": "Nem sempre a escolha precisa ser o sabor que você já conhece. Manga & Jasmim reúne fruta e flor numa das combinações da Kombú, feita artesanalmente em Manaus.\n\nNo site da bio você encontra nossos parceiros. Pergunte quais sabores estão gelados no dia da sua visita.\n\n#manaus #kombucha #kombuchaartesanal",
+      "visual_direction": "Produto com manga e jasmim em escala discreta; não decorar garrafa com ingrediente dentro ou alterar cor real do líquido. Carrossel varia plano aberto, detalhe de rótulo e copo, sem fundo idêntico em todas as peças.",
+      "cta": {
+        "label": "Encontrar um parceiro",
+        "path": "/#onde-encontrar"
+      },
+      "review_required": [
+        "Revisar embalagem oficial, proporções e identidade atual antes de renderizar."
+      ]
+    },
+    {
+      "id": "vih-kombu-05",
+      "status": "draft_not_scheduled",
+      "category": "revenda",
+      "format": "reel",
+      "featured_flavor": "Uva",
+      "title": "Vamos conhecer o seu estabelecimento?",
+      "slides": [],
+      "caption": "Antes de falar de revenda, queremos conhecer o seu negócio. Onde ele fica? Que tipo de público costuma receber? E o que você procura numa nova bebida para oferecer?\n\nNa página Revenda, você encontra os sabores da Kombú e deixa esse primeiro contato. Depois, a gente conversa sobre como a proposta pode se encaixar no seu estabelecimento.\n\n#manaus #kombucha #kombuchaartesanal",
+      "visual_direction": "3takes únicos: garrafaUva, bancada com catálogo dos sabores, mão real preenchendo formulário com dados fictícios claramente de demonstração. Alternar cenas, sem repetir take. Não exibir contato real de lead, tela admin ou preço.",
+      "cta": {
+        "label": "Apresentar meu estabelecimento",
+        "path": "/revenda"
+      },
+      "review_required": [
+        "Revisar embalagem oficial, proporções e identidade atual antes de renderizar."
+      ]
+    },
+    {
+      "id": "vih-kombu-06",
+      "status": "draft_not_scheduled",
+      "category": "parcerias",
+      "format": "carousel",
+      "featured_flavor": "Lavanda & Limão",
+      "title": "Você é personal trainer em Manaus?",
+      "slides": [
+        {
+          "text": "Você é personal trainer em Manaus?\nVamos conversar sobre uma parceria com a Kombú."
+        },
+        {
+          "text": "Queremos conhecer seu trabalho e o público que acompanha você. Essa conversa ajuda a encontrar um formato que faça sentido para os dois."
+        },
+        {
+          "text": "Apresente seu perfil na página Parcerias. Depois da avaliação, conversamos sobre as condições e os próximos passos."
+        }
+      ],
+      "caption": "Se a Kombú combina com o que você gosta de compartilhar, queremos conhecer seu trabalho.\n\nA página Parcerias também recebe propostas de personal trainers em Manaus. Conte quem é seu público e como você imagina apresentar a marca. As condições são conversadas após a avaliação do perfil, sem aprovação automática.\n\n#manaus #kombucha #kombuchaartesanal",
+      "visual_direction": "Lavanda&Limão em banco externo com toalha simples, foto editorial sem pessoa fingindo usar. Reservar retrato para profissional real e autorizado em colaboração futura. Não usar antes/depois ou medição corporal.",
+      "cta": {
+        "label": "Apresentar proposta de parceria",
+        "path": "/parcerias"
+      },
+      "review_required": [
+        "Revisar embalagem oficial, proporções e identidade atual antes de renderizar."
+      ]
+    },
+    {
+      "id": "vih-kombu-07",
+      "status": "draft_not_scheduled",
+      "category": "consumo",
+      "format": "single",
+      "featured_flavor": "Hibisco & Anis Estrelado",
+      "title": "Uma Kombú no próximo almoço.",
+      "slides": [
+        {
+          "text": "Uma Kombú no próximo almoço."
+        }
+      ],
+      "caption": "Uma mesa posta, um copo e uma Kombú gelada. Hibisco & Anis Estrelado é uma das combinações para conhecer quando você quiser variar a bebida do almoço.\n\nVeja nossos parceiros no site da bio e pergunte pelos sabores disponíveis no dia.\n\n#manaus #kombucha #kombuchaartesanal",
+      "visual_direction": "Cena de almoço criada do zero ou própria autorizada; mão servindo só se anatomia e rótulo forem revisados. Bebida no contexto da mesa, sem painel de ingredientes flutuantes ou slogan em todo espaço vazio.",
+      "cta": {
+        "label": "Encontrar um parceiro",
+        "path": "/#onde-encontrar"
+      },
+      "review_required": [
+        "Revisar embalagem oficial, proporções e identidade atual antes de renderizar."
+      ]
+    },
+    {
+      "id": "vih-kombu-08",
+      "status": "draft_not_scheduled",
+      "category": "parcerias",
+      "format": "single",
+      "featured_flavor": "Maçã & Canela",
+      "title": "Você é influenciador em Manaus?",
+      "slides": [
+        {
+          "text": "Você é influenciador em Manaus?\n\nConheça nosso programa de afiliados."
+        }
+      ],
+      "caption": "Gostamos de ver a Kombú em lugares e momentos que fazem parte da vida de quem mora aqui.\n\nSe você é influenciador em Manaus e quer apresentar a marca do seu jeito, conheça nosso programa de afiliados na página Parcerias. Conte sobre seu público e sua ideia. Depois da aprovação, combinamos as condições e a ativação do seu cupom.\n\nA proposta é criar uma parceria que tenha a ver com o seu trabalho.\n\n#manaus #kombucha #kombuchaartesanal",
+      "visual_direction": "Cena de produção de conteúdo original com celular de costas, garrafaMaçã&Canela e ambiente real autorizado ou cenário editorial, sem pessoa falsa apresentada como afiliada. Assinatura atual pequena. Sem blocão de texto na arte.",
+      "cta": {
+        "label": "Conhecer o programa de afiliados",
+        "path": "/parcerias"
+      },
+      "review_required": [
+        "Revisar embalagem oficial, proporções e identidade atual antes de renderizar."
+      ]
+    },
+    {
+      "id": "vih-kombu-09",
+      "status": "draft_not_scheduled",
+      "category": "consumo",
+      "format": "carousel",
+      "featured_flavor": "Maracujá",
+      "title": "O que faz uma bebida ser kombucha?",
+      "slides": [
+        {
+          "text": "O que faz uma bebida ser kombucha?"
+        },
+        {
+          "text": "A kombucha é uma bebida fermentada. Na Kombú, a fermentação também é responsável pelo gás que você percebe ao servir."
+        },
+        {
+          "text": "Nós produzimos artesanalmente em Manaus desde 2017 e combinamos frutas, flores, ervas e especiarias em sabores diferentes."
+        },
+        {
+          "text": "Para conhecer, comece pelo sabor que chamou sua atenção. Depois é só encontrar uma Kombú gelada em um parceiro."
+        }
+      ],
+      "caption": "Se você ainda não provou kombucha, não precisa decorar um monte de termos para começar. É uma bebida fermentada. Na Kombú, o gás vem desse processo, e as combinações de ingredientes dão personalidade a cada sabor.\n\nMaracujá é um deles. Conheça os parceiros no site da bio e pergunte quais sabores estão gelados.\n\n#manaus #kombucha #kombuchaartesanal",
+      "visual_direction": "Alternar garrafaMaracujá real e macro do servir. Educação com uma ideia completa por slide. Não retratar produção fictícia, não mostrar tipo de chá ou detalhes da receita.",
+      "cta": {
+        "label": "Encontrar um parceiro",
+        "path": "/#onde-encontrar"
+      },
+      "review_required": [
+        "Revisar embalagem oficial, proporções e identidade atual antes de renderizar."
+      ]
+    },
+    {
+      "id": "vih-kombu-10",
+      "status": "draft_not_scheduled",
+      "category": "revenda",
+      "format": "carousel",
+      "featured_flavor": "Frutas Vermelhas",
+      "title": "Uma nova bebida começa por uma conversa.",
+      "slides": [
+        {
+          "text": "Uma nova bebida começa por uma conversa."
+        },
+        {
+          "text": "Se você tem um empório, restaurante ou outro estabelecimento em Manaus, pode conhecer os sabores da Kombú antes de apresentar a proposta de revenda."
+        },
+        {
+          "text": "No primeiro contato, conte onde seu negócio fica e quem costuma frequentá-lo. Isso nos ajuda a entender o seu espaço."
+        },
+        {
+          "text": "Conheça a Kombú e apresente seu estabelecimento na página Revenda."
+        }
+      ],
+      "caption": "Cada estabelecimento tem um jeito de receber. Por isso, o primeiro contato com a Kombú começa pelo seu negócio.\n\nNa página Revenda, você conhece os sabores e conta o nome do estabelecimento, o bairro e os públicos que costuma atender. A partir daí, conversamos sobre a proposta e as condições para revenda.\n\nSem pular a conversa que ajuda a fazer uma boa escolha.\n\n#manaus #kombucha #kombuchaartesanal",
+      "visual_direction": "FrutasVermelhas em prateleira editorial simples, sem falsa marca de parceiro. Carrossel com detalhe da garrafa, conjunto de sabores não hero e mapa abstrato sem inventar cobertura logística. Não prometer margem, exclusividade comercial ou venda garantida.",
+      "cta": {
+        "label": "Falar sobre revenda",
+        "path": "/revenda"
+      },
+      "review_required": [
+        "Revisar embalagem oficial, proporções e identidade atual antes de renderizar."
+      ]
+    },
+    {
+      "id": "vih-kombu-11",
+      "status": "draft_not_scheduled",
+      "category": "parcerias",
+      "format": "carousel",
+      "featured_flavor": "Flor Fada Azul & Blueberry",
+      "title": "Tem uma proposta de parceria com a Kombú?",
+      "slides": [
+        {
+          "text": "Tem uma proposta de parceria com a Kombú?"
+        },
+        {
+          "text": "Revender é oferecer a Kombú no seu estabelecimento. Uma parceria de indicação começa por conhecer seu trabalho e como você quer apresentar a marca."
+        },
+        {
+          "text": "Influenciadores, profissionais e projetos locais podem apresentar uma proposta. Avaliamos o perfil antes de conversar sobre as condições de cada formato."
+        },
+        {
+          "text": "Conte sua ideia na página Parcerias. Se procura revenda, há uma página própria para o seu estabelecimento."
+        }
+      ],
+      "caption": "Nem toda parceria precisa ter o mesmo formato. Há quem queira oferecer Kombú no próprio estabelecimento e há quem queira conhecer a marca para apresentar uma proposta de indicação ou conteúdo.\n\nA página Parcerias recebe influenciadores, profissionais e projetos de Manaus. Conte sua atuação e sua ideia; as condições exclusivas de cada formato são apresentadas após a avaliação do perfil. Para vender as garrafas no seu negócio, o caminho é a página Revenda.\n\n#manaus #kombucha #kombuchaartesanal",
+      "visual_direction": "Layout de comparação de caminhos sem tabela de comissões, usando produtoFlorFadaAzul&Blueberry comoapoio. Foto simples original de mesa de reunião sem contratos falsos ou profissionais gerados. CTAprincipalParcerias, revenda somente orientação contextual.",
+      "cta": {
+        "label": "Apresentar proposta de parceria",
+        "path": "/parcerias"
+      },
+      "review_required": [
+        "Profissionais de saúde: não pressupor que indicação remunerada seja permitida; validar proposta e regras profissionais antes de condições comerciais."
+      ]
+    },
+    {
+      "id": "vih-kombu-12",
+      "status": "draft_not_scheduled",
+      "category": "consumo",
+      "format": "reel",
+      "featured_flavor": "Imunidade",
+      "title": "Um sabor por vez.",
+      "slides": [],
+      "caption": "Algumas combinações pedem um pouco de curiosidade. Imunidade é o nome deste sabor da Kombú, feito com a mesma proposta que guia nossas garrafas: suavidade ao beber e sabor intenso.\n\nQuer conhecer? Veja nossos parceiros no site da bio e pergunte quais sabores estão gelados.\n\n#manaus #kombucha #kombuchaartesanal",
+      "visual_direction": "3takes inéditos: rótuloImunidade legível, servir e copo pronto com garrafa ao fundo. Não citar ingredientes semverificação de rótulo oficial, não associar nome a imunidadefisiológica, escudos, organismo ou saúde. Sem retornar takes.",
+      "cta": {
+        "label": "Encontrar um parceiro",
+        "path": "/#onde-encontrar"
+      },
+      "review_required": [
+        "Revisar embalagem oficial, proporções e identidade atual antes de renderizar."
+      ]
+    }
+  ]
+}

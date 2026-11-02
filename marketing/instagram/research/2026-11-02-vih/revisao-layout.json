@@ -1,0 +1,306 @@
+[
+  {
+    "file": "artes/feed/revenda-cafes-capa.jpg",
+    "dimensions": [
+      1080,
+      1350
+    ],
+    "bounds": [
+      {
+        "text": "Uma bebida daqui\nno seu café.",
+        "left": 72,
+        "right": 1008,
+        "top": 1074.40625,
+        "bottom": 1246
+      }
+    ]
+  },
+  {
+    "file": "artes/feed/revenda-cafes-continua.jpg",
+    "dimensions": [
+      1080,
+      1350
+    ],
+    "bounds": [
+      {
+        "text": "Antes de escolher os sabores,\nconte sobre o seu negócio.",
+        "left": 72,
+        "right": 1008,
+        "top": 935.578125,
+        "bottom": 1064.390625
+      },
+      {
+        "text": "Conheça a Kombú e apresente seu estabelecimento.\nA conversa sobre revenda começa por aí.",
+        "left": 72,
+        "right": 992,
+        "top": 1086.390625,
+        "bottom": 1172.203125
+      },
+      {
+        "text": "Conheça a revenda no site da bio.",
+        "left": 72,
+        "right": 912,
+        "top": 1192.203125,
+        "bottom": 1246
+      }
+    ]
+  },
+  {
+    "file": "artes/stories/revenda-cafes-story.jpg",
+    "dimensions": [
+      1080,
+      1920
+    ],
+    "bounds": [
+      {
+        "text": "Uma bebida feita em Manaus\npode entrar no seu cardápio.",
+        "left": 72,
+        "right": 992,
+        "top": 1069.234375,
+        "bottom": 1421.234375
+      },
+      {
+        "text": "Conheça os sabores e apresente\nseu estabelecimento.",
+        "left": 72,
+        "right": 992,
+        "top": 1451.234375,
+        "bottom": 1551.859375
+      },
+      {
+        "text": "Conheça a revenda no site da bio.",
+        "left": 72,
+        "right": 962,
+        "top": 1583.859375,
+        "bottom": 1650
+      }
+    ]
+  },
+  {
+    "file": "artes/feed/revenda-emporios-capa.jpg",
+    "dimensions": [
+      1080,
+      1350
+    ],
+    "bounds": [
+      {
+        "text": "Tem espaço para a Kombú\nno seu negócio?",
+        "left": 72,
+        "right": 1008,
+        "top": 1074.40625,
+        "bottom": 1246
+      }
+    ]
+  },
+  {
+    "file": "artes/feed/revenda-emporios-continua.jpg",
+    "dimensions": [
+      1080,
+      1350
+    ],
+    "bounds": [
+      {
+        "text": "Empórios e estúdios,\nvamos conversar.",
+        "left": 72,
+        "right": 1008,
+        "top": 935.578125,
+        "bottom": 1064.390625
+      },
+      {
+        "text": "Conte onde seu negócio fica e quem ele recebe.\nA gente quer conhecer o seu espaço.",
+        "left": 72,
+        "right": 992,
+        "top": 1086.390625,
+        "bottom": 1172.203125
+      },
+      {
+        "text": "Apresente seu negócio em Revenda.",
+        "left": 72,
+        "right": 912,
+        "top": 1192.203125,
+        "bottom": 1246
+      }
+    ]
+  },
+  {
+    "file": "artes/stories/revenda-emporios-story.jpg",
+    "dimensions": [
+      1080,
+      1920
+    ],
+    "bounds": [
+      {
+        "text": "Seu espaço tem um jeito\npróprio de receber.",
+        "left": 72,
+        "right": 992,
+        "top": 1245.234375,
+        "bottom": 1421.234375
+      },
+      {
+        "text": "Empórios e estúdios de Manaus, vamos\nconhecer o seu negócio?",
+        "left": 72,
+        "right": 992,
+        "top": 1451.234375,
+        "bottom": 1551.859375
+      },
+      {
+        "text": "Apresente seu negócio em Revenda.",
+        "left": 72,
+        "right": 962,
+        "top": 1583.859375,
+        "bottom": 1650
+      }
+    ]
+  },
+  {
+    "file": "artes/feed/parcerias-profissionais-capa.jpg",
+    "dimensions": [
+      1080,
+      1350
+    ],
+    "bounds": [
+      {
+        "text": "Nutricionistas e nutrólogos,\nqueremos conhecer vocês.",
+        "left": 72,
+        "right": 992,
+        "top": 190,
+        "bottom": 325.59375
+      }
+    ]
+  },
+  {
+    "file": "artes/feed/parcerias-profissionais-continua.jpg",
+    "dimensions": [
+      1080,
+      1350
+    ],
+    "bounds": [
+      {
+        "text": "Conheça a Kombú\nantes da parceria.",
+        "left": 72,
+        "right": 1008,
+        "top": 935.578125,
+        "bottom": 1064.390625
+      },
+      {
+        "text": "Conte sobre sua atuação e sua proposta.\nConversamos sobre o formato após avaliar o perfil.",
+        "left": 72,
+        "right": 992,
+        "top": 1086.390625,
+        "bottom": 1172.203125
+      },
+      {
+        "text": "Converse com a gente em Parcerias.",
+        "left": 72,
+        "right": 912,
+        "top": 1192.203125,
+        "bottom": 1246
+      }
+    ]
+  },
+  {
+    "file": "artes/stories/parcerias-profissionais-story.jpg",
+    "dimensions": [
+      1080,
+      1920
+    ],
+    "bounds": [
+      {
+        "text": "Você é nutricionista\nou nutrólogo em Manaus?",
+        "left": 72,
+        "right": 992,
+        "top": 315,
+        "bottom": 491.25
+      },
+      {
+        "text": "Conheça a marca e apresente sua proposta.\nO formato é conversado após a avaliação.",
+        "left": 72,
+        "right": 992,
+        "top": 521.25,
+        "bottom": 621.875
+      },
+      {
+        "text": "Converse com a gente em Parcerias.",
+        "left": 72,
+        "right": 962,
+        "top": 645.875,
+        "bottom": 685.015625
+      }
+    ]
+  },
+  {
+    "file": "artes/feed/parcerias-perfis-capa.jpg",
+    "dimensions": [
+      1080,
+      1350
+    ],
+    "bounds": [
+      {
+        "text": "Você é personal trainer\nou influenciador em Manaus?",
+        "left": 72,
+        "right": 1008,
+        "top": 1092,
+        "bottom": 1246
+      }
+    ]
+  },
+  {
+    "file": "artes/feed/parcerias-perfis-continua.jpg",
+    "dimensions": [
+      1080,
+      1350
+    ],
+    "bounds": [
+      {
+        "text": "Uma parceria começa pelo\nseu jeito de trabalhar.",
+        "left": 72,
+        "right": 1008,
+        "top": 935.578125,
+        "bottom": 1064.390625
+      },
+      {
+        "text": "Apresente seu perfil e sua ideia. As condições\nsão conversadas depois da avaliação.",
+        "left": 72,
+        "right": 992,
+        "top": 1086.390625,
+        "bottom": 1172.203125
+      },
+      {
+        "text": "Conheça o programa em Parcerias.",
+        "left": 72,
+        "right": 912,
+        "top": 1192.203125,
+        "bottom": 1246
+      }
+    ]
+  },
+  {
+    "file": "artes/stories/parcerias-perfis-story.jpg",
+    "dimensions": [
+      1080,
+      1920
+    ],
+    "bounds": [
+      {
+        "text": "Seu trabalho pode ter\num encontro com a Kombú.",
+        "left": 72,
+        "right": 992,
+        "top": 1153.953125,
+        "bottom": 1421.234375
+      },
+      {
+        "text": "Personal trainers e influenciadores de Manaus,\napresentem sua ideia.",
+        "left": 72,
+        "right": 992,
+        "top": 1451.234375,
+        "bottom": 1551.859375
+      },
+      {
+        "text": "Conheça o programa em Parcerias.",
+        "left": 72,
+        "right": 962,
+        "top": 1583.859375,
+        "bottom": 1650
+      }
+    ]
+  }
+]
