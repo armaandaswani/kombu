@@ -406,6 +406,9 @@
     if (!trigger) return;
     e.preventDefault();
     open(trigger.dataset.precontato, trigger);
+    // A prévia do bloco final: tocar numa opção já responde a primeira pergunta.
+    const mock = e.target.closest("[data-mock-pick]");
+    if (mock) body.querySelector(`.pc-option[data-value="${CSS.escape(mock.dataset.mockPick)}"]`)?.click();
   });
 
   const params = new URLSearchParams(location.search);

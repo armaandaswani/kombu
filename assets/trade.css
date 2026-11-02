@@ -158,3 +158,9 @@
   .tx-actions{gap:14px 22px}
 }
 @media(prefers-reduced-motion:reduce){.tx-parallax img{transform:none}.tx-marquee-track{animation:none!important}}
+/* The preview opens the real pre-contact; an option tapped there is the first answer. */
+.tx-cta-preview[data-precontato]{cursor:pointer}
+.tx-cta-preview[data-precontato] .tx-mock{transition:box-shadow .3s ease}
+.tx-cta-preview[data-precontato]:hover .tx-mock{box-shadow:0 50px 90px -30px rgba(0,0,0,.7),0 0 0 3px rgba(217,249,157,.45)}
+.tx-cta-preview[data-precontato] .tx-mock-opt{transition:border-color .15s,background-color .15s}
+.tx-cta-preview[data-precontato] .tx-mock-opt:hover{border-color:var(--green);background:#eff3e4}
