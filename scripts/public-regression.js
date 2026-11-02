@@ -224,35 +224,55 @@ async function run() {
     // ---------------------------------------------------------------- revenda
     const b = await newPage(browser, leads);
     await b.page.goto(`${baseUrl}/revenda.html`);
-    await b.page.waitForFunction(() => document.querySelectorAll("#fan img").length > 0);
-    assert.ok((await b.page.locator("#fan img").count()) >= 3, "the hero shows a fan of bottles");
+    await b.page.waitForFunction(() => document.querySelectorAll("#resellerFlavors article").length === 11);
+    assert.ok(!(await b.page.locator('#resellerFlavors').innerText()).includes('Uva'), 'CMS-hidden flavour stays hidden in reseller catalogue');
+    await b.page.selectOption('#resellerFlavorFamily', 'Florais');
+    assert.ok(await b.page.locator('#resellerFlavors article').count() < 11, 'catalogue filters by flavour profile');
+    await b.page.selectOption('#resellerFlavorFamily', '');
+    await b.page.locator('[data-name="Maracujá"]').click();
+    assert.ok((await b.page.locator('#tradeHeroBottle').getAttribute('src')).includes('maracuja'), 'hero selection shows the actual selected bottle');
     for (const width of [320, 390, 768]) {
       await b.page.setViewportSize({ width, height: 900 });
-      const layout = await b.page.locator('.b2b-hero').evaluate(hero => {
-        const selectors = ['.b2b-for', 'h1', '.lead', '.actions'];
-        const boxes = selectors.map(selector => hero.querySelector(selector).getBoundingClientRect());
-        return { ordered: boxes.every((box, i) => !i || box.top >= boxes[i - 1].bottom - 1), overflow: document.documentElement.scrollWidth > innerWidth };
-      });
-      assert.ok(layout.ordered, `reseller heading, text and actions do not overlap at ${width}px`);
-      assert.ok(!layout.overflow, `reseller page fits ${width}px`);
+      assert.ok(await b.page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), `reseller page fits ${width}px`);
     }
     await b.page.setViewportSize({ width: 390, height: 844 });
-    const proof = await b.page.locator("#proofNames b").allInnerTexts();
-    assert.strictEqual(proof.at(-1), "Solar Café Regional", "Solar Café is last in the proof strip too");
-    assert.strictEqual(await b.page.evaluate(() => window.__xss), undefined);
-    await b.page.fill("#rev-nome", "Dono Teste");
-    await b.page.fill("#rev-negocio", "Café Teste");
-    await b.page.selectOption("#rev-tipo", "Café");
-    await b.page.fill("#rev-whatsapp", "92 98888-0000");
-    await b.page.click('#resellerForm button[type="submit"]');
-    await b.page.waitForSelector("#resellerForm .form-status:not([hidden])");
+    const form = b.page.locator('#resellerForm');
+    const next = form.locator('[data-step-next]');
+    await next.click();
+    assert.ok(await form.locator('[name="negocio"]').isVisible(), 'empty first step cannot advance');
+    await form.locator('[name="negocio"]').fill('Café Teste');
+    await form.locator('[name="tipo"]').selectOption('Café ou confeitaria');
+    await form.locator('[name="bairro"]').fill('Centro');
+    await form.locator('[name="bairro"]').press('Enter');
+    assert.ok(await form.locator('[name="origem"]').isVisible(), 'Enter advances rather than submitting');
+    await next.click();
+    assert.ok(await form.locator('[name="origem"]').isVisible(), 'public profile is required');
+    await form.locator('[name="publicos"]').nth(0).check();
+    await form.locator('[name="publicos"]').nth(2).check();
+    await form.locator('[name="origem"]').selectOption('Outro');
+    await next.click();
+    assert.ok(await form.locator('[name="origemOutro"]').isVisible(), 'Other requires its explanation');
+    await form.locator('[name="origemOutro"]').fill('Evento local');
+    await form.locator('[name="origem"]').selectOption('Instagram');
+    assert.equal(await form.locator('[name="origemOutro"]').inputValue(), '', 'changing origin clears obsolete explanation');
+    await next.click();
+    await form.locator('[data-step-back]').click();
+    assert.equal(await form.locator('[name="publicos"]:checked').count(), 2, 'back retains both selected audiences');
+    await next.click();
+    await form.locator('[name="nome"]').fill('Dono Teste');
+    await form.locator('[name="whatsapp"]').fill('92 98888-0000');
+    await form.locator('[name="instagram"]').fill('@cafeteste');
+    await form.locator('button[type="submit"]').click();
+    await form.locator('.form-status[data-state="ok"]').waitFor();
     const lead = leads.at(-1);
-    assert.strictEqual(lead.type, "revenda");
-    assert.strictEqual(lead.business, "Café Teste");
-    assert.strictEqual(lead.businessType, "Café");
-    assert.strictEqual(lead.source, "site-revenda", "the CRM can tell a reseller lead from the business page");
-    assert.ok(await b.page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth), "no horizontal scroll on /revenda");
-    assert.deepStrictEqual(b.errors, [], "no script errors on /revenda");
+    assert.equal(lead.type, 'revenda');
+    assert.equal(lead.business, 'Café Teste');
+    assert.equal(lead.businessType, 'Café ou confeitaria');
+    assert.equal(lead.source, 'site-revenda');
+    assert.equal(lead.audiences.length, 2, 'multiple audiences survive serialization');
+    assert.equal(lead.discoverySource, 'Instagram');
+    assert.equal(lead.discoveryOther, '');
+    assert.deepStrictEqual(b.errors, [], 'no script errors on /revenda');
 
     // Referral survives navigation to a tasting kit, and can be changed or removed.
     const referral = await newPage(browser, leads);
@@ -304,32 +324,28 @@ async function run() {
     await referral.page.goto(`${baseUrl}/?ref=%3Cscript%3E#comprar`);
     await referral.page.waitForFunction(() => document.querySelectorAll(".walk-step").length > 0);
     assert.strictEqual(await referral.page.locator('#comprar input[name="couponCode"]').count(), 0);
-    assert.ok(await referral.page.locator('#criadores a[href="/criadores"]').isVisible(), 'home invitation opens the dedicated creator area');
-    assert.ok(await referral.page.locator('.creator-invite-art').evaluate(img => img.getBoundingClientRect().height < 500), 'home creator art stays compact');
+    assert.ok(await referral.page.locator('#parcerias a[href="/parcerias"]').isVisible(), 'home opens the broader partnership area');
     await referral.page.goto(`${baseUrl}/criadores`);
-    assert.equal(await referral.page.locator('h1').innerText(), 'Crie conteúdo\ncom a Kombú.');
-    assert.ok(!(await referral.page.locator('main').innerText()).match(/(?:5|10)\s*%/), 'creator invitation keeps commercial rates private');
-    await referral.page.selectOption('#creatorForm [name="plataforma"]', 'Instagram');
-    await referral.page.fill('#creatorForm [name="tema"]', 'Gastronomia e cultura local');
-    await referral.page.selectOption('#creatorForm [name="perfilTipo"]', 'Criador de conteúdo / influenciador');
-    await referral.page.fill('#creatorForm [name="seguidores"]', '1500');
-    await referral.page.selectOption('#creatorForm [name="formato"]', 'Reels e vídeos curtos');
-    await referral.page.selectOption('#creatorForm [name="parcerias"]', 'Sim');
-    await referral.page.fill('#creatorForm [name="nome"]', "Criadora Teste");
-    await referral.page.fill('#creatorForm [name="whatsapp"]', "92999990000");
-    await referral.page.fill('#creatorForm [name="instagram"]', "@criadora");
-    await referral.page.fill('#creatorForm [name="bairro"]', "Manaus");
-    await referral.page.fill('#creatorForm [name="mensagem"]', "Quero apresentar a Kombú para minha comunidade.");
-    await referral.page.click('#creatorForm button[type="submit"]');
-    await referral.page.waitForSelector("#creatorForm .form-status[data-state='ok']");
-    assert.strictEqual(leads.at(-1).type, "criador");
-    assert.strictEqual(leads.at(-1).source, "site-criadores");
-    assert.ok(leads.at(-1).message.includes('Rede principal: Instagram'));
-    assert.ok(leads.at(-1).message.includes('Assuntos centrais: Gastronomia e cultura local'));
-    assert.ok(leads.at(-1).message.includes('Seguidores ou inscritos: 1500'));
-    assert.ok(leads.at(-1).message.includes('Formato principal: Reels e vídeos curtos'));
-    assert.ok(leads.at(-1).message.includes('Parcerias anteriores: Sim'));
-    assert.equal(leads.at(-1).instagram, '@criadora');
+    assert.equal((await referral.page.locator('h1').innerText()).replace(/\s+/g, ' '), 'Parcerias com a Kombú.');
+    assert.ok(!(await referral.page.locator('main').innerText()).match(/(?:5|10)\s*%/), 'partnership invitation keeps commercial rates private');
+    assert.equal(await referral.page.locator('[name="seguidores"]').count(), 0, 'professional partnerships require no followers');
+    const partner = referral.page.locator('#partnerForm');
+    await partner.locator('[name="nome"]').fill('Profissional Teste');
+    await partner.locator('[name="perfilTipo"]').selectOption('Nutricionista');
+    await partner.locator('[name="bairro"]').fill('Manaus');
+    await partner.locator('[data-step-next]').click();
+    await partner.locator('[name="mensagem"]').fill('Quero conhecer as condições de parceria para meu espaço.');
+    await partner.locator('[name="origem"]').selectOption('Amigo ou conhecido');
+    await partner.locator('[data-step-next]').click();
+    await partner.locator('[name="whatsapp"]').fill('92999990000');
+    await partner.locator('[name="email"]').fill('teste@example.com');
+    await partner.locator('button[type="submit"]').click();
+    await partner.locator('.form-status[data-state="ok"]').waitFor();
+    assert.equal(leads.at(-1).type, 'parceria');
+    assert.equal(leads.at(-1).source, 'site-parcerias');
+    assert.equal(leads.at(-1).profileType, 'Nutricionista');
+    assert.equal(leads.at(-1).email, 'teste@example.com');
+    assert.equal(leads.at(-1).instagram, '', 'Instagram stays optional for professionals');
     assert.deepStrictEqual(referral.errors, []);
 
     // Stock errors offer retry, and empty ready-stock leads to an unpaid production request.
@@ -357,7 +373,7 @@ async function run() {
 
     // ---------------------------------------------------------------- blog and SEO
     const blog = await newPage(browser, leads);
-    for (const url of ["/", "/experimente", "/revenda", "/legal", "/blog", "/blog/o-que-e-kombucha", "/blog/como-a-kombu-e-feita", "/blog/como-servir-kombucha"]) {
+    for (const url of ["/", "/experimente", "/revenda", "/parcerias", "/legal", "/blog", "/blog/o-que-e-kombucha", "/blog/como-a-kombu-e-feita", "/blog/como-servir-kombucha"]) {
       await blog.page.goto(`${baseUrl}${url}`);
       const seo = await blog.page.evaluate(() => ({
         h1: document.querySelectorAll("h1").length,

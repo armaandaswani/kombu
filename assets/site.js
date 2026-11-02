@@ -637,19 +637,39 @@
     });
   }
 
+  function initResellerCatalog(flavors) {
+    const container = $("#resellerFlavors");
+    if (!container) return;
+    const filter = $("#resellerFlavorFamily");
+    const render = () => {
+      const family = filter?.value || "Todas";
+      const visible = flavors.filter((flavor) => family === "Todas" || flavor.profile === family);
+      container.innerHTML = visible.map((flavor) => `<article class="trade-flavor"><figure><img src="${esc(flavor.image)}" alt="Garrafa de Kombú ${esc(flavor.name)}" loading="lazy" width="320" height="480"></figure><div><h3>${esc(flavor.name)}</h3><p>${esc(flavor.ingredients.join(" · "))}</p></div></article>`).join("") || '<p class="trade-empty">Nenhum sabor nesta seleção. Veja as outras famílias.</p>';
+      const count = $("#resellerFlavorCount");
+      if (count) count.textContent = `${visible.length} ${visible.length === 1 ? "sabor" : "sabores"}`;
+    };
+    filter?.addEventListener("change", render);
+    render();
+  }
+
   // ------------------------------------------------------------ forms → /api/lead
   function normalizeLead(data, type) {
     return {
       id: `lead-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
       type,
       status: "novo",
-      source: type === "criador" ? "site-criadores" : page === "revenda" ? "site-revenda" : page === "tasting" ? "site-kits" : "site-publico",
+      source: type === "parceria" ? "site-parcerias" : type === "criador" ? "site-criadores" : page === "revenda" ? "site-revenda" : page === "tasting" ? "site-kits" : "site-publico",
       name: data.nome || "",
       business: data.negocio || "",
       businessType: data.tipo || "",
       location: data.bairro || "",
       whatsapp: data.whatsapp || "",
       instagram: data.instagram || "",
+      profileType: data.perfilTipo || "",
+      email: data.email || "",
+      audiences: Array.isArray(data.publicos) ? data.publicos : data.publicos ? [data.publicos] : [],
+      discoverySource: data.origem || "",
+      discoveryOther: data.origem === "Outro" ? data.origemOutro || "" : "",
       message: type === "criador" ? [
         data.perfilTipo ? `Tipo de perfil: ${data.perfilTipo}` : "",
         data.email ? `E-mail: ${data.email}` : "",
@@ -670,19 +690,47 @@
     };
   }
 
+  function serializeLeadForm(form) {
+    const data = {};
+    for (const [key, value] of new FormData(form).entries()) {
+      if (typeof value !== "string") continue;
+      if (key === "publicos") (data.publicos ||= []).push(value);
+      else data[key] = value;
+    }
+    return data;
+  }
+
+  function initDiscoveryField(form) {
+    const origin = $('[name="origem"]', form);
+    const container = $('[data-origin-other]', form);
+    const input = $('[name="origemOutro"]', form);
+    if (!origin || !container || !input) return () => {};
+    const sync = () => {
+      const other = origin.value === "Outro";
+      container.hidden = !other;
+      input.required = other;
+      input.disabled = !other;
+      if (!other) { input.value = ""; input.setCustomValidity(""); }
+    };
+    origin.addEventListener("change", sync);
+    sync();
+    return sync;
+  }
+
   function initForm(form, type, success) {
     if (!form) return;
     const status = $(".form-status", form);
+    const syncDiscovery = initDiscoveryField(form);
     form.addEventListener("submit", async (event) => {
       event.preventDefault();
-      if (form.dataset.busy === "1") return;
+      if (form.dataset.busy === "1" || !form.reportValidity()) return;
       form.dataset.busy = "1";
       const button = $('button[type="submit"]', form);
       const label = button.innerHTML;
       button.disabled = true;
       button.textContent = "Enviando…";
       status.hidden = true;
-      const data = Object.fromEntries(new FormData(form).entries());
+      const data = serializeLeadForm(form);
       if (form.dataset.prefix) data.mensagem = `${form.dataset.prefix} ${data.mensagem || ""}`.trim();
       try {
         const response = await fetch("/api/lead", {
@@ -691,10 +739,13 @@
           body: JSON.stringify({ lead: normalizeLead(data, type) }),
         });
         const payload = await response.json().catch(() => ({}));
-        if (!response.ok || !payload.persisted) throw new Error("not saved");
+        // Persistence is the acknowledgement. Notification delivery may fail
+        // after the CRM save; prompting another submission would duplicate it.
+        if (payload.persisted !== true) throw new Error("not saved");
         status.dataset.state = "ok";
         status.textContent = success;
         form.reset();
+        syncDiscovery();
         initReferrals();
       } catch {
         status.dataset.state = "error";
@@ -870,8 +921,10 @@
     }
     if (page === "revenda") {
       initRevenda(flavors);
+      initResellerCatalog(flavors);
       initForm($("#resellerForm"), "revenda", "Recebemos seus dados. A Kombú vai retornar pelo contato informado com sabores, valores e condições.");
     }
+    initForm($("#partnerForm"), "parceria", "Recebemos sua proposta. Vamos conhecer seu trabalho e retornar pelo WhatsApp para conversar sobre a parceria.");
     initForm($("#creatorForm"), "criador", "Cadastro recebido. Vamos avaliar seu perfil e, se houver afinidade, entrar em contato pelo WhatsApp para conversar sobre a parceria.");
     observeReveals();
   }

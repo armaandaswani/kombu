@@ -84,7 +84,33 @@ function cleanId(value) {
 
 function normalizeLead(payload) {
   const body = normalizeBody(payload);
-  const lead = body.lead || body;
+  const candidate = body.lead || body;
+  const lead = candidate && typeof candidate === "object" && !Array.isArray(candidate) ? candidate : {};
+  const field = (value, limit) => typeof value === "string" ? value.replace(/[\u0000-\u001f\u007f]/g, " ").trim().slice(0, limit) : "";
+  const rawAudiences = lead.audiences ?? lead.publicos ?? [];
+  const audiences = [...new Set((Array.isArray(rawAudiences) ? rawAudiences : [rawAudiences])
+    .map((value) => field(value, 120)).filter(Boolean))].slice(0, 4);
+  const profileType = field(lead.profileType || lead.perfilTipo, 80);
+  const email = field(lead.email, 160);
+  const discoverySource = field(lead.discoverySource || lead.origem, 80);
+  const discoveryOther = discoverySource === "Outro" ? field(lead.discoveryOther || lead.origemOutro, 240) : "";
+  // Keep a readable summary for existing CRM views/exports, while retaining
+  // structured fields for reporting. Normalizing a saved lead again is idempotent.
+  const details = [
+    profileType && `Perfil da parceria: ${profileType}`,
+    email && `E-mail: ${email}`,
+    audiences.length && `Públicos principais: ${audiences.join("; ")}`,
+    discoverySource && `Como conheceu a Kombú: ${discoverySource}${discoveryOther ? ` — ${discoveryOther}` : ""}`,
+  ].filter(Boolean);
+  const summary = details.join("\n\n");
+  const incomingMessage = cleanText(lead.message || lead.mensagem, 6000);
+  // Strip only the exact summary we generated before applying the original
+  // 4,000-character inquiry allowance. Metadata has its own bounded fields,
+  // so it never consumes (or truncates) the visitor's message on either pass.
+  const inquiry = summary && incomingMessage.startsWith(`${summary}\n\n`)
+    ? incomingMessage.slice(summary.length + 2)
+    : incomingMessage === summary ? "" : incomingMessage;
+  const message = [summary, cleanText(inquiry, 4000)].filter(Boolean).join("\n\n");
   return {
     id: cleanId(lead.id) || newLeadId(),
     type: cleanText(lead.type || "contato", 40),
@@ -95,9 +121,14 @@ function normalizeLead(payload) {
     location: cleanText(lead.location || lead.bairro, 160),
     whatsapp: cleanText(lead.whatsapp, 40),
     instagram: cleanText(lead.instagram, 80),
+    profileType,
+    email,
+    audiences,
+    discoverySource,
+    discoveryOther,
     // Attribution only: this value never authorizes a discount or payout.
     couponCode: /^[A-Z0-9_-]{1,40}$/.test(String(lead.couponCode || "").trim().toUpperCase()) ? String(lead.couponCode).trim().toUpperCase() : "",
-    message: cleanText(lead.message || lead.mensagem, 4000),
+    message,
     emailTo: cleanText(lead.emailTo, 160) || process.env.LEAD_NOTIFY_EMAIL || ADMIN_EMAIL,
     source: cleanText(lead.source, 80) || "site-publico",
     createdAt: cleanText(lead.createdAt, 40) || new Date().toISOString(),
@@ -430,7 +461,8 @@ async function archiveLeads(state) {
     location: cleanText(lead?.location, 160) || null,
     whatsapp: cleanText(lead?.whatsapp, 40) || null,
     instagram: cleanText(lead?.instagram, 80) || null,
-    message: cleanText(lead?.message, 4000) || null,
+    // The 4,000-character inquiry plus bounded qualification summary.
+    message: cleanText(lead?.message, 6000) || null,
     source: cleanText(lead?.source, 80) || null,
     lead_created_at: createdAt(lead?.createdAt),
     entry: lead,

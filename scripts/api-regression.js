@@ -358,6 +358,22 @@ async function run() {
   assert.strictEqual(leadRequests.at(-1)[0].lead_id, "lead-7");
   assert.strictEqual(leadRequests.at(-1)[0].status, "qualificado");
 
+  // Qualification metadata must not truncate the visitor's original inquiry
+  // in the archive projection consumed by /api/leads.
+  const archiveInquiry = `${"x".repeat(3986)}MARCADOR-FINAL!`.slice(1);
+  assert.strictEqual(archiveInquiry.length, 4000);
+  const qualifiedLead = backend.normalizeLead({
+    id: "lead-qualified-long-inquiry", type: "parceria", nome: "Ana",
+    perfilTipo: "Nutricionista", publicos: ["Alimentação natural e bem-estar", "Esporte e vida ativa"],
+    origem: "Outro", origemOutro: "Evento local", mensagem: archiveInquiry,
+  });
+  assert.ok(qualifiedLead.message.length > 4000);
+  assert.strictEqual((await backend.archiveLeads({ leads: [qualifiedLead] })).ok, true);
+  const archivedQualified = leadRequests.at(-1)[0];
+  assert.strictEqual(archivedQualified.message, qualifiedLead.message);
+  assert.ok(archivedQualified.message.endsWith(archiveInquiry), "archive projection preserves the complete inquiry ending");
+  assert.strictEqual(archivedQualified.entry.message, archivedQualified.message);
+
   // And a missing table must not break the save.
   leadTableExists = false;
   const brokenTable = await backend.archiveLeads({ leads: [{ id: "lead-new", status: "novo", name: "X" }] });

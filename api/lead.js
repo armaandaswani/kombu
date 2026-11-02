@@ -9,7 +9,7 @@ const {
 } = require("./_lib/kombu-backend");
 
 function leadSubject(lead) {
-  const prefix = lead.type === "revenda" ? "Novo lead de revenda" : lead.type === "criador" ? "Nova proposta de criador" : "Novo contato";
+  const prefix = lead.type === "revenda" ? "Novo lead de revenda" : lead.type === "parceria" ? "Nova proposta de parceria" : lead.type === "criador" ? "Nova proposta de criador" : "Novo contato";
   const name = lead.name || lead.business || lead.whatsapp || "sem nome";
   return `${prefix} Kombú: ${name}`;
 }
@@ -26,6 +26,11 @@ function leadText(lead) {
     `Local: ${lead.location || "-"}`,
     `WhatsApp: ${lead.whatsapp || "-"}`,
     `Instagram: ${lead.instagram || "-"}`,
+    `Perfil da parceria: ${lead.profileType || "-"}`,
+    `E-mail: ${lead.email || "-"}`,
+    `Públicos principais: ${(lead.audiences || []).join("; ") || "-"}`,
+    `Como conheceu a Kombú: ${lead.discoverySource || "-"}`,
+    `Outra origem: ${lead.discoveryOther || "-"}`,
     `Origem: ${lead.source || "-"}`,
     `Código informado (não validado): ${lead.couponCode || "-"}`,
     `Criado em: ${lead.createdAt}`,
@@ -45,6 +50,11 @@ function leadHtml(lead) {
     ["Local", lead.location || "-"],
     ["WhatsApp", lead.whatsapp || "-"],
     ["Instagram", lead.instagram || "-"],
+    ["Perfil da parceria", lead.profileType || "-"],
+    ["E-mail", lead.email || "-"],
+    ["Públicos principais", (lead.audiences || []).join("; ") || "-"],
+    ["Como conheceu a Kombú", lead.discoverySource || "-"],
+    ["Outra origem", lead.discoveryOther || "-"],
     ["Origem", lead.source || "-"],
     ["Código informado (não validado)", lead.couponCode || "-"],
     ["Criado em", lead.createdAt],

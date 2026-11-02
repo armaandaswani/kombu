@@ -6243,7 +6243,7 @@ function renderLeads() {
     .filter((lead) => matchesSearch(lead))
     .map((lead) => `
       <tr>
-        <td><strong>${lead.type === "revenda" ? "Revenda" : lead.type === "criador" ? "Criador" : "Contato"}</strong><br><span>${escapeHtml(new Date(lead.createdAt).toLocaleString("pt-BR"))}</span></td>
+        <td><strong>${lead.type === "revenda" ? "Revenda" : lead.type === "parceria" ? "Parceria" : lead.type === "criador" ? "Criador" : "Contato"}</strong><br><span>${escapeHtml(new Date(lead.createdAt).toLocaleString("pt-BR"))}</span></td>
         <td><strong>${escapeHtml(lead.name || "Sem nome")}</strong><br><span>${escapeHtml(lead.whatsapp || "Sem WhatsApp")}</span></td>
         <td>${escapeHtml(lead.business || "-")}<br><span>${escapeHtml(lead.businessType || "")}${lead.location ? ` | ${escapeHtml(lead.location)}` : ""}</span></td>
         <td>${escapeHtml(lead.instagram || "-")}</td>
@@ -6266,7 +6266,7 @@ function renderLeads() {
       ${metric("Leads novos", number(state.leads.filter((lead) => lead.status === "novo").length), "Ainda sem contato", "mark_email_unread")}
       ${metric("Revenda", number(state.leads.filter((lead) => lead.type === "revenda").length), "Formulário seja revendedor", "storefront")}
       ${metric("Contato geral", number(state.leads.filter((lead) => lead.type === "contato").length), "Mensagens do site", "chat")}
-      ${metric("Criadores", number(state.leads.filter((lead) => lead.type === "criador").length), "Propostas de parceria", "alternate_email")}
+      ${metric("Parcerias", number(state.leads.filter((lead) => ["criador", "parceria"].includes(lead.type)).length), "Propostas de parceria", "alternate_email")}
     </section>
     ${table(
       [
