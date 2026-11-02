@@ -18,15 +18,20 @@
     revenda: {
       type: "revenda",
       intro: "Olá! Vim pelo site da Kombú e quero revender no meu espaço.",
-      groups: { espaco: "O espaço", interesse: "Interesse", contato: "Contato" },
+      groups: { espaco: "O espaço", publico: "Público", interesse: "Interesse", contato: "Contato" },
       done: "Você conversa direto com a equipe da Kombú.",
       steps: [
         { id: "tipo", kind: "single", group: "espaco", label: "Tipo", t: "Que tipo de espaço você tem?",
           options: ["Café ou confeitaria", "Restaurante ou bistrô", "Empório ou mercado", "Academia ou estúdio", "Hotel ou pousada", "Outro"], other: "Outro", otherLabel: "Qual é o tipo de espaço?" },
         { id: "vende", kind: "single", group: "espaco", label: "Já vende", t: "Você já vende kombucha ou outras bebidas naturais?",
           options: ["Já vendo kombucha", "Vendo outras bebidas naturais", "Ainda não"] },
-        { id: "publicos", kind: "multi", max: 2, group: "espaco", label: "Público", t: "Quem mais frequenta seu espaço?", s: "Escolha até 2.",
-          options: ["Alimentação natural e bem-estar", "Esporte e vida ativa", "Gastronomia e novas experiências", "Público variado do bairro"] },
+        // Público: diz se o cliente do espaço é o cliente da Kombú (premium,
+        // natural, bem-estar). Dois toques: estilo de vida e, sem perguntar
+        // renda, o preço que o espaço já cobra (indica a classe atendida).
+        { id: "publicos", kind: "multi", max: 3, group: "publico", label: "Estilo de vida", t: "Como é o dia a dia de quem frequenta seu espaço?", s: "Escolha até 3.",
+          options: ["Pratica yoga, pilates ou meditação", "Treina e cuida do corpo", "Prefere produtos naturais e orgânicos", "Aprecia gastronomia e cafés especiais", "Público variado, sem um perfil definido"] },
+        { id: "preco", kind: "single", group: "publico", label: "Preço médio de uma bebida", t: "Quanto custa, em média, uma bebida no seu espaço?", s: "Um suco, um café especial ou uma água de coco, por exemplo.",
+          options: ["Até R$ 8", "De R$ 8 a R$ 15", "De R$ 15 a R$ 25", "Acima de R$ 25", "Ainda não vendo bebidas"] },
         { id: "geladeira", kind: "single", group: "espaco", label: "Geladeira", t: "Seu espaço tem geladeira para bebidas?", s: "A Kombú fica sempre gelada, entre 0 e 5 °C.",
           options: ["Sim, tenho geladeira ou expositor", "Ainda não tenho", "Quero conversar sobre isso"] },
         { id: "sabores", kind: "flavors", max: 4, group: "interesse", label: "Sabores", t: "Quais sabores chamam sua atenção?", s: "Escolha até 4. Se preferir, a gente sugere na conversa.", optional: true },
@@ -37,7 +42,7 @@
             { name: "negocio", label: "Nome do estabelecimento", group: "espaco", line: "Nome", top: true, required: true, autocomplete: "organization", max: 160, first: true },
             { name: "bairro", label: "Bairro", group: "espaco", line: "Bairro", top: true, required: true, autocomplete: "address-level3", max: 160 },
             { name: "nome", label: "Seu nome", group: "contato", line: "Responsável", required: true, autocomplete: "name", max: 120 },
-            { name: "instagram", label: "Instagram do espaço", group: "contato", line: "Instagram", placeholder: "@seunegocio", max: 80 },
+            { name: "instagram", label: "Instagram do espaço", group: "contato", line: "Instagram", required: true, placeholder: "@seunegocio", max: 80 },
           ] },
         ORIGEM,
       ],
@@ -64,7 +69,7 @@
           fields: [
             { name: "nome", label: "Seu nome", group: "contato", line: "Nome", required: true, autocomplete: "name", max: 120, first: true },
             { name: "bairro", label: "Cidade e bairro", group: "contato", line: "Cidade", required: true, autocomplete: "address-level2", max: 160 },
-            { name: "instagram", label: "Instagram", group: "contato", line: "Instagram", placeholder: "@seuperfil", max: 80 },
+            { name: "instagram", label: "Instagram", group: "contato", line: "Instagram", required: true, placeholder: "@seuperfil", max: 80 },
           ] },
         ORIGEM,
       ],

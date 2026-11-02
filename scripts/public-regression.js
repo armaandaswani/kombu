@@ -240,18 +240,21 @@ async function run() {
     // Pré-contato: one question per screen, answers go organised to the Kombú WhatsApp.
     const sheet = b.page.locator('.pc');
     const pick = (label) => sheet.locator(`[data-value="${label}"]`).click();
-    await b.page.locator('#contato [data-precontato="revenda"]').click();
+    await b.page.locator('#contato a[data-precontato="revenda"]').click();
     await sheet.locator('h2', { hasText: 'Que tipo de espaço' }).waitFor();
     await pick('Outro');
     assert.ok(await sheet.locator('[data-pc-next]').isDisabled(), 'Other requires its explanation');
     await sheet.locator('[data-other]').fill('Padaria artesanal');
     await sheet.locator('[data-pc-next]').click();
     await pick('Já vendo kombucha');
-    await sheet.locator('h2', { hasText: 'Quem mais frequenta' }).waitFor();
-    await pick('Esporte e vida ativa');
-    await pick('Público variado do bairro');
-    assert.equal(await sheet.locator('[data-value="Gastronomia e novas experiências"]').getAttribute('aria-disabled'), 'true', 'audience choice is capped at two');
+    await sheet.locator('h2', { hasText: 'dia a dia' }).waitFor();
+    await pick('Pratica yoga, pilates ou meditação');
+    await pick('Prefere produtos naturais e orgânicos');
+    await pick('Treina e cuida do corpo');
+    assert.equal(await sheet.locator('[data-value="Aprecia gastronomia e cafés especiais"]').getAttribute('aria-disabled'), 'true', 'lifestyle choice is capped at three');
     await sheet.locator('[data-pc-next]').click();
+    await sheet.locator('h2', { hasText: 'uma bebida no seu espaço' }).waitFor();
+    await pick('De R$ 15 a R$ 25');
     await pick('Sim, tenho geladeira ou expositor');
     await sheet.locator('h2', { hasText: 'Quais sabores' }).waitFor();
     assert.equal(await sheet.locator('.pc-flavor').count(), 11, 'CMS-hidden flavour stays out of the pre-contact');
@@ -263,6 +266,7 @@ async function run() {
     await sheet.locator('[name="negocio"]').fill('Café Teste');
     await sheet.locator('[name="bairro"]').fill('Centro');
     await sheet.locator('[name="nome"]').fill('Dono Teste');
+    assert.ok(await sheet.locator('[data-pc-next]').isDisabled(), 'business Instagram is required');
     await sheet.locator('[name="instagram"]').fill('@cafeteste');
     await sheet.locator('[data-pc-next]').click();
     await pick('Instagram');
@@ -295,7 +299,9 @@ async function run() {
     assert.equal(lead.business, 'Café Teste');
     assert.equal(lead.businessType, 'Café ou confeitaria');
     assert.equal(lead.source, 'site-revenda');
-    assert.equal(lead.audiences.length, 2, 'multiple audiences survive serialization');
+    assert.equal(lead.audiences.length, 3, 'multiple audiences survive serialization');
+    assert.ok(text.includes('*Público*\n• Estilo de vida: Pratica yoga, pilates ou meditação; Prefere produtos naturais e orgânicos; Treina e cuida do corpo\n• Preço médio de uma bebida: De R$ 15 a R$ 25'), 'audience fit has its own section');
+    assert.ok(!/renda|classe|idade|anos/i.test(text.split('*Interesse*')[0].split('*Público*')[1]), 'audience questions never ask income, class or age directly');
     assert.equal(lead.discoverySource, 'Instagram');
     assert.ok(lead.message.includes('*Interesse*'), 'CRM keeps the same organised summary');
     assert.deepStrictEqual(b.errors, [], 'no script errors on /revenda');
@@ -373,6 +379,8 @@ async function run() {
     await psheet.locator('[data-pc-next]').click();
     await psheet.locator('[name="nome"]').fill('Profissional Teste');
     await psheet.locator('[name="bairro"]').fill('Manaus');
+    assert.ok(await psheet.locator('[data-pc-next]').isDisabled(), 'Instagram is required');
+    await psheet.locator('[name="instagram"]').fill('@profissionalteste');
     await psheet.locator('[data-pc-next]').click();
     await ppick('Amigo ou conhecido');
     const phref = await psheet.locator('[data-pc-send]').getAttribute('href');
@@ -386,7 +394,7 @@ async function run() {
     assert.equal(leads.at(-1).type, 'parceria');
     assert.equal(leads.at(-1).source, 'site-parcerias');
     assert.equal(leads.at(-1).profileType, 'Nutricionista');
-    assert.equal(leads.at(-1).instagram, '', 'Instagram stays optional for professionals');
+    assert.equal(leads.at(-1).instagram, '@profissionalteste', 'Instagram reaches the CRM');
     assert.deepStrictEqual(referral.errors, []);
 
     // Stock errors offer retry, and empty ready-stock leads to an unpaid production request.
