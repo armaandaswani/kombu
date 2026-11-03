@@ -122,3 +122,10 @@ As futuras artes usam as logos originais V4/V.3, sem recriar o K em uma fonte. P
 
 ### Bloqueio de tarde/noite
 Por orientação expressa do titular, feed, Reels e Stories nunca são publicados à tarde ou à noite, nem para compensar falhas. Os horários permanecem 09:00 no feed e 07:00–07:20 nos Stories, em Manaus. Além dos horários de cron, o Worker verifica a hora real da execução e bloqueia qualquer publicação fora da manhã (07:00–11:59), impedindo que uma execução atrasada publique à tarde. Não há recuperação vespertina/noturna. A correção de afiliados foi autorizada somente para futuras peças, preservando o Story de 30/10 já publicado.
+
+## Preparação de 03/11/2026
+Às 06:30, a leitura segura confirmou os cinco Stories de 02/11, concluídos às 07:21, com chave done, saúde completa, cinco estados publicados e log concordantes. Em 03/11, done/health estavam ausentes e os cinco IDs ainda não iniciados antes de qualquer alteração.
+
+Foram revisados os cinco Stories de hoje: convite à Casa Agridoce sem estoque específico; Hibisco & Anis Estrelado; Lavanda & Limão; explicação de fermentação em cena lifestyle aprovada; programa de afiliados dirigido explicitamente a influenciadores, com destino Parcerias e avaliação prévia. Cinco composições distintas, arquivos oficiais de garrafa, assinatura atual, sem contadores ou formulação confidencial. O renderizador agora seleciona as assinaturas atuais de assets/brand/ nas novas renderizações, sem modificar imagens antigas.
+
+Prévia local: research/2026-10-27/dolce-vita-fotos/stories-2026-11-03.jpg. render-stories.mjs e prepare-publish.mjs executados; 44 imagens do feed, 35 Stories e o Reel aprovado preservados no pacote. Pages implantado em c7907d12.kombu-social.pages.dev, com manifesto e cinco JPEGs da data conferidos contra arquivos locais por hash. 17 testes do Worker passaram. Nada publicado manualmente; a publicação continua exclusivamente pelo Worker às 07:00–07:20, e a confirmação final será feita após a janela.
