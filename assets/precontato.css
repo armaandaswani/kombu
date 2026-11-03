@@ -55,6 +55,9 @@
 .pc-tick { position: absolute; top: 7px; right: 7px; width: 24px; height: 24px; border-radius: 50%; background: var(--lime); color: var(--green-deep); display: grid; place-items: center; animation: pcMark .22s cubic-bezier(.3, 1.5, .6, 1) both; }
 .is-static { animation: none !important; }
 
+.pc-switch { margin: 18px 0 0; font-size: 14px; line-height: 1.5; color: #4d5a48; animation: pcRise .34s var(--ease) both; animation-delay: .4s; }
+.pc-switch button { border: 0; background: none; padding: 0 2px; min-height: 44px; color: var(--green); font: 600 14px var(--sans); text-decoration: underline; text-underline-offset: 4px; cursor: pointer; }
+.pc-switch button:hover { color: var(--green-deep); }
 .pc-fields { display: grid; gap: 16px; }
 .pc-field { display: grid; gap: 8px; }
 .pc-field[hidden] { display: none; }

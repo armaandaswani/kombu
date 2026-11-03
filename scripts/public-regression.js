@@ -365,17 +365,35 @@ async function run() {
     const psheet = referral.page.locator('.pc');
     const ppick = (label) => psheet.locator(`[data-value="${label}"]`).click();
     await referral.page.locator('.trade-hero [data-precontato="parceria"]').click();
-    await ppick('Nutricionista');
-    await psheet.locator('h2', { hasText: 'Onde você encontra' }).waitFor();
-    await ppick('Consultório ou clínica');
+    // A studio that wants to sell Kombú is sent to the reseller flow.
+    await psheet.locator('[data-pc-switch]').click();
+    await psheet.locator('h2', { hasText: 'Que tipo de espaço' }).waitFor();
+    await referral.page.keyboard.press('Escape');
+    await referral.page.locator('.trade-hero [data-precontato="parceria"]').click();
+    // Creators get follower and brand questions; professionals do not.
+    await ppick('Criador(a) de conteúdo');
+    await psheet.locator('h2', { hasText: 'dia a dia de quem acompanha' }).waitFor();
+    await ppick('Prefere produtos naturais e orgânicos');
     await psheet.locator('[data-pc-next]').click();
-    await ppick('Prefiro contar na conversa');
+    await psheet.locator('h2', { hasText: 'seguidores' }).waitFor();
+    await psheet.locator('[data-pc-back]').click();
+    await psheet.locator('[data-pc-back]').click();
+    await ppick('Nutricionista ou nutrólogo(a)');
+    await psheet.locator('h2', { hasText: 'dia a dia de quem acompanha' }).waitFor();
+    // Going back keeps the lifestyle answer already given.
+    await psheet.locator('[data-pc-next]').click();
+    await psheet.locator('h2', { hasText: 'pacientes ou alunos' }).waitFor();
+    await ppick('De 30 a 100');
     await psheet.locator('h2', { hasText: 'já conhece' }).waitFor();
     await ppick('Ainda não conheço');
     await psheet.locator('h2', { hasText: 'Como você imagina' }).waitFor();
+    assert.equal(await psheet.locator('[data-value="Ter Kombú no meu espaço"]').count(), 0, 'selling in a space belongs to the reseller flow');
     await ppick('Degustação ou evento');
     await psheet.locator('[data-pc-next]').click();
-    await psheet.locator('[name="mensagem"]').fill('Quero conhecer as condições de parceria para meu espaço.');
+    await psheet.locator('h2', { hasText: 'espera em troca' }).waitFor();
+    await ppick('Produto para provar e divulgar');
+    await psheet.locator('h2', { hasText: 'Conte sua ideia' }).waitFor();
+    await psheet.locator('[name="mensagem"]').fill('Quero apresentar a Kombú para minhas pacientes.');
     await psheet.locator('[data-pc-next]').click();
     await psheet.locator('[name="nome"]').fill('Profissional Teste');
     await psheet.locator('[name="bairro"]').fill('Manaus');
@@ -386,14 +404,18 @@ async function run() {
     const phref = await psheet.locator('[data-pc-send]').getAttribute('href');
     const ptext = decodeURIComponent(phref.split('text=')[1]);
     assert.ok(ptext.startsWith('Olá! Vim pelo site da Kombú e quero conversar sobre uma parceria.'));
-    assert.ok(ptext.includes('*A ideia*') && ptext.includes('• Área: Nutricionista'));
+    assert.ok(ptext.includes('• Área: Nutricionista ou nutrólogo(a)'));
+    assert.ok(ptext.includes('*Público*\n• Estilo de vida: Prefere produtos naturais e orgânicos\n• Pacientes ou alunos por mês: De 30 a 100'), ptext);
+    assert.ok(ptext.includes('• Espera em troca: Produto para provar e divulgar'));
+    assert.ok(!/Seguidores|Marcas|Quanto custa/.test(ptext), 'answers from another area branch never leak into the message');
     const ppopup = referral.page.context().waitForEvent('page');
     await psheet.locator('[data-pc-send]').click();
     await (await ppopup.catch(() => null))?.close().catch(() => {});
     await referral.page.waitForTimeout(300);
     assert.equal(leads.at(-1).type, 'parceria');
     assert.equal(leads.at(-1).source, 'site-parcerias');
-    assert.equal(leads.at(-1).profileType, 'Nutricionista');
+    assert.equal(leads.at(-1).profileType, 'Nutricionista ou nutrólogo(a)');
+    assert.deepStrictEqual(leads.at(-1).audiences, ['Prefere produtos naturais e orgânicos']);
     assert.equal(leads.at(-1).instagram, '@profissionalteste', 'Instagram reaches the CRM');
     assert.deepStrictEqual(referral.errors, []);
 

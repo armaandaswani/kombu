@@ -14,6 +14,10 @@
   const ORIGEM = { id: "origem", kind: "single", group: "contato", label: "Como conheceu a Kombú", t: "Como você conheceu a Kombú?",
     options: ["Instagram", "Feira ou evento", "Em um parceiro da Kombú", "Amigo ou conhecido", "Outro"], other: "Outro", otherLabel: "Onde você conheceu a Kombú?" };
 
+  const PROFISSIONAIS = ["Nutricionista ou nutrólogo(a)", "Personal trainer", "Professor(a) de yoga, pilates ou meditação", "Fisioterapeuta ou terapeuta"];
+  const CRIADOR = "Criador(a) de conteúdo";
+  const EVENTOS = "Organizo eventos";
+
   const FLOWS = {
     revenda: {
       type: "revenda",
@@ -50,21 +54,37 @@
     parceria: {
       type: "parceria",
       intro: "Olá! Vim pelo site da Kombú e quero conversar sobre uma parceria.",
-      groups: { perfil: "Sobre mim", ideia: "A ideia", contato: "Contato" },
+      groups: { perfil: "Sobre mim", publico: "Público", ideia: "A ideia", contato: "Contato" },
       done: "Você conversa direto com a equipe da Kombú.",
       steps: [
         { id: "area", kind: "single", group: "perfil", label: "Área", t: "Qual é a sua área?",
-          options: ["Nutricionista", "Nutrólogo(a)", "Personal trainer", "Estúdio ou academia", "Influenciador(a) ou criador(a) de conteúdo", "Eventos", "Outro"], other: "Outro", otherLabel: "Qual é a sua área?" },
-        { id: "onde", kind: "multi", max: 3, group: "perfil", label: "Onde atua", t: "Onde você encontra seu público?", s: "Escolha até 3.",
-          options: ["Consultório ou clínica", "Academia ou estúdio", "Instagram", "TikTok ou YouTube", "Eventos e feiras", "Outro lugar"] },
-        { id: "alcance", kind: "single", group: "perfil", label: "Tamanho do público", t: "Qual é o tamanho do seu público?", s: "Pacientes, alunos ou seguidores. Não existe número mínimo.",
-          options: ["Até 1 mil pessoas", "De 1 mil a 10 mil", "De 10 mil a 50 mil", "Mais de 50 mil", "Prefiro contar na conversa"] },
+          options: [...PROFISSIONAIS, CRIADOR, EVENTOS, "Outro"], other: "Outro", otherLabel: "Qual é a sua área?",
+          // Quem tem um espaço e quer vender a Kombú segue pela revenda.
+          switchTo: { flow: "revenda", text: "Tem um espaço e quer vender a Kombú?", label: "Ir para a revenda" } },
+        // Público: o mesmo estilo de vida da revenda, para comparar com o cliente da Kombú.
+        { id: "publicos", kind: "multi", max: 3, group: "publico", label: "Estilo de vida", t: "Como é o dia a dia de quem acompanha você?", s: "Escolha até 3.",
+          options: ["Pratica yoga, pilates ou meditação", "Treina e cuida do corpo", "Prefere produtos naturais e orgânicos", "Aprecia gastronomia e cafés especiais", "Público variado, sem um perfil definido"] },
+        // Tamanho na unidade de cada área: pacientes não se comparam com seguidores.
+        { id: "alcanceProf", kind: "single", group: "publico", label: "Pacientes ou alunos por mês", t: "Quantos pacientes ou alunos você atende por mês?", s: "Não existe número mínimo.",
+          when: (a) => PROFISSIONAIS.includes(a.area), options: ["Até 30", "De 30 a 100", "Mais de 100", "Prefiro contar na conversa"] },
+        { id: "alcanceCriador", kind: "single", group: "publico", label: "Seguidores", t: "Quantos seguidores tem seu perfil principal?", s: "Não existe número mínimo.",
+          when: (a) => a.area === CRIADOR, options: ["Até 5 mil", "De 5 mil a 20 mil", "De 20 mil a 100 mil", "Mais de 100 mil"] },
+        { id: "alcanceEvento", kind: "single", group: "publico", label: "Público por evento", t: "Quantas pessoas vão, em média, aos seus eventos?", s: "Não existe número mínimo.",
+          when: (a) => a.area === EVENTOS, options: ["Até 50", "De 50 a 200", "De 200 a 1 mil", "Mais de 1 mil"] },
+        { id: "alcance", kind: "single", group: "publico", label: "Tamanho do público", t: "Qual é o tamanho do seu público?", s: "Pacientes, alunos ou seguidores. Não existe número mínimo.",
+          when: (a) => a.area === "Outro", options: ["Até 1 mil pessoas", "De 1 mil a 10 mil", "De 10 mil a 50 mil", "Mais de 50 mil", "Prefiro contar na conversa"] },
+        // Criadores: as marcas com que já trabalharam mostram o nível do público.
+        { id: "marcas", kind: "fields", t: "Com quais marcas você já fez parceria?", s: "Opcional. Pode deixar em branco se ainda não fez.", when: (a) => a.area === CRIADOR,
+          fields: [{ name: "marcas", label: "Marcas", group: "publico", line: "Marcas parceiras", max: 300, placeholder: "Ex.: um café, uma marca de roupa fitness…", first: true }] },
         { id: "conhece", kind: "single", group: "perfil", label: "Conhece a Kombú", t: "Você já conhece a Kombú?",
           options: ["Já provei", "Conheço, mas ainda não provei", "Ainda não conheço"] },
         { id: "formato", kind: "multi", max: 3, group: "ideia", label: "Formato", t: "Como você imagina essa parceria?", s: "Escolha até 3.",
-          options: ["Indicar para pacientes, alunos ou seguidores", "Criar conteúdo com a Kombú", "Degustação ou evento", "Ter Kombú no meu espaço", "Outra ideia"] },
+          options: ["Indicar para pacientes, alunos ou seguidores", "Criar conteúdo com a Kombú", "Degustação ou evento", "Outra ideia"] },
+        // Separa quem quer conhecer e indicar o produto de quem só busca cachê.
+        { id: "espera", kind: "single", group: "ideia", label: "Espera em troca", t: "O que você espera em troca da parceria?", s: "As condições são combinadas na conversa, de acordo com cada parceria.",
+          options: ["Produto para provar e divulgar", "Comissão por indicação, com cupom", "Cachê por conteúdo ou presença", "Ainda não sei, quero conversar"] },
         { id: "ideia", kind: "fields", t: "Conte sua ideia", s: "Opcional. Em poucas linhas, o que você tem em mente.",
-          fields: [{ name: "mensagem", label: "Sua ideia", group: "ideia", line: "Ideia", textarea: true, max: 1200, placeholder: "Ex.: quero apresentar a Kombú no meu estúdio…", first: true }] },
+          fields: [{ name: "mensagem", label: "Sua ideia", group: "ideia", line: "Ideia", textarea: true, max: 1200, placeholder: "Ex.: quero apresentar a Kombú para minhas alunas de yoga…", first: true }] },
         { id: "dados", kind: "fields", t: "Para a gente se conhecer", s: "Seu WhatsApp não é necessário: a conversa já começa por ele.",
           fields: [
             { name: "nome", label: "Seu nome", group: "contato", line: "Nome", required: true, autocomplete: "name", max: 120, first: true },
@@ -94,7 +114,7 @@
     whats: '<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M17.47 14.38c-.3-.15-1.76-.87-2.03-.97-.27-.1-.47-.15-.67.15-.2.3-.77.97-.94 1.16-.17.2-.35.22-.64.08-.3-.15-1.26-.47-2.39-1.48-.88-.79-1.48-1.76-1.65-2.06-.17-.3-.02-.46.13-.6.13-.14.3-.35.45-.52.15-.17.2-.3.3-.5.1-.2.05-.37-.03-.52-.07-.15-.67-1.61-.92-2.2-.24-.58-.49-.5-.67-.51h-.57c-.2 0-.52.07-.79.37-.27.3-1.04 1.02-1.04 2.48s1.07 2.88 1.21 3.07c.15.2 2.1 3.2 5.08 4.49.71.31 1.26.49 1.7.63.71.23 1.36.2 1.87.12.57-.09 1.76-.72 2-1.41.25-.7.25-1.29.18-1.41-.08-.13-.27-.2-.57-.35M12.05 21.79h-.01a9.87 9.87 0 01-5.03-1.38l-.36-.21-3.74.98 1-3.65-.24-.37a9.86 9.86 0 01-1.51-5.26c0-5.45 4.44-9.88 9.89-9.88 2.64 0 5.12 1.03 6.99 2.9a9.83 9.83 0 012.89 6.99c0 5.45-4.44 9.88-9.88 9.88m8.41-18.3A11.82 11.82 0 0012.05 0C5.5 0 .16 5.34.16 11.89c0 2.1.55 4.14 1.59 5.95L.06 24l6.3-1.65a11.88 11.88 0 005.68 1.45h.01c6.55 0 11.89-5.34 11.89-11.89a11.82 11.82 0 00-3.48-8.41z"/></svg>',
   };
 
-  let root, sheet, body, foot, bar, backBtn, flow, steps, answers, index, dir, autoTimer, lastFocus;
+  let root, sheet, body, foot, bar, backBtn, flow, all, steps, answers, index, dir, autoTimer, lastFocus;
 
   function build() {
     root = document.createElement("div");
@@ -129,8 +149,9 @@
     if (!FLOWS[kind]) return;
     if (!root) build();
     flow = FLOWS[kind];
-    steps = [...flow.steps, { id: "fim", kind: "summary", t: "Tudo pronto. Vamos conversar?", s: "Suas respostas vão organizadas na mensagem. É só enviar." }];
+    all = [...flow.steps, { id: "fim", kind: "summary", t: "Tudo pronto. Vamos conversar?", s: "Suas respostas vão organizadas na mensagem. É só enviar." }];
     answers = {};
+    steps = visible();
     index = 0;
     dir = 1;
     lastFocus = trigger || document.activeElement;
@@ -159,8 +180,12 @@
     else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
   }
 
+  // Passos com "when" só aparecem quando a resposta pede (ex.: a área da parceria).
+  const visible = () => all.filter((s) => !s.when || s.when(answers));
+
   function go(n) {
     clearTimeout(autoTimer);
+    steps = visible();
     const target = Math.max(0, Math.min(n, steps.length - 1));
     if (target === index) return;
     dir = target > index ? 1 : -1;
@@ -204,7 +229,8 @@
     if (s.kind === "single") {
       const other = s.other && value(s.id) === s.other;
       return `<div class="pc-options" role="radiogroup" aria-label="${esc(s.t)}">${s.options.map((o, k) => option(o, value(s.id) === o, "radio", k)).join("")}</div>`
-        + (s.other ? `<label class="pc-field pc-other" ${other ? "" : "hidden"}><span>${esc(s.otherLabel)}</span><input type="text" maxlength="160" data-other value="${esc(answers[`${s.id}Outro`] || "")}"></label>` : "");
+        + (s.other ? `<label class="pc-field pc-other" ${other ? "" : "hidden"}><span>${esc(s.otherLabel)}</span><input type="text" maxlength="160" data-other value="${esc(answers[`${s.id}Outro`] || "")}"></label>` : "")
+        + (s.switchTo ? `<p class="pc-switch">${esc(s.switchTo.text)} <button type="button" data-pc-switch>${esc(s.switchTo.label)}</button></p>` : "");
     }
     if (s.kind === "multi") {
       const picked = value(s.id) || [];
@@ -277,6 +303,7 @@
         const next = foot.querySelector("[data-pc-next]");
         if (next) next.disabled = !stepDone(s);
       });
+      body.querySelector("[data-pc-switch]")?.addEventListener("click", () => open(s.switchTo.flow, lastFocus));
       body.querySelector("[data-other]")?.addEventListener("keydown", (e) => { if (e.key === "Enter" && stepDone(s)) { e.preventDefault(); go(index + 1); } });
     }
     if (s.kind === "multi" || s.kind === "flavors") {
@@ -333,6 +360,7 @@
   function answerLines() {
     const lines = [];
     for (const s of flow.steps) {
+      if (s.when && !s.when(answers)) continue;
       if (s.kind === "fields") {
         s.fields.forEach((f) => {
           const v = String(answers[f.name] || "").trim();
@@ -378,7 +406,7 @@
     if (flow.type === "revenda") {
       return { ...base, negocio: answers.negocio || "", tipo: value("tipo") === "Outro" ? answers.tipoOutro || "Outro" : value("tipo") || "", publicos: value("publicos") || [] };
     }
-    return { ...base, perfilTipo: value("area") === "Outro" ? answers.areaOutro || "Outro" : value("area") || "" };
+    return { ...base, perfilTipo: value("area") === "Outro" ? answers.areaOutro || "Outro" : value("area") || "", publicos: value("publicos") || [] };
   }
 
   function send() {
