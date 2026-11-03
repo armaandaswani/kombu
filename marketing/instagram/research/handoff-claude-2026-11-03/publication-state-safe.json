@@ -1,0 +1,260 @@
+{
+  "checkedAt": "2026-11-03T18:01:01.576126+00:00",
+  "states": {
+    "log": {
+      "read": "ok",
+      "value": [
+        "2026-11-03T13:01:22.010Z publicado 04-fermentacao (media 17995219995050370) em @kombu.amazonia",
+        "2026-11-03T11:21:08.135Z Stories: cinco artes publicadas para 2026-11-03",
+        "2026-11-03T11:21:07.980Z Story publicado: 2026-11-03/criadores-7",
+        "2026-11-03T11:16:07.907Z Story publicado: 2026-11-03/conversa-7",
+        "2026-11-03T11:11:03.795Z Story publicado: 2026-11-03/lavanda-limao",
+        "2026-11-03T11:06:12.583Z Story publicado: 2026-11-03/hibisco-anis",
+        "2026-11-03T11:01:15.072Z Story publicado: 2026-11-03/dolce-vita-7",
+        "2026-11-02T13:00:57.936Z aguardando intervalo (último: 22-rosas-cardamomo-filme)",
+        "2026-11-02T12:55:58.118Z aguardando intervalo (último: 22-rosas-cardamomo-filme)",
+        "2026-11-02T12:50:58.899Z aguardando intervalo (último: 22-rosas-cardamomo-filme)",
+        "2026-11-02T11:21:08.575Z Stories: cinco artes publicadas para 2026-11-02",
+        "2026-11-02T11:21:08.120Z Story publicado: 2026-11-02/pausa-6",
+        "2026-11-02T11:16:07.905Z Story publicado: 2026-11-02/conversa-6",
+        "2026-11-02T11:11:08.534Z Story publicado: 2026-11-02/imunidade",
+        "2026-11-02T11:06:06.983Z Story publicado: 2026-11-02/maracuja",
+        "2026-11-02T11:01:07.380Z Story publicado: 2026-11-02/dolce-vita-6",
+        "2026-11-01T13:01:21.969Z Reel confirmado 22-rosas-cardamomo-filme (media 18133700947799339)",
+        "2026-11-01T12:55:58.940Z Reel pronto para 09:00: 22-rosas-cardamomo-filme",
+        "2026-11-01T12:50:59.563Z Reel em processamento: 22-rosas-cardamomo-filme",
+        "2026-11-01T11:21:09.548Z Stories: cinco artes publicadas para 2026-11-01",
+        "2026-11-01T11:21:09.217Z Story publicado: 2026-11-01/criadores-5",
+        "2026-11-01T11:16:08.503Z Story publicado: 2026-11-01/conversa-5",
+        "2026-11-01T11:11:07.995Z Story publicado: 2026-11-01/flor-fada-blueberry",
+        "2026-11-01T11:06:08.492Z Story publicado: 2026-11-01/maca-canela",
+        "2026-11-01T11:01:06.228Z Story publicado: 2026-11-01/dolce-vita-5",
+        "2026-10-31T13:00:58.955Z aguardando intervalo (último: 03-divina-terra)",
+        "2026-10-31T12:55:58.753Z aguardando intervalo (último: 03-divina-terra)",
+        "2026-10-31T12:50:58.250Z aguardando intervalo (último: 03-divina-terra)",
+        "2026-10-31T11:21:10.150Z Stories: cinco artes publicadas para 2026-10-31",
+        "2026-10-31T11:21:09.662Z Story publicado: 2026-10-31/pausa-4",
+        "2026-10-31T11:16:05.288Z Story publicado: 2026-10-31/conversa-4",
+        "2026-10-31T11:11:08.123Z Story publicado: 2026-10-31/frutas-vermelhas",
+        "2026-10-31T11:06:08.676Z Story publicado: 2026-10-31/rosas-cardamomo",
+        "2026-10-31T11:01:07.664Z Story publicado: 2026-10-31/dolce-vita-4",
+        "2026-10-30T13:11:07.108Z Stories: cinco artes publicadas para 2026-10-30",
+        "2026-10-30T13:11:06.832Z Story publicado: 2026-10-30/uva-sem-contador",
+        "2026-10-30T13:06:10.542Z Story publicado: 2026-10-30/manga-jasmim-sem-contador",
+        "2026-10-30T13:01:09.282Z aguardando intervalo (último: 03-divina-terra)",
+        "2026-10-30T13:01:08.861Z Story publicado: 2026-10-30/dolce-vita-3-sem-contador",
+        "2026-10-30T12:56:10.241Z Stories: cinco artes publicadas para 2026-10-30",
+        "2026-10-30T12:56:09.484Z Story publicado: 2026-10-30/criadores-3",
+        "2026-10-30T12:51:07.238Z Story publicado: 2026-10-30/conversa-3",
+        "2026-10-30T12:46:07.078Z Story publicado: 2026-10-30/uva",
+        "2026-10-30T12:41:14.616Z Story publicado: 2026-10-30/manga-jasmim",
+        "2026-10-30T12:36:06.699Z Story publicado: 2026-10-30/dolce-vita-3",
+        "2026-10-30T12:36:01.371Z Stories: conciliação 2026-10-30/dolce-vita-3 = FINISHED",
+        "2026-10-30T11:20:04.620Z erro nos Stories: Stories: confirmação pendente para dolce-vita-3; não repetir automaticamente",
+        "2026-10-30T11:15:04.562Z erro nos Stories: Stories: confirmação pendente para dolce-vita-3; não repetir automaticamente",
+        "2026-10-30T11:10:06.899Z erro nos Stories: Stories: confirmação pendente para dolce-vita-3; não repetir automaticamente",
+        "2026-10-30T11:05:05.021Z erro nos Stories: Stories: confirmação pendente para dolce-vita-3; não repetir automaticamente"
+      ]
+    },
+    "last": {
+      "read": "ok",
+      "value": {
+        "id": "04-fermentacao",
+        "at": "2026-11-03T13:01:21.863Z"
+      }
+    },
+    "published:01-a-arte-do-natural": {
+      "read": "ok",
+      "value": {
+        "mediaId": "18008412065792725",
+        "at": "2026-10-24T19:13:32.377Z"
+      }
+    },
+    "published:02-maracuja": {
+      "read": "ok",
+      "value": {
+        "mediaId": "18078043415459303",
+        "at": "2026-10-26T16:30:31.951Z"
+      }
+    },
+    "published:03-divina-terra": {
+      "read": "ok",
+      "value": {
+        "mediaId": "18113395934239204",
+        "at": "2026-10-29T22:30:34.024Z"
+      }
+    },
+    "published:04-fermentacao": {
+      "read": "ok",
+      "value": {
+        "mediaId": "17995219995050370",
+        "at": "2026-11-03T13:01:21.863Z"
+      }
+    },
+    "published:05-frutas-vermelhas": {
+      "read": "missing"
+    },
+    "published:06-la-dolce-vita": {
+      "read": "missing"
+    },
+    "published:07-flor-fada-azul": {
+      "read": "missing"
+    },
+    "published:08-revenda": {
+      "read": "missing"
+    },
+    "published:09-hibisco": {
+      "read": "missing"
+    },
+    "published:10-casa-agridoce": {
+      "read": "missing"
+    },
+    "published:11-imunidade": {
+      "read": "missing"
+    },
+    "published:12-como-comprar": {
+      "read": "missing"
+    },
+    "published:13-cafeteria-garden": {
+      "read": "missing"
+    },
+    "published:14-lavanda-limao": {
+      "read": "missing"
+    },
+    "published:15-maca-canela": {
+      "read": "missing"
+    },
+    "published:16-de-verdade": {
+      "read": "missing"
+    },
+    "published:17-criadores": {
+      "read": "missing"
+    },
+    "published:18-feita-em-manaus": {
+      "read": "missing"
+    },
+    "published:19-como-servir": {
+      "read": "missing"
+    },
+    "published:20-cupom-criador": {
+      "read": "missing"
+    },
+    "published:21-dolce-vita-fotos": {
+      "read": "ok",
+      "value": {
+        "at": "2026-10-28T01:55:41Z",
+        "byHand": true,
+        "reportedByOwner": true
+      }
+    },
+    "published:22-rosas-cardamomo-filme": {
+      "read": "ok",
+      "value": {
+        "mediaId": "18133700947799339",
+        "at": "2026-11-01T13:00:56.889Z",
+        "format": "reel"
+      }
+    },
+    "reel:22-rosas-cardamomo-filme": {
+      "read": "ok",
+      "value": {
+        "status": "published",
+        "at": "2026-11-01T13:00:56.889Z",
+        "containerId": "17966571825197666",
+        "mediaId": "18133700947799339"
+      }
+    },
+    "stories:done:2026-10-28": {
+      "read": "ok",
+      "value": {
+        "count": 5,
+        "at": "2026-10-28T14:20:38.662Z"
+      }
+    },
+    "stories:done:2026-10-29": {
+      "read": "ok",
+      "value": {
+        "count": 5,
+        "at": "2026-10-29T11:20:29.895Z"
+      }
+    },
+    "stories:done:2026-10-30": {
+      "read": "ok",
+      "value": {
+        "count": 5,
+        "frameIds": [
+          "dolce-vita-3-sem-contador",
+          "manga-jasmim-sem-contador",
+          "uva-sem-contador",
+          "conversa-3",
+          "criadores-3"
+        ],
+        "at": "2026-10-30T13:11:06.922Z"
+      }
+    },
+    "stories:done:2026-10-31": {
+      "read": "ok",
+      "value": {
+        "count": 5,
+        "frameIds": [
+          "dolce-vita-4",
+          "rosas-cardamomo",
+          "frutas-vermelhas",
+          "conversa-4",
+          "pausa-4"
+        ],
+        "at": "2026-10-31T11:21:09.800Z"
+      }
+    },
+    "stories:done:2026-11-01": {
+      "read": "ok",
+      "value": {
+        "count": 5,
+        "frameIds": [
+          "dolce-vita-5",
+          "maca-canela",
+          "flor-fada-blueberry",
+          "conversa-5",
+          "criadores-5"
+        ],
+        "at": "2026-11-01T11:21:09.339Z"
+      }
+    },
+    "stories:done:2026-11-02": {
+      "read": "ok",
+      "value": {
+        "count": 5,
+        "frameIds": [
+          "dolce-vita-6",
+          "maracuja",
+          "imunidade",
+          "conversa-6",
+          "pausa-6"
+        ],
+        "at": "2026-11-02T11:21:08.296Z"
+      }
+    },
+    "stories:done:2026-11-03": {
+      "read": "ok",
+      "value": {
+        "count": 5,
+        "frameIds": [
+          "dolce-vita-7",
+          "hibisco-anis",
+          "lavanda-limao",
+          "conversa-7",
+          "criadores-7"
+        ],
+        "at": "2026-11-03T11:21:08.032Z"
+      }
+    },
+    "stories:health:2026-11-03": {
+      "read": "ok",
+      "value": {
+        "status": "complete",
+        "count": 5,
+        "at": "2026-11-03T11:21:08.080Z"
+      }
+    }
+  }
+}
