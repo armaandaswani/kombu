@@ -364,6 +364,110 @@
           "layout": "creator"
         }
       ]
+    },
+    {
+      "date": "2026-11-04",
+      "frames": [
+        {
+          "id": "manga-jasmim-8",
+          "type": "bottle",
+          "flavor": "manga-jasmim",
+          "layout": "botanical",
+          "bg": "#F2C46E",
+          "title": "Manga & Jasmim.",
+          "body": "Manga madura com o perfume do jasmim. Um sabor tropical para abrir bem gelado.",
+          "image": "stories/2026-11-04/manga-jasmim-8.jpg"
+        },
+        {
+          "id": "uva-8",
+          "type": "bottle",
+          "flavor": "uva",
+          "bg": "#4A2352",
+          "title": "Uva.",
+          "body": "Uva de verdade, encorpada e refrescante, na garrafa de 500 ml.",
+          "image": "stories/2026-11-04/uva-8.jpg"
+        },
+        {
+          "id": "parceiro-8",
+          "type": "bottle",
+          "flavor": "maca-canela",
+          "bg": "#F6F2E8",
+          "partner": "@cafeteriagarden_",
+          "title": "Vai passar na Cafeteria Garden?",
+          "body": "Na próxima visita, pergunte à equipe quais sabores estão gelados no dia.",
+          "image": "stories/2026-11-04/parceiro-8.jpg"
+        },
+        {
+          "id": "manha-8",
+          "type": "lifestyle",
+          "bg": "#F6F2E8",
+          "layout": "lifestyle",
+          "imageSource": "assets/lifestyle/corrida-500ml.png",
+          "title": "Gelada depois da corrida da manhã.",
+          "body": "Encontre Kombú nos nossos parceiros. Os endereços estão no site da bio.",
+          "image": "stories/2026-11-04/manha-8.jpg"
+        },
+        {
+          "id": "este-ou-aquele-8",
+          "type": "text",
+          "bg": "#2D4B28",
+          "title": "Manga & Jasmim ou Uva?",
+          "body": "Qual das duas você abriria primeiro? Conta pra gente por mensagem.",
+          "image": "stories/2026-11-04/este-ou-aquele-8.jpg"
+        }
+      ]
+    },
+    {
+      "date": "2026-11-05",
+      "frames": [
+        {
+          "id": "rosas-cardamomo-9",
+          "type": "bottle",
+          "flavor": "rosas-cardamomo",
+          "layout": "botanical",
+          "bg": "#E3889E",
+          "title": "Rosas & Cardamomo.",
+          "body": "Pétalas de rosa e o toque especiado do cardamomo, numa combinação floral.",
+          "image": "stories/2026-11-05/rosas-cardamomo-9.jpg"
+        },
+        {
+          "id": "flor-fada-9",
+          "type": "bottle",
+          "flavor": "flor-fada-blueberry",
+          "bg": "#3A2147",
+          "title": "Flor Fada Azul & Blueberry.",
+          "body": "A cor vem da flor e da fruta. Nenhum corante.",
+          "image": "stories/2026-11-05/flor-fada-9.jpg"
+        },
+        {
+          "id": "parceiro-9",
+          "type": "bottle",
+          "flavor": "frutas-vermelhas",
+          "bg": "#F6F2E8",
+          "partner": "@solarcaferegional",
+          "title": "Já conhece o Solar Café Regional?",
+          "body": "Na próxima visita, pergunte quais sabores estão gelados no dia.",
+          "image": "stories/2026-11-05/parceiro-9.jpg"
+        },
+        {
+          "id": "doze-sabores-9",
+          "type": "text",
+          "bg": "#F6F2E8",
+          "title": "Doze sabores, uma garrafa de 500 ml.",
+          "body": "Frutados, florais, especiados, herbais e cítricos, todos feitos artesanalmente em Manaus.",
+          "image": "stories/2026-11-05/doze-sabores-9.jpg"
+        },
+        {
+          "id": "revenda-9",
+          "type": "creator",
+          "layout": "creator",
+          "bg": "#1E3527",
+          "title": "Tem um café ou empório em Manaus?",
+          "body": "Manda o nome dele pra gente. Quem quer ter Kombú na geladeira encontra tudo em Revenda.",
+          "cta": "Acesse Revenda no site da bio.",
+          "image": "stories/2026-11-05/revenda-9.jpg"
+        }
+      ]
     }
   ]
 }
