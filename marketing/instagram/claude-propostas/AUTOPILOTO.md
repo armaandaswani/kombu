@@ -141,18 +141,31 @@ Os comandos rodam em `marketing/instagram`. Wrangler com `CI=1` e `CLOUDFLARE_AC
 8. Commit só de `calendar.json`, `assets/partners/feed-*` e `claude-propostas/`. Depois `git push origin HEAD:main`, só fast-forward.
 
 ### 6. Stories
-Se `stories-calendar.json` não tiver os próximos 2 dias:
-- crie os dias que faltam: 5 artes por dia, tipos e campos iguais aos dias existentes;
-- siga `2026-11-03-direcao-criativa/STORIES-INTERACAO.md`: perguntas, enquetes em texto e bastidores;
-- sem contador "1 de 5";
-- variando sabores e assuntos.
+Pedido do dono (04/11): "não pode ficar repetindo a mesma coisa todo santo dia. Tem que dar uma variada."
 
-Depois:
-1. `node render-stories.mjs --date=<dia>`.
-2. Olhe as imagens.
-3. `node prepare-publish.mjs` e o deploy do Pages.
+Os Stories são feitos pelo motor `claude-propostas/stories/stories.mjs`. Nunca use os modelos antigos de garrafa sobre fundo liso.
 
-Nunca altere um dia que já existe, nem um Story publicado.
+**Formatos:** cena, revista, enquete, fato, parceiro, detalhe, lista, pergunta e feed. O motor garante:
+- 5 formatos diferentes por dia;
+- nenhum formato no mesmo horário do dia anterior;
+- 5 sabores no dia, nenhum repetido do dia anterior;
+- cenas menos usadas;
+- parceiro em dias alternados, em rodízio. O Solar Café Regional fica fora no primeiro mês.
+
+Se `stories-calendar.json` não tiver os próximos 3 dias:
+1. `cd claude-propostas/stories && node stories.mjs biblioteca`. Atualiza a lista de cenas: entra toda cena nova do feed.
+2. `node stories.mjs planejar <dia> <n>`. Salve cada dia em `dias/<data>.json`.
+3. Escreva os textos de cada arte (`title`, `body`, e também `kicker`, `cta`, `itens`, `opcoes` quando o formato usar).
+   - Varie as chamadas de interação: "manda por mensagem", "vota", "conta pra gente", "marca quem". Nunca "Responda este Story".
+   - Nos formatos parceiro e pergunta, siga `2026-11-03-direcao-criativa/STORIES-INTERACAO.md`.
+   - Em parceiro, nunca afirme que um sabor está disponível; endereço só se estiver no vault.
+4. `node stories.mjs render dias/<data>.json`. Olhe as 5 artes: rótulo visível, texto legível, nada cobrindo a garrafa.
+5. `node stories.mjs inserir dias/<data>.json`. O dia entra como `art`, com `partner`, e o Worker marca o parceiro sozinho.
+6. Em `marketing/instagram`: `node render-stories.mjs --date=<data>`, `node prepare-publish.mjs` e o deploy do Pages.
+
+**Cenas novas.** Uma vez por semana, gere 3 cenas novas em 9:16 (Canva `aspectRatio: "PORTRAIT_9_16"`), com a garrafa integrada pelo mesmo processo do feed, e registre cada uma em `stories/cenas-extra.json` (`id`, `file`, `sabor`, `x` e `y` do centro da garrafa em %). Assim os Stories não ficam presos às cenas do feed.
+
+Um dia já existente só pode ser trocado se ainda não começou, com `--substituir`. Nunca altere um Story publicado.
 
 ### 7. Diário
 Escreva uma linha por rodada em `~/Documents/Kombú Vault/07 Instagram e Conteúdo/Diário do piloto automático.md`:

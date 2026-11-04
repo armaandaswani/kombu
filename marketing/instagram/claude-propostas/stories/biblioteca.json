@@ -1,0 +1,252 @@
+[
+ {
+  "id": "05-frutas-vermelhas-1",
+  "file": "../2026-11-03-direcao-criativa/saida/05-frutas-vermelhas/1-luz.png",
+  "sabor": "frutas-vermelhas",
+  "x": 29,
+  "y": 39.3,
+  "garrafas": 1,
+  "parceiro": null,
+  "manaus": false
+ },
+ {
+  "id": "06-la-dolce-vita-1",
+  "file": "../2026-11-03-direcao-criativa/saida/06-la-dolce-vita/1-luz.png",
+  "sabor": "manga-jasmim",
+  "x": 19,
+  "y": 52.3,
+  "garrafas": 1,
+  "parceiro": "@ladolcevitagelataria",
+  "manaus": false
+ },
+ {
+  "id": "06-la-dolce-vita-2",
+  "file": "../2026-11-03-direcao-criativa/saida/06-la-dolce-vita/2-luz.png",
+  "sabor": "manga-jasmim",
+  "x": 33,
+  "y": 55.6,
+  "garrafas": 1,
+  "parceiro": "@ladolcevitagelataria",
+  "manaus": false
+ },
+ {
+  "id": "07-flor-fada-azul-1",
+  "file": "../2026-11-03-direcao-criativa/saida/07-flor-fada-azul/1-luz.png",
+  "sabor": "flor-fada-blueberry",
+  "x": 40,
+  "y": 50,
+  "garrafas": 1,
+  "parceiro": null,
+  "manaus": false
+ },
+ {
+  "id": "07-flor-fada-azul-2",
+  "file": "../2026-11-03-direcao-criativa/saida/07-flor-fada-azul/2-luz.png",
+  "sabor": "flor-fada-blueberry",
+  "x": 28,
+  "y": 53.5,
+  "garrafas": 1,
+  "parceiro": null,
+  "manaus": false
+ },
+ {
+  "id": "08-revenda-1",
+  "file": "../2026-11-03-direcao-criativa/saida/08-revenda/1-luz.png",
+  "sabor": "maca-canela",
+  "x": 27,
+  "y": 68,
+  "garrafas": 3,
+  "parceiro": null,
+  "manaus": false
+ },
+ {
+  "id": "09-hibisco-1",
+  "file": "../2026-11-03-direcao-criativa/saida/09-hibisco/1-luz.png",
+  "sabor": "hibisco-anis",
+  "x": 40.5,
+  "y": 50.4,
+  "garrafas": 1,
+  "parceiro": null,
+  "manaus": false
+ },
+ {
+  "id": "09-hibisco-2",
+  "file": "../2026-11-03-direcao-criativa/saida/09-hibisco/2-luz.png",
+  "sabor": "hibisco-anis",
+  "x": 27,
+  "y": 57.1,
+  "garrafas": 1,
+  "parceiro": null,
+  "manaus": false
+ },
+ {
+  "id": "11-imunidade-1",
+  "file": "../2026-11-03-direcao-criativa/saida/11-imunidade/1-luz.png",
+  "sabor": "imunidade",
+  "x": 59.7,
+  "y": 41.5,
+  "garrafas": 1,
+  "parceiro": null,
+  "manaus": false
+ },
+ {
+  "id": "11-imunidade-2",
+  "file": "../2026-11-03-direcao-criativa/saida/11-imunidade/2-luz.png",
+  "sabor": "imunidade",
+  "x": 30,
+  "y": 57.4,
+  "garrafas": 1,
+  "parceiro": null,
+  "manaus": false
+ },
+ {
+  "id": "12-como-comprar-1",
+  "file": "../2026-11-03-direcao-criativa/saida/12-como-comprar/1-luz.png",
+  "sabor": "maracuja",
+  "x": 21,
+  "y": 59.9,
+  "garrafas": 1,
+  "parceiro": null,
+  "manaus": false
+ },
+ {
+  "id": "12-como-comprar-2",
+  "file": "../2026-11-03-direcao-criativa/saida/12-como-comprar/2-luz.png",
+  "sabor": "maracuja",
+  "x": 15,
+  "y": 44.9,
+  "garrafas": 1,
+  "parceiro": null,
+  "manaus": false
+ },
+ {
+  "id": "13-cafeteria-garden-1",
+  "file": "../2026-11-03-direcao-criativa/saida/13-cafeteria-garden/1-luz.png",
+  "sabor": "pera-alecrim",
+  "x": 29,
+  "y": 51.8,
+  "garrafas": 1,
+  "parceiro": "@cafeteriagarden_",
+  "manaus": false
+ },
+ {
+  "id": "14-lavanda-limao-1",
+  "file": "../2026-11-03-direcao-criativa/saida/14-lavanda-limao/1-luz.png",
+  "sabor": "lavanda-limao",
+  "x": 43,
+  "y": 45.6,
+  "garrafas": 1,
+  "parceiro": null,
+  "manaus": false
+ },
+ {
+  "id": "14-lavanda-limao-2",
+  "file": "../2026-11-03-direcao-criativa/saida/14-lavanda-limao/2-luz.png",
+  "sabor": "lavanda-limao",
+  "x": 28,
+  "y": 60.9,
+  "garrafas": 1,
+  "parceiro": null,
+  "manaus": false
+ },
+ {
+  "id": "15-maca-canela-1",
+  "file": "../2026-11-03-direcao-criativa/saida/15-maca-canela/1-luz.png",
+  "sabor": "maca-canela",
+  "x": 74,
+  "y": 78,
+  "garrafas": 1,
+  "parceiro": null,
+  "manaus": false
+ },
+ {
+  "id": "16-de-verdade-1",
+  "file": "../2026-11-03-direcao-criativa/saida/16-de-verdade/1-luz.png",
+  "sabor": "hibisco-anis",
+  "x": 41,
+  "y": 63,
+  "garrafas": 1,
+  "parceiro": null,
+  "manaus": false
+ },
+ {
+  "id": "19-como-servir-1",
+  "file": "../2026-11-03-direcao-criativa/saida/19-como-servir/1-luz.png",
+  "sabor": "goiaba",
+  "x": 77,
+  "y": 52,
+  "garrafas": 1,
+  "parceiro": null,
+  "manaus": false
+ },
+ {
+  "id": "19-como-servir-2",
+  "file": "../2026-11-03-direcao-criativa/saida/19-como-servir/2-luz.png",
+  "sabor": "goiaba",
+  "x": 48.5,
+  "y": 54.7,
+  "garrafas": 1,
+  "parceiro": null,
+  "manaus": false
+ },
+ {
+  "id": "23-cardapio-2",
+  "file": "../2026-11-03-direcao-criativa/saida/23-cardapio/2-luz.png",
+  "sabor": "rosas-cardamomo",
+  "x": 30,
+  "y": 54.1,
+  "garrafas": 1,
+  "parceiro": null,
+  "manaus": false
+ },
+ {
+  "id": "24-profissionais-3",
+  "file": "../2026-11-03-direcao-criativa/saida/24-profissionais/3-luz.png",
+  "sabor": "pera-alecrim",
+  "x": 26,
+  "y": 58.6,
+  "garrafas": 1,
+  "parceiro": null,
+  "manaus": false
+ },
+ {
+  "id": "25-nutricionistas-1",
+  "file": "../2026-11-03-direcao-criativa/saida/25-nutricionistas/1-luz.png",
+  "sabor": "pera-alecrim",
+  "x": 63,
+  "y": 64.4,
+  "garrafas": 1,
+  "parceiro": null,
+  "manaus": false
+ },
+ {
+  "id": "25-nutricionistas-3",
+  "file": "../2026-11-03-direcao-criativa/saida/25-nutricionistas/3-luz.png",
+  "sabor": "pera-alecrim",
+  "x": 12.1,
+  "y": 66.6,
+  "garrafas": 1,
+  "parceiro": null,
+  "manaus": false
+ },
+ {
+  "id": "26-personal-trainers-1",
+  "file": "../2026-11-03-direcao-criativa/saida/26-personal-trainers/1-luz.png",
+  "sabor": "goiaba",
+  "x": 49,
+  "y": 65.5,
+  "garrafas": 1,
+  "parceiro": null,
+  "manaus": false
+ },
+ {
+  "id": "26-personal-trainers-3",
+  "file": "../2026-11-03-direcao-criativa/saida/26-personal-trainers/3-luz.png",
+  "sabor": "goiaba",
+  "x": 13.9,
+  "y": 58.1,
+  "garrafas": 1,
+  "parceiro": null,
+  "manaus": false
+ }
+]

@@ -22,3 +22,4 @@ marketing/instagram/worker/.wrangler/
 marketing/instagram/claude-propostas/*/cenas/
 marketing/instagram/claude-propostas/*/saida/
 marketing/instagram/claude-propostas/*/calendar-antes-*.json
+marketing/instagram/claude-propostas/stories/saida/

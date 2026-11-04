@@ -421,51 +421,201 @@
       "date": "2026-11-05",
       "frames": [
         {
-          "id": "rosas-cardamomo-9",
-          "type": "bottle",
-          "flavor": "rosas-cardamomo",
-          "layout": "botanical",
-          "bg": "#E3889E",
-          "title": "Rosas & Cardamomo.",
-          "body": "Pétalas de rosa e o toque especiado do cardamomo, numa combinação floral.",
-          "image": "stories/2026-11-05/rosas-cardamomo-9.jpg"
+          "id": "enquete-1105",
+          "type": "art",
+          "formato": "enquete",
+          "title": "Hibisco ou Imunidade?",
+          "body": "",
+          "cta": "Manda o nome do seu favorito por mensagem.",
+          "flavor": "hibisco-anis",
+          "flavor2": "imunidade",
+          "cena2": "11-imunidade-2",
+          "cena": "09-hibisco-2",
+          "imageSource": "assets/stories-art/2026-11-05-enquete-1105.jpg",
+          "image": "stories/2026-11-05/enquete-1105.jpg",
+          "source": "claude-propostas/stories"
         },
         {
-          "id": "flor-fada-9",
-          "type": "bottle",
+          "id": "detalhe-1105",
+          "type": "art",
+          "formato": "detalhe",
+          "title": "Goiaba, de pertinho.",
+          "body": "Rosada, gelada e com o gás da fermentação.",
+          "flavor": "goiaba",
+          "cena": "19-como-servir-1",
+          "imageSource": "assets/stories-art/2026-11-05-detalhe-1105.jpg",
+          "image": "stories/2026-11-05/detalhe-1105.jpg",
+          "source": "claude-propostas/stories"
+        },
+        {
+          "id": "revista-1105",
+          "type": "art",
+          "formato": "revista",
+          "title": "A cor vem da flor e da fruta.",
+          "body": "Flor Fada Azul & Blueberry. Nenhum corante.",
           "flavor": "flor-fada-blueberry",
-          "bg": "#3A2147",
-          "title": "Flor Fada Azul & Blueberry.",
-          "body": "A cor vem da flor e da fruta. Nenhum corante.",
-          "image": "stories/2026-11-05/flor-fada-9.jpg"
+          "cena": "07-flor-fada-azul-1",
+          "imageSource": "assets/stories-art/2026-11-05-revista-1105.jpg",
+          "image": "stories/2026-11-05/revista-1105.jpg",
+          "source": "claude-propostas/stories"
         },
         {
-          "id": "parceiro-9",
-          "type": "bottle",
-          "flavor": "frutas-vermelhas",
-          "bg": "#F6F2E8",
-          "partner": "@solarcaferegional",
-          "title": "Já conhece o Solar Café Regional?",
-          "body": "Na próxima visita, pergunte quais sabores estão gelados no dia.",
-          "image": "stories/2026-11-05/parceiro-9.jpg"
+          "id": "fato-1105",
+          "type": "art",
+          "formato": "fato",
+          "title": "Você sabia? O gás da Kombú se forma na própria fermentação.",
+          "body": "Nenhum gás é adicionado depois. Ele aparece aos poucos, na fermentação natural feita aqui em Manaus.",
+          "flavor": "maracuja",
+          "cena": "12-como-comprar-1",
+          "imageSource": "assets/stories-art/2026-11-05-fato-1105.jpg",
+          "image": "stories/2026-11-05/fato-1105.jpg",
+          "source": "claude-propostas/stories"
         },
         {
-          "id": "doze-sabores-9",
-          "type": "text",
-          "bg": "#F6F2E8",
-          "title": "Doze sabores, uma garrafa de 500 ml.",
-          "body": "Frutados, florais, especiados, herbais e cítricos, todos feitos artesanalmente em Manaus.",
-          "image": "stories/2026-11-05/doze-sabores-9.jpg"
+          "id": "lista-1105",
+          "type": "art",
+          "formato": "lista",
+          "title": "3 jeitos de servir uma Kombú",
+          "body": "Direto da geladeira, bem gelada. Num copo alto, com gelo. No almoço, com um sanduíche natural.",
+          "flavor": "lavanda-limao",
+          "cena": "14-lavanda-limao-2",
+          "imageSource": "assets/stories-art/2026-11-05-lista-1105.jpg",
+          "image": "stories/2026-11-05/lista-1105.jpg",
+          "source": "claude-propostas/stories"
+        }
+      ]
+    },
+    {
+      "date": "2026-11-06",
+      "frames": [
+        {
+          "id": "revista-1106",
+          "type": "art",
+          "formato": "revista",
+          "title": "Três sabores, uma geladeira.",
+          "body": "Maçã & Canela, Goiaba e Manga & Jasmim. Qual você pegaria primeiro?",
+          "flavor": "maca-canela",
+          "cena": "08-revenda-1",
+          "imageSource": "assets/stories-art/2026-11-06-revista-1106.jpg",
+          "image": "stories/2026-11-06/revista-1106.jpg",
+          "source": "claude-propostas/stories"
         },
         {
-          "id": "revenda-9",
-          "type": "creator",
-          "layout": "creator",
-          "bg": "#1E3527",
-          "title": "Tem um café ou empório em Manaus?",
-          "body": "Manda o nome dele pra gente. Quem quer ter Kombú na geladeira encontra tudo em Revenda.",
-          "cta": "Acesse Revenda no site da bio.",
-          "image": "stories/2026-11-05/revenda-9.jpg"
+          "id": "cena-1106",
+          "type": "art",
+          "formato": "cena",
+          "title": "Rosas & Cardamomo.",
+          "body": "Floral, com o toque especiado do cardamomo.",
+          "flavor": "rosas-cardamomo",
+          "cena": "23-cardapio-2",
+          "imageSource": "assets/stories-art/2026-11-06-cena-1106.jpg",
+          "image": "stories/2026-11-06/cena-1106.jpg",
+          "source": "claude-propostas/stories"
+        },
+        {
+          "id": "enquete-1106",
+          "type": "art",
+          "formato": "enquete",
+          "title": "Herbal ou frutado?",
+          "body": "",
+          "cta": "Vota por mensagem: Pêra & Alecrim ou Frutas Vermelhas.",
+          "flavor": "pera-alecrim",
+          "flavor2": "frutas-vermelhas",
+          "cena2": "05-frutas-vermelhas-1",
+          "cena": "25-nutricionistas-3",
+          "imageSource": "assets/stories-art/2026-11-06-enquete-1106.jpg",
+          "image": "stories/2026-11-06/enquete-1106.jpg",
+          "source": "claude-propostas/stories"
+        },
+        {
+          "id": "parceiro-1106",
+          "type": "art",
+          "formato": "parceiro",
+          "title": "Onde encontrar Gelato e Kombú na Dolce Vita.",
+          "body": "Na próxima visita, pergunte quais sabores estão gelados hoje.",
+          "flavor": "manga-jasmim",
+          "partner": "@ladolcevitagelataria",
+          "cena": "06-la-dolce-vita-1",
+          "imageSource": "assets/stories-art/2026-11-06-parceiro-1106.jpg",
+          "image": "stories/2026-11-06/parceiro-1106.jpg",
+          "source": "claude-propostas/stories"
+        },
+        {
+          "id": "detalhe-1106",
+          "type": "art",
+          "formato": "detalhe",
+          "title": "Hibisco & Anis Estrelado.",
+          "body": "Primeiro vem o perfume do anis, depois o hibisco.",
+          "flavor": "hibisco-anis",
+          "cena": "16-de-verdade-1",
+          "imageSource": "assets/stories-art/2026-11-06-detalhe-1106.jpg",
+          "image": "stories/2026-11-06/detalhe-1106.jpg",
+          "source": "claude-propostas/stories"
+        }
+      ]
+    },
+    {
+      "date": "2026-11-07",
+      "frames": [
+        {
+          "id": "cena-1107",
+          "type": "art",
+          "formato": "cena",
+          "title": "Sábado pede uma Kombú gelada.",
+          "body": "Goiaba, rosada e refrescante.",
+          "flavor": "goiaba",
+          "cena": "26-personal-trainers-3",
+          "imageSource": "assets/stories-art/2026-11-07-cena-1107.jpg",
+          "image": "stories/2026-11-07/cena-1107.jpg",
+          "source": "claude-propostas/stories"
+        },
+        {
+          "id": "pergunta-1107",
+          "type": "art",
+          "formato": "pergunta",
+          "title": "Qual sabor combina com o seu sábado?",
+          "body": "Conta pra gente por mensagem. Flor Fada Azul & Blueberry Goiaba Uva Maracujá",
+          "flavor": "flor-fada-blueberry",
+          "cena": "07-flor-fada-azul-2",
+          "imageSource": "assets/stories-art/2026-11-07-pergunta-1107.jpg",
+          "image": "stories/2026-11-07/pergunta-1107.jpg",
+          "source": "claude-propostas/stories"
+        },
+        {
+          "id": "fato-1107",
+          "type": "art",
+          "formato": "fato",
+          "title": "Você sabia? Imunidade é nome de sabor.",
+          "body": "Leva limão, gengibre e cúrcuma, numa combinação cítrica e terrosa.",
+          "flavor": "imunidade",
+          "cena": "11-imunidade-1",
+          "imageSource": "assets/stories-art/2026-11-07-fato-1107.jpg",
+          "image": "stories/2026-11-07/fato-1107.jpg",
+          "source": "claude-propostas/stories"
+        },
+        {
+          "id": "lista-1107",
+          "type": "art",
+          "formato": "lista",
+          "title": "Como guardar a sua Kombú",
+          "body": "Sempre na geladeira, entre 0 e 5 °C. Sem agitar a garrafa. Abra com calma: o gás vem da fermentação.",
+          "flavor": "lavanda-limao",
+          "cena": "14-lavanda-limao-1",
+          "imageSource": "assets/stories-art/2026-11-07-lista-1107.jpg",
+          "image": "stories/2026-11-07/lista-1107.jpg",
+          "source": "claude-propostas/stories"
+        },
+        {
+          "id": "revista-1107",
+          "type": "art",
+          "formato": "revista",
+          "title": "Maracujá com semente e tudo.",
+          "body": "A polpa e as sementes da fruta vão para a garrafa.",
+          "flavor": "maracuja",
+          "cena": "12-como-comprar-2",
+          "imageSource": "assets/stories-art/2026-11-07-revista-1107.jpg",
+          "image": "stories/2026-11-07/revista-1107.jpg",
+          "source": "claude-propostas/stories"
         }
       ]
     }

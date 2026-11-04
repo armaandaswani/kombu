@@ -142,3 +142,22 @@ Ela faz três coisas:
 A fila 05 a 26 no padrão novo (cena gerada, garrafa oficial em pé com luz integrada) substitui os 05 a 20 antigos, com os mesmos IDs.
 
 O Codex continua dono do Worker, dos crons, do KV, dos segredos e da rotina das 06:30. Se a rotina das 06:30 encontrar o dia já preparado pelo Claude, ela só revisa.
+
+## Stories variados e parceiro marcado (04/11/2026)
+
+O dono pediu, em 04/11: "Tem que ter uma variação, tem que mesclar as artes". A partir de 05/11, os Stories vêm do motor do Claude, `claude-propostas/stories/stories.mjs`, com nove formatos:
+- cena;
+- revista;
+- enquete;
+- fato;
+- parceiro;
+- detalhe;
+- lista;
+- pergunta;
+- feed.
+
+O motor monta cada dia com cinco formatos diferentes e cinco sabores, sem repetir o dia anterior, usando as cenas reais do feed com a garrafa integrada. As artes entram no calendário como `type: art`, com `formato`, `cena` e `partner`.
+
+A rotina das 06:30 deve só **revisar** esses dias. Não deve trocá-los pelos modelos antigos de garrafa sobre fundo liso.
+
+O Worker agora marca no Story o @ do parceiro (`partner`, ou um @ escrito na arte), com `user_tags`, aceito pela Meta em Stories desde 07/2025. Se a Meta recusar o @, o Story sai sem marcação e o log registra "marcação recusada" (`worker/stories-tags.test.mjs`).

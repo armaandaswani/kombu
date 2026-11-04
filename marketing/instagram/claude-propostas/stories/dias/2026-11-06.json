@@ -1,0 +1,51 @@
+{
+ "date": "2026-11-06",
+ "frames": [
+  {
+   "id": "revista-1106",
+   "formato": "revista",
+   "cena": "08-revenda-1",
+   "flavor": "maca-canela",
+   "title": "Três sabores, uma geladeira.",
+   "body": "Maçã & Canela, Goiaba e Manga & Jasmim. Qual você pegaria primeiro?"
+  },
+  {
+   "id": "cena-1106",
+   "formato": "cena",
+   "cena": "23-cardapio-2",
+   "flavor": "rosas-cardamomo",
+   "title": "Rosas & Cardamomo.",
+   "body": "Floral, com o toque especiado do cardamomo.",
+   "texto": "baixo"
+  },
+  {
+   "id": "enquete-1106",
+   "formato": "enquete",
+   "cena": "25-nutricionistas-3",
+   "flavor": "pera-alecrim",
+   "cena2": "05-frutas-vermelhas-1",
+   "flavor2": "frutas-vermelhas",
+   "title": "Herbal ou frutado?",
+   "body": "",
+   "cta": "Vota por mensagem: Pêra & Alecrim ou Frutas Vermelhas."
+  },
+  {
+   "id": "parceiro-1106",
+   "formato": "parceiro",
+   "partner": "@ladolcevitagelataria",
+   "cena": "06-la-dolce-vita-1",
+   "flavor": "manga-jasmim",
+   "title": "Gelato e Kombú na Dolce Vita.",
+   "body": "Na próxima visita, pergunte quais sabores estão gelados hoje.",
+   "kicker": "Onde encontrar"
+  },
+  {
+   "id": "detalhe-1106",
+   "formato": "detalhe",
+   "cena": "16-de-verdade-1",
+   "flavor": "hibisco-anis",
+   "title": "Hibisco & Anis Estrelado.",
+   "body": "Primeiro vem o perfume do anis, depois o hibisco."
+  }
+ ]
+}

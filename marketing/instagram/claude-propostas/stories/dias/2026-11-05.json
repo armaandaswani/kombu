@@ -1,0 +1,54 @@
+{
+ "date": "2026-11-05",
+ "frames": [
+  {
+   "id": "enquete-1105",
+   "formato": "enquete",
+   "cena": "09-hibisco-2",
+   "flavor": "hibisco-anis",
+   "cena2": "11-imunidade-2",
+   "flavor2": "imunidade",
+   "title": "Hibisco ou Imunidade?",
+   "body": "",
+   "cta": "Manda o nome do seu favorito por mensagem."
+  },
+  {
+   "id": "detalhe-1105",
+   "formato": "detalhe",
+   "cena": "19-como-servir-1",
+   "flavor": "goiaba",
+   "title": "Goiaba, de pertinho.",
+   "body": "Rosada, gelada e com o gás da fermentação."
+  },
+  {
+   "id": "revista-1105",
+   "formato": "revista",
+   "cena": "07-flor-fada-azul-1",
+   "flavor": "flor-fada-blueberry",
+   "title": "A cor vem da flor e da fruta.",
+   "body": "Flor Fada Azul & Blueberry. Nenhum corante."
+  },
+  {
+   "id": "fato-1105",
+   "formato": "fato",
+   "cena": "12-como-comprar-1",
+   "flavor": "maracuja",
+   "title": "O gás da Kombú se forma na própria fermentação.",
+   "body": "Nenhum gás é adicionado depois. Ele aparece aos poucos, na fermentação natural feita aqui em Manaus.",
+   "kicker": "Você sabia?"
+  },
+  {
+   "id": "lista-1105",
+   "formato": "lista",
+   "cena": "14-lavanda-limao-2",
+   "flavor": "lavanda-limao",
+   "title": "3 jeitos de servir uma Kombú",
+   "body": "",
+   "itens": [
+    "Direto da geladeira, bem gelada.",
+    "Num copo alto, com gelo.",
+    "No almoço, com um sanduíche natural."
+   ]
+  }
+ ]
+}

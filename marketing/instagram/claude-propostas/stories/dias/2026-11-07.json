@@ -1,0 +1,57 @@
+{
+ "date": "2026-11-07",
+ "frames": [
+  {
+   "id": "cena-1107",
+   "formato": "cena",
+   "cena": "26-personal-trainers-3",
+   "flavor": "goiaba",
+   "title": "Sábado pede uma Kombú gelada.",
+   "body": "Goiaba, rosada e refrescante."
+  },
+  {
+   "id": "pergunta-1107",
+   "formato": "pergunta",
+   "cena": "07-flor-fada-azul-2",
+   "flavor": "flor-fada-blueberry",
+   "title": "Qual sabor combina com o seu sábado?",
+   "body": "Conta pra gente por mensagem.",
+   "opcoes": [
+    "Flor Fada Azul & Blueberry",
+    "Goiaba",
+    "Uva",
+    "Maracujá"
+   ]
+  },
+  {
+   "id": "fato-1107",
+   "formato": "fato",
+   "cena": "11-imunidade-1",
+   "flavor": "imunidade",
+   "title": "Imunidade é nome de sabor.",
+   "body": "Leva limão, gengibre e cúrcuma, numa combinação cítrica e terrosa.",
+   "kicker": "Você sabia?"
+  },
+  {
+   "id": "lista-1107",
+   "formato": "lista",
+   "cena": "14-lavanda-limao-1",
+   "flavor": "lavanda-limao",
+   "title": "Como guardar a sua Kombú",
+   "body": "",
+   "itens": [
+    "Sempre na geladeira, entre 0 e 5 °C.",
+    "Sem agitar a garrafa.",
+    "Abra com calma: o gás vem da fermentação."
+   ]
+  },
+  {
+   "id": "revista-1107",
+   "formato": "revista",
+   "cena": "12-como-comprar-2",
+   "flavor": "maracuja",
+   "title": "Maracujá com semente e tudo.",
+   "body": "A polpa e as sementes da fruta vão para a garrafa."
+  }
+ ]
+}
