@@ -26,18 +26,27 @@ function run(args, input) {
     if (input !== undefined) p.stdin.end(input); else p.stdin.end();
   });
 }
+// Same hidden input as connect.mjs: strips the terminal's bracketed-paste markers and shows a count.
 function askHidden(question) {
   return new Promise(resolve => {
     process.stdout.write(question);
+    const stdin = process.stdin;
+    stdin.setRawMode?.(true);
+    stdin.resume();
+    stdin.setEncoding('utf8');
     let value = '';
-    process.stdin.setRawMode(true); process.stdin.resume(); process.stdin.setEncoding('utf8');
-    const onData = ch => {
-      if (ch === '\r' || ch === '\n' || ch === '\u0004') { process.stdin.setRawMode(false); process.stdin.pause(); process.stdin.off('data', onData); process.stdout.write(`\n`); resolve(value.trim()); }
-      else if (ch === '\u0003') process.exit(1);
-      else if (ch === '\u007f') value = value.slice(0, -1);
-      else value += ch;
+    const finish = () => { stdin.setRawMode?.(false); stdin.pause(); stdin.off('data', onData); process.stdout.write('\n'); resolve(value.trim()); };
+    const onData = chunk => {
+      for (const ch of chunk.replace(/\x1b\[20[01]~/g, '')) {
+        if (ch === '\r' || ch === '\n' || ch === '\u0004') return finish();
+        if (ch === '\u0003') { process.stdout.write('\n'); process.exit(1); }
+        if (ch === '\u007f') { value = value.slice(0, -1); continue; }
+        if (ch < ' ' || ch === '\x1b') continue;
+        value += ch;
+      }
+      process.stdout.write(`\r\x1b[2K${question}${'•'.repeat(Math.min(value.length, 40))} (${value.length} caracteres)`);
     };
-    process.stdin.on('data', onData);
+    stdin.on('data', onData);
   });
 }
 
@@ -55,7 +64,11 @@ if (process.argv.includes('--inscrever')) {
 }
 
 const secret = await askHidden('Cole a Chave secreta do app do Instagram e aperte Enter: ');
-if (!/^[a-f0-9]{32}$/i.test(secret)) { console.log('Isso não parece a chave secreta do app (32 letras e números). Nada foi alterado.'); process.exit(1); }
+if (!/^[a-f0-9]{32}$/i.test(secret)) {
+  console.log(`Isso não parece a chave secreta do app: ela tem 32 letras e números, e chegaram ${secret.length} caracteres. Nada foi alterado.`);
+  console.log('Confira se copiou a "Chave secreta do app do Instagram" (Instagram > Configuração da API com login do Instagram), depois de clicar em Mostrar.');
+  process.exit(1);
+}
 
 const verify = 'kombu-' + crypto.randomBytes(12).toString('hex');
 const topic = 'kombu-avisos-' + crypto.randomBytes(8).toString('hex');
