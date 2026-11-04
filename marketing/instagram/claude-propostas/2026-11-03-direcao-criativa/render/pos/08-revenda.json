@@ -1,0 +1,74 @@
+{
+ "slides": [
+  {
+   "layout": "B",
+   "scene": "08-1b.png",
+   "band": {
+    "side": "top",
+    "color": "#1B2F18",
+    "ink": "#FFF7ED",
+    "size": 0.32
+   },
+   "title": "Tem um lugar na sua geladeira para uma bebida feita em Manaus?",
+   "small": "Kombú para cafés, empórios e restaurantes.",
+   "bottles": [
+    {
+     "slug": "maca-canela",
+     "x": 27,
+     "base": 91,
+     "h": 620,
+     "sombra": 0.18,
+     "tom": "frio",
+     "luz": {
+      "dir": "esquerda",
+      "sombra": 0.2,
+      "borda": 0.3,
+      "brilho": 0.18,
+      "posBrilho": 0.7,
+      "quente": 0,
+      "contraste": 1.06
+     }
+    },
+    {
+     "slug": "goiaba",
+     "x": 50,
+     "base": 91,
+     "h": 620,
+     "sombra": 0.18,
+     "tom": "frio",
+     "luz": {
+      "dir": "esquerda",
+      "sombra": 0.2,
+      "borda": 0.3,
+      "brilho": 0.18,
+      "posBrilho": 0.7,
+      "quente": 0,
+      "contraste": 1.06,
+      "rotulo": [
+       0.31,
+       0.86
+      ]
+     }
+    },
+    {
+     "slug": "jasmim-manga",
+     "x": 73,
+     "base": 91,
+     "h": 620,
+     "sombra": 0.18,
+     "tom": "frio",
+     "luz": {
+      "dir": "esquerda",
+      "sombra": 0.2,
+      "borda": 0.3,
+      "brilho": 0.18,
+      "posBrilho": 0.7,
+      "quente": 0,
+      "contraste": 1.06
+     }
+    }
+   ],
+   "light": "cima"
+  }
+ ]
+}

@@ -1,0 +1,52 @@
+{
+ "slides": [
+  {
+   "layout": "A",
+   "scene": "16-1b.png",
+   "corner": "tr",
+   "ink": "#1B2F18",
+   "logo": "tl",
+   "title": "O que vai numa Kombú.",
+   "bottles": [
+    {
+     "slug": "hibisco-anis-estrelado",
+     "x": 41,
+     "base": 83.7,
+     "h": 560,
+     "tom": "quente",
+     "sombra": 0.4,
+     "luz": {
+      "dir": "direita",
+      "sombra": 0.45,
+      "borda": 0.4,
+      "brilho": 0.25,
+      "posBrilho": 0.66,
+      "quente": 0.14,
+      "contraste": 1.1
+     }
+    }
+   ],
+   "light": "direita",
+   "titleSize": 96,
+   "textWidth": 640
+  },
+  {
+   "layout": "G",
+   "scene": "16-bg.png",
+   "ink": "#1B2F18",
+   "body": "A receita leva cultura de kombucha, fermentação natural e os ingredientes de cada sabor: frutas, flores, ervas e especiarias."
+  },
+  {
+   "layout": "G",
+   "scene": "16-bg.png",
+   "ink": "#1B2F18",
+   "title": "A Kombú não leva:",
+   "list": [
+    "Nenhum conservante.",
+    "Nenhum corante artificial.",
+    "Nenhum aromatizante artificial.",
+    "Nenhum gás adicionado: ele se forma na fermentação."
+   ]
+  }
+ ]
+}

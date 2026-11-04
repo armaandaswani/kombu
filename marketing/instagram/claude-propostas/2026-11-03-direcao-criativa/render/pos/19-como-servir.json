@@ -1,0 +1,79 @@
+{
+ "slides": [
+  {
+   "layout": "C",
+   "scene": "19-1.png",
+   "panel": {
+    "side": "left",
+    "color": "#1B2F18",
+    "ink": "#FFF7ED"
+   },
+   "title": "Guarde sua Kombú na geladeira.",
+   "small": "Sempre gelada, entre 0 e 5 °C.",
+   "bottles": [
+    {
+     "slug": "goiaba",
+     "x": 77,
+     "base": 70.5,
+     "h": 500,
+     "tom": "frio",
+     "sombra": 0.2,
+     "luz": {
+      "dir": "esquerda",
+      "sombra": 0.25,
+      "borda": 0.25,
+      "brilho": 0.2,
+      "posBrilho": 0.7,
+      "quente": 0,
+      "contraste": 1.06
+     }
+    }
+   ],
+   "light": "cima"
+  },
+  {
+   "layout": "A",
+   "scene": "19-2.png",
+   "corner": "tr",
+   "ink": "#191C1C",
+   "logo": "bl",
+   "title": "Na hora de servir, é só abrir e provar, na garrafa ou num copo.",
+   "bottles": [
+    {
+     "slug": "goiaba",
+     "x": 48.5,
+     "base": 74,
+     "h": 520,
+     "sombra": 0.2,
+     "luz": {
+      "dir": "esquerda",
+      "sombra": 0.3,
+      "borda": 0.35,
+      "brilho": 0.2,
+      "posBrilho": 0.7,
+      "quente": 0.06,
+      "contraste": 1.06
+     }
+    }
+   ],
+   "light": "esquerda",
+   "occluders": [
+    {
+     "x": 118,
+     "y": 535,
+     "w": 356,
+     "h": 680,
+     "r": 16
+    }
+   ],
+   "occludersLuz": [
+    {
+     "x": 100,
+     "y": 530,
+     "w": 369,
+     "h": 700
+    }
+   ]
+  }
+ ]
+}

@@ -1,0 +1,75 @@
+{
+ "slides": [
+  {
+   "layout": "A",
+   "scene": "26-1.png",
+   "small": "Parcerias Kombú",
+   "title": "Personal trainer em Manaus?\nVamos conversar.",
+   "bottles": [
+    {
+     "slug": "goiaba",
+     "x": 49,
+     "base": 83.3,
+     "h": 480,
+     "sombra": 0.3,
+     "luz": {
+      "dir": "esquerda",
+      "sombra": 0.3,
+      "borda": 0.3,
+      "brilho": 0.18,
+      "posBrilho": 0.7,
+      "quente": 0.06,
+      "contraste": 1.06
+     }
+    }
+   ],
+   "light": "esquerda",
+   "corner": "tr",
+   "logo": "tl",
+   "ink": "#3A2410",
+   "textWidth": 880,
+   "titleSize": 50
+  },
+  {
+   "layout": "G",
+   "color": "#F6D9D5",
+   "ink": "#3A2410",
+   "body": "Você acompanha seus alunos de perto, no treino e fora dele. Se a Kombú combina com quem você atende, podemos pensar juntos em indicação, conteúdo ou uma degustação para os alunos."
+  },
+  {
+   "layout": "F",
+   "scene": "26-3.png",
+   "ink": "#3A2410",
+   "text": "right",
+   "title": "Prove antes de indicar.",
+   "body": "Kombucha artesanal feita em Manaus, suave e com sabor intenso. Para conversar, acesse Parcerias, no site.",
+   "bottles": [
+    {
+     "slug": "goiaba",
+     "x": 13.9,
+     "base": 77.4,
+     "h": 520,
+     "sombra": 0.3,
+     "luz": {
+      "dir": "esquerda",
+      "sombra": 0.3,
+      "borda": 0.3,
+      "brilho": 0.18,
+      "posBrilho": 0.7,
+      "quente": 0.06,
+      "contraste": 1.06
+     }
+    }
+   ],
+   "light": "esquerda",
+   "occludersLuz": [
+    {
+     "x": 115,
+     "y": 1068,
+     "w": 335,
+     "h": 180
+    }
+   ]
+  }
+ ]
+}

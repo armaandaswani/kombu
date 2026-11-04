@@ -1,0 +1,55 @@
+{
+ "slides": [
+  {
+   "layout": "E",
+   "scene": "07-1b.png",
+   "title": "A cor vem da flor e da fruta. Nenhum corante.",
+   "bottles": [
+    {
+     "slug": "flor-fada-azul-blueberry",
+     "x": 40,
+     "base": 72.6,
+     "h": 610,
+     "tom": "frio",
+     "sombra": 0.3,
+     "luz": {
+      "dir": "esquerda",
+      "sombra": 0.3,
+      "borda": 0.22,
+      "brilho": 0.18,
+      "posBrilho": 0.68,
+      "quente": 0,
+      "contraste": 1.06
+     }
+    }
+   ],
+   "light": "esquerda"
+  },
+  {
+   "layout": "F",
+   "scene": "07-2.png",
+   "ink": "#191C1C",
+   "title": "Flor Fada Azul & Blueberry: floral e frutada.",
+   "bottles": [
+    {
+     "slug": "flor-fada-azul-blueberry",
+     "x": 28,
+     "base": 82,
+     "h": 770,
+     "tom": "frio",
+     "luz": {
+      "dir": "esquerda",
+      "sombra": 0.3,
+      "borda": 0.22,
+      "brilho": 0.18,
+      "posBrilho": 0.68,
+      "quente": 0,
+      "contraste": 1.06
+     }
+    }
+   ],
+   "text": "right",
+   "light": "esquerda"
+  }
+ ]
+}

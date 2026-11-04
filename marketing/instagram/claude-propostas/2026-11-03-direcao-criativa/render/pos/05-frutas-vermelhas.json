@@ -1,0 +1,34 @@
+{
+ "slides": [
+  {
+   "layout": "B",
+   "scene": "05-1.png",
+   "band": {
+    "side": "bottom",
+    "color": "#650715",
+    "ink": "#FFF7ED",
+    "size": 0.26
+   },
+   "title": "Morango, blueberry e oxicoco na mesma garrafa.",
+   "bottles": [
+    {
+     "slug": "frutas-vermelhas",
+     "x": 29,
+     "base": 63,
+     "h": 640,
+     "sombra": 0.3,
+     "luz": {
+      "dir": "esquerda",
+      "sombra": 0.34,
+      "borda": 0.28,
+      "brilho": 0.18,
+      "posBrilho": 0.7,
+      "quente": 0.06,
+      "contraste": 1.08
+     }
+    }
+   ],
+   "light": "esquerda"
+  }
+ ]
+}

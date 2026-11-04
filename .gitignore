@@ -17,3 +17,8 @@ marketing/instagram/worker/.wrangler/
 .taste-skill/
 
 .playwright-cli/
+
+# Claude creative engine: big scene/render files stay local (final art goes to assets/partners)
+marketing/instagram/claude-propostas/*/cenas/
+marketing/instagram/claude-propostas/*/saida/
+marketing/instagram/claude-propostas/*/calendar-antes-*.json

@@ -1,0 +1,94 @@
+{
+ "slides": [
+  {
+   "layout": "A",
+   "scene": "09-1.png",
+   "corner": "bl",
+   "ink": "#FFF7ED",
+   "logo": "tr",
+   "title": "Primeiro vem o perfume do anis estrelado, depois o hibisco.",
+   "bottles": [
+    {
+     "slug": "hibisco-anis-estrelado",
+     "x": 40.5,
+     "base": 74.5,
+     "h": 650,
+     "tom": "quente",
+     "sombra": 0.45,
+     "escurecer": 0.15,
+     "luz": {
+      "dir": "direita",
+      "sombra": 0.32,
+      "borda": 0.2,
+      "brilho": 0.18,
+      "posBrilho": 0.62,
+      "quente": 0.08,
+      "contraste": 1.08
+     }
+    }
+   ],
+   "light": "direita",
+   "occluders": [
+    {
+     "x": 497,
+     "y": 205,
+     "w": 345,
+     "h": 870,
+     "r": 22
+    }
+   ],
+   "occludersLuz": [
+    {
+     "x": 497,
+     "y": 195,
+     "w": 360,
+     "h": 900
+    }
+   ],
+   "titleSize": 44,
+   "textWidth": 430
+  },
+  {
+   "layout": "F",
+   "scene": "09-2.png",
+   "ink": "#191C1C",
+   "text": "right",
+   "title": "Hibisco & Anis Estrelado",
+   "body": "O hibisco traz a cor e a acidez, e o anis estrelado entra pelo perfume. O gás se forma na própria fermentação, que fazemos de forma artesanal aqui em Manaus.",
+   "bottles": [
+    {
+     "slug": "hibisco-anis-estrelado",
+     "x": 27,
+     "base": 89,
+     "h": 860,
+     "tom": "quente",
+     "sombra": 0.3,
+     "luz": {
+      "dir": "esquerda",
+      "sombra": 0.3,
+      "borda": 0.25,
+      "brilho": 0.18,
+      "posBrilho": 0.7,
+      "quente": 0.06,
+      "contraste": 1.06
+     }
+    }
+   ],
+   "light": "esquerda"
+  },
+  {
+   "layout": "G",
+   "color": "#980549",
+   "ink": "#FFF7ED",
+   "title": "Onde encontrar gelada",
+   "list": [
+    "@divinaterramanaus",
+    "@casaagridoceam",
+    "@ladolcevitagelataria",
+    "@cafeteriagarden_",
+    "@solarcaferegional"
+   ],
+   "body": "Pergunte quais sabores estão gelados hoje."
+  }
+ ]
+}

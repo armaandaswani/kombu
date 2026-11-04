@@ -1,0 +1,34 @@
+{
+ "slides": [
+  {
+   "layout": "E",
+   "scene": "20-1.png",
+   "title": "Como funciona o cupom de afiliado da Kombú.",
+   "bottles": [
+    {
+     "slug": "maracuja",
+     "x": 84,
+     "base": 74.4,
+     "h": 620,
+     "sombra": 0.2,
+     "luz": {
+      "dir": "direita",
+      "sombra": 0.3,
+      "borda": 0.3,
+      "brilho": 0.18,
+      "posBrilho": 0.7,
+      "quente": 0.06,
+      "contraste": 1.06
+     }
+    }
+   ],
+   "light": "direita"
+  },
+  {
+   "layout": "G",
+   "color": "#4D76C3",
+   "ink": "#FFF7ED",
+   "body": "Depois da aprovação, você recebe um código para compartilhar. Quem acompanha você usa o cupom no site, e as condições são combinadas com a gente na conversa."
+  }
+ ]
+}

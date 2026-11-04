@@ -1,0 +1,33 @@
+{
+ "slides": [
+  {
+   "layout": "E",
+   "scene": "13-1.png",
+   "title": "Está pelo Parque 10? A Cafeteria Garden tem Kombú gelada.",
+   "small": "Conjunto Japonês, Parque 10 · @cafeteriagarden_",
+   "bottles": [
+    {
+     "slug": "pera-alecrim",
+     "x": 29,
+     "base": 64.6,
+     "h": 345,
+     "sombra": 0.3,
+     "luz": {
+      "dir": "direita",
+      "sombra": 0.4,
+      "borda": 0.25,
+      "brilho": 0.18,
+      "posBrilho": 0.7,
+      "quente": 0.08,
+      "contraste": 1.12,
+      "rotulo": [
+       0.28,
+       0.84
+      ]
+     }
+    }
+   ],
+   "light": "direita"
+  }
+ ]
+}

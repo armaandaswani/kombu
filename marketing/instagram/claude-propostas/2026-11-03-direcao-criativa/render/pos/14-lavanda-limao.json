@@ -1,0 +1,77 @@
+{
+ "slides": [
+  {
+   "layout": "A",
+   "scene": "14-1.png",
+   "corner": "tl",
+   "ink": "#342B52",
+   "logo": "br",
+   "title": "O limão chega primeiro e a lavanda fica no final.",
+   "bottles": [
+    {
+     "slug": "lavanda-limao",
+     "x": 43,
+     "base": 72.6,
+     "h": 730,
+     "tom": "quente",
+     "sombra": 0.32,
+     "luz": {
+      "dir": "direita",
+      "sombra": 0.35,
+      "borda": 0.3,
+      "brilho": 0.2,
+      "posBrilho": 0.72,
+      "quente": 0.08,
+      "contraste": 1.08
+     }
+    }
+   ],
+   "light": "direita",
+   "titleSize": 50,
+   "occluders": [
+    {
+     "x": 486,
+     "y": 640,
+     "w": 430,
+     "h": 480,
+     "r": 24
+    }
+   ],
+   "occludersLuz": [
+    {
+     "x": 484,
+     "y": 645,
+     "w": 440,
+     "h": 505
+    }
+   ]
+  },
+  {
+   "layout": "F",
+   "scene": "14-2.png",
+   "ink": "#342B52",
+   "text": "right",
+   "title": "Lavanda & Limão",
+   "body": "Lavanda e limão, com o gás natural da fermentação. Para provar com calma, bem gelada.",
+   "bottles": [
+    {
+     "slug": "lavanda-limao",
+     "x": 28,
+     "base": 89,
+     "h": 760,
+     "sombra": 0.3,
+     "luz": {
+      "dir": "direita",
+      "sombra": 0.32,
+      "borda": 0.3,
+      "brilho": 0.2,
+      "posBrilho": 0.72,
+      "quente": 0.06,
+      "contraste": 1.08
+     }
+    }
+   ],
+   "light": "direita"
+  }
+ ]
+}

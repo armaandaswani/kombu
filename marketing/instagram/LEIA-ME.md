@@ -129,3 +129,16 @@ Por orientação expressa do titular, feed, Reels e Stories nunca são publicado
 Foram revisados os cinco Stories de hoje: convite à Casa Agridoce sem estoque específico; Hibisco & Anis Estrelado; Lavanda & Limão; explicação de fermentação em cena lifestyle aprovada; programa de afiliados dirigido explicitamente a influenciadores, com destino Parcerias e avaliação prévia. Cinco composições distintas, arquivos oficiais de garrafa, assinatura atual, sem contadores ou formulação confidencial. O renderizador agora seleciona as assinaturas atuais de assets/brand/ nas novas renderizações, sem modificar imagens antigas.
 
 Prévia local: research/2026-10-27/dolce-vita-fotos/stories-2026-11-03.jpg. render-stories.mjs e prepare-publish.mjs executados; 44 imagens do feed, 35 Stories e o Reel aprovado preservados no pacote. Pages implantado em c7907d12.kombu-social.pages.dev, com manifesto e cinco JPEGs da data conferidos contra arquivos locais por hash. 17 testes do Worker passaram. Nada publicado manualmente; a publicação continua exclusivamente pelo Worker às 07:00–07:20, e a confirmação final será feita após a janela.
+
+## Piloto automático do Claude (03/11/2026)
+
+Decisão do dono, 03/11/2026: os posts não passam mais por aprovação um a um. A tarefa agendada do Claude, `kombu-instagram-piloto`, roda todo dia às 20:00 de Manaus e segue `claude-propostas/AUTOPILOTO.md`.
+
+Ela faz três coisas:
+- Lê o estado da fila só por leitura (`estado.mjs`, nomes de chaves `published:*` e `last`, sem token).
+- Quando faltam menos de 16 dias de feed, cria um lote de 6 posts e o põe no fim de `calendar.json` como `art` (`integrar.mjs`). Depois faz o deploy do Pages e do Worker.
+- Acrescenta dias novos de Stories que ainda não existem. Nunca altera um dia que já existe.
+
+A fila 05 a 26 no padrão novo (cena gerada, garrafa oficial em pé com luz integrada) substitui os 05 a 20 antigos, com os mesmos IDs.
+
+O Codex continua dono do Worker, dos crons, do KV, dos segredos e da rotina das 06:30. Se a rotina das 06:30 encontrar o dia já preparado pelo Claude, ela só revisa.

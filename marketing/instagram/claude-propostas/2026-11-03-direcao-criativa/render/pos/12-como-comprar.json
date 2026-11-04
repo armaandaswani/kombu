@@ -1,0 +1,69 @@
+{
+ "slides": [
+  {
+   "layout": "B",
+   "scene": "12-1.png",
+   "band": {
+    "side": "top",
+    "color": "#FFF7ED",
+    "ink": "#191C1C",
+    "size": 0.27
+   },
+   "title": "No almoço, a Kombú de Maracujá vai com a polpa e as sementes da fruta.",
+   "bottles": [
+    {
+     "slug": "maracuja",
+     "x": 21,
+     "base": 88,
+     "h": 760,
+     "sombra": 0.25,
+     "luz": {
+      "dir": "esquerda",
+      "sombra": 0.3,
+      "borda": 0.3,
+      "brilho": 0.2,
+      "posBrilho": 0.3,
+      "quente": 0.05,
+      "contraste": 1.06,
+      "rotulo": [
+       0.3,
+       0.85
+      ]
+     }
+    }
+   ],
+   "light": "esquerda"
+  },
+  {
+   "layout": "A",
+   "scene": "12-2.png",
+   "corner": "bl",
+   "ink": "#FFF7ED",
+   "logo": "tl",
+   "title": "Ácida e refrescante, com o gás natural da fermentação.",
+   "bottles": [
+    {
+     "slug": "maracuja",
+     "x": 15,
+     "base": 69,
+     "h": 650,
+     "sombra": 0.25,
+     "luz": {
+      "dir": "esquerda",
+      "sombra": 0.3,
+      "borda": 0.3,
+      "brilho": 0.18,
+      "posBrilho": 0.3,
+      "quente": 0.06,
+      "contraste": 1.06,
+      "rotulo": [
+       0.3,
+       0.85
+      ]
+     }
+    }
+   ],
+   "light": "esquerda"
+  }
+ ]
+}

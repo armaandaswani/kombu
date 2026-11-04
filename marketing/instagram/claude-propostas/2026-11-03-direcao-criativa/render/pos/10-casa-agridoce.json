@@ -1,0 +1,37 @@
+{
+ "slides": [
+  {
+   "layout": "D",
+   "scene": "10-1.png",
+   "ink": "#3B2A1A",
+   "box": {
+    "x": 7.4,
+    "y": 61.8,
+    "w": 22.6,
+    "rotate": -2,
+    "font": 25
+   },
+   "title": "Tem Kombú gelada na Casa Agridoce.",
+   "bottles": [
+    {
+     "slug": "uva",
+     "x": 88,
+     "base": 74,
+     "h": 610,
+     "tom": "quente",
+     "sombra": 0.32,
+     "luz": {
+      "dir": "esquerda",
+      "sombra": 0.4,
+      "borda": 0.25,
+      "brilho": 0.18,
+      "posBrilho": 0.3,
+      "quente": 0.1,
+      "contraste": 1.08
+     }
+    }
+   ],
+   "light": "esquerda"
+  }
+ ]
+}

@@ -1,0 +1,86 @@
+{
+ "slides": [
+  {
+   "layout": "D",
+   "scene": "23-1b.png",
+   "ink": "#2B2B2B",
+   "menu": {
+    "x": 2.6,
+    "y": 18.7,
+    "w": 47.6,
+    "h": 45.9
+   },
+   "menuTitle": "Bebidas",
+   "menuItems": [
+    "Espresso",
+    "Cappuccino",
+    "Chá gelado",
+    "Água com gás"
+   ],
+   "menuNew": "Kombú Rosas & Cardamomo",
+   "caption": "Uma linha nova no seu cardápio.",
+   "captionInk": "#F3EDE4",
+   "bottles": [
+    {
+     "slug": "rosas-cardamomo",
+     "x": 63.6,
+     "base": 70.2,
+     "h": 560,
+     "sombra": 0.3,
+     "tom": "quente",
+     "luz": {
+      "dir": "esquerda",
+      "sombra": 0.32,
+      "borda": 0.25,
+      "brilho": 0.16,
+      "posBrilho": 0.7,
+      "quente": 0.08,
+      "contraste": 1.07
+     }
+    }
+   ],
+   "light": "esquerda"
+  },
+  {
+   "layout": "F",
+   "scene": "23-2.png",
+   "ink": "#F3EDE4",
+   "text": "right",
+   "title": "Doze sabores, cinco perfis.",
+   "body": "Frutados, florais, especiados, herbais e cítricos. A gente ajuda a escolher os que combinam com o seu público.",
+   "bottles": [
+    {
+     "slug": "rosas-cardamomo",
+     "x": 30,
+     "base": 86,
+     "h": 860,
+     "luz": {
+      "dir": "esquerda",
+      "sombra": 0.35,
+      "borda": 0.3,
+      "brilho": 0.18,
+      "posBrilho": 0.7,
+      "quente": 0.06,
+      "contraste": 1.08,
+      "rotulo": [
+       0.27,
+       0.87
+      ]
+     }
+    }
+   ],
+   "light": "esquerda"
+  },
+  {
+   "layout": "G",
+   "color": "#FFF7ED",
+   "ink": "#1B2F18",
+   "title": "Como começa",
+   "steps": [
+    "Você conta sobre o seu espaço em Revenda, no site.",
+    "Conversamos pelo WhatsApp.",
+    "Combinamos os sabores para começar."
+   ]
+  }
+ ]
+}

@@ -1,0 +1,35 @@
+{
+ "slides": [
+  {
+   "layout": "B",
+   "scene": "17-1.png",
+   "band": {
+    "side": "bottom",
+    "color": "#4D76C3",
+    "ink": "#FFF7ED",
+    "size": 0.27
+   },
+   "title": "Você é influenciador em Manaus?",
+   "small": "Conheça nosso programa de afiliados.",
+   "bottles": [
+    {
+     "slug": "flor-fada-azul-blueberry",
+     "x": 70,
+     "base": 70.2,
+     "h": 490,
+     "sombra": 0.22,
+     "luz": {
+      "dir": "esquerda",
+      "sombra": 0.28,
+      "borda": 0.3,
+      "brilho": 0.18,
+      "posBrilho": 0.7,
+      "quente": 0.02,
+      "contraste": 1.06
+     }
+    }
+   ],
+   "light": "esquerda"
+  }
+ ]
+}

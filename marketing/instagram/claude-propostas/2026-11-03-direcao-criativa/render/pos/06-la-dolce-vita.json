@@ -1,0 +1,61 @@
+{
+ "slides": [
+  {
+   "layout": "B",
+   "scene": "06-1.png",
+   "band": {
+    "side": "top",
+    "color": "#F4BD29",
+    "ink": "#191C1C",
+    "size": 0.245
+   },
+   "title": "Gelato de fruta e uma Kombú gelada, na Dolce Vita.",
+   "small": "@ladolcevitagelataria",
+   "bottles": [
+    {
+     "slug": "jasmim-manga",
+     "x": 19,
+     "base": 77.5,
+     "h": 680,
+     "tom": "quente",
+     "sombra": 0.4,
+     "luz": {
+      "dir": "esquerda",
+      "sombra": 0.32,
+      "borda": 0.35,
+      "brilho": 0.2,
+      "posBrilho": 0.75,
+      "quente": 0.14,
+      "contraste": 1.1
+     }
+    }
+   ],
+   "light": "esquerda"
+  },
+  {
+   "layout": "F",
+   "scene": "06-2.png",
+   "ink": "#191C1C",
+   "title": "Nossa sugestão para os gelatos de fruta é Manga & Jasmim.",
+   "bottles": [
+    {
+     "slug": "jasmim-manga",
+     "x": 33,
+     "base": 86,
+     "h": 820,
+     "luz": {
+      "dir": "esquerda",
+      "sombra": 0.3,
+      "borda": 0.22,
+      "brilho": 0.18,
+      "posBrilho": 0.68,
+      "quente": 0.05,
+      "contraste": 1.06
+     }
+    }
+   ],
+   "text": "right",
+   "light": "esquerda"
+  }
+ ]
+}

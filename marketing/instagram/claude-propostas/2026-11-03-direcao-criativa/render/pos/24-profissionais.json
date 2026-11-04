@@ -1,0 +1,68 @@
+{
+ "slides": [
+  {
+   "layout": "D",
+   "scene": "24-1b.png",
+   "ink": "#1B2F18",
+   "card": {
+    "x": 23.8,
+    "y": 40.5,
+    "w": 42
+   },
+   "small": "Para nutricionistas, nutrólogos e personal trainers de Manaus",
+   "title": "Antes de qualquer proposta, queremos conhecer o seu trabalho.",
+   "bottles": [
+    {
+     "slug": "pera-alecrim",
+     "x": 59.5,
+     "base": 67,
+     "h": 470,
+     "sombra": 0.22,
+     "tom": "quente",
+     "luz": {
+      "dir": "direita",
+      "sombra": 0.3,
+      "borda": 0.35,
+      "brilho": 0.18,
+      "posBrilho": 0.68,
+      "quente": 0.08,
+      "contraste": 1.06
+     }
+    }
+   ],
+   "light": "direita"
+  },
+  {
+   "layout": "G",
+   "color": "#FFF7ED",
+   "ink": "#1B2F18",
+   "body": "Conte como você atende e quem acompanha você. A conversa começa pelo seu trabalho, e o formato de uma parceria só é combinado depois, respeitando as regras da sua profissão."
+  },
+  {
+   "layout": "F",
+   "scene": "24-3.png",
+   "ink": "#1B2F18",
+   "text": "right",
+   "title": "Conheça a Kombú.",
+   "body": "Kombucha artesanal feita em Manaus, suave e com sabor intenso. Para conversar, acesse Parcerias, no site.",
+   "bottles": [
+    {
+     "slug": "pera-alecrim",
+     "x": 26,
+     "base": 89,
+     "h": 820,
+     "luz": {
+      "dir": "esquerda",
+      "sombra": 0.3,
+      "borda": 0.3,
+      "brilho": 0.18,
+      "posBrilho": 0.7,
+      "quente": 0.08,
+      "contraste": 1.07
+     }
+    }
+   ],
+   "light": "esquerda"
+  }
+ ]
+}
