@@ -1,9 +1,9 @@
-// Connects @kombu.amazonia to the publisher. The token never appears on screen or in chat.
+// Connects the Kombú account (@kombukombucha.am, formerly @kombu.amazonia) to the publisher. The token never appears on screen or in chat.
 //
 //   cd "~/Desktop/Kombucha/Kombu New Site/marketing/instagram" && node connect.mjs
 //
 // Asks for the long-lived token (hidden input; pasting works), confirms with Instagram that it
-// belongs to @kombu.amazonia, stores it as the Worker's IG_TOKEN secret, and keeps a local copy
+// belongs to the Kombú account, stores it as the Worker's IG_TOKEN secret, and keeps a local copy
 // readable only by you. Run it again whenever you generate a new token.
 import {spawn} from 'node:child_process';
 import fs from 'node:fs/promises';
@@ -11,7 +11,9 @@ import os from 'node:os';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 
-const EXPECTED = 'kombu.amazonia';
+// The account is checked by its Instagram user id, which survives a username change
+// (owner renamed @kombu.amazonia to @kombukombucha.am on 03/11/2026).
+const EXPECTED_ID = '17841465929956612';
 const KV_ID = 'b59df63d5f8d4b91a087a818f4252c3e';
 const root = path.dirname(fileURLToPath(import.meta.url));
 const credFile = path.join(os.homedir(), 'Library/Application Support/Kombu/instagram.json');
@@ -68,8 +70,8 @@ if (token.length < 50) { console.log('Isso não parece um token completo. Nada f
 const res = await fetch('https://graph.instagram.com/v21.0/me?' + new URLSearchParams({fields: 'user_id,username,account_type', access_token: token}));
 const me = await res.json().catch(() => ({}));
 if (!res.ok || me.error) { console.log('O Instagram recusou o token: ' + (me.error?.message || res.status) + '\nNada foi alterado.'); process.exit(1); }
-if (me.username !== EXPECTED) {
-  console.log(`Este token é da conta @${me.username}, não de @${EXPECTED}. Nada foi alterado.`);
+if (String(me.user_id) !== EXPECTED_ID) {
+  console.log(`Este token é da conta @${me.username}, que não é a conta da Kombú que publica. Nada foi alterado.`);
   console.log('Gere o token logado na conta da Kombú.');
   process.exit(1);
 }

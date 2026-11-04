@@ -3527,7 +3527,7 @@ function generateDeliveryProofPdf(order, delivery) {
     doc.setFont("helvetica", "normal");
     doc.setFontSize(7);
     doc.setTextColor(...muted);
-    doc.text("Kombú Kombucha da Amazônia | Manaus - AM | @kombu.amazonia", margin, 289);
+    doc.text("Kombú Kombucha da Amazônia | Manaus - AM | @kombukombucha.am", margin, 289);
     doc.text(`${page}/${pageCount}`, pageWidth - margin, 289, { align: "right" });
   }
   const filename = `comprovante-entrega-${fileSlug(orderClientDisplayName(order))}-remessa-${String(delivery.number || 1).padStart(2, "0")}-${data.deliveryDate}.pdf`;
@@ -4009,7 +4009,7 @@ function receiptPdf(receiptId, mode = "download", secondCopy = false) {
   doc.setFont("helvetica", "normal");
   doc.setFontSize(7);
   doc.setTextColor(...muted);
-  doc.text("Kombú Kombucha da Amazônia | Manaus - AM | @kombu.amazonia", margin, 289);
+  doc.text("Kombú Kombucha da Amazônia | Manaus - AM | @kombukombucha.am", margin, 289);
   doc.text(receipt.number, 192, 289, { align: "right" });
   const filename = `recibo-${fileSlug(receiptCustomerLabel(receipt))}-${receipt.number}${secondCopy ? "-segunda-via" : ""}.pdf`;
   if (mode === "print") {

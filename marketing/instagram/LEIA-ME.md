@@ -1,4 +1,4 @@
-# Instagram da Kombú (@kombu.amazonia): publicação automática
+# Instagram da Kombú (@kombukombucha.am): publicação automática
 
 Gêmeo do publicador da Reveja. Um post a cada dois dias, às 09:00 de Manaus.
 
@@ -19,12 +19,12 @@ Gêmeo do publicador da Reveja. Um post a cada dois dias, às 09:00 de Manaus.
   (post feito à mão), registra e não repete.
 
 ## Conectar a conta (ação do titular, uma vez)
-1. A conta @kombu.amazonia precisa ser **profissional** (já é).
+1. A conta @kombukombucha.am precisa ser **profissional** (já é).
 2. developers.facebook.com → Meus apps. Dois caminhos:
    - **Mais rápido:** abrir o app que já existe, "Reveja Publicador", e acrescentar a conta da Kombú nele.
    - **Mais separado:** Criar app → escolher o caso de uso do Instagram → nome "Kombú Publicador".
 3. No app: produto **Instagram** → "API com login do Instagram".
-4. Em "Gerar tokens de acesso", adicionar a conta @kombu.amazonia (entrando com o login do Instagram
+4. Em "Gerar tokens de acesso", adicionar a conta @kombukombucha.am (entrando com o login do Instagram
    da Kombú) e gerar o token. Permissões: `instagram_business_basic` e
    `instagram_business_content_publish`. Se a Meta pedir, aceite o convite de testador em
    Instagram → Configurações → Apps e sites.
