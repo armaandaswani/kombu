@@ -12,6 +12,7 @@ import reels from '../reels-calendar.json';
 import {runReel,reelPreparationTime} from './reels.mjs';
 import {isMorningPublicationTime} from './publication-window.mjs';
 import {runStories, isFeedTime, localDate} from './stories.mjs';
+import {handleRequest, finishPending} from './mentions.mjs';
 
 const api = 'https://graph.instagram.com/v21.0';
 const imageBase = 'https://kombu-social.pages.dev';
@@ -176,6 +177,8 @@ export default {
   // Await the run itself: waitUntil() tasks are cut off shortly after the event ends (Reveja, 23/10).
   async scheduled(event, env) {
     if(!isMorningPublicationTime(new Date()))return log(env,'execução fora da manhã de Manaus: publicação bloqueada, inclusive recuperações');
+    // Story videos from mentions that Meta had not finished during the webhook.
+    await finishPending(env,{currentToken,account,log}).catch(e=>log(env,'menções pendentes: '+e.message));
     try { await runStories(env, {call, currentToken, account, waitFinished, log}, new Date(event.scheduledTime)); }
     catch (e) {
       const detail=[e.httpStatus&&'HTTP '+e.httpStatus,e.code&&'code '+e.code,e.subcode&&'subcode '+e.subcode].filter(Boolean).join(', ');
@@ -185,5 +188,6 @@ export default {
     const now=new Date(event.scheduledTime);
     if(isFeedTime(now)||reelPreparationTime(now))await run(env,{now,publishAllowed:isFeedTime(now)});
   },
-  async fetch() { return new Response('Not found', {status: 404}); },
+  // Only the Instagram webhook (signed by Meta) and one-time story media links are served; see mentions.mjs.
+  async fetch(request, env, ctx) { return handleRequest(request, env, ctx, {currentToken, account, log}); },
 };

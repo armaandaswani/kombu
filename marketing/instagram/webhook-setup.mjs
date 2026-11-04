@@ -1,0 +1,70 @@
+// Liga o repost automático de quem marca a Kombú no Story (worker/mentions.mjs). Ação do titular, uma vez.
+//
+//   cd "~/Desktop/Kombucha/Kombu New Site/marketing/instagram" && node webhook-setup.mjs
+//
+// Pede a "Chave secreta do app" do Instagram (entrada oculta; colar funciona) e a guarda como segredo do
+// Worker, junto com um token de verificação e um canal ntfy gerados aqui. Depois inscreve a conta para
+// receber as mensagens (onde chegam as marcações em Story) usando a conexão salva pelo connect.mjs.
+// Nenhum segredo aparece na tela; o token de verificação e o canal ntfy aparecem porque você vai colá-los.
+import {spawn} from 'node:child_process';
+import crypto from 'node:crypto';
+import fs from 'node:fs/promises';
+import os from 'node:os';
+import path from 'node:path';
+import {fileURLToPath} from 'node:url';
+
+const root = path.dirname(fileURLToPath(import.meta.url));
+const env = {...process.env, CI: '1', WRANGLER_SEND_METRICS: 'false', CLOUDFLARE_ACCOUNT_ID: 'd96b1341ef54c6d28ad6415f18220aaf'};
+const W = ['npx', '--yes', 'wrangler@4.156.0'];
+
+function run(args, input) {
+  return new Promise(resolve => {
+    const p = spawn(W[0], [...W.slice(1), ...args], {cwd: path.join(root, 'worker'), env});
+    let out = '';
+    p.stdout.on('data', d => (out += d)); p.stderr.on('data', d => (out += d));
+    p.on('close', code => resolve({code, out}));
+    if (input !== undefined) p.stdin.end(input); else p.stdin.end();
+  });
+}
+function askHidden(question) {
+  return new Promise(resolve => {
+    process.stdout.write(question);
+    let value = '';
+    process.stdin.setRawMode(true); process.stdin.resume(); process.stdin.setEncoding('utf8');
+    const onData = ch => {
+      if (ch === '\r' || ch === '\n' || ch === '\u0004') { process.stdin.setRawMode(false); process.stdin.pause(); process.stdin.off('data', onData); process.stdout.write(`\n`); resolve(value.trim()); }
+      else if (ch === '\u0003') process.exit(1);
+      else if (ch === '\u007f') value = value.slice(0, -1);
+      else value += ch;
+    };
+    process.stdin.on('data', onData);
+  });
+}
+
+const secret = await askHidden('Cole a Chave secreta do app do Instagram e aperte Enter: ');
+if (!/^[a-f0-9]{32}$/i.test(secret)) { console.log('Isso não parece a chave secreta do app (32 letras e números). Nada foi alterado.'); process.exit(1); }
+
+const verify = 'kombu-' + crypto.randomBytes(12).toString('hex');
+const topic = 'kombu-avisos-' + crypto.randomBytes(8).toString('hex');
+for (const [name, value] of [['IG_APP_SECRET', secret], ['WEBHOOK_VERIFY_TOKEN', verify], ['NTFY_TOPIC', topic]]) {
+  const r = await run(['secret', 'put', name], value);
+  if (r.code !== 0) { console.log(`Não consegui salvar ${name} no Cloudflare:\n` + r.out.replaceAll(secret, '[chave]')); process.exit(1); }
+}
+
+// Inscreve a conta nas mensagens, com a conexão salva pelo connect.mjs.
+const cred = JSON.parse(await fs.readFile(path.join(os.homedir(), 'Library/Application Support/Kombu/instagram.json'), 'utf8'));
+const res = await fetch('https://graph.instagram.com/v21.0/me/subscribed_apps?' + new URLSearchParams({subscribed_fields: 'messages', access_token: cred.accessToken}), {method: 'POST'});
+const data = await res.json().catch(() => ({}));
+const inscrito = res.ok && data.success;
+
+console.log(`
+Pronto do lado da Kombú.${inscrito ? '' : ' (A inscrição da conta não confirmou: ' + (data.error?.message || res.status) + '. Me avise.)'}
+
+1) No app da Meta, em Webhooks do Instagram, cole:
+   URL de retorno:     https://kombu-instagram.<subdominio>.workers.dev/instagram/webhook
+   Token de verificação: ${verify}
+   e assine o campo "messages".
+
+2) No celular, instale o app ntfy e assine este canal (é o seu canal privado de avisos):
+   ${topic}
+`);
