@@ -1,4 +1,5 @@
-// Kombú Instagram publisher: Cloudflare Worker on a cron trigger, no public endpoint.
+// Kombú Instagram publisher: Cloudflare Worker on a cron trigger. Its only public endpoint is the
+// Meta-signed webhook that reposts Stories mentioning the Kombú (mentions.mjs).
 // Twin of the Reveja publisher, with one change: posts go out in calendar order, one every
 // `everyDays`, counted from the last real post. Reveja publishes by fixed date, which works there;
 // here the account connects whenever the owner gets to it, and a date-based calendar would

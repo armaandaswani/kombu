@@ -1,8 +1,9 @@
-# Kombú Instagram publisher (@kombu.amazonia). Cron only: no public URL.
+# Kombú Instagram publisher (@kombukombucha.am). Publishing runs on the cron; the only public paths are the
+# Meta-signed Instagram webhook and one-time story media links for reposting mentions (mentions.mjs, 04/11/2026).
 name = "kombu-instagram"
 main = "index.mjs"
 compatibility_date = "2026-10-01"
-workers_dev = false
+workers_dev = true
 preview_urls = false
 
 [[kv_namespaces]]

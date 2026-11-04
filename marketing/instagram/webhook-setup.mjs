@@ -41,6 +41,19 @@ function askHidden(question) {
   });
 }
 
+// Segundo passo, depois de colar a URL no app da Meta: só inscreve a conta, sem trocar os segredos.
+async function inscrever() {
+  const cred = JSON.parse(await fs.readFile(path.join(os.homedir(), 'Library/Application Support/Kombu/instagram.json'), 'utf8'));
+  const res = await fetch('https://graph.instagram.com/v21.0/me/subscribed_apps?' + new URLSearchParams({subscribed_fields: 'messages', access_token: cred.accessToken}), {method: 'POST'});
+  const data = await res.json().catch(() => ({}));
+  return res.ok && data.success ? null : (data.error?.message || String(res.status));
+}
+if (process.argv.includes('--inscrever')) {
+  const erro = await inscrever();
+  console.log(erro ? 'A Meta não confirmou a inscrição: ' + erro : 'Conta inscrita. A partir de agora, cada marcação em Story é repostada, agradecida e avisada no ntfy.');
+  process.exit(erro ? 1 : 0);
+}
+
 const secret = await askHidden('Cole a Chave secreta do app do Instagram e aperte Enter: ');
 if (!/^[a-f0-9]{32}$/i.test(secret)) { console.log('Isso não parece a chave secreta do app (32 letras e números). Nada foi alterado.'); process.exit(1); }
 
@@ -51,20 +64,16 @@ for (const [name, value] of [['IG_APP_SECRET', secret], ['WEBHOOK_VERIFY_TOKEN',
   if (r.code !== 0) { console.log(`Não consegui salvar ${name} no Cloudflare:\n` + r.out.replaceAll(secret, '[chave]')); process.exit(1); }
 }
 
-// Inscreve a conta nas mensagens, com a conexão salva pelo connect.mjs.
-const cred = JSON.parse(await fs.readFile(path.join(os.homedir(), 'Library/Application Support/Kombu/instagram.json'), 'utf8'));
-const res = await fetch('https://graph.instagram.com/v21.0/me/subscribed_apps?' + new URLSearchParams({subscribed_fields: 'messages', access_token: cred.accessToken}), {method: 'POST'});
-const data = await res.json().catch(() => ({}));
-const inscrito = res.ok && data.success;
-
 console.log(`
-Pronto do lado da Kombú.${inscrito ? '' : ' (A inscrição da conta não confirmou: ' + (data.error?.message || res.status) + '. Me avise.)'}
+Segredos salvos no publicador.
 
 1) No app da Meta, em Webhooks do Instagram, cole:
-   URL de retorno:     https://kombu-instagram.<subdominio>.workers.dev/instagram/webhook
+   URL de retorno:       https://kombu-instagram.adaswani.workers.dev/instagram/webhook
    Token de verificação: ${verify}
-   e assine o campo "messages".
+   Clique em "Verificar e salvar" e assine o campo "messages".
 
 2) No celular, instale o app ntfy e assine este canal (é o seu canal privado de avisos):
    ${topic}
+
+3) Depois do passo 1, rode:  node webhook-setup.mjs --inscrever
 `);
