@@ -336,9 +336,9 @@ const CMS_FLAVOR_SEED = [
     recommended: FLAVOR_IMAGE_RECOMMENDED,
     imageUrl:
       "https://static.wixstatic.com/media/716adf_5c8cd66d9eb842a0940b212d250fd255~mv2.png/v1/fill/w_760,h_1368,al_c,q_92,usm_0.66_1.00_0.01,enc_auto/IMG_2897_PNG.png",
-    ingredients: "Morango, mirtilo, oxicoco",
+    ingredients: "Morango, blueberry, cranberry",
     angle: "Frutada, levemente ácida e vibrante.",
-    description: "Mistura morango, mirtilo e oxicoco em um perfil frutado e levemente ácido.",
+    description: "Mistura morango, blueberry e cranberry em um perfil frutado e levemente ácido.",
   },
   {
     slug: "hibisco-anis-estrelado",

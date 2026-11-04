@@ -26,7 +26,7 @@
   // for each of these, and add new flavours of its own.
   const FLAVORS = [
     { slug: "maracuja", name: "Maracujá", imageKey: "maracuja", profile: "Frutados", ingredients: ["Maracujá"], angle: "Tropical, ácida e refrescante.", description: "Polpa de maracujá de verdade, com as sementes." },
-    { slug: "frutas-vermelhas", name: "Frutas Vermelhas", imageKey: "frutasVermelhas", profile: "Frutados", ingredients: ["Morango", "blueberry", "oxicoco"], angle: "Frutada, vibrante e equilibrada.", description: "Morango, blueberry e oxicoco num perfil frutado e levemente ácido." },
+    { slug: "frutas-vermelhas", name: "Frutas Vermelhas", imageKey: "frutasVermelhas", profile: "Frutados", ingredients: ["Morango", "blueberry", "cranberry"], angle: "Frutada, vibrante e equilibrada.", description: "Morango, blueberry e cranberry num perfil frutado e levemente ácido." },
     { slug: "hibisco-anis-estrelado", name: "Hibisco & Anis Estrelado", imageKey: "hibisco", profile: "Florais", ingredients: ["Hibisco", "anis estrelado"], angle: "Floral, acidulada e aromática.", description: "O hibisco traz a cor e a acidez. O anis estrelado, o perfume." },
     { slug: "flor-fada-azul-blueberry", name: "Flor Fada Azul & Blueberry", imageKey: "mirtilo", profile: "Florais", ingredients: ["Flor fada azul", "blueberry"], angle: "Floral e frutada.", description: "A cor vem da flor e da fruta. Nenhum corante." },
     { slug: "maca-canela", name: "Maçã & Canela", imageKey: "macaCanela", profile: "Especiados", ingredients: ["Maçã", "canela em pau"], angle: "Aconchegante, frutada e especiada.", description: "Maçã e canela em pau em uma combinação frutada e especiada." },

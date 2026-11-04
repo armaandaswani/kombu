@@ -48,13 +48,13 @@ Nenhum sabor se repete dentro de seis posts seguidos, dois layouts iguais nunca 
 
 ## 05 · Frutas Vermelhas
 **Layout B embaixo** (faixa vinho #650715, título creme).
-**Na arte:** "Morango, blueberry e oxicoco na mesma garrafa."
+**Na arte:** "Morango, blueberry e cranberry na mesma garrafa."
 
-**Composição:** frontal, na altura de uma mesa de mármore claro de café, de manhã. Garrafa oficial à esquerda; à direita, copo com líquido rubi e gelo. Na frente, uma tigela pequena com morangos, blueberries e oxicocos frescos. Uma mão adulta entra pela direita pegando o copo.
+**Composição:** frontal, na altura de uma mesa de mármore claro de café, de manhã. Garrafa oficial à esquerda; à direita, copo com líquido rubi e gelo. Na frente, uma tigela pequena com morangos, blueberries e cranberries frescos. Uma mão adulta entra pela direita pegando o copo.
 
 **Legenda**
 ```
-Morango, blueberry e oxicoco na mesma garrafa, e é deles que vem a cor da bebida.
+Morango, blueberry e cranberry na mesma garrafa, e é deles que vem a cor da bebida.
 
 A Kombú Frutas Vermelhas é suave no gole e intensa no sabor, com a acidez leve das frutas e o gás natural da fermentação. Você sente mais o morango ou o blueberry? Conta pra gente nos comentários.
 
@@ -65,7 +65,7 @@ Prove gelada nos nossos parceiros e pergunte quais sabores estão gelados hoje.
 
 **Prompt**
 ```
-Fotografia frontal, câmera exatamente na altura do tampo de uma mesa redonda de mármore claro num café de Manaus, de manhã, lente 50 mm, perspectiva reta. No terço esquerdo, área livre e nítida do mármore onde depois será colocada uma garrafa em pé vista de frente. No centro-direita, um copo alto de vidro liso com líquido vermelho-rubi translúcido, gelo e condensação; a mão de uma pessoa adulta entra pela direita e segura o copo com naturalidade, sem levantá-lo. Em primeiro plano, uma tigela pequena de cerâmica clara com morangos frescos, blueberries e oxicocos (cranberries). Luz natural suave vinda de uma janela à esquerda. Fundo do café desfocado em tons quentes. Terço inferior com mármore limpo para texto.
+Fotografia frontal, câmera exatamente na altura do tampo de uma mesa redonda de mármore claro num café de Manaus, de manhã, lente 50 mm, perspectiva reta. No terço esquerdo, área livre e nítida do mármore onde depois será colocada uma garrafa em pé vista de frente. No centro-direita, um copo alto de vidro liso com líquido vermelho-rubi translúcido, gelo e condensação; a mão de uma pessoa adulta entra pela direita e segura o copo com naturalidade, sem levantá-lo. Em primeiro plano, uma tigela pequena de cerâmica clara com morangos frescos, blueberries e cranberries. Luz natural suave vinda de uma janela à esquerda. Fundo do café desfocado em tons quentes. Terço inferior com mármore limpo para texto.
 ```
 
 ---
