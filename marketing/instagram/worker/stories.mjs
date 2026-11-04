@@ -10,6 +10,12 @@ export function validateDay(manifest, date) {
   }
   return day;
 }
+// Handles to tag on a Story: the frame's partner, any tags list, and @handles written on the art.
+export function storyTags(frame, own = '') {
+  const text = [frame.partner, ...(frame.tags || []), frame.title, frame.body].filter(Boolean).join(' ');
+  const handles = [...new Set([...text.matchAll(/@([A-Za-z0-9._]+[A-Za-z0-9_])/g)].map(m => m[1].toLowerCase()))];
+  return handles.filter(h => h !== String(own).toLowerCase()).slice(0, 20).map(username => ({username}));
+}
 // Cloudflare supplies the scheduled timestamp, so a delayed invocation keeps its slot.
 export function isFeedTime(now) {
   return now.getUTCMinutes() === 0 && now.getUTCHours() === 13;
@@ -79,7 +85,18 @@ export async function runStories(env, {call, currentToken, account, waitFinished
     if(!containerId){
       const image=await fetch(base+frame.image,{method:'HEAD'});
       if(!image.ok||!image.headers.get('content-type')?.includes('image/jpeg'))throw Error('Stories: imagem indisponível: '+frame.image);
-      const container=await call('POST','/'+user.id+'/media',{media_type:'STORIES',image_url:base+frame.image},token);
+      // Partner named on the art is tagged (Meta accepts user_tags on Stories since 07/2025, no x/y).
+      const tags=storyTags(frame,user.username);
+      let container;
+      try{
+        container=await call('POST','/'+user.id+'/media',{media_type:'STORIES',image_url:base+frame.image,...(tags.length?{user_tags:JSON.stringify(tags)}:{})},token);
+      }catch(e){
+        // A renamed or private handle makes Meta refuse the container; nothing was published yet,
+        // so the Story still goes out, untagged, instead of losing the slot.
+        if(!tags.length)throw e;
+        await log(env,'Stories: marcação recusada em '+frame.id+' ('+tags.map(t=>'@'+t.username).join(' ')+'); publicando sem marcar');
+        container=await call('POST','/'+user.id+'/media',{media_type:'STORIES',image_url:base+frame.image},token);
+      }
       containerId=container.id;
       await waitFinished(containerId,token);
     }
