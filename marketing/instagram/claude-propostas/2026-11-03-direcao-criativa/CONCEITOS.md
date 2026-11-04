@@ -65,7 +65,7 @@ Folha grande de papel de algodão cor creme, lisa e sem textura forte, fotografa
 ## 2. Consumo · "Almoço leve"
 **Sabor:** Maracujá · **Formato:** carrossel de 2. Ajustado em 03/11 a pedido do dono: o prato compõe a cena, mas o foco é a Kombú.
 
-**Chamada (slide 1, faixa no alto):** No almoço, a Kombú de Maracujá vai com a polpa e as sementes da fruta.
+**Chamada (slide 1, faixa no alto):** Sanduíche natural no almoço pede uma Kombú de Maracujá bem gelada.
 
 **Composição**
 - **Slide 1:**
@@ -179,13 +179,13 @@ Sem consultório, balança, jaleco ou qualquer objeto clínico. A peça convida 
 
 **Legenda**
 ```
-Se você é nutricionista, nutrólogo ou personal trainer em Manaus, a gente quer começar pelo seu trabalho.
+Professor de yoga, pilates ou meditação em Manaus? A Kombú quer conhecer o seu trabalho.
 
-Queremos entender como você atende e quem acompanha você antes de falar em qualquer formato de parceria. A Kombú é kombucha artesanal, produzida aqui em Manaus, e cada conversa respeita a atuação e as regras de cada profissão.
+Antes de falar em qualquer formato de parceria, queremos entender como são as suas aulas e quem acompanha você. A Kombú é kombucha artesanal, produzida aqui em Manaus, suave e com sabor intenso.
 
 Para apresentar o seu trabalho, acesse Parcerias, no site. São perguntas rápidas e a conversa continua pelo WhatsApp. Link na bio.
 
-#kombucha #manaus #parcerias #kombuchaartesanal #aartedonatural
+#kombucha #manaus #yogamanaus #kombuchaartesanal #aartedonatural
 ```
 
 **Prompt (slide 1)**

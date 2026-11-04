@@ -115,6 +115,8 @@ Regras do dono que não negociam:
   - nada inventado sobre a marca.
   - Imunidade é só nome de sabor.
   - Frases que se completam, sem soar robótico.
+  - **O título de cada slide faz sentido sozinho**, lido por quem não viu a legenda. O dono recusou em 03/11 "No almoço, a Kombú de Maracujá vai com a polpa e as sementes da fruta". Nada de negação dupla ("não leva: nenhum...").
+  - O revisor lê cada título em voz alta e pergunta: um cliente entende o que isso quer dizer na primeira leitura?
 - **Hashtags:** até 5, sempre com #manaus, e abertura da legenda com no máximo 125 caracteres.
 
 Depois de renderizar, chame um agente revisor independente, sem contexto desta conversa. Passe a ele:

@@ -40,12 +40,12 @@
    "layout": "G",
    "scene": "16-bg.png",
    "ink": "#1B2F18",
-   "title": "A Kombú não leva:",
+   "title": "O que fica de fora da Kombú:",
    "list": [
-    "Nenhum conservante.",
-    "Nenhum corante artificial.",
-    "Nenhum aromatizante artificial.",
-    "Nenhum gás adicionado: ele se forma na fermentação."
+    "Conservantes.",
+    "Corantes artificiais.",
+    "Aromatizantes artificiais.",
+    "Gás adicionado: o gás vem da própria fermentação."
    ]
   }
  ]
