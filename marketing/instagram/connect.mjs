@@ -87,6 +87,6 @@ await fs.writeFile(credFile, JSON.stringify({userId: me.user_id, username: me.us
 await fs.chmod(credFile, 0o600);
 
 console.log(`\nConectado: @${me.username} (${me.account_type || 'conta profissional'}).`);
-console.log('O publicador posta às 12:30 de Manaus, um post a cada dois dias, com uma nova tentativa às 18:30.');
+console.log('O publicador posta os Stories das 07:00 às 07:20 e o feed às 09:00 de Manaus, um post a cada dois dias.');
 console.log('Se você já publicou o primeiro post à mão com a legenda exata, ele é reconhecido e não se repete.');
 console.log('Pode voltar para o Claude.');

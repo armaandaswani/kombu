@@ -61,6 +61,14 @@ Antes de criar, leia o vault (`~/Documents/Kombú Vault`):
 
 Use as skills `content-calendar-sms`, `caption-writer-sms` e `carousel-writer-sms`.
 
+**Aprenda com os números.** Rode `node ../comentarios/comentarios.mjs insights`, que salva em `comentarios/insights/<data>.json`. Para cada post, compare:
+- alcance (`reach`);
+- compartilhamentos (`shares`);
+- salvamentos (`saved`);
+- interações (`total_interactions`).
+
+Dê mais espaço no lote ao assunto, formato e tipo de cena que funcionaram melhor. Em 03/11, por exemplo, o carrossel com fotos reais da Dolce Vita foi o maior alcance (449). Nunca descarte de vez um assunto por causa de um só post. Registre no diário a leitura que guiou o lote.
+
 Mistura de cada lote:
 - **2 de sabor:** sabores que não saíram nos últimos 6 posts.
 - **1 de ocasião ou serviço:** como servir, harmonização, momento do dia, onde comprar.
