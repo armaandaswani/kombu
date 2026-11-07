@@ -113,7 +113,14 @@ Regras do dono que não negociam:
   - nunca o tipo de chá;
   - sem superlativo;
   - nada inventado sobre a marca.
-  - Imunidade é só nome de sabor.
+  - Imunidade é só nome de sabor, mas nunca escreva "Imunidade é nome de sabor". O dono, em 07/11: "que pessoa normal fala isso?". Pergunte como gente: "Já provou a Kombú de Imunidade?".
+  - **Nunca "polpa".** A Kombú usa a fruta: "a gente usa a fruta de verdade".
+  - **Escreva como uma pessoa de Manaus falaria no Instagram.** Antes de renderizar, passe todos os textos (títulos, legendas, Stories, respostas) pela skill `humanizer`. O dono pediu isso e recusou, em 07/11, textos com cara de IA. Recusados:
+    - frase-rótulo sem verbo: "Maracujá com semente e tudo.", "Goiaba, de pertinho.", "Doze sabores, cinco perfis.";
+    - fragmento de efeito: "Nenhum corante.";
+    - "X ou Y?" seco: "Herbal ou frutado?".
+
+    Prefira pergunta direta ("Já provou a de Goiaba?"), "a gente" e frases inteiras.
   - Frases que se completam, sem soar robótico.
   - **O título de cada slide faz sentido sozinho**, lido por quem não viu a legenda. O dono recusou em 03/11 "No almoço, a Kombú de Maracujá vai com a polpa e as sementes da fruta". Nada de negação dupla ("não leva: nenhum...").
   - O revisor lê cada título em voz alta e pergunta: um cliente entende o que isso quer dizer na primeira leitura?
@@ -152,10 +159,14 @@ Os Stories são feitos pelo motor `claude-propostas/stories/stories.mjs`. Nunca 
 - cenas menos usadas;
 - parceiro em dias alternados, em rodízio. O Solar Café Regional fica fora no primeiro mês.
 
-Se `stories-calendar.json` não tiver os próximos 3 dias:
+Mantenha sempre **5 dias de Stories prontos**. Em 06/11 uma rodada falhou e quase faltou Story. Se `stories-calendar.json` não tiver os próximos 5 dias:
 1. `cd claude-propostas/stories && node stories.mjs biblioteca`. Atualiza a lista de cenas: entra toda cena nova do feed.
 2. `node stories.mjs planejar <dia> <n>`. Salve cada dia em `dias/<data>.json`.
 3. Escreva os textos de cada arte (`title`, `body`, e também `kicker`, `cta`, `itens`, `opcoes` quando o formato usar).
+   - Passe os textos pela skill `humanizer` e pelas regras de texto do passo 4. Bons exemplos (08 a 10/11):
+     - "Já provou a nossa Kombú de Imunidade?"
+     - "Já reparou nas sementinhas da de Maracujá?"
+     - "Vai passar pela Djalma Batista hoje?"
    - Varie as chamadas de interação: "manda por mensagem", "vota", "conta pra gente", "marca quem". Nunca "Responda este Story".
    - Nos formatos parceiro e pergunta, siga `2026-11-03-direcao-criativa/STORIES-INTERACAO.md`.
    - Em parceiro, nunca afirme que um sabor está disponível; endereço só se estiver no vault.

@@ -3,7 +3,7 @@
   {
    "layout": "E",
    "scene": "07-1b.png",
-   "title": "A cor vem da flor e da fruta. Nenhum corante.",
+   "title": "A cor vem da flor e da fruta, sem corante nenhum.",
    "bottles": [
     {
      "slug": "flor-fada-azul-blueberry",
@@ -29,7 +29,7 @@
    "layout": "F",
    "scene": "07-2.png",
    "ink": "#191C1C",
-   "title": "Flor Fada Azul & Blueberry: floral e frutada.",
+   "title": "Já provou a de Flor Fada Azul & Blueberry?",
    "bottles": [
     {
      "slug": "flor-fada-azul-blueberry",

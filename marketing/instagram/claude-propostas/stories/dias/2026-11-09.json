@@ -1,0 +1,49 @@
+{
+ "date": "2026-11-09",
+ "frames": [
+  {
+   "id": "detalhe-1109",
+   "formato": "detalhe",
+   "cena": "26-personal-trainers-1",
+   "flavor": "goiaba",
+   "title": "Começando a semana com uma de Goiaba?",
+   "body": "Tem gosto de goiaba de verdade, e o gás vem da própria fermentação."
+  },
+  {
+   "id": "enquete-1109",
+   "formato": "enquete",
+   "cena": "07-flor-fada-azul-1",
+   "flavor": "flor-fada-blueberry",
+   "cena2": "14-lavanda-limao-1",
+   "flavor2": "lavanda-limao",
+   "title": "Azul ou lilás, qual você escolhe?",
+   "body": "",
+   "cta": "Manda pra gente o nome do seu sabor."
+  },
+  {
+   "id": "revista-1109",
+   "formato": "revista",
+   "cena": "12-como-comprar-2",
+   "flavor": "maracuja",
+   "title": "Já reparou nas sementinhas da de Maracujá?",
+   "body": "A gente usa a fruta de verdade, por isso elas aparecem na garrafa."
+  },
+  {
+   "id": "cena-1109",
+   "formato": "cena",
+   "cena": "11-imunidade-1",
+   "flavor": "imunidade",
+   "title": "Já provou a nossa Kombú de Imunidade?",
+   "body": "Tem limão, gengibre e cúrcuma. É cítrica e um pouco picante."
+  },
+  {
+   "id": "fato-1109",
+   "formato": "fato",
+   "cena": "24-profissionais-3",
+   "flavor": "pera-alecrim",
+   "title": "A gente faz a Kombú aqui em Manaus desde 2017.",
+   "body": "Em pequenos lotes, de forma artesanal.",
+   "kicker": "Você sabia?"
+  }
+ ]
+}

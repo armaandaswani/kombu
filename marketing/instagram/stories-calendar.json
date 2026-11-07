@@ -618,6 +618,209 @@
           "source": "claude-propostas/stories"
         }
       ]
+    },
+    {
+      "date": "2026-11-08",
+      "frames": [
+        {
+          "id": "parceiro-1108",
+          "type": "art",
+          "formato": "parceiro",
+          "title": "Onde encontrar Vai passar pela Djalma Batista hoje?",
+          "body": "A Divina Terra tem Kombú gelada. Pergunta lá quais sabores estão na geladeira.",
+          "flavor": "pera-alecrim",
+          "partner": "@divinaterramanaus",
+          "cena": "25-nutricionistas-1",
+          "imageSource": "assets/stories-art/2026-11-08-parceiro-1108.jpg",
+          "image": "stories/2026-11-08/parceiro-1108.jpg",
+          "source": "claude-propostas/stories"
+        },
+        {
+          "id": "fato-1108",
+          "type": "art",
+          "formato": "fato",
+          "title": "Você sabia? Sabe de onde vem o vermelho da Kombú de Hibisco?",
+          "body": "Do próprio hibisco. A cor vem da flor, sem corante nenhum.",
+          "flavor": "hibisco-anis",
+          "cena": "09-hibisco-1",
+          "imageSource": "assets/stories-art/2026-11-08-fato-1108.jpg",
+          "image": "stories/2026-11-08/fato-1108.jpg",
+          "source": "claude-propostas/stories"
+        },
+        {
+          "id": "pergunta-1108",
+          "type": "art",
+          "formato": "pergunta",
+          "title": "Qual Kombú combina com o seu domingo?",
+          "body": "Manda pra gente por mensagem. Maçã & Canela Frutas Vermelhas Hibisco & Anis Estrelado Rosas & Cardamomo",
+          "flavor": "maca-canela",
+          "cena": "15-maca-canela-1",
+          "imageSource": "assets/stories-art/2026-11-08-pergunta-1108.jpg",
+          "image": "stories/2026-11-08/pergunta-1108.jpg",
+          "source": "claude-propostas/stories"
+        },
+        {
+          "id": "detalhe-1108",
+          "type": "art",
+          "formato": "detalhe",
+          "title": "Já provou a de Frutas Vermelhas?",
+          "body": "Tem morango, blueberry e cranberry na mesma garrafa.",
+          "flavor": "frutas-vermelhas",
+          "cena": "05-frutas-vermelhas-1",
+          "imageSource": "assets/stories-art/2026-11-08-detalhe-1108.jpg",
+          "image": "stories/2026-11-08/detalhe-1108.jpg",
+          "source": "claude-propostas/stories"
+        },
+        {
+          "id": "lista-1108",
+          "type": "art",
+          "formato": "lista",
+          "title": "Do jeito que a gente gosta de tomar",
+          "body": "Bem gelada, direto da geladeira. Num copo com gelo, no fim da tarde. Junto com o almoço de domingo.",
+          "flavor": "rosas-cardamomo",
+          "cena": "23-cardapio-2",
+          "imageSource": "assets/stories-art/2026-11-08-lista-1108.jpg",
+          "image": "stories/2026-11-08/lista-1108.jpg",
+          "source": "claude-propostas/stories"
+        }
+      ]
+    },
+    {
+      "date": "2026-11-09",
+      "frames": [
+        {
+          "id": "detalhe-1109",
+          "type": "art",
+          "formato": "detalhe",
+          "title": "Começando a semana com uma de Goiaba?",
+          "body": "Tem gosto de goiaba de verdade, e o gás vem da própria fermentação.",
+          "flavor": "goiaba",
+          "cena": "26-personal-trainers-1",
+          "imageSource": "assets/stories-art/2026-11-09-detalhe-1109.jpg",
+          "image": "stories/2026-11-09/detalhe-1109.jpg",
+          "source": "claude-propostas/stories"
+        },
+        {
+          "id": "enquete-1109",
+          "type": "art",
+          "formato": "enquete",
+          "title": "Azul ou lilás, qual você escolhe?",
+          "body": "",
+          "cta": "Manda pra gente o nome do seu sabor.",
+          "flavor": "flor-fada-blueberry",
+          "flavor2": "lavanda-limao",
+          "cena2": "14-lavanda-limao-1",
+          "cena": "07-flor-fada-azul-1",
+          "imageSource": "assets/stories-art/2026-11-09-enquete-1109.jpg",
+          "image": "stories/2026-11-09/enquete-1109.jpg",
+          "source": "claude-propostas/stories"
+        },
+        {
+          "id": "revista-1109",
+          "type": "art",
+          "formato": "revista",
+          "title": "Já reparou nas sementinhas da de Maracujá?",
+          "body": "A gente usa a fruta de verdade, por isso elas aparecem na garrafa.",
+          "flavor": "maracuja",
+          "cena": "12-como-comprar-2",
+          "imageSource": "assets/stories-art/2026-11-09-revista-1109.jpg",
+          "image": "stories/2026-11-09/revista-1109.jpg",
+          "source": "claude-propostas/stories"
+        },
+        {
+          "id": "cena-1109",
+          "type": "art",
+          "formato": "cena",
+          "title": "Já provou a nossa Kombú de Imunidade?",
+          "body": "Tem limão, gengibre e cúrcuma. É cítrica e um pouco picante.",
+          "flavor": "imunidade",
+          "cena": "11-imunidade-1",
+          "imageSource": "assets/stories-art/2026-11-09-cena-1109.jpg",
+          "image": "stories/2026-11-09/cena-1109.jpg",
+          "source": "claude-propostas/stories"
+        },
+        {
+          "id": "fato-1109",
+          "type": "art",
+          "formato": "fato",
+          "title": "Você sabia? A gente faz a Kombú aqui em Manaus desde 2017.",
+          "body": "Em pequenos lotes, de forma artesanal.",
+          "flavor": "pera-alecrim",
+          "cena": "24-profissionais-3",
+          "imageSource": "assets/stories-art/2026-11-09-fato-1109.jpg",
+          "image": "stories/2026-11-09/fato-1109.jpg",
+          "source": "claude-propostas/stories"
+        }
+      ]
+    },
+    {
+      "date": "2026-11-10",
+      "frames": [
+        {
+          "id": "parceiro-1110",
+          "type": "art",
+          "formato": "parceiro",
+          "title": "Onde encontrar Já tomou uma Kombú na Casa Agridoce?",
+          "body": "Na próxima visita, pede uma gelada e pergunta quais sabores tem no dia.",
+          "flavor": "maca-canela",
+          "partner": "@casaagridoceam",
+          "cena": "08-revenda-1",
+          "imageSource": "assets/stories-art/2026-11-10-parceiro-1110.jpg",
+          "image": "stories/2026-11-10/parceiro-1110.jpg",
+          "source": "claude-propostas/stories"
+        },
+        {
+          "id": "pergunta-1110",
+          "type": "art",
+          "formato": "pergunta",
+          "title": "Você é mais de sabor floral ou frutado?",
+          "body": "Conta pra gente por mensagem. Floral Frutado Os dois",
+          "flavor": "hibisco-anis",
+          "cena": "09-hibisco-2",
+          "imageSource": "assets/stories-art/2026-11-10-pergunta-1110.jpg",
+          "image": "stories/2026-11-10/pergunta-1110.jpg",
+          "source": "claude-propostas/stories"
+        },
+        {
+          "id": "enquete-1110",
+          "type": "art",
+          "formato": "enquete",
+          "title": "Se fosse escolher uma agora, qual seria?",
+          "body": "",
+          "cta": "Manda pra gente qual você abriria primeiro.",
+          "flavor": "rosas-cardamomo",
+          "flavor2": "frutas-vermelhas",
+          "cena2": "05-frutas-vermelhas-1",
+          "cena": "23-cardapio-2",
+          "imageSource": "assets/stories-art/2026-11-10-enquete-1110.jpg",
+          "image": "stories/2026-11-10/enquete-1110.jpg",
+          "source": "claude-propostas/stories"
+        },
+        {
+          "id": "lista-1110",
+          "type": "art",
+          "formato": "lista",
+          "title": "Onde uma Kombú gelada cai bem",
+          "body": "No café da manhã de sábado. No almoço, com um sanduíche natural. Depois do treino, bem gelada.",
+          "flavor": "goiaba",
+          "cena": "19-como-servir-2",
+          "imageSource": "assets/stories-art/2026-11-10-lista-1110.jpg",
+          "image": "stories/2026-11-10/lista-1110.jpg",
+          "source": "claude-propostas/stories"
+        },
+        {
+          "id": "revista-1110",
+          "type": "art",
+          "formato": "revista",
+          "title": "Pêra com alecrim, já experimentou?",
+          "body": "É fresquinha, com o cheiro do alecrim no final.",
+          "flavor": "pera-alecrim",
+          "cena": "25-nutricionistas-3",
+          "imageSource": "assets/stories-art/2026-11-10-revista-1110.jpg",
+          "image": "stories/2026-11-10/revista-1110.jpg",
+          "source": "claude-propostas/stories"
+        }
+      ]
     }
   ]
 }

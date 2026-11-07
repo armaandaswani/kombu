@@ -1,0 +1,60 @@
+{
+ "date": "2026-11-10",
+ "frames": [
+  {
+   "id": "parceiro-1110",
+   "formato": "parceiro",
+   "partner": "@casaagridoceam",
+   "cena": "08-revenda-1",
+   "flavor": "maca-canela",
+   "title": "Já tomou uma Kombú na Casa Agridoce?",
+   "body": "Na próxima visita, pede uma gelada e pergunta quais sabores tem no dia.",
+   "kicker": "Onde encontrar"
+  },
+  {
+   "id": "pergunta-1110",
+   "formato": "pergunta",
+   "cena": "09-hibisco-2",
+   "flavor": "hibisco-anis",
+   "title": "Você é mais de sabor floral ou frutado?",
+   "body": "Conta pra gente por mensagem.",
+   "opcoes": [
+    "Floral",
+    "Frutado",
+    "Os dois"
+   ]
+  },
+  {
+   "id": "enquete-1110",
+   "formato": "enquete",
+   "cena": "23-cardapio-2",
+   "flavor": "rosas-cardamomo",
+   "cena2": "05-frutas-vermelhas-1",
+   "flavor2": "frutas-vermelhas",
+   "title": "Se fosse escolher uma agora, qual seria?",
+   "body": "",
+   "cta": "Manda pra gente qual você abriria primeiro."
+  },
+  {
+   "id": "lista-1110",
+   "formato": "lista",
+   "cena": "19-como-servir-2",
+   "flavor": "goiaba",
+   "title": "Onde uma Kombú gelada cai bem",
+   "body": "",
+   "itens": [
+    "No café da manhã de sábado.",
+    "No almoço, com um sanduíche natural.",
+    "Depois do treino, bem gelada."
+   ]
+  },
+  {
+   "id": "revista-1110",
+   "formato": "revista",
+   "cena": "25-nutricionistas-3",
+   "flavor": "pera-alecrim",
+   "title": "Pêra com alecrim, já experimentou?",
+   "body": "É fresquinha, com o cheiro do alecrim no final."
+  }
+ ]
+}

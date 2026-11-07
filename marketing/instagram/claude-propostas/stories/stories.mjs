@@ -154,7 +154,8 @@ function frameHtml(f, cenas) {
       const c2 = cena(f.cena2);
       return {bg: '#FFF7ED', html: texto('faixa') + `<div class="metade cima">${img(c)}<span class="chip">${esc(NOME[f.flavor])}</span></div><div class="metade baixo2">${img(c2)}<span class="chip">${esc(NOME[f.flavor2])}</span></div><div class="ou">ou</div>`};
     }
-    case 'parceiro': return {bg: '#000', html: img(c) + '<div class="grad baixo"></div>' + `<div class="cartao"><p class="kicker">${esc(f.kicker || 'Onde encontrar')}</p><h1>${br(f.title)}</h1>${f.body ? `<p>${br(f.body)}</p>` : ''}<p class="handle">${esc(f.partner || '')}</p></div>` + `<img class="logo tc" src="${logo(true)}">`};
+    // Cartão no alto: nas cenas a garrafa fica quase sempre na metade de baixo.
+    case 'parceiro': return {bg: '#000', html: img(c) + '<div class="grad baixo"></div>' + `<div class="cartao"><p class="kicker">${esc(f.kicker || 'Onde encontrar')}</p><h1>${br(f.title)}</h1>${f.body ? `<p>${br(f.body)}</p>` : ''}<p class="handle">${esc(f.partner || '')}</p></div>` + `<img class="logo bc" src="${logo(true)}">`};
     case 'fato': return {bg: '#F3EBDD', html: `<img class="papel" src="${url(path.join(motor, 'cenas/16-bg.png'))}">` + (c ? `<div class="circulo">${img(c, circulo(c))}</div>` : '') + texto('centro') + `<img class="logo bc" src="${logo(false)}">`};
     case 'pergunta': return {bg: cor, html: (c ? `<div class="circulo alto">${img(c, circulo(c))}</div>` : '') + texto('claro centro baixo-meio') + `${(f.opcoes || []).length ? `<div class="opcoes">${f.opcoes.map(o => `<span>${esc(o)}</span>`).join('')}</div>` : ''}` + `<img class="logo bc" src="${logo(true)}">`};
     case 'lista': return {bg: '#1B2F18', html: img(c, 'filter:blur(14px) brightness(.62);transform:scale(1.1)') + `<div class="painel"><h1>${br(f.title)}</h1><ol>${(f.itens || []).map(i => `<li>${esc(i)}</li>`).join('')}</ol>${f.body ? `<p>${br(f.body)}</p>` : ''}</div>` + `<img class="logo bc" src="${logo(true)}">`};
@@ -183,7 +184,7 @@ body{position:relative;font-family:'Plus Jakarta Sans',sans-serif;color:#1B2F18}
 .chip{position:absolute;right:56px;background:rgba(255,247,237,.94);color:#1B2F18;font-weight:700;font-size:34px;padding:16px 34px;border-radius:999px;white-space:nowrap;z-index:3}
 .metade.cima .chip{top:40px}.metade.baixo2 .chip{top:110px}
 .ou{position:absolute;top:1230px;left:50%;transform:translate(-50%,-50%);width:150px;height:150px;border-radius:50%;background:#FFF7ED;display:grid;place-items:center;font-family:'Playfair Display',serif;font-size:58px;font-style:italic;z-index:4;box-shadow:0 10px 30px rgba(0,0,0,.25)}
-.cartao{position:absolute;left:70px;right:70px;bottom:300px;background:#FFF7ED;border-radius:28px;padding:56px 60px;z-index:4}
+.cartao{position:absolute;left:70px;right:70px;top:240px;background:#FFF7ED;border-radius:28px;padding:56px 60px;z-index:4}
 .cartao h1{font-family:'Playfair Display',serif;font-size:64px;line-height:1.1}.cartao p{font-size:32px;line-height:1.45;margin-top:18px}.cartao .kicker{font-size:26px;letter-spacing:.06em;margin:0 0 14px;opacity:.75}.cartao .handle{font-weight:700;color:#7E9A3A}
 .papel{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
 .circulo{position:absolute;left:50%;top:250px;transform:translateX(-50%);width:520px;height:520px;border-radius:50%;overflow:hidden;box-shadow:0 18px 50px rgba(0,0,0,.25);z-index:3}

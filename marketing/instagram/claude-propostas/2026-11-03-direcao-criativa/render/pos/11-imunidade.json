@@ -8,7 +8,7 @@
     "color": "#E8A81A",
     "ink": "#191C1C"
    },
-   "title": "Limão, gengibre e cúrcuma numa Kombú cítrica.",
+   "title": "Tem limão, gengibre e cúrcuma nessa garrafa.",
    "bottles": [
     {
      "slug": "imunidade",
@@ -39,8 +39,8 @@
    "scene": "11-2.png",
    "ink": "#191C1C",
    "text": "right",
-   "title": "Imunidade é o nome do sabor.",
-   "body": "A acidez do limão vem com a picância do gengibre e o toque terroso da cúrcuma.",
+   "title": "Já provou a Kombú de Imunidade?",
+   "body": "O limão deixa ácida e o gengibre dá um toque picante.",
    "bottles": [
     {
      "slug": "imunidade",

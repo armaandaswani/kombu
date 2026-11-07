@@ -1,0 +1,59 @@
+{
+ "date": "2026-11-08",
+ "frames": [
+  {
+   "id": "parceiro-1108",
+   "formato": "parceiro",
+   "partner": "@divinaterramanaus",
+   "cena": "25-nutricionistas-1",
+   "flavor": "pera-alecrim",
+   "title": "Vai passar pela Djalma Batista hoje?",
+   "body": "A Divina Terra tem Kombú gelada. Pergunta lá quais sabores estão na geladeira.",
+   "kicker": "Onde encontrar"
+  },
+  {
+   "id": "fato-1108",
+   "formato": "fato",
+   "cena": "09-hibisco-1",
+   "flavor": "hibisco-anis",
+   "title": "Sabe de onde vem o vermelho da Kombú de Hibisco?",
+   "body": "Do próprio hibisco. A cor vem da flor, sem corante nenhum.",
+   "kicker": "Você sabia?"
+  },
+  {
+   "id": "pergunta-1108",
+   "formato": "pergunta",
+   "cena": "15-maca-canela-1",
+   "flavor": "maca-canela",
+   "title": "Qual Kombú combina com o seu domingo?",
+   "body": "Manda pra gente por mensagem.",
+   "opcoes": [
+    "Maçã & Canela",
+    "Frutas Vermelhas",
+    "Hibisco & Anis Estrelado",
+    "Rosas & Cardamomo"
+   ]
+  },
+  {
+   "id": "detalhe-1108",
+   "formato": "detalhe",
+   "cena": "05-frutas-vermelhas-1",
+   "flavor": "frutas-vermelhas",
+   "title": "Já provou a de Frutas Vermelhas?",
+   "body": "Tem morango, blueberry e cranberry na mesma garrafa."
+  },
+  {
+   "id": "lista-1108",
+   "formato": "lista",
+   "cena": "23-cardapio-2",
+   "flavor": "rosas-cardamomo",
+   "title": "Do jeito que a gente gosta de tomar",
+   "body": "",
+   "itens": [
+    "Bem gelada, direto da geladeira.",
+    "Num copo com gelo, no fim da tarde.",
+    "Junto com o almoço de domingo."
+   ]
+  }
+ ]
+}

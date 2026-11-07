@@ -164,9 +164,9 @@ Fotografia frontal, câmera na altura de uma mesa de madeira escura num café de
 
 **Legenda**
 ```
-Se você gosta de gengibre, este sabor merece uma chance.
+Já provou a Kombú de Imunidade? Se você gosta de gengibre, vale a pena.
 
-Na Kombú Imunidade, combinamos limão, gengibre e cúrcuma. A acidez do limão vem junto com a picância do gengibre e o toque terroso da cúrcuma, numa kombucha suave e de sabor intenso. Imunidade é o nome do sabor.
+Ela leva limão, gengibre e cúrcuma. O limão deixa ácida, o gengibre dá aquele toque picante e a cúrcuma fecha com um gosto mais terroso. Mesmo assim, continua suave no gole.
 
 Prove gelada nos nossos parceiros e pergunte quais sabores estão gelados hoje.
 

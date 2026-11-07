@@ -11,6 +11,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import {execFileSync} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
+import {lintWords} from '../../../content-lint.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const ig = path.resolve(here, '../../..');
@@ -60,6 +61,9 @@ for (const item of fila) {
       body: [s.body, s.text && typeof s.text === 'string' && s.text.length > 12 ? s.text : null].filter(Boolean).join('\n') || undefined,
     });
   }
+  // Regras de palavras, inclusive as que só valem para conteúdo novo (FORBIDDEN_NEW).
+  const texto = [legendas[item.id], ...arte.flatMap(a => [a.title, a.body])].filter(Boolean).join('\n');
+  for (const i of lintWords(texto)) problemas.push(`${item.id}: ${i.why} (“${i.match}”)`);
   novos.push({ id: item.id, family: familia[hero] || 'creme', format: slides.length > 1 ? 'carrossel' : 'imagem', heroFlavor: hero, slides: arte, caption: legendas[item.id], source: 'claude-propostas/2026-11-03-direcao-criativa' });
 }
 

@@ -82,7 +82,7 @@ Folha grande de papel de algodão cor creme, lisa e sem textura forte, fotografa
 ```
 Um sanduíche natural no almoço pede uma bebida gelada e de sabor marcado.
 
-A Kombú de Maracujá é feita com a polpa da fruta, sementes incluídas. Ela é ácida e refrescante, com o gás natural da fermentação, e fica melhor servida bem gelada, direto da geladeira.
+A gente faz a Kombú de Maracujá com a fruta de verdade, por isso as sementes aparecem na garrafa. Ela é refrescante, tem o gás da fermentação e fica melhor bem gelada, direto da geladeira.
 
 Que sanduíche você pediria com ela? Os kits para levar para casa estão no site, link na bio.
 
