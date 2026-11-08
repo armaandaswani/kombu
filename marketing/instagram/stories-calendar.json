@@ -821,6 +821,140 @@
           "source": "claude-propostas/stories"
         }
       ]
+    },
+    {
+      "date": "2026-11-11",
+      "frames": [
+        {
+          "id": "detalhe-1111",
+          "type": "art",
+          "formato": "detalhe",
+          "title": "Já sentiu o anis estrelado na de Hibisco?",
+          "body": "O hibisco dá a cor e a acidez, e o anis estrelado deixa o perfume.",
+          "flavor": "hibisco-anis",
+          "cena": "09-hibisco-1",
+          "imageSource": "assets/stories-art/2026-11-11-detalhe-1111.jpg",
+          "image": "stories/2026-11-11/detalhe-1111.jpg",
+          "source": "claude-propostas/stories"
+        },
+        {
+          "id": "fato-1111",
+          "type": "art",
+          "formato": "fato",
+          "title": "Na de Lavanda & Limão, quem chega primeiro é o limão.",
+          "body": "A lavanda aparece depois, de leve, no fim do gole.",
+          "flavor": "lavanda-limao",
+          "cena": "14-lavanda-limao-2",
+          "imageSource": "assets/stories-art/2026-11-11-fato-1111.jpg",
+          "image": "stories/2026-11-11/fato-1111.jpg",
+          "source": "claude-propostas/stories"
+        },
+        {
+          "id": "lista-1111",
+          "type": "art",
+          "formato": "lista",
+          "title": "Como a gente faz a Kombú aqui em Manaus",
+          "body": "A gente usa a fruta de verdade. Faz tudo em pequenos lotes, de forma artesanal. E o gás vem da própria fermentação.",
+          "flavor": "maracuja",
+          "cena": "12-como-comprar-1",
+          "imageSource": "assets/stories-art/2026-11-11-lista-1111.jpg",
+          "image": "stories/2026-11-11/lista-1111.jpg",
+          "source": "claude-propostas/stories"
+        },
+        {
+          "id": "cena-1111",
+          "type": "art",
+          "formato": "cena",
+          "title": "Já tomou a de Imunidade bem gelada?",
+          "body": "Ela é cítrica e tem o picante do gengibre no final.",
+          "flavor": "imunidade",
+          "cena": "11-imunidade-2",
+          "imageSource": "assets/stories-art/2026-11-11-cena-1111.jpg",
+          "image": "stories/2026-11-11/cena-1111.jpg",
+          "source": "claude-propostas/stories"
+        },
+        {
+          "id": "pergunta-1111",
+          "type": "art",
+          "formato": "pergunta",
+          "title": "Que hora do dia você abriria uma Kombú gelada?",
+          "body": "Manda pra gente por mensagem, a gente quer saber. De manhã No almoço No fim da tarde",
+          "flavor": "flor-fada-blueberry",
+          "cena": "07-flor-fada-azul-2",
+          "imageSource": "assets/stories-art/2026-11-11-pergunta-1111.jpg",
+          "image": "stories/2026-11-11/pergunta-1111.jpg",
+          "source": "claude-propostas/stories"
+        }
+      ]
+    },
+    {
+      "date": "2026-11-12",
+      "frames": [
+        {
+          "id": "parceiro-1112",
+          "type": "art",
+          "formato": "parceiro",
+          "title": "Onde encontrar Já conhece a Cafeteria Garden?",
+          "body": "Tem Kombú gelada por lá. Pergunta quais sabores estão na geladeira hoje.",
+          "flavor": "pera-alecrim",
+          "partner": "@cafeteriagarden_",
+          "cena": "13-cafeteria-garden-1",
+          "imageSource": "assets/stories-art/2026-11-12-parceiro-1112.jpg",
+          "image": "stories/2026-11-12/parceiro-1112.jpg",
+          "source": "claude-propostas/stories"
+        },
+        {
+          "id": "cena-1112",
+          "type": "art",
+          "formato": "cena",
+          "title": "Saindo do treino? Que tal uma de Goiaba gelada?",
+          "body": "A gente faz com goiaba de verdade. É suave e refrescante.",
+          "flavor": "goiaba",
+          "cena": "26-personal-trainers-1",
+          "imageSource": "assets/stories-art/2026-11-12-cena-1112.jpg",
+          "image": "stories/2026-11-12/cena-1112.jpg",
+          "source": "claude-propostas/stories"
+        },
+        {
+          "id": "revista-1112",
+          "type": "art",
+          "formato": "revista",
+          "title": "Já provou a de Rosas & Cardamomo?",
+          "body": "Tem pétalas de rosa e o toque especiado do cardamomo.",
+          "flavor": "rosas-cardamomo",
+          "cena": "23-cardapio-2",
+          "imageSource": "assets/stories-art/2026-11-12-revista-1112.jpg",
+          "image": "stories/2026-11-12/revista-1112.jpg",
+          "source": "claude-propostas/stories"
+        },
+        {
+          "id": "fato-1112",
+          "type": "art",
+          "formato": "fato",
+          "title": "Sabia que a Kombú tem doze sabores?",
+          "body": "Todos vêm em garrafa de 500 ml, feitos aqui em Manaus.",
+          "flavor": "maca-canela",
+          "cena": "15-maca-canela-1",
+          "imageSource": "assets/stories-art/2026-11-12-fato-1112.jpg",
+          "image": "stories/2026-11-12/fato-1112.jpg",
+          "source": "claude-propostas/stories"
+        },
+        {
+          "id": "enquete-1112",
+          "type": "art",
+          "formato": "enquete",
+          "title": "Hoje você abriria a de Frutas Vermelhas ou a de Hibisco?",
+          "body": "",
+          "cta": "Vota mandando o nome da sua por mensagem.",
+          "flavor": "frutas-vermelhas",
+          "flavor2": "hibisco-anis",
+          "cena2": "16-de-verdade-1",
+          "cena": "05-frutas-vermelhas-1",
+          "imageSource": "assets/stories-art/2026-11-12-enquete-1112.jpg",
+          "image": "stories/2026-11-12/enquete-1112.jpg",
+          "source": "claude-propostas/stories"
+        }
+      ]
     }
   ]
 }

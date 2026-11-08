@@ -1,0 +1,21 @@
+{
+ "date": "2026-11-11",
+ "frames": [
+  {"id": "detalhe-1111", "formato": "detalhe", "cena": "09-hibisco-1", "flavor": "hibisco-anis",
+   "title": "Já sentiu o anis estrelado na de Hibisco?",
+   "body": "O hibisco dá a cor e a acidez, e o anis estrelado deixa o perfume."},
+  {"id": "fato-1111", "formato": "fato", "cena": "14-lavanda-limao-2", "flavor": "lavanda-limao",
+   "title": "Na de Lavanda & Limão, quem chega primeiro é o limão.",
+   "body": "A lavanda aparece depois, de leve, no fim do gole."},
+  {"id": "lista-1111", "formato": "lista", "cena": "12-como-comprar-1", "flavor": "maracuja",
+   "title": "Como a gente faz a Kombú aqui em Manaus", "body": "",
+   "itens": ["A gente usa a fruta de verdade.", "Faz tudo em pequenos lotes, de forma artesanal.", "E o gás vem da própria fermentação."]},
+  {"id": "cena-1111", "formato": "cena", "cena": "11-imunidade-2", "flavor": "imunidade",
+   "title": "Já tomou a de Imunidade bem gelada?",
+   "body": "Ela é cítrica e tem o picante do gengibre no final."},
+  {"id": "pergunta-1111", "formato": "pergunta", "cena": "07-flor-fada-azul-2", "flavor": "flor-fada-blueberry",
+   "title": "Que hora do dia você abriria uma Kombú gelada?",
+   "body": "Manda pra gente por mensagem, a gente quer saber.",
+   "opcoes": ["De manhã", "No almoço", "No fim da tarde"]}
+ ]
+}

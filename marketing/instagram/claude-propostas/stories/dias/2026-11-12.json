@@ -1,0 +1,50 @@
+{
+ "date": "2026-11-12",
+ "frames": [
+  {
+   "id": "parceiro-1112",
+   "formato": "parceiro",
+   "partner": "@cafeteriagarden_",
+   "cena": "13-cafeteria-garden-1",
+   "flavor": "pera-alecrim",
+   "title": "Já conhece a Cafeteria Garden?",
+   "body": "Tem Kombú gelada por lá. Pergunta quais sabores estão na geladeira hoje.",
+   "kicker": "Onde encontrar"
+  },
+  {
+   "id": "cena-1112",
+   "formato": "cena",
+   "cena": "26-personal-trainers-1",
+   "flavor": "goiaba",
+   "title": "Saindo do treino? Que tal uma de Goiaba gelada?",
+   "body": "A gente faz com goiaba de verdade. É suave e refrescante."
+  },
+  {
+   "id": "revista-1112",
+   "formato": "revista",
+   "cena": "23-cardapio-2",
+   "flavor": "rosas-cardamomo",
+   "title": "Já provou a de Rosas & Cardamomo?",
+   "body": "Tem pétalas de rosa e o toque especiado do cardamomo."
+  },
+  {
+   "id": "fato-1112",
+   "formato": "fato",
+   "cena": "15-maca-canela-1",
+   "flavor": "maca-canela",
+   "title": "Sabia que a Kombú tem doze sabores?",
+   "body": "Todos vêm em garrafa de 500 ml, feitos aqui em Manaus."
+  },
+  {
+   "id": "enquete-1112",
+   "formato": "enquete",
+   "cena": "05-frutas-vermelhas-1",
+   "flavor": "frutas-vermelhas",
+   "cena2": "16-de-verdade-1",
+   "flavor2": "hibisco-anis",
+   "title": "Hoje você abriria a de Frutas Vermelhas ou a de Hibisco?",
+   "body": "",
+   "cta": "Vota mandando o nome da sua por mensagem."
+  }
+ ]
+}
