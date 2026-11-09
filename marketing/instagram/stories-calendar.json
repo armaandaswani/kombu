@@ -955,6 +955,71 @@
           "source": "claude-propostas/stories"
         }
       ]
+    },
+    {
+      "date": "2026-11-13",
+      "frames": [
+        {
+          "id": "revista-1113",
+          "type": "art",
+          "formato": "revista",
+          "title": "Já tomou a de Maracujá bem gelada?",
+          "body": "A gente usa a fruta de verdade, e ela vem com as sementinhas.",
+          "flavor": "maracuja",
+          "cena": "12-como-comprar-1",
+          "imageSource": "assets/stories-art/2026-11-13-revista-1113.jpg",
+          "image": "stories/2026-11-13/revista-1113.jpg",
+          "source": "claude-propostas/stories"
+        },
+        {
+          "id": "fato-1113",
+          "type": "art",
+          "formato": "fato",
+          "title": "Você sabia que a de Imunidade leva gengibre e cúrcuma?",
+          "body": "Com o limão junto, ela fica cítrica e com aquela picância do gengibre.",
+          "flavor": "imunidade",
+          "cena": "11-imunidade-2",
+          "imageSource": "assets/stories-art/2026-11-13-fato-1113.jpg",
+          "image": "stories/2026-11-13/fato-1113.jpg",
+          "source": "claude-propostas/stories"
+        },
+        {
+          "id": "lista-1113",
+          "type": "art",
+          "formato": "lista",
+          "title": "Como a gente gosta de servir a Kombú",
+          "body": "Guarda na geladeira, entre 0 e 5 °C. Abre a garrafa bem gelada. Bebe direto nela ou num copo com gelo.",
+          "flavor": "lavanda-limao",
+          "cena": "14-lavanda-limao-1",
+          "imageSource": "assets/stories-art/2026-11-13-lista-1113.jpg",
+          "image": "stories/2026-11-13/lista-1113.jpg",
+          "source": "claude-propostas/stories"
+        },
+        {
+          "id": "cena-1113",
+          "type": "art",
+          "formato": "cena",
+          "title": "Já provou a de Manga & Jasmim?",
+          "body": "A gente usa manga madura de verdade.",
+          "flavor": "manga-jasmim",
+          "cena": "06-la-dolce-vita-2",
+          "imageSource": "assets/stories-art/2026-11-13-cena-1113.jpg",
+          "image": "stories/2026-11-13/cena-1113.jpg",
+          "source": "claude-propostas/stories"
+        },
+        {
+          "id": "pergunta-1113",
+          "type": "art",
+          "formato": "pergunta",
+          "title": "Com o que você tomaria a de Flor Fada Azul & Blueberry?",
+          "body": "Manda a sua combinação pra gente por mensagem.",
+          "flavor": "flor-fada-blueberry",
+          "cena": "07-flor-fada-azul-1",
+          "imageSource": "assets/stories-art/2026-11-13-pergunta-1113.jpg",
+          "image": "stories/2026-11-13/pergunta-1113.jpg",
+          "source": "claude-propostas/stories"
+        }
+      ]
     }
   ]
 }

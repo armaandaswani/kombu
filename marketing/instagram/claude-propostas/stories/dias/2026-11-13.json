@@ -1,0 +1,50 @@
+{
+ "date": "2026-11-13",
+ "frames": [
+  {
+   "id": "revista-1113",
+   "formato": "revista",
+   "cena": "12-como-comprar-1",
+   "flavor": "maracuja",
+   "title": "Já tomou a de Maracujá bem gelada?",
+   "body": "A gente usa a fruta de verdade, e ela vem com as sementinhas."
+  },
+  {
+   "id": "fato-1113",
+   "formato": "fato",
+   "cena": "11-imunidade-2",
+   "flavor": "imunidade",
+   "title": "Você sabia que a de Imunidade leva gengibre e cúrcuma?",
+   "body": "Com o limão junto, ela fica cítrica e com aquela picância do gengibre."
+  },
+  {
+   "id": "lista-1113",
+   "formato": "lista",
+   "cena": "14-lavanda-limao-1",
+   "flavor": "lavanda-limao",
+   "title": "Como a gente gosta de servir a Kombú",
+   "body": "",
+   "itens": [
+    "Guarda na geladeira, entre 0 e 5 °C.",
+    "Abre a garrafa bem gelada.",
+    "Bebe direto nela ou num copo com gelo."
+   ]
+  },
+  {
+   "id": "cena-1113",
+   "formato": "cena",
+   "cena": "06-la-dolce-vita-2",
+   "flavor": "manga-jasmim",
+   "title": "Já provou a de Manga & Jasmim?",
+   "body": "A gente usa manga madura de verdade."
+  },
+  {
+   "id": "pergunta-1113",
+   "formato": "pergunta",
+   "cena": "07-flor-fada-azul-1",
+   "flavor": "flor-fada-blueberry",
+   "title": "Com o que você tomaria a de Flor Fada Azul & Blueberry?",
+   "body": "Manda a sua combinação pra gente por mensagem."
+  }
+ ]
+}
