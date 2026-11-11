@@ -20,7 +20,8 @@
     "Tom atualizado pelo proprietário em 27/10: escrever de forma humana e conectada; não usar frases picadas nem repetir o mesmo fato em sequência.",
     "Variar o sabor principal: não repetir o mesmo destaque dentro de uma sequência de seis posts futuros. Usar heroFlavor para conferir a rotação.",
     "Exceção autorizada em 27/10: posts para criadores podem convidar à parceria e explicar o cupom, sempre sujeito a aprovação. Condições atuais: 5% nos produtos para o público e comissão de 10% sobre produtos pagos após o desconto, sem frete.",
-    "Os pedidos no site também têm kits de 4, 6, 12 e 20 garrafas de 500 ml; não apresentar 20 garrafas como mínimo de toda compra direta. Não publicar valores monetários."
+    "Os pedidos no site também têm kits de 4, 6, 12 e 20 garrafas de 500 ml; não apresentar 20 garrafas como mínimo de toda compra direta. Não publicar valores monetários.",
+    "Fale em fruta de verdade, nunca em polpa. Revise toda frase pública com a skill Humanizer e leia em voz alta antes de renderizar."
   ],
   "posts": [
     {
@@ -484,16 +485,18 @@
           "type": "art",
           "image": "feed-29-ritual-do-maracuja-1.jpg",
           "bg": "29-ritual-do-maracuja-0",
-          "title": "No almoço, Maracujá. Sirva bem gelada, com o gás da própria fermentação."
+          "title": "Maracujá no almoço?",
+          "body": "Vai bem gelada com um sanduíche."
         },
         {
           "type": "art",
           "image": "feed-29-ritual-do-maracuja-2.jpg",
           "bg": "29-ritual-do-maracuja-1",
-          "title": "Com polpa e sementes."
+          "title": "Feita com fruta de verdade.",
+          "body": "O gás vem da própria fermentação."
         }
       ],
-      "caption": "No almoço, experimente servir a Kombú de Maracujá bem gelada.\n\nA polpa e as sementes vão para a garrafa. O gás vem da fermentação e dá outro ritmo ao gole, mesmo num almoço simples.\n\nVeja onde encontrar a Kombú no link da bio.\n\n#kombucha #manaus #maracuja #kombuchaartesanal",
+      "caption": "Vai fazer um sanduíche no almoço? Sirva com uma Kombú de Maracujá bem gelada.\n\nA gente faz esse sabor com fruta de verdade, e o gás vem da própria fermentação.\n\nVeja onde encontrar a Kombú no link da bio.\n\n#kombucha #manaus #maracuja #kombuchaartesanal",
       "source": "campanhas/2026-11-11-editorial"
     },
     {

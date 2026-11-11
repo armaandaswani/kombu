@@ -32,12 +32,12 @@ body{background:#d9f99d}.tag{position:absolute;left:72px;top:247px}h2{position:a
 body{background:radial-gradient(ellipse at 65% 60%,#633268,#371a44 76%);color:#fff7ed}.tag{position:absolute;right:72px;top:103px;color:#f1d8ee}.ring{position:absolute;width:940px;height:940px;border-radius:50%;border:1px solid #dfacdf68;left:308px;top:259px}.inner{width:840px;height:840px;left:358px;top:309px}.type{position:absolute;left:66px;top:465px}.type h1{font-size:215px;letter-spacing:-12px}.type p{font-size:41px;margin-left:16px;color:#f1d8ee}.bottle{top:257px;left:540px;width:315px;height:900px;filter:drop-shadow(23px 28px 22px #1c0b28a0)}.contact{left:540px;top:1123px;width:319px;height:45px;background:#20102ac0}`],
 ['29-ritual-do-maracuja',1,`
 <div class="photo">${scene(2)}</div>${logo()}<div class="eyebrow tag">À mesa</div>
-<h1>No almoço,<br>Maracujá.</h1><p class="blurb">Sirva bem gelada, com o gás da própria fermentação.</p>${foot()}`,`
-.photo{position:absolute;left:382px;right:60px;top:208px;bottom:190px;overflow:hidden;border-radius:240px 240px 3px 3px}.photo .scene{object-position:0% center}.tag{position:absolute;top:326px;left:72px}.blurb{position:absolute;left:73px;top:731px;width:260px;font-size:27px}h1{position:absolute;left:67px;top:443px;font-size:61px}`],
+<h1>Maracujá<br>no almoço?</h1><p class="blurb">Vai bem gelada com um sanduíche.</p>${foot()}`,`
+.photo{position:absolute;left:382px;right:60px;top:208px;bottom:190px;overflow:hidden;border-radius:240px 240px 3px 3px}.photo .scene{object-position:0% center}.tag{position:absolute;top:326px;left:72px}.blurb{position:absolute;left:73px;top:731px;width:260px;font-size:27px}h1{position:absolute;left:67px;top:443px;width:310px;font-size:52px}`],
 ['29-ritual-do-maracuja',2,`
-<div class="photo">${scene(1)}</div>${logo('creme')}
-<div class="text"><div class="eyebrow">Maracujá · Kombú</div><h2>Com polpa<br>e sementes.</h2></div>${foot()}`,`
-body{background:#1b2f18;color:#fff7ed}.photo{position:absolute;left:72px;right:72px;top:201px;height:620px;overflow:hidden}.photo .scene{object-position:center 68%}.text{position:absolute;left:72px;top:865px}.text .eyebrow{color:#d9f99d;margin-bottom:18px}.text h2{font-size:75px}`],
+<div class="halo"></div>${logo('creme')}<div class="contact"></div>${bottle('maracuja')}
+<div class="text"><div class="eyebrow">Kombú de Maracujá</div><h2>Feita com fruta<br>de verdade.</h2><p>O gás vem da própria fermentação.</p></div>${foot()}`,`
+body{background:#1b2f18;color:#fff7ed}.halo{position:absolute;left:546px;top:250px;width:450px;height:880px;border-radius:48%;background:radial-gradient(ellipse at 52% 45%,#617638,#304726 57%,#1b2f18 73%)}.bottle{left:625px;top:275px;width:299px;height:836px;filter:drop-shadow(13px 16px 19px #101e17)}.contact{left:647px;top:1083px;width:252px;height:36px;background:#0b170c}.text{position:absolute;left:72px;top:486px;width:502px}.text .eyebrow{color:#d9f99d;margin-bottom:24px}.text h2{font-size:74px}.text p{margin-top:33px;width:370px;font-size:31px}`],
 ];
 const temp=path.join(here,'layout.html');
 const out=path.join(ig,'.render','editorial-2026-11-11');await fs.mkdir(out,{recursive:true});
