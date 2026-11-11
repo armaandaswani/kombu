@@ -453,6 +453,66 @@
       "source": "claude-propostas/2026-11-03-direcao-criativa"
     },
     {
+      "id": "27-manga-jasmim-manauara",
+      "family": "verde",
+      "heroFlavor": "manga-jasmim",
+      "format": "carrossel",
+      "slides": [
+        {
+          "type": "art",
+          "image": "feed-27-manga-jasmim-manauara-1.jpg",
+          "bg": "27-manga-jasmim-manauara-0",
+          "title": "Kombucha artesanal premium. Manaus, desde 2017."
+        },
+        {
+          "type": "art",
+          "image": "feed-27-manga-jasmim-manauara-2.jpg",
+          "bg": "27-manga-jasmim-manauara-1",
+          "title": "Manga madura, perfume de jasmim. Suave ao beber, com sabor intenso. O gás vem da própria fermentação."
+        }
+      ],
+      "caption": "Na Manga & Jasmim, a manga madura encontra o perfume do jasmim.\n\nÉ uma Kombú suave ao beber, com sabor intenso e gás da própria fermentação. Produzimos nossa kombucha artesanal em Manaus desde 2017.\n\nQuer provar bem gelada? Veja onde encontrar no link da bio.\n\n#kombucha #manaus #kombuchaartesanal #aartedonatural",
+      "source": "campanhas/2026-11-11-editorial"
+    },
+    {
+      "id": "29-ritual-do-maracuja",
+      "family": "creme",
+      "heroFlavor": "maracuja",
+      "format": "carrossel",
+      "slides": [
+        {
+          "type": "art",
+          "image": "feed-29-ritual-do-maracuja-1.jpg",
+          "bg": "29-ritual-do-maracuja-0",
+          "title": "No almoço, Maracujá. Sirva bem gelada, com o gás da própria fermentação."
+        },
+        {
+          "type": "art",
+          "image": "feed-29-ritual-do-maracuja-2.jpg",
+          "bg": "29-ritual-do-maracuja-1",
+          "title": "Com polpa e sementes."
+        }
+      ],
+      "caption": "No almoço, experimente servir a Kombú de Maracujá bem gelada.\n\nA polpa e as sementes vão para a garrafa. O gás vem da fermentação e dá outro ritmo ao gole, mesmo num almoço simples.\n\nVeja onde encontrar a Kombú no link da bio.\n\n#kombucha #manaus #maracuja #kombuchaartesanal",
+      "source": "campanhas/2026-11-11-editorial"
+    },
+    {
+      "id": "28-uva-bem-gelada",
+      "family": "roxo",
+      "heroFlavor": "uva",
+      "format": "imagem",
+      "slides": [
+        {
+          "type": "art",
+          "image": "feed-28-uva-bem-gelada-1.jpg",
+          "bg": "28-uva-bem-gelada-0",
+          "title": "Uva. Bem gelada."
+        }
+      ],
+      "caption": "Sabe quando dá vontade de uma bebida de uva bem gelada?\n\nA nossa é feita com uva e tem o gás da própria fermentação. Abra gelada e sirva no seu copo preferido.\n\nEncontre a Kombú nos parceiros pelo link da bio.\n\n#kombucha #manaus #uva #kombuchaartesanal",
+      "source": "campanhas/2026-11-11-editorial"
+    },
+    {
       "id": "23-cardapio",
       "family": "rosa-claro",
       "format": "carrossel",
