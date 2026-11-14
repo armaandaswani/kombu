@@ -783,3 +783,27 @@ console.log("Dashboard regression: monthly finances, missing costs and overview 
   const giftRow = report.match(/<div class="report-row"><strong>Gift test<\/strong><span>(.*?)<\/span>/)?.[1] || "";
   assert.match(giftRow, /0,00 receita/, "flavor reports must not turn gifts into revenue");
 }
+
+
+// A correction to zero must clear the amount used in financial reporting.
+{
+  const purchase = { id: "corrected-purchase", kind: "operational", item: "Maintenance", date: "2026-11-14", total: 80 };
+  load({ purchases: [purchase] });
+  call("syncPurchaseExpense", purchase);
+  assert.equal(call("totals").expenses, 80);
+  purchase.total = 0;
+  call("syncPurchaseExpense", purchase);
+  assert.equal(call("totals").expenses, 0);
+  assert.equal(admin.__getState().expenses.length, 1);
+  console.log("Purchase correction: zero total reconciles with the linked expense.");
+}
+
+// An uncosted sale still contributes revenue but cannot establish profit.
+{
+  load({ sales: [{ id: "uncosted-sale", date: "2026-11-14", flavor: "Ginger", qty: 2, unitPrice: 15 }] });
+  assert.equal(call("totals").salesRevenue, 30);
+  assert.equal(call("totals").unknownCosts, 1);
+  assert.equal(call("dashboardFinancials", "2026-11").unknownCosts, 1);
+  assert.match(call("renderReports"), /lucro indisponível/);
+  console.log("Reports: uncosted sale retains revenue and withholds profit.");
+}

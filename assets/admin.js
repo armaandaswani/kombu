@@ -617,6 +617,8 @@ let cloudSyncEnabled = false;
 let cloudSyncConfigured = false;
 let cloudSyncLastError = "";
 let cloudSaveTimer = null;
+let cloudSaveInFlight = false;
+let cloudSaveQueued = false;
 let lastCloudSaveAt = "";
 let cloudStateUpdatedAt = "";
 // Set when the server rejects a save because the cloud holds newer data. While
@@ -1187,6 +1189,13 @@ function saveState() {
 
 async function pushStateToCloud() {
   if (!cloudSyncReady || !isAuthenticated() || cloudSaveBlocked) return;
+  if (cloudSaveInFlight) {
+    cloudSaveQueued = true;
+    return;
+  }
+  cloudSaveInFlight = true;
+  window.clearTimeout(cloudSaveTimer);
+  cloudSaveTimer = null;
   const submittedState = clone(state);
   const submittedStateJson = JSON.stringify(submittedState);
   const submittedUpdatedAt = cloudStateUpdatedAt;
@@ -1206,8 +1215,8 @@ async function pushStateToCloud() {
         batchCodes: reservationRequest?.batchCodes || [],
       }),
     });
-    if (response.ok || response.status === 202) {
-      const payload = await readJsonSafe(response);
+    const payload = await readJsonSafe(response);
+    if (response.ok && payload.ok === true && payload.updatedAt) {
       cloudSyncEnabled = true;
       cloudSyncConfigured = true;
       cloudSyncLastError = "";
@@ -1234,14 +1243,12 @@ async function pushStateToCloud() {
       // Another device saved first. Deliberately keep the stale cloudStateUpdatedAt:
       // adopting the server's newer token here would make the next save pass the
       // optimistic-concurrency check and silently destroy the other device's work.
-      await readJsonSafe(response);
       cloudSaveBlocked = true;
       cloudSyncEnabled = false;
       cloudSyncConfigured = true;
       cloudSyncLastError = "Outro dispositivo salvou alterações mais recentes. Salvamento pausado para não apagar o trabalho dele.";
       render();
     } else {
-      const payload = await readJsonSafe(response);
       if (payload.error === "state_invariants_regressed") {
         // The server refused because this save would break a stock or order
         // rule. Continuing to retry would just hammer it, and the local state
@@ -1261,6 +1268,14 @@ async function pushStateToCloud() {
   } catch {
     cloudSyncEnabled = false;
     cloudSyncLastError = "Não foi possível conectar ao backend de sincronização.";
+  } finally {
+    cloudSaveInFlight = false;
+    if (cloudSaveQueued) {
+      cloudSaveQueued = false;
+      scheduleCloudSave();
+    }
+    const notice = document.querySelector("#adminContent > .cloud-sync-notice");
+    if (notice) notice.outerHTML = cloudSyncNotice();
   }
 }
 
@@ -2053,11 +2068,22 @@ function isOperatingExpense(expense) {
   return !(purchase && purchase.kind !== "operational");
 }
 
+function movementCost(sale) {
+  const batch = state.batches.find((item) => item.code === sale.batchCode);
+  const cost = batch ? batchCost(batch) : null;
+  return {
+    amount: Number(sale.qty || 0) * Number(cost?.batchCostPerBottle || 0),
+    unknown: !cost || cost.costBasis === "unknown",
+  };
+}
+
 function totals() {
   const salesRevenue = state.sales.reduce((sum, sale) => sum + saleRevenue(sale), 0);
+  let unknownCosts = 0;
   const cogs = state.sales.reduce((sum, sale) => {
-    const batch = state.batches.find((item) => item.code === sale.batchCode);
-    return sum + Number(sale.qty || 0) * (batch ? batchCost(batch).batchCostPerBottle : 0);
+    const cost = movementCost(sale);
+    if (cost.unknown) unknownCosts += 1;
+    return sum + cost.amount;
   }, 0);
   const expenses = state.expenses.filter(isOperatingExpense).reduce((sum, expense) => sum + Number(expense.amount || 0), 0);
   const finishedStock = finishedStockRows().reduce((sum, row) => sum + row.stock, 0);
@@ -2079,6 +2105,7 @@ function totals() {
   return {
     salesRevenue,
     deliveryFees,
+    unknownCosts,
     cogs,
     grossProfit: salesRevenue - cogs,
     grossMargin: salesRevenue ? ((salesRevenue - cogs) / salesRevenue) * 100 : 0,
@@ -4379,13 +4406,15 @@ function updateOrderStatus(payload = "") {
 }
 
 function syncPurchaseExpense(purchase) {
-  if (!purchase || !Number(purchase.total || 0)) return;
+  if (!purchase) return;
   const existing = state.expenses.find((expense) => expense.purchaseId === purchase.id);
+  const amount = Number(purchase.total || 0);
+  if (!Number.isFinite(amount) || (!existing && amount === 0)) return;
   // The money is the purchase's, so it must keep following it: correcting a
   // purchase total has to correct the expense or the accounts stop reconciling.
   const financial = {
     date: purchase.date || todayIso(),
-    amount: Number(purchase.total || 0),
+    amount,
     purchaseId: purchase.id,
     source: "purchase",
   };
@@ -4825,10 +4854,9 @@ function dashboardFinancials(month = dashboardMonth) {
   const revenue = movements.reduce((sum, sale) => sum + saleRevenue(sale), 0);
   let unknownCosts = 0;
   const cogs = movements.reduce((sum, sale) => {
-    const batch = state.batches.find((item) => item.code === sale.batchCode);
-    const cost = batch ? batchCost(batch) : null;
-    if (!cost || cost.costBasis === "unknown") unknownCosts += 1;
-    return sum + Number(sale.qty || 0) * Number(cost?.batchCostPerBottle || 0);
+    const cost = movementCost(sale);
+    if (cost.unknown) unknownCosts += 1;
+    return sum + cost.amount;
   }, 0);
   const expenses = state.expenses.filter((item) => saleDateInRange(item.date, range) && isOperatingExpense(item))
     .reduce((sum, item) => sum + Number(item.amount || 0), 0);
@@ -6374,25 +6402,26 @@ function renderReports() {
       byId("products", sale.productId)?.flavor ||
       batch?.flavor ||
       (sale.batchCode ? `Lote ${sale.batchCode}` : "Sem sabor informado");
-    acc[label] = acc[label] || { qty: 0, revenue: 0, profit: 0 };
-    const cogs = Number(sale.qty) * (batch ? batchCost(batch).batchCostPerBottle : 0);
+    acc[label] = acc[label] || { qty: 0, revenue: 0, profit: 0, incomplete: false };
+    const cost = movementCost(sale);
+    acc[label].incomplete ||= cost.unknown;
     const revenue = saleRevenue(sale);
     acc[label].qty += Number(sale.qty);
     acc[label].revenue += revenue;
-    acc[label].profit += revenue - cogs;
+    acc[label].profit += revenue - cost.amount;
     return acc;
   }, {});
   const reportRows = Object.entries(byFlavor)
     .sort((a, b) => b[1].profit - a[1].profit)
-    .map(([flavor, row]) => `<div class="report-row"><strong>${escapeHtml(flavor)}</strong><span>${number(row.qty)} un | ${brl(row.revenue)} receita | ${brl(row.profit)} lucro</span></div>`)
+    .map(([flavor, row]) => `<div class="report-row"><strong>${escapeHtml(flavor)}</strong><span>${number(row.qty)} un | ${brl(row.revenue)} receita | ${row.incomplete ? "lucro indisponível · custo pendente" : `${brl(row.profit)} lucro`}</span></div>`)
     .join("");
   return `
     ${pageHead("Relatórios", "Todo o histórico. Para selecionar um mês, use o Início. Compras de estoque entram no custo dos lotes; despesas operacionais são descontadas separadamente.", actionButton("export-reports", "Exportar CSV", "download", "btn-outline", "reports"))}
     <section class="metric-grid">
       ${metric("Receita", brl(total.salesRevenue), "Vendas registradas (sem frete)", "payments")}
-      ${metric("COGS", brl(total.cogs), "Custo dos produtos vendidos", "inventory")}
-      ${metric("Lucro bruto", brl(total.grossProfit), pct(total.grossMargin), "trending_up")}
-      ${metric("Resultado líquido estimado", brl(total.net), `Despesas: ${brl(total.expenses)}`, "query_stats")}
+      ${metric("COGS", total.unknownCosts ? "—" : brl(total.cogs), total.unknownCosts ? "Há saídas com custo pendente" : "Custo dos produtos vendidos", "inventory")}
+      ${metric("Lucro bruto", total.unknownCosts ? "—" : brl(total.grossProfit), total.unknownCosts ? "Custo pendente" : pct(total.grossMargin), "trending_up")}
+      ${metric("Resultado líquido estimado", total.unknownCosts ? "—" : brl(total.net), `Despesas: ${brl(total.expenses)}`, "query_stats")}
       ${metric("Frete cobrado", brl(total.deliveryFees), "Cobrado nas entregas e ainda fora da receita", "local_shipping")}
     </section>
     <section class="admin-grid">
@@ -11179,7 +11208,10 @@ function handleAction(action) {
     "export-orders": () => exportCSV("kombu-pedidos", [["Código", "Data", "Tipo cliente", "Status", "Cliente", "Negócio", "WhatsApp", "Previsão pronto", "Entrega", "Receber até", "Pagamento", "Precisa até", "Qtd", "Valor", "Itens", "Observações"], ...(state.orders || []).map((order) => [order.code, order.orderDate, orderClientTypeLabel(order.clientType), order.status, order.customerName, order.businessName, order.whatsapp, order.estimatedReadyDate, order.deliveredAt || "", orderPaymentDueDate(order), orderReceivableStatus(order), order.neededBy, orderQuantity(order), orderTotal(order), orderItems(order).map((item) => `${item.qty}x ${orderProductText(item)} | ${item.productionStatus || "pendente"} | reservado ${orderItemReservedQty(item)} | lotes ${orderItemBatchCodes(item).join(" + ") || "-"} @ ${brl(item.unitPrice)}`).join("; "), order.notes || ""])]),
     "export-receipts": () => exportCSV("kombu-recibos", [["Recibo", "Status", "Data recebimento", "Cliente", "Negócio", "Valor", "Método", "Referência", "Pedido", "Entregas", "Emitido por", "Motivo cancelamento"], ...(state.receipts || []).map((receipt) => [receipt.number, receipt.status, receipt.receivedAt, receipt.customerName, receipt.businessName, receipt.amount, receipt.method, receipt.reference, receipt.orderCode, (receipt.deliveryIds || []).join(" + "), receipt.createdBy, receipt.cancelReason || ""])]),
     "export-leads": () => exportCSV("kombu-leads-crm", [["Criado em", "Tipo", "Status", "Nome", "Negócio", "Tipo negócio", "Local", "WhatsApp", "Instagram", "Mensagem", "Código informado"], ...state.leads.map((lead) => [lead.createdAt, lead.type, lead.status, lead.name, lead.business, lead.businessType, lead.location, lead.whatsapp, lead.instagram, lead.message, lead.couponCode || ""])]),
-    "export-reports": () => exportCSV("kombu-relatorio", [["Métrica", "Valor"], ["Receita (sem frete)", totals().salesRevenue], ["Frete cobrado", totals().deliveryFees], ["COGS", totals().cogs], ["Lucro bruto", totals().grossProfit], ["Despesas", totals().expenses], ["Líquido", totals().net], ["Pedidos em aberto", totals().openOrderValue], ["A receber", totals().receivable], ["Produção faltante", totals().productionMissing]]),
+    "export-reports": () => {
+      const total = totals();
+      exportCSV("kombu-relatorio", [["Métrica", "Valor"], ["Receita (sem frete)", total.salesRevenue], ["Frete cobrado", total.deliveryFees], ["COGS", total.unknownCosts ? "" : total.cogs], ["Lucro bruto", total.unknownCosts ? "" : total.grossProfit], ["Despesas", total.expenses], ["Líquido", total.unknownCosts ? "" : total.net], ["Saídas com custo pendente", total.unknownCosts], ["Pedidos em aberto", total.openOrderValue], ["A receber", total.receivable], ["Produção faltante", total.productionMissing]]);
+    },
     "export-costs": () => {
       const recipe = byId("recipes", activeRecipeId);
       exportCSV("kombu-custo-garrafa", [["Receita", recipe.flavor, recipe.version], ["Custo lote", recipeCost(recipe).total], ["Custo garrafa", recipeCost(recipe).costPerBottle]]);
