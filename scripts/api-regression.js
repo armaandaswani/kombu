@@ -200,7 +200,12 @@ async function run() {
     if (method === "GET") {
       return supabaseReply(rowExists ? [{ id: "production", state: {}, updated_at: "2026-08-11T00:00:00.000Z" }] : []);
     }
-    if (method === "POST") return supabaseReply([{ updated_at: "2026-08-11T01:00:00.000Z" }]);
+    if (method === "POST" && new URL(url).pathname === "/rest/v1/app_state") {
+      assert.strictEqual(options.headers.Prefer, "resolution=ignore-duplicates,return=representation");
+      if (rowExists) return supabaseReply([]);
+      rowExists = true;
+      return supabaseReply([{ updated_at: "2026-08-11T01:00:00.000Z" }]);
+    }
     if (method === "PATCH") {
       const matched = String(url).includes(encodeURIComponent("2026-08-11T00:00:00.000Z"));
       return supabaseReply(matched ? [{ updated_at: "2026-08-11T02:00:00.000Z" }] : []);
@@ -215,8 +220,16 @@ async function run() {
   );
 
   rowExists = false;
-  const created = await backend.replaceAppState({ products: [] }, "test", "");
-  assert.strictEqual(created.ok, true, "the very first state row must still be creatable");
+  const initialWrites = await Promise.allSettled([
+    backend.replaceAppState({ products: [] }, "test", ""),
+    backend.replaceAppState({ ingredients: [] }, "test", ""),
+  ]);
+  const accepted = initialWrites.filter((result) => result.status === "fulfilled");
+  const rejected = initialWrites.filter((result) => result.status === "rejected");
+  assert.strictEqual(accepted.length, 1, "only one first write can create shared state");
+  assert.strictEqual(accepted[0].value.ok, true);
+  assert.strictEqual(rejected[0].reason.status, 409);
+  assert.strictEqual(rejected[0].reason.code, "state_conflict");
 
   rowExists = true;
   const saved = await backend.replaceAppState({ products: [] }, "test", "2026-08-11T00:00:00.000Z");

@@ -275,7 +275,7 @@ async function getAppState() {
   return row?.state || null;
 }
 
-async function upsertAppState(state, updatedBy = "system") {
+async function createAppState(state, updatedBy = "system") {
   if (!hasSupabase()) return { ok: false, reason: "missing_supabase_env" };
   const payload = {
     id: STATE_ID,
@@ -286,11 +286,12 @@ async function upsertAppState(state, updatedBy = "system") {
   const rows = await supabaseFetch("/rest/v1/app_state", {
     method: "POST",
     headers: {
-      Prefer: "resolution=merge-duplicates,return=representation",
+      Prefer: "resolution=ignore-duplicates,return=representation",
     },
     body: JSON.stringify(payload),
   });
-  return { ok: true, updatedAt: rows?.[0]?.updated_at || payload.updated_at };
+  if (!Array.isArray(rows) || rows.length === 0) throw requestError("state_conflict", 409);
+  return { ok: true, updatedAt: rows[0]?.updated_at || payload.updated_at };
 }
 
 // The entire business lives in one app_state row, so a single bad write with no
@@ -571,13 +572,8 @@ async function archiveSales(state) {
 async function replaceAppState(state, updatedBy = "system", expectedUpdatedAt = "") {
   if (!hasSupabase()) return { ok: false, reason: "missing_supabase_env" };
   if (!expectedUpdatedAt) {
-    // A caller with no version token can only ever create the very first row.
-    // Without this check a client that momentarily believed no state existed
-    // (a transient empty read) would overwrite the entire production document
-    // with its local cache, with no concurrency check at all.
-    const existing = await getStateRow();
-    if (existing) throw requestError("state_conflict", 409);
-    return upsertAppState(state, updatedBy);
+    // Let the database enforce creation atomically when two clients initialize together.
+    return createAppState(state, updatedBy);
   }
 
   const updatedAt = new Date().toISOString();
@@ -955,6 +951,5 @@ module.exports = {
   sendEmail,
   setSessionCookie,
   supabaseFetch,
-  upsertAppState,
   validateAppState,
 };
