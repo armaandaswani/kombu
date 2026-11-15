@@ -76,6 +76,7 @@ window.KOMBU_I18N = {
     "{0} sem reserva de {1}{2} | {3}": "{0} without reservation of {1}{2} | {3}",
     "{0} un | {1} receita | {2}": "{0} un | {1} revenue | {2}",
     "{0}: {1} {2} por {3} ({4}/{5})": "{0}: {1} {2} for {3} ({4}/{5})",
+    "{0}: {1} {2} por {3} ({4}/{5}); custo médio agora {6}/{7}": "{0}: {1} {2} for {3} ({4}/{5}); average cost now {6}/{7}",
     "{0}: {1} disponível, {2} reservado": "{0}: {1} available, {2} reserved",
     "{0}: {1} garrafa(s). Motivo: {2}. {3}": "{0}: {1} bottle(s). Reason: {2}. {3}",
     "{0}: entra em Despesas e não altera estoque/custo da garrafa.": "{0}: goes to Expenses and does not change bottle stock/cost.",

@@ -1462,6 +1462,45 @@ function stockUnitFor(collection, item, fallback = "g") {
   return item?.purchaseUnit || fallback || "g";
 }
 
+// Ingredients and packaging are valued at weighted average cost (owner
+// decision, 15 November 2026). A purchase used to replace the unit cost with
+// its own price, silently revaluing stock bought earlier at another price.
+function stockItemUnitCost(collection, item) {
+  return Number((collection === "packaging" ? item?.costEach : item?.costPerUnit) || 0);
+}
+
+function setStockItemUnitCost(collection, item, cost) {
+  const value = Number(Number(cost || 0).toFixed(6));
+  if (collection === "packaging") item.costEach = value;
+  else item.costPerUnit = value;
+}
+
+// Stock on hand with no known cost is valued at the incoming price rather
+// than at zero, which would understate the average.
+function receiveAtAverageCost(collection, item, qty, unitCost) {
+  const onHand = Math.max(0, Number(item.stock || 0));
+  const current = stockItemUnitCost(collection, item);
+  const incoming = Number(qty || 0);
+  const average = onHand > 0 && current > 0 && onHand + incoming > 0
+    ? (onHand * current + incoming * Number(unitCost || 0)) / (onHand + incoming)
+    : Number(unitCost || 0);
+  item.stock = Number(item.stock || 0) + incoming;
+  setStockItemUnitCost(collection, item, average);
+}
+
+// Takes a purchase back out when it is edited or deleted. Without a movement
+// ledger the stock consumed since cannot be traced to a purchase, so when the
+// remaining value would be zero or negative the current average is kept
+// instead of being invented; exact replay arrives with the posting contracts.
+function returnAtAverageCost(collection, item, qty, unitCost) {
+  const onHand = Math.max(0, Number(item.stock || 0));
+  const outgoing = Number(qty || 0);
+  const remaining = onHand - outgoing;
+  const remainingValue = onHand * stockItemUnitCost(collection, item) - outgoing * Number(unitCost || 0);
+  item.stock = Math.max(0, remaining);
+  if (remaining > 0 && remainingValue > 0) setStockItemUnitCost(collection, item, remainingValue / remaining);
+}
+
 function stockCollectionItems(collection) {
   if (collection === "packaging") return state.packaging;
   return state.ingredients;
@@ -7703,7 +7742,9 @@ function newPurchaseForm() {
       localizedAlert("Escolha um item válido.");
       return;
     }
-    stockItem.stock = Number(stockItem.stock || 0) + qty;
+    if (collection === "packaging") stockItem.unit = stockUnit;
+    else stockItem.purchaseUnit = stockUnit;
+    receiveAtAverageCost(collection, stockItem, qty, costPerUnit);
     stockItem.supplier = data.supplier || stockItem.supplier;
     stockItem.packageCount = packageCount;
     stockItem.packageSize = packageSize;
@@ -7711,13 +7752,6 @@ function newPurchaseForm() {
     stockItem.packageTotal = total;
     stockItem.needsCost = false;
     stockItem.status = "ativo";
-    if (collection === "packaging") {
-      stockItem.unit = stockUnit;
-      stockItem.costEach = costPerUnit;
-    } else {
-      stockItem.purchaseUnit = stockUnit;
-      stockItem.costPerUnit = costPerUnit;
-    }
     const purchase = {
       id: id("pur"),
       kind: "stock",
@@ -7740,7 +7774,7 @@ function newPurchaseForm() {
     };
     state.purchases.unshift(purchase);
     syncPurchaseExpense(purchase);
-    addAudit("Compra registrada", `${stockItem.name}: ${number(qty, 3)} ${stockUnit} por ${brl(total)} (${brl(costPerUnit)}/${stockUnit})`);
+    addAudit("Compra registrada", `${stockItem.name}: ${number(qty, 3)} ${stockUnit} por ${brl(total)} (${brl(costPerUnit)}/${stockUnit}); custo médio agora ${brl(stockItemUnitCost(collection, stockItem))}/${stockUnit}`);
     closeModal();
     render();
   });
@@ -9512,7 +9546,8 @@ function deletePurchase(recordId) {
   if (!purchase) return;
   if (!localizedConfirm(`Excluir compra de "${purchase.item}"? O estoque correspondente será ajustado quando possível.`)) return;
   const target = stockItemForPurchase(purchase);
-  if (target?.item) target.item.stock = Math.max(0, Number(target.item.stock || 0) - Number(purchase.qty || 0));
+  const qty = Number(purchase.qty || 0);
+  if (target?.item) returnAtAverageCost(target.collection, target.item, qty, Number(purchase.costPerUnit || 0) || Number(purchase.total || 0) / Math.max(qty, 0.000001));
   state.purchases = state.purchases.filter((item) => item.id !== recordId);
   state.expenses = state.expenses.filter((expense) => expense.purchaseId !== recordId);
   addAudit("Compra excluída", purchase.item);
@@ -10452,6 +10487,7 @@ function editPurchaseForm(purchaseId) {
   }
   const previousTarget = currentTarget ? { collection: currentTarget.collection, itemId: currentTarget.item.id } : null;
   const previousQty = Number(purchase?.qty || 0);
+  const previousUnitCost = Number(purchase?.costPerUnit || 0) || Number(purchase?.total || 0) / Math.max(previousQty, 0.000001);
   const purchaseFields = [
     { name: "date", label: "Data", type: "date", required: true },
     { name: "supplier", label: "Fornecedor" },
@@ -10477,21 +10513,16 @@ function editPurchaseForm(purchaseId) {
     const unit = stockUnitFor(nextTarget.collection, nextTarget.item, record.packageUnit || record.unit);
     const nextQty = purchaseQuantityInStockUnit(record, unit);
     const nextCost = Number(record.total || 0) / Math.max(nextQty, 0.000001);
-    if (previousItem?.item) previousItem.item.stock = Math.max(0, Number(previousItem.item.stock || 0) - previousQty);
+    if (previousItem?.item) returnAtAverageCost(previousTarget.collection, previousItem.item, previousQty, previousUnitCost);
     if (nextTarget.item) {
-      nextTarget.item.stock = Number(nextTarget.item.stock || 0) + nextQty;
+      if (nextTarget.collection === "packaging") nextTarget.item.unit = unit;
+      else nextTarget.item.purchaseUnit = unit;
+      receiveAtAverageCost(nextTarget.collection, nextTarget.item, nextQty, nextCost);
       nextTarget.item.supplier = record.supplier || nextTarget.item.supplier;
       nextTarget.item.packageCount = Number(record.packageCount || 0);
       nextTarget.item.packageSize = Number(record.packageSize || 0);
       nextTarget.item.packageUnit = record.packageUnit;
       nextTarget.item.packageTotal = Number(record.total || 0);
-      if (nextTarget.collection === "packaging") {
-        nextTarget.item.unit = unit;
-        nextTarget.item.costEach = nextCost;
-      } else {
-        nextTarget.item.purchaseUnit = unit;
-        nextTarget.item.costPerUnit = nextCost;
-      }
     }
     record.item = nextTarget.item?.name || record.item;
     record.qty = nextQty;
@@ -10938,17 +10969,25 @@ function handleAction(action) {
   const dynamicMap = {
     "edit-product": editProductForm,
     "delete-product": (itemId) => deleteRecord("products", itemId),
-    "edit-ingredient": (itemId) => editRecordForm("ingredients", itemId, "Editar ingrediente", ingredientFields, (record) => {
-      record.packageUnit = record.packageUnit || record.purchaseUnit || "g";
-      applyIngredientPackageCost(record, record);
-      if (Number(record.costPerUnit || 0) > 0) {
-        record.needsCost = false;
-        if (record.status === "custo pendente") record.status = "ativo";
-      } else if (ingredientNeedsCost(record)) {
-        record.needsCost = true;
-        record.status = "custo pendente";
-      }
-    }),
+    "edit-ingredient": (itemId) => {
+      const before = clone(byId("ingredients", itemId) || {});
+      editRecordForm("ingredients", itemId, "Editar ingrediente", ingredientFields, (record) => {
+        record.packageUnit = record.packageUnit || record.purchaseUnit || "g";
+        // The package fields repeat the last purchase. Recomputing the cost from
+        // them on every save replaced the weighted average with that purchase's
+        // price, so only a package the operator actually changed sets the cost.
+        const packageChanged = ["packageCount", "packageSize", "packageTotal"].some((key) => Number(record[key] || 0) !== Number(before[key] || 0))
+          || record.packageUnit !== (before.packageUnit || before.purchaseUnit || "g");
+        if (packageChanged) applyIngredientPackageCost(record, record);
+        if (Number(record.costPerUnit || 0) > 0) {
+          record.needsCost = false;
+          if (record.status === "custo pendente") record.status = "ativo";
+        } else if (ingredientNeedsCost(record)) {
+          record.needsCost = true;
+          record.status = "custo pendente";
+        }
+      });
+    },
     "delete-ingredient": (itemId) => deleteRecord("ingredients", itemId),
     "edit-packaging": (itemId) => editRecordForm("packaging", itemId, "Editar material", packagingFields),
     "delete-packaging": (itemId) => deleteRecord("packaging", itemId),

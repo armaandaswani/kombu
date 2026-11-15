@@ -807,3 +807,40 @@ console.log("Dashboard regression: monthly finances, missing costs and overview 
   assert.match(call("renderReports"), /lucro indisponível/);
   console.log("Reports: uncosted sale retains revenue and withholds profit.");
 }
+
+// Purchases value stock at weighted average cost (owner decision, 15 November
+// 2026). Receiving blends the purchase price with the stock already on hand;
+// taking a purchase back out (edit or delete) removes its value again.
+{
+  const ingredient = { id: "tea", name: "Tea", purchaseUnit: "g", stock: 1000, costPerUnit: 0.025 };
+  load({ ingredients: [ingredient] });
+  const item = () => admin.__getState().ingredients[0];
+  // 1000 g at 0.025 plus 1000 g bought for R$ 35 (0.035/g) averages to 0.030.
+  call("receiveAtAverageCost", "ingredients", item(), 1000, 0.035);
+  assert.equal(item().stock, 2000);
+  assert.equal(item().costPerUnit, 0.03);
+  // Consumption does not change the average.
+  item().stock = 500;
+  // Taking the 0.035 purchase back out of 500 g would leave a negative value,
+  // so the average is kept rather than invented.
+  call("returnAtAverageCost", "ingredients", item(), 1000, 0.035);
+  assert.equal(item().stock, 0);
+  assert.equal(item().costPerUnit, 0.03);
+  // With no stock on hand the next purchase sets the price outright.
+  call("receiveAtAverageCost", "ingredients", item(), 400, 0.04);
+  assert.equal(item().costPerUnit, 0.04);
+  // Reversal with stock left: 400 g at 0.04 + 600 g at 0.02 = 0.028 average;
+  // removing the 600 g purchase restores 0.04.
+  call("receiveAtAverageCost", "ingredients", item(), 600, 0.02);
+  assert.equal(item().costPerUnit, 0.028);
+  call("returnAtAverageCost", "ingredients", item(), 600, 0.02);
+  assert.equal(item().stock, 400);
+  assert.equal(item().costPerUnit, 0.04);
+  // Stock with no known cost is valued at the incoming price, not at zero.
+  const uncosted = { id: "box", name: "Box", unit: "un", stock: 50, costEach: 0 };
+  load({ packaging: [uncosted] });
+  call("receiveAtAverageCost", "packaging", admin.__getState().packaging[0], 50, 1.2);
+  assert.equal(admin.__getState().packaging[0].stock, 100);
+  assert.equal(admin.__getState().packaging[0].costEach, 1.2);
+  console.log("Purchase costing: weighted average on receipt, reversal, empty stock and uncosted stock passed.");
+}
