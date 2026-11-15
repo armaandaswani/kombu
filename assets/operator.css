@@ -1,0 +1,248 @@
+/* Hallmark · shape: app screen · genre: modern-minimal · theme: kept (Kombú tokens in kombu.css)
+ * nav: the admin shell, sidebar hidden in simple mode · signature: the recent-entries ledger, each entry correctable in one tap · states: empty, no match, full
+ * axes: kept · contrast: pass · v2.0.0 */
+/* Hallmark · pre-emit critique: P4 H4 E4 S4 R4 V3 · weakest: V, the screen shares the panel's tokens and shell on purpose so the two modes feel like one product */
+
+/* Simple mode keeps the language switch and logout but drops the sidebar,
+   module menu and search, so the four tasks are the only choices on screen. */
+.admin-shell.is-simple {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.admin-shell.is-simple .admin-sidebar,
+.admin-shell.is-simple .mobile-module-select,
+.admin-shell.is-simple .admin-search,
+.admin-shell.is-simple .admin-user a.btn-outline {
+  display: none;
+}
+
+.operator {
+  display: grid;
+  gap: 28px;
+  max-width: 880px;
+  margin-inline: auto;
+}
+
+.operator-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.operator-head h1 {
+  margin: 0;
+  font-family: var(--font-serif);
+  font-size: clamp(1.75rem, 1.4rem + 1.5vw, 2.4rem);
+  line-height: 1.15;
+  overflow-wrap: break-word;
+  min-width: 0;
+  text-wrap: balance;
+}
+
+.operator-tasks {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.operator-task {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 16px;
+  min-height: 96px;
+  border: 2px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface-strong);
+  color: var(--ink);
+  padding: 20px;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 120ms ease, background-color 120ms ease;
+}
+
+.operator-task .material-symbols-outlined {
+  display: grid;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+  border-radius: var(--radius);
+  background: var(--surface-soft);
+  color: var(--green);
+  font-size: 30px;
+}
+
+.operator-task-text {
+  display: grid;
+  gap: 2px;
+}
+
+.operator-task-text strong {
+  font-size: 1.2rem;
+  line-height: 1.25;
+}
+
+.operator-task-text span {
+  color: var(--muted);
+  font-size: 1rem;
+}
+
+.operator-task:hover {
+  border-color: var(--green);
+}
+
+.operator-task:active {
+  background: var(--surface-soft);
+}
+
+.operator-task:focus-visible,
+.operator-fix:focus-visible,
+.link-button:focus-visible,
+.operator-search input:focus-visible {
+  outline: 3px solid var(--green);
+  outline-offset: 2px;
+}
+
+.operator-alt {
+  margin: -12px 0 0;
+  color: var(--muted);
+  font-size: 1rem;
+}
+
+.link-button {
+  min-height: 44px;
+  border: 0;
+  background: none;
+  color: var(--green);
+  padding: 0 4px;
+  font: inherit;
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.operator-attention {
+  border: 2px solid var(--warning);
+  border-radius: var(--radius);
+  background: var(--surface-warm);
+  padding: 16px 20px;
+}
+
+.operator-attention h2,
+.operator-ledger h2 {
+  margin: 0 0 8px;
+  font-size: 1.25rem;
+  text-wrap: balance;
+}
+
+.operator-attention ul {
+  margin: 0;
+  padding-left: 1.2em;
+  font-size: 1rem;
+}
+
+.operator-ledger {
+  display: grid;
+  gap: 16px;
+}
+
+.operator-search {
+  display: grid;
+  gap: 8px;
+  font-weight: 700;
+}
+
+.operator-search input {
+  min-height: 56px;
+  border: 2px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface-strong);
+  color: var(--ink);
+  padding: 0 16px;
+  font: inherit;
+  font-size: 1.1rem;
+}
+
+.operator-entries {
+  display: grid;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.operator-entry {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface-strong);
+  padding: 16px;
+}
+
+.operator-entry > .material-symbols-outlined {
+  color: var(--green);
+  font-size: 28px;
+}
+
+.operator-entry-text {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.operator-entry-text strong {
+  font-size: 1.1rem;
+  overflow-wrap: break-word;
+}
+
+.operator-entry-text span {
+  color: var(--muted);
+  font-size: 1rem;
+  overflow-wrap: break-word;
+}
+
+.operator-fix {
+  min-height: 48px;
+  font-size: 1rem;
+}
+
+.operator-return {
+  margin-bottom: 16px;
+}
+
+.operator-return .btn {
+  min-height: 52px;
+  font-size: 1.05rem;
+}
+
+@media (max-width: 760px) {
+  .operator-tasks {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .operator-task {
+    min-height: 84px;
+  }
+
+  .operator-entry {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .operator-fix {
+    grid-column: 1 / -1;
+    width: 100%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .operator-task {
+    transition: none;
+  }
+}

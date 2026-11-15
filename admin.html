@@ -20,6 +20,7 @@
     />
     <link rel="icon" href="favicon.svg" type="image/svg+xml" />
     <link rel="stylesheet" href="assets/kombu.css?v=20261115c" />
+    <link rel="stylesheet" href="assets/operator.css?v=20261115a" />
   </head>
   <body class="admin-body">
     <section class="admin-login" id="loginScreen" aria-labelledby="loginTitle">
@@ -71,6 +72,10 @@
 <button class="is-active" type="button" data-module="dashboard" title="Início">
             <span class="material-symbols-outlined" aria-hidden="true">dashboard</span>
             <span class="label">Início</span>
+          </button>
+<button type="button" data-module="operator" title="Modo simples">
+            <span class="material-symbols-outlined" aria-hidden="true">touch_app</span>
+            <span class="label">Modo simples</span>
           </button>
 <span class="admin-nav-heading">Vender e atender</span>
 <button type="button" data-module="orders" title="Pedidos">
@@ -154,7 +159,7 @@
       <main class="admin-main">
         <header class="admin-topbar">
           <select class="mobile-module-select" id="mobileModuleSelector" aria-label="Selecionar módulo do admin">
-<optgroup label="Visão geral"><option value="dashboard">Início</option></optgroup><optgroup label="Vender e atender"><option value="orders">Pedidos</option><option value="sales">Vendas</option><option value="receipts">Recibos</option><option value="leads">Leads CRM</option><option value="partners">Parceiros</option></optgroup><optgroup label="Produzir e abastecer"><option value="batches">Produção</option><option value="stock">Estoque</option><option value="purchases">Compras</option><option value="ingredients">Ingredientes</option><option value="packaging">Embalagens</option><option value="recipes">Receitas</option><option value="suppliers">Fornecedores</option></optgroup><optgroup label="Finanças"><option value="expenses">Despesas</option><option value="costs">Custos</option><option value="reports">Relatórios</option></optgroup><optgroup label="Cadastros e site"><option value="products">Produtos</option><option value="cms">Conteúdo do site</option><option value="schema">Arquitetura</option></optgroup>
+<optgroup label="Visão geral"><option value="dashboard">Início</option><option value="operator">Modo simples</option></optgroup><optgroup label="Vender e atender"><option value="orders">Pedidos</option><option value="sales">Vendas</option><option value="receipts">Recibos</option><option value="leads">Leads CRM</option><option value="partners">Parceiros</option></optgroup><optgroup label="Produzir e abastecer"><option value="batches">Produção</option><option value="stock">Estoque</option><option value="purchases">Compras</option><option value="ingredients">Ingredientes</option><option value="packaging">Embalagens</option><option value="recipes">Receitas</option><option value="suppliers">Fornecedores</option></optgroup><optgroup label="Finanças"><option value="expenses">Despesas</option><option value="costs">Custos</option><option value="reports">Relatórios</option></optgroup><optgroup label="Cadastros e site"><option value="products">Produtos</option><option value="cms">Conteúdo do site</option><option value="schema">Arquitetura</option></optgroup>
           </select>
           <label class="admin-search">
             <span class="material-symbols-outlined" aria-hidden="true">search</span>
@@ -199,6 +204,6 @@
     <script src="assets/admin-i18n.js?v=20261115a"></script>
     <script src="assets/admin-locale.js?v=20261115a"></script>
     <script src="assets/receipt-reader.js?v=20261115a"></script>
-    <script src="assets/admin.js?v=20261115d"></script>
+    <script src="assets/admin.js?v=20261115e"></script>
   </body>
 </html>

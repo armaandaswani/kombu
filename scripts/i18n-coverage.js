@@ -11,7 +11,7 @@ const baseUrl = process.env.AUDIT_BASE_URL || "http://127.0.0.1:4173";
 if (!["localhost", "127.0.0.1"].includes(new URL(baseUrl).hostname)) throw new Error("i18n coverage requires a local fixture server");
 const locale = process.env.I18N_LOCALE || "en";
 const dumpPath = process.env.I18N_DUMP || "";
-const modules = ["dashboard", "orders", "sales", "receipts", "leads", "partners", "batches", "stock", "products", "recipes", "ingredients", "packaging", "purchases", "suppliers", "costs", "expenses", "reports", "cms", "schema"];
+const modules = ["operator", "dashboard", "orders", "sales", "receipts", "leads", "partners", "batches", "stock", "products", "recipes", "ingredients", "packaging", "purchases", "suppliers", "costs", "expenses", "reports", "cms", "schema"];
 // Actions that leave the page or replace the whole state are not opened here.
 const skipActions = new Set(["logout", "import-json", "restore-cost-base", "reset-demo", "clear-local", "export-json", "export-csv", "print"]);
 

@@ -39,7 +39,7 @@ const server = http.createServer(async (req, res) => {
   try {
     // Pass suite file names to run only those, e.g. node scripts/run-browser-tests.js i18n-coverage.js
     const suites = process.argv.slice(2).length ? process.argv.slice(2)
-      : ["admin-regression.js", "dashboard-regression.js", "order-production-regression.js", "reservation-workflow-regression.js", "purchase-cost-regression.js", "supply-shortfall-regression.js", "oversell-regression.js", "receipt-capture-regression.js", "i18n-coverage.js"];
+      : ["admin-regression.js", "dashboard-regression.js", "order-production-regression.js", "reservation-workflow-regression.js", "purchase-cost-regression.js", "supply-shortfall-regression.js", "oversell-regression.js", "receipt-capture-regression.js", "operator-regression.js", "i18n-coverage.js"];
     for (const suite of suites) {
       const code = await new Promise((resolve, reject) => {
         const child = spawn(process.execPath, [path.join(__dirname, suite)], {

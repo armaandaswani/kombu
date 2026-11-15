@@ -619,7 +619,8 @@ async function authenticateAdmin(password) {
 async function startAuthenticatedSession() {
   unlockAdmin();
   try {
-    render();
+    // Opens where this device was last used: the simple screen or the full panel.
+    setModule(savedHome());
     const result = await syncFromCloud();
     if (result === "unauthorized" && !isLocalPreview()) {
       sessionStorage.removeItem("kombuAdminAuthenticated");
@@ -7271,8 +7272,151 @@ function populateSaleBatchOptions(form, stockRows, productId, preferredBatchCode
   return selectedCode;
 }
 
+// "Modo simples": the screen for the people who record the day's work. Four
+// large tasks and one list of recent entries, searchable, each correctable with
+// one tap. The sidebar is hidden here so nothing competes with the task; the
+// choice of simple or full panel is remembered on this device.
+const HOME_KEY = "kombuAdminHome";
+const OPERATOR_ENTRY_LIMIT = 25;
+let operatorSearch = "";
+
+function rememberHome(module) {
+  try {
+    localStorage.setItem(HOME_KEY, module);
+  } catch {
+    // Private browsing: the panel still works, it just opens on Início.
+  }
+}
+
+function savedHome() {
+  try {
+    return localStorage.getItem(HOME_KEY) === "operator" ? "operator" : "dashboard";
+  } catch {
+    return "dashboard";
+  }
+}
+
+function operatorEntries() {
+  const purchases = state.purchases.map((purchase) => ({
+    kind: "Compra",
+    icon: "shopping_bag",
+    date: purchase.date,
+    title: purchase.item || "Compra",
+    detail: purchase.kind === "operational" ? brl(purchase.total) : `${quantity(purchase.qty)} ${purchase.unit || ""}, ${brl(purchase.total)}`,
+    who: purchase.supplier || "",
+    action: `edit-purchase:${purchase.id}`,
+  }));
+  const batches = state.batches.map((batch) => ({
+    kind: "Produção",
+    icon: "factory",
+    date: batch.date,
+    title: `${batch.flavor || "Lote"} ${number(batchSizeMl(batch))} ml`,
+    detail: `${number(batchProducedQuantity(batch))} garrafa(s), lote ${batch.code}`,
+    who: batch.responsible || "",
+    action: `correct-batch-qty:${batch.id}`,
+  }));
+  const sales = state.sales.map((sale) => ({
+    kind: !sale.movementType || sale.movementType === "venda" ? "Venda" : "Saída",
+    icon: "point_of_sale",
+    date: sale.date,
+    title: `${sale.flavor || "Kombucha"}${sale.pendingBatch ? " (sem lote)" : ""}`,
+    detail: `${number(sale.qty)} garrafa(s), ${brl(saleRevenue(sale))}`,
+    who: sale.customerName || sale.partner || "",
+    action: `edit-sale:${sale.id}`,
+  }));
+  return [...purchases, ...batches, ...sales].sort((a, b) => String(b.date || "").localeCompare(String(a.date || "")));
+}
+
+function operatorEntriesMarkup() {
+  const query = normalizeText(operatorSearch);
+  const all = operatorEntries();
+  if (!all.length) {
+    return `<p class="empty-note">Nada registrado ainda. Use os botões acima para registrar a primeira produção ou compra.</p>`;
+  }
+  const matches = query
+    ? all.filter((entry) => normalizeText([tr(entry.kind), entry.kind, entry.title, entry.detail, entry.who, entry.date, fullDate(entry.date), shortDate(entry.date)].join(" ")).includes(query))
+    : all.slice(0, OPERATOR_ENTRY_LIMIT);
+  if (!matches.length) {
+    return `<p class="empty-note">Nada encontrado para "${escapeHtml(operatorSearch)}". Tente o nome do item, o sabor, o cliente ou a data (por exemplo 14/11).</p>`;
+  }
+  return `
+    <ol class="operator-entries">
+      ${matches.map((entry) => `
+        <li class="operator-entry">
+          <span class="material-symbols-outlined" aria-hidden="true">${entry.icon}</span>
+          <div class="operator-entry-text">
+            <strong>${escapeHtml(entry.title)}</strong>
+            <span>${escapeHtml(entry.kind)}, ${escapeHtml(fullDate(entry.date))}${entry.who ? `, ${escapeHtml(entry.who)}` : ""}</span>
+            <span>${escapeHtml(entry.detail)}</span>
+          </div>
+          <button class="btn btn-outline operator-fix" type="button" data-action="${escapeHtml(entry.action)}" aria-label="${escapeHtml(`Corrigir: ${entry.kind} ${entry.title}, ${fullDate(entry.date)}`)}">Corrigir</button>
+        </li>`).join("")}
+    </ol>
+    ${!query && all.length > OPERATOR_ENTRY_LIMIT ? `<p class="empty-note">Mostrando os ${number(OPERATOR_ENTRY_LIMIT)} mais recentes. Para um lançamento mais antigo, use a busca.</p>` : ""}
+  `;
+}
+
+function operatorTask(action, icon, label, help) {
+  return `
+    <button class="operator-task" type="button" data-action="${action}">
+      <span class="material-symbols-outlined" aria-hidden="true">${icon}</span>
+      <span class="operator-task-text"><strong>${label}</strong><span>${help}</span></span>
+    </button>`;
+}
+
+function renderOperator() {
+  const attention = [
+    ...[...new Set(pendingBatchSales().map((sale) => sale.productId))].map((productId) => {
+      const product = byId("products", productId);
+      return `Vendido sem estoque: ${product ? `${product.flavor || product.item} ${productSizeMl(product)} ml` : "sabor não identificado"}. Registre a produção.`;
+    }),
+    ...negativeStockSupplies().map(({ collection, item }) => `Estoque negativo: ${item.name} (${quantity(item.stock)} ${stockUnitFor(collection, item)}). Registre a compra que faltou.`),
+  ];
+  return `
+    <section class="operator" aria-labelledby="operatorTitle">
+      <div class="operator-head">
+        <h1 id="operatorTitle">O que você vai registrar?</h1>
+        <button class="btn btn-outline" type="button" data-action="full-panel"><span class="material-symbols-outlined" aria-hidden="true">dashboard</span>Painel completo</button>
+      </div>
+      <div class="operator-tasks">
+        ${operatorTask("new-batch", "factory", "Registrar produção", "Um lote novo de kombucha")}
+        ${operatorTask("read-receipt", "photo_camera", "Registrar compra", "Tire uma foto da nota")}
+        ${operatorTask("operator-stock", "inventory_2", "Ver estoque", "Quanto tem de cada sabor")}
+        ${operatorTask("operator-find", "search", "Encontrar ou corrigir", "Uma compra, produção ou venda")}
+      </div>
+      <p class="operator-alt">Sem a nota em mãos? <button class="link-button" type="button" data-action="new-purchase">Registrar compra sem foto</button></p>
+      ${attention.length ? `<div class="operator-attention" role="status"><h2>Precisa de atenção</h2><ul>${attention.map((line) => `<li>${escapeHtml(line)}</li>`).join("")}</ul></div>` : ""}
+      <section class="operator-ledger" aria-labelledby="operatorLedgerTitle">
+        <h2 id="operatorLedgerTitle">Lançamentos recentes</h2>
+        <label class="operator-search">
+          <span>Encontrar uma compra, produção ou venda</span>
+          <input id="operatorSearch" type="search" value="${escapeHtml(operatorSearch)}" placeholder="Nome, sabor, cliente ou data" autocomplete="off">
+        </label>
+        <div id="operatorEntries" aria-live="polite">${operatorEntriesMarkup()}</div>
+      </section>
+    </section>
+  `;
+}
+
+// Only the list is redrawn while typing, so the search box keeps its focus.
+function bindOperatorEvents() {
+  const search = document.querySelector("#operatorSearch");
+  search?.addEventListener("input", () => {
+    operatorSearch = search.value;
+    document.querySelector("#operatorEntries").innerHTML = operatorEntriesMarkup();
+  });
+}
+
+// Shown on every other screen while simple mode is this device's home, so
+// whoever finished a task can get back without the sidebar.
+function operatorReturnBar() {
+  if (currentModule === "operator" || savedHome() !== "operator") return "";
+  return `<div class="operator-return"><button class="btn btn-primary" type="button" data-action="operator-home"><span class="material-symbols-outlined" aria-hidden="true">arrow_back</span>Voltar ao modo simples</button></div>`;
+}
+
 function render() {
   const view = {
+    operator: renderOperator,
     dashboard: renderDashboard,
     products: renderProducts,
     ingredients: renderIngredients,
@@ -7294,15 +7438,18 @@ function render() {
     schema: renderSchema,
   }[currentModule];
   const openPanels = [...document.querySelectorAll("[data-dashboard-panel][open]")].map((panel) => panel.dataset.dashboardPanel);
-  document.querySelector("#adminContent").innerHTML = `${cloudSyncNotice()}${view()}`;
+  document.querySelector("#adminContent").innerHTML = `${operatorReturnBar()}${cloudSyncNotice()}${view()}`;
+  document.querySelector("#adminShell")?.classList.toggle("is-simple", currentModule === "operator");
   document.querySelectorAll("[data-dashboard-panel]").forEach((panel) => { panel.open = openPanels.includes(panel.dataset.dashboardPanel); });
   applyLocaleToShell();
   bindModuleEvents();
+  if (currentModule === "operator") bindOperatorEvents();
   enhanceSelectSearch(document.querySelector("#adminContent"));
 }
 
 function setModule(module) {
   currentModule = module;
+  if (module === "operator") rememberHome("operator");
   document.querySelectorAll("#adminNav button").forEach((button) => button.classList.toggle("is-active", button.dataset.module === module));
   const mobileModuleSelector = document.querySelector("#mobileModuleSelector");
   if (mobileModuleSelector && mobileModuleSelector.value !== module) mobileModuleSelector.value = module;
@@ -9350,7 +9497,7 @@ function newBatchForm() {
         </div>
         <div id="batchFlavorGrid" class="batch-choice-grid"></div>
         <p id="batchProductionHint" class="field-help">O código do lote e o custo são gerados automaticamente por sabor, usando a receita cadastrada.</p>
-        <button class="btn btn-primary" type="submit"><span class="material-symbols-outlined" aria-hidden="true">factory</span>Criar lotes e baixar insumos</button>
+        <button class="btn btn-primary" type="submit"><span class="material-symbols-outlined" aria-hidden="true">factory</span>Salvar produção</button>
       </form>
     `,
   );
@@ -11583,6 +11730,17 @@ function handleAction(action) {
     "import-cost-base": restoreCostBase,
     "new-ingredient": newIngredientForm,
     "new-purchase": newPurchaseForm,
+    "full-panel": () => {
+      rememberHome("dashboard");
+      setModule("dashboard");
+    },
+    "operator-home": () => setModule("operator"),
+    "operator-stock": () => setModule("stock"),
+    "operator-find": () => {
+      const search = document.querySelector("#operatorSearch");
+      search?.scrollIntoView({ block: "center" });
+      search?.focus();
+    },
     "read-receipt": receiptReadForm,
     "quick-sale": quickSaleForm,
     "new-sale": newSaleForm,
