@@ -8,7 +8,14 @@ if (spawnSync("pdfinfo", ["-v"]).error) {
   throw new Error("PDF assertions require pdfinfo (Poppler). See scripts/browser/README.md.");
 }
 const root = path.resolve(__dirname, "..");
-const types = { ".html": "text/html", ".js": "text/javascript", ".css": "text/css", ".svg": "image/svg+xml", ".png": "image/png", ".webp": "image/webp", ".jpg": "image/jpeg" };
+const types = { ".html": "text/html", ".js": "text/javascript", ".css": "text/css", ".svg": "image/svg+xml", ".png": "image/png", ".webp": "image/webp", ".jpg": "image/jpeg", ".traineddata": "application/octet-stream" };
+// The production security headers (vercel.json, rule "/(.*)"), so every suite
+// runs under the real Content-Security-Policy.
+const productionHeaders = Object.fromEntries(
+  (JSON.parse(require("node:fs").readFileSync(path.join(root, "vercel.json"), "utf8")).headers.find((rule) => rule.source === "/(.*)")?.headers || [])
+    .filter((header) => header.key !== "Strict-Transport-Security")
+    .map((header) => [header.key, header.value]),
+);
 const server = http.createServer(async (req, res) => {
   try {
     const pathname = decodeURIComponent(new URL(req.url, "http://localhost").pathname);
@@ -21,7 +28,7 @@ const server = http.createServer(async (req, res) => {
     const file = path.resolve(root, filename);
     if (!file.startsWith(root + path.sep)) { res.writeHead(403); return res.end(); }
     const body = await fs.readFile(file);
-    res.writeHead(200, { "Content-Type": types[path.extname(file)] || "application/octet-stream", "Cache-Control": "no-store" });
+    res.writeHead(200, { ...productionHeaders, "Content-Type": types[path.extname(file)] || "application/octet-stream", "Cache-Control": "no-store" });
     res.end(req.method === "HEAD" ? undefined : body);
   } catch { res.writeHead(404); res.end(); }
 });
@@ -32,7 +39,7 @@ const server = http.createServer(async (req, res) => {
   try {
     // Pass suite file names to run only those, e.g. node scripts/run-browser-tests.js i18n-coverage.js
     const suites = process.argv.slice(2).length ? process.argv.slice(2)
-      : ["admin-regression.js", "dashboard-regression.js", "order-production-regression.js", "reservation-workflow-regression.js", "purchase-cost-regression.js", "supply-shortfall-regression.js", "oversell-regression.js", "i18n-coverage.js"];
+      : ["admin-regression.js", "dashboard-regression.js", "order-production-regression.js", "reservation-workflow-regression.js", "purchase-cost-regression.js", "supply-shortfall-regression.js", "oversell-regression.js", "receipt-capture-regression.js", "i18n-coverage.js"];
     for (const suite of suites) {
       const code = await new Promise((resolve, reject) => {
         const child = spawn(process.execPath, [path.join(__dirname, suite)], {

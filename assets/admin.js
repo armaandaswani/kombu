@@ -5093,7 +5093,7 @@ function renderIngredients() {
     ${pageHead(
       "Ingredientes",
       "Cadastro, estoque mínimo, fornecedores, vencimento e custo unitário usado nas fórmulas.",
-      `${actionButton("new-ingredient", "Novo ingrediente", "add")} ${actionButton("new-purchase", "Registrar compra", "shopping_bag", "btn-outline")} ${actionButton("export-ingredients", "CSV", "download", "btn-outline")}`,
+      `${actionButton("new-ingredient", "Novo ingrediente", "add")} ${actionButton("read-receipt", "Ler nota (foto)", "photo_camera", "btn-outline")} ${actionButton("new-purchase", "Registrar compra", "shopping_bag", "btn-outline")} ${actionButton("export-ingredients", "CSV", "download", "btn-outline")}`,
     )}
     ${table(
       [
@@ -5134,7 +5134,7 @@ function renderPurchases() {
     ${pageHead(
       "Compras",
       "Registre estoque e despesas operacionais em um só lugar. Compras entram automaticamente em Despesas.",
-      `${actionButton("new-purchase", "Registrar compra", "add")} ${actionButton("export-purchases", "CSV", "download", "btn-outline")}`,
+      `${actionButton("read-receipt", "Ler nota (foto)", "photo_camera")} ${actionButton("new-purchase", "Registrar compra", "add", "btn-outline")} ${actionButton("export-purchases", "CSV", "download", "btn-outline")}`,
     )}
     ${table(
       [
@@ -7884,42 +7884,370 @@ function newPurchaseForm() {
       localizedAlert("Escolha um item válido.");
       return;
     }
-    if (collection === "packaging") stockItem.unit = stockUnit;
-    else stockItem.purchaseUnit = stockUnit;
-    receiveAtAverageCost(collection, stockItem, qty, costPerUnit);
-    stockItem.supplier = data.supplier || stockItem.supplier;
-    stockItem.packageCount = packageCount;
-    stockItem.packageSize = packageSize;
-    stockItem.packageUnit = packageUnit;
-    stockItem.packageTotal = total;
-    stockItem.needsCost = false;
-    stockItem.status = "ativo";
-    const purchase = {
-      id: id("pur"),
-      kind: "stock",
-      date: data.date,
-      supplier: data.supplier,
-      item: stockItem.name,
-      ingredientId: collection === "ingredients" ? stockItem.id : "",
-      packagingId: collection === "packaging" ? stockItem.id : "",
-      stockCollection: collection,
-      stockItemId: stockItem.id,
-      packageCount,
-      packageSize,
-      packageUnit,
-      qty,
-      unit: stockUnit,
-      total,
-      costPerUnit,
-      method: data.method,
-      buyer: data.buyer,
-    };
-    state.purchases.unshift(purchase);
-    syncPurchaseExpense(purchase);
-    addAudit("Compra registrada", `${stockItem.name}: ${number(qty, 3)} ${stockUnit} por ${brl(total)} (${brl(costPerUnit)}/${stockUnit}); custo médio agora ${brl(stockItemUnitCost(collection, stockItem))}/${stockUnit}`);
+    postStockPurchase({ collection, item: stockItem, qty, unit: stockUnit, total, date: data.date, supplier: data.supplier, method: data.method, buyer: data.buyer, packageCount, packageSize, packageUnit });
     closeModal();
     render();
   });
+}
+
+// The one way stock purchases are posted, by hand or from a read receipt:
+// receives at weighted average cost, records the purchase and its expense.
+// document carries what a read receipt proves (access key, CNPJ, total).
+function postStockPurchase({ collection, item, qty, unit, total, date, supplier, method = "", buyer = "", packageCount = 1, packageSize = qty, packageUnit = unit, document = null }) {
+  const costPerUnit = qty > 0 ? total / qty : 0;
+  if (collection === "packaging") item.unit = unit;
+  else item.purchaseUnit = unit;
+  receiveAtAverageCost(collection, item, qty, costPerUnit);
+  item.supplier = supplier || item.supplier;
+  item.packageCount = packageCount;
+  item.packageSize = packageSize;
+  item.packageUnit = packageUnit;
+  item.packageTotal = total;
+  item.needsCost = false;
+  item.status = "ativo";
+  const purchase = {
+    id: id("pur"),
+    kind: "stock",
+    date,
+    supplier,
+    item: item.name,
+    ingredientId: collection === "ingredients" ? item.id : "",
+    packagingId: collection === "packaging" ? item.id : "",
+    stockCollection: collection,
+    stockItemId: item.id,
+    packageCount,
+    packageSize,
+    packageUnit,
+    qty,
+    unit,
+    total,
+    costPerUnit,
+    method,
+    buyer,
+    ...(document || {}),
+  };
+  state.purchases.unshift(purchase);
+  syncPurchaseExpense(purchase);
+  addAudit("Compra registrada", `${item.name}: ${number(qty, 3)} ${unit} por ${brl(total)} (${brl(costPerUnit)}/${unit}); custo médio agora ${brl(stockItemUnitCost(collection, item))}/${unit}`);
+  return purchase;
+}
+
+// Reading a purchase receipt from a photo. Recognition runs on this device with
+// the audited tesseract.js 7.0.0 files in assets/vendor (no photo is sent
+// anywhere); assets/receipt-reader.js turns the text into fields marked as
+// checked, uncertain or missing, and nothing is posted until the operator
+// confirms it in the review form.
+const TESSERACT_BASE = "/assets/vendor/tesseract-7.0.0";
+let tesseractLoading = null;
+
+function loadTesseract() {
+  if (window.Tesseract) return Promise.resolve(window.Tesseract);
+  tesseractLoading ||= new Promise((resolve, reject) => {
+    const script = document.createElement("script");
+    script.src = `${TESSERACT_BASE}/tesseract.min.js`;
+    script.onload = () => resolve(window.Tesseract);
+    script.onerror = () => {
+      tesseractLoading = null;
+      reject(new Error("tesseract_unavailable"));
+    };
+    document.head.append(script);
+  });
+  return tesseractLoading;
+}
+
+// Phone photos are 12+ megapixels; recognition needs far less and older
+// phones run out of memory on full size, so the longest side is capped.
+async function receiptCanvas(file) {
+  const bitmap = await createImageBitmap(file);
+  const scale = Math.min(1, 2000 / Math.max(bitmap.width, bitmap.height));
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.round(bitmap.width * scale);
+  canvas.height = Math.round(bitmap.height * scale);
+  canvas.getContext("2d").drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+  bitmap.close?.();
+  return canvas;
+}
+
+// Where WebAssembly cannot run (iOS before 16, or a blocked policy) the
+// recognition worker never answers, so reading gives up after this long and
+// the operator is told, instead of waiting forever.
+let receiptReadTimeoutMs = 90000;
+
+async function recognizeReceiptPhoto(file, onProgress = () => {}) {
+  let worker = null;
+  let timer = null;
+  const work = (async () => {
+    const Tesseract = await loadTesseract();
+    const canvas = await receiptCanvas(file);
+    // Every path is same-origin: without them the library falls back to a CDN,
+    // which the Content-Security-Policy blocks.
+    worker = await Tesseract.createWorker("por", 1, {
+      workerPath: `${TESSERACT_BASE}/worker.min.js`,
+      corePath: `${TESSERACT_BASE}/core`,
+      langPath: `${TESSERACT_BASE}/lang`,
+      workerBlobURL: false,
+      gzip: false,
+      cacheMethod: "none",
+      logger: (message) => {
+        if (message.status === "recognizing text") onProgress(Math.round(Number(message.progress || 0) * 100));
+      },
+    });
+    const { data } = await worker.recognize(canvas);
+    return data.text || "";
+  })();
+  const timeout = new Promise((resolve, reject) => {
+    timer = setTimeout(() => reject(new Error("receipt_read_timeout")), receiptReadTimeoutMs);
+  });
+  try {
+    return await Promise.race([work, timeout]);
+  } finally {
+    clearTimeout(timer);
+    worker?.terminate().catch(() => {});
+  }
+}
+
+const INVOICE_UNITS = { UN: ["un", 1], UND: ["un", 1], PC: ["un", 1], PCT: ["un", 1], CX: ["un", 1], FD: ["un", 1], DZ: ["un", 12], KG: ["kg", 1], G: ["g", 1], L: ["l", 1], ML: ["ml", 1] };
+
+// The stock item whose name shares the most words with the receipt line, so
+// "ACUCAR CRISTAL 1KG" suggests "Açúcar". The operator can always change it.
+function suggestStockItemForLine(description) {
+  const words = new Set(normalizeText(description).split(/[^a-z0-9]+/).filter((word) => word.length >= 3));
+  let best = null;
+  [...state.ingredients.map((item) => ["ingredients", item]), ...state.packaging.map((item) => ["packaging", item])].forEach(([collection, item]) => {
+    const nameWords = normalizeText(item.name).split(/[^a-z0-9]+/).filter((word) => word.length >= 3);
+    const score = nameWords.filter((word) => words.has(word)).length;
+    if (score > 0 && (!best || score > best.score)) best = { score, key: purchaseStockKey(collection, item.id) };
+  });
+  return best?.key || "";
+}
+
+function receiptStatusBadge(status) {
+  const labels = { ok: "Conferido", uncertain: "Confira", missing: "Não lido — preencha" };
+  return `<span class="read-status is-${status}">${labels[status] || labels.missing}</span>`;
+}
+
+function receiptItemRow(item = {}, index = 0) {
+  const description = item.description?.value || "";
+  let [unit, factor] = INVOICE_UNITS[String(item.unit?.value || "UN").toUpperCase()] || ["un", 1];
+  // "ACUCAR CRISTAL 1KG 2 UN": two packs of 1 kg are 2 kg, which is how
+  // ingredients are stocked. Still marked for checking like every read value.
+  const packSize = unit === "un" && description.match(/(\d+(?:[.,]\d+)?)\s*(KG|G|L|ML)\b/i);
+  if (packSize) {
+    factor *= Number(packSize[1].replace(",", "."));
+    unit = INVOICE_UNITS[packSize[2].toUpperCase()][0];
+  }
+  const qty = Math.round(Number(item.qty?.value || 0) * factor * 1000) / 1000;
+  const suggestion = description ? suggestStockItemForLine(description) : "";
+  const options = [
+    ...state.ingredients.map((stock) => ({ value: purchaseStockKey("ingredients", stock.id), label: `${stock.name} (${stockUnitFor("ingredients", stock)})` })),
+    ...state.packaging.map((stock) => ({ value: purchaseStockKey("packaging", stock.id), label: `${stock.name} (${stockUnitFor("packaging", stock)})` })),
+  ];
+  return `
+    <fieldset class="receipt-item" data-receipt-item="${index}">
+      <legend>${escapeHtml(description || "Item")} ${item.description ? receiptStatusBadge("uncertain") : ""}</legend>
+      <div class="input-grid">
+        <label class="field field-full"><span>Entra como</span><select data-field="target">
+          <option value="new" ${suggestion ? "" : "selected"}>Novo ingrediente</option>
+          ${options.map((option) => `<option value="${escapeHtml(option.value)}" ${option.value === suggestion ? "selected" : ""}>${escapeHtml(option.label)}</option>`).join("")}
+          <option value="expense">Despesa (não entra no estoque)</option>
+          <option value="ignore">Ignorar este item</option>
+        </select></label>
+        <label class="field field-full" data-new-name><span>Nome do novo ingrediente</span><input data-field="name" value="${escapeHtml(description)}"></label>
+        <label class="field"><span>Quantidade</span><input data-field="qty" type="number" min="0" step="0.001" value="${qty || ""}"></label>
+        <label class="field"><span>Unidade</span><select data-field="unit">${["g", "kg", "ml", "l", "un"].map((option) => `<option value="${option}" ${option === unit ? "selected" : ""}>${option}</option>`).join("")}</select></label>
+        <label class="field field-full"><span>Valor do item (R$)</span><input data-field="total" type="number" min="0" step="0.01" value="${item.total?.value ?? ""}"></label>
+      </div>
+    </fieldset>
+  `;
+}
+
+function receiptReadForm() {
+  openModal(
+    "Ler nota fiscal",
+    "Compras",
+    `
+      <div class="receipt-capture">
+        <p class="lead">Tire uma foto da nota inteira, bem iluminada, sem dobras e com a chave de acesso aparecendo. A leitura acontece neste aparelho: a foto não é enviada para lugar nenhum.</p>
+        <label class="btn btn-primary btn-large receipt-photo-button">
+          <span class="material-symbols-outlined" aria-hidden="true">photo_camera</span>Tirar foto da nota
+          <input class="file-input-hidden" type="file" accept="image/*" capture="environment" data-receipt-photo>
+        </label>
+        <label class="btn btn-outline receipt-photo-button">
+          <span class="material-symbols-outlined" aria-hidden="true">image</span>Escolher foto salva
+          <input class="file-input-hidden" type="file" accept="image/*" data-receipt-photo>
+        </label>
+        <p class="receipt-progress" id="receiptProgress" role="status" aria-live="polite"></p>
+      </div>
+    `,
+  );
+  document.querySelectorAll("[data-receipt-photo]").forEach((input) => {
+    input.addEventListener("change", async () => {
+      const file = input.files?.[0];
+      if (!file) return;
+      const progress = document.querySelector("#receiptProgress");
+      document.querySelectorAll("[data-receipt-photo]").forEach((other) => { other.disabled = true; });
+      progress.textContent = "Lendo a nota neste aparelho. Isso pode levar até um minuto.";
+      try {
+        const text = await recognizeReceiptPhoto(file, (percent) => {
+          if (progress.isConnected) progress.textContent = `Lendo a nota neste aparelho: ${percent}%`;
+        });
+        if (!document.querySelector("#receiptProgress")) return;
+        renderReceiptReview(window.KombuReceipt.readReceiptText(text));
+      } catch (error) {
+        console.error("Falha ao ler a nota", error);
+        if (!progress.isConnected) return;
+        progress.innerHTML = `${escapeHtml(tr(error?.message === "receipt_read_timeout"
+          ? "A leitura demorou demais e foi interrompida. Se acontecer sempre neste aparelho, ele pode não ter suporte à leitura (por exemplo, iPhone com iOS anterior ao 16)."
+          : "Não consegui ler esta foto. Tente outra foto com mais luz."))} <button class="btn btn-outline" type="button" data-action="new-purchase">${escapeHtml(tr("Registrar pelo formulário normal"))}</button>`;
+        document.querySelectorAll("[data-receipt-photo]").forEach((other) => { other.disabled = false; });
+      }
+    });
+  });
+}
+
+function renderReceiptReview(reading) {
+  const duplicate = window.KombuReceipt.findDuplicate(reading, state.purchases);
+  if (duplicate?.certainty === "exact") {
+    openModal(
+      "Nota já registrada",
+      "Compras",
+      `<div class="cloud-sync-notice bad"><span class="material-symbols-outlined" aria-hidden="true">block</span><div><strong>Esta nota já foi registrada.</strong><p>Compra de ${escapeHtml(duplicate.purchase.supplier || "-")} em ${escapeHtml(fullDate(duplicate.purchase.date))}, chave ${escapeHtml(reading.accessKey.value)}. Nada foi lançado de novo.</p></div></div>`,
+    );
+    return;
+  }
+  const items = reading.items.length ? reading.items : [{}];
+  // A receipt without a discount line has no discount: 0 is right, not missing.
+  const statusLine = (label, fieldName, input) => `
+    <label class="field"><span>${label} ${fieldName === "discount" && reading.discount.status === "missing" ? "" : receiptStatusBadge(reading[fieldName].status)}</span>${input}</label>`;
+  openModal(
+    "Confira a nota",
+    "Compras",
+    `
+      <form id="receiptReviewForm">
+        <p class="lead">Confira cada campo antes de registrar. "Conferido" foi checado pelo sistema; "Confira" foi lido mas pode ter erro; "Não lido" precisa ser preenchido.</p>
+        ${duplicate ? `<div class="cloud-sync-notice warn"><span class="material-symbols-outlined" aria-hidden="true">warning</span><div><strong>Parece que esta compra já foi registrada.</strong><p>${escapeHtml(duplicate.purchase.supplier || "-")}, ${escapeHtml(fullDate(duplicate.purchase.date))}, ${brl(duplicate.purchase.documentTotal ?? duplicate.purchase.total)}.</p><label class="check-field"><input type="checkbox" name="notDuplicate" required> É outra compra, quero registrar mesmo assim</label></div></div>` : ""}
+        <div class="input-grid">
+          ${statusLine("Fornecedor", "supplierName", `<input name="supplier" list="receiptSuppliers" value="${escapeHtml(reading.supplierName.value)}" required>`)}
+          <datalist id="receiptSuppliers">${state.suppliers.map((supplier) => `<option value="${escapeHtml(supplier.name)}"></option>`).join("")}</datalist>
+          ${statusLine("CNPJ", "cnpj", `<input name="cnpj" value="${escapeHtml(reading.cnpj.value)}">`)}
+          ${statusLine("Data da compra", "date", `<input name="date" type="date" value="${escapeHtml(reading.date.value)}" required>`)}
+          ${statusLine("Total pago (R$)", "total", `<input name="total" type="number" min="0.01" step="0.01" value="${reading.total.value}" required>`)}
+          ${statusLine("Desconto (R$)", "discount", `<input name="discount" type="number" min="0" step="0.01" value="${reading.discount.value || 0}">`)}
+          <div class="result-card field-full"><small>Chave de acesso ${receiptStatusBadge(reading.accessKey.status)}</small><strong>${reading.accessKey.value ? escapeHtml(reading.accessKey.value.replace(/(\d{4})(?=\d)/g, "$1 ")) : "Não lida"}</strong><span>${reading.accessKey.value ? `${escapeHtml(reading.model.value)} nº ${escapeHtml(reading.number.value)} · ${escapeHtml(reading.uf.value)}. Com a chave, a nota oficial pode ser consultada no site da SEFAZ.` : "Sem a chave, a nota é registrada mesmo assim, mas a checagem de duplicidade fica menos segura."}</span></div>
+        </div>
+        <h3>Itens</h3>
+        <div id="receiptItems">${items.map((item, index) => receiptItemRow(item, index)).join("")}</div>
+        <button class="btn btn-outline" type="button" id="addReceiptItem"><span class="material-symbols-outlined" aria-hidden="true">add</span>Adicionar item que faltou</button>
+        <div class="result-card" id="receiptSum" role="status"></div>
+        <button class="btn btn-primary btn-large" type="submit"><span class="material-symbols-outlined" aria-hidden="true">check</span>Registrar compra</button>
+      </form>
+    `,
+  );
+  const form = document.querySelector("#receiptReviewForm");
+  const rows = () => [...form.querySelectorAll("[data-receipt-item]")].map((row) => ({
+    row,
+    target: row.querySelector('[data-field="target"]').value,
+    name: row.querySelector('[data-field="name"]').value.trim(),
+    qty: Number(row.querySelector('[data-field="qty"]').value || 0),
+    unit: row.querySelector('[data-field="unit"]').value,
+    total: Number(row.querySelector('[data-field="total"]').value || 0),
+  }));
+  const updateRows = () => {
+    form.querySelectorAll("[data-receipt-item]").forEach((row) => {
+      row.querySelector("[data-new-name]").hidden = row.querySelector('[data-field="target"]').value !== "new";
+    });
+    const itemsSum = rows().reduce((sum, row) => sum + row.total, 0);
+    const total = Number(form.elements.total.value || 0);
+    const discount = Number(form.elements.discount.value || 0);
+    const matches = Math.abs(itemsSum - discount - total) < 0.011;
+    document.querySelector("#receiptSum").innerHTML = `<small>Soma dos itens menos desconto</small><strong>${brl(itemsSum - discount)} ${matches ? "= total da nota" : `≠ total da nota (${brl(total)})`}</strong><span>${matches ? "Os valores batem." : "Corrija um valor ou adicione o item que faltou antes de registrar."}</span>`;
+    document.querySelector("#receiptSum").classList.toggle("is-warning", !matches);
+  };
+  form.addEventListener("input", updateRows);
+  form.addEventListener("change", updateRows);
+  document.querySelector("#addReceiptItem").addEventListener("click", () => {
+    document.querySelector("#receiptItems").insertAdjacentHTML("beforeend", receiptItemRow({}, form.querySelectorAll("[data-receipt-item]").length));
+    updateRows();
+  });
+  updateRows();
+  form.addEventListener("submit", (event) => {
+    event.preventDefault();
+    const data = Object.fromEntries(new FormData(form).entries());
+    const total = Number(data.total || 0);
+    const discount = Number(data.discount || 0);
+    const lines = rows();
+    const itemsSum = lines.reduce((sum, row) => sum + row.total, 0);
+    if (Math.abs(itemsSum - discount - total) >= 0.011) {
+      localizedAlert(`A soma dos itens (${brl(itemsSum)}) menos o desconto (${brl(discount)}) não bate com o total da nota (${brl(total)}). Corrija um valor ou adicione o item que faltou.`);
+      return;
+    }
+    const kept = lines.filter((row) => row.target !== "ignore");
+    if (!kept.length) {
+      localizedAlert("Escolha pelo menos um item para registrar.");
+      return;
+    }
+    // Resolve every line before posting anything, so a problem in one line
+    // never leaves half of the receipt recorded.
+    const plans = [];
+    for (const row of kept) {
+      if (row.target === "expense") {
+        plans.push({ row });
+        continue;
+      }
+      if (!(row.qty > 0)) {
+        localizedAlert(`Informe a quantidade de "${row.name || "item"}".`);
+        return;
+      }
+      if (row.target === "new" && !row.name) {
+        localizedAlert("Informe o nome do novo ingrediente.");
+        return;
+      }
+      const target = row.target === "new" ? { collection: "ingredients", item: null } : stockItemFromKey(row.target);
+      if (row.target !== "new" && !target.item) {
+        localizedAlert("Escolha um item de estoque válido.");
+        return;
+      }
+      const stockUnit = target.item ? stockUnitFor(target.collection, target.item) : row.unit;
+      if (unitFamily[row.unit] !== unitFamily[stockUnit]) {
+        localizedAlert(`A unidade de "${row.name}" (${row.unit}) não combina com o estoque de ${target.item.name} (${stockUnit}). Ajuste a unidade ou escolha outro item.`);
+        return;
+      }
+      plans.push({ row, target, stockUnit });
+    }
+    // The discount is spread over the lines in proportion to their value, so
+    // what is recorded adds up to what was paid.
+    const factor = itemsSum > 0 ? total / itemsSum : 1;
+    const keptValue = kept.reduce((sum, row) => sum + row.total, 0);
+    const document = {
+      documentKey: reading.accessKey.value,
+      documentNumber: reading.number.value,
+      documentModel: reading.model.value,
+      supplierCnpj: data.cnpj || "",
+      documentTotal: total,
+      readFromPhoto: true,
+    };
+    plans.forEach(({ row, target, stockUnit }) => {
+      const paid = Math.round(row.total * factor * 100) / 100;
+      if (!target) {
+        postExpensePurchase({ date: data.date, supplier: data.supplier, item: row.name || "Despesa da nota", total: paid, document });
+        return;
+      }
+      const item = target.item || findOrCreateIngredient({ name: row.name, category: "outro", supplier: data.supplier, purchaseUnit: stockUnit, costPerUnit: "", stock: 0, min: 0 });
+      const qty = convertedAmount(row.qty, row.unit, stockUnit);
+      postStockPurchase({ collection: target.collection, item, qty, unit: stockUnit, total: paid, date: data.date, supplier: data.supplier, document: { ...document, documentLine: row.name } });
+    });
+    addAudit("Nota fiscal lida e registrada", `${data.supplier} | ${fullDate(data.date)} | ${brl(total)} | ${number(plans.length)} item(ns)${keptValue < itemsSum ? ` | ${number(lines.length - kept.length)} ignorado(s)` : ""}${reading.accessKey.value ? ` | chave ${reading.accessKey.value}` : ""}`);
+    closeModal();
+    setModule("purchases");
+  });
+}
+
+function postExpensePurchase({ date, supplier, item, total, document = null }) {
+  const purchase = { id: id("pur"), kind: "operational", date, supplier, item, stockCollection: "expense", stockItemId: "", packageCount: 0, packageSize: 0, packageUnit: "", qty: 0, unit: "", total, costPerUnit: 0, ...(document || {}) };
+  state.purchases.unshift(purchase);
+  syncPurchaseExpense(purchase);
+  addAudit("Despesa operacional registrada", `${item}: ${brl(total)}`);
+  return purchase;
 }
 
 function reserveStockForm(batchCode) {
@@ -11255,6 +11583,7 @@ function handleAction(action) {
     "import-cost-base": restoreCostBase,
     "new-ingredient": newIngredientForm,
     "new-purchase": newPurchaseForm,
+    "read-receipt": receiptReadForm,
     "quick-sale": quickSaleForm,
     "new-sale": newSaleForm,
     "new-order": () => orderForm(),
