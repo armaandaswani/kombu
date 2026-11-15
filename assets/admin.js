@@ -728,6 +728,11 @@ const brl = (value) =>
 const number = (value, digits = 0) =>
   new Intl.NumberFormat(formatLocale(), { minimumFractionDigits: digits, maximumFractionDigits: digits }).format(Number(value || 0));
 
+// Stock quantities without trailing zeros: "100 g", "12,5 g". Fixed decimals
+// made 100 g read as "100,000 g", which in pt-BR looks like a hundred thousand.
+const quantity = (value) =>
+  new Intl.NumberFormat(formatLocale(), { maximumFractionDigits: 3 }).format(Number(value || 0));
+
 function inputNumber(value, digits = 6) {
   if (value === "" || value == null) return "";
   const parsed = Number(value);
@@ -1497,7 +1502,9 @@ function returnAtAverageCost(collection, item, qty, unitCost) {
   const outgoing = Number(qty || 0);
   const remaining = onHand - outgoing;
   const remainingValue = onHand * stockItemUnitCost(collection, item) - outgoing * Number(unitCost || 0);
-  item.stock = Math.max(0, remaining);
+  // A purchase whose stock was already used leaves a real deficit; it is kept
+  // and flagged rather than hidden at zero.
+  item.stock = Number((Number(item.stock || 0) - outgoing).toFixed(6));
   if (remaining > 0 && remainingValue > 0) setStockItemUnitCost(collection, item, remainingValue / remaining);
 }
 
@@ -1798,17 +1805,77 @@ function applyBatchInventory(recipe, bottles, direction) {
   });
 }
 
+// Production may take supplies below zero (owner decision, 15 November 2026):
+// the operator is warned first, the true negative balance is kept, and the item
+// is listed under "Atenção necessária" until a purchase or correction covers it.
+// Each consumption is { recipe, bottles }; negative bottles give supplies back,
+// so an edit is judged on its net effect.
+function supplyShortfalls(consumptions) {
+  const needs = new Map();
+  consumptions.forEach(({ recipe, bottles }) => {
+    if (!recipe || !Number(bottles)) return;
+    const sign = Math.sign(Number(bottles));
+    const usage = batchUsage(recipe, Math.abs(Number(bottles)));
+    const add = (collection, item, qty) => {
+      if (!item) return;
+      const key = `${collection}:${item.id}`;
+      const row = needs.get(key) || { collection, item, qty: 0 };
+      row.qty += sign * Number(qty || 0);
+      needs.set(key, row);
+    };
+    usage.ingredients.forEach(({ ingredient, qty }) => add("ingredients", ingredient, qty));
+    usage.packaging.forEach(({ item, qty }) => add("packaging", item, qty));
+  });
+  return [...needs.values()]
+    .filter((row) => supplyIsTracked(row.item))
+    .map((row) => ({ ...row, after: Number(row.item.stock || 0) - row.qty, unit: stockUnitFor(row.collection, row.item) }))
+    .filter((row) => row.qty > 1e-9 && row.after < -1e-9);
+}
+
+// Many supplies (labels, date stamps) are consumed by every recipe but never
+// counted. Warning about them on every production would teach operators to
+// click past the warning, so only supplies whose stock is actually kept are
+// checked: bought through Compras, given a minimum, or counted by hand.
+function supplyIsTracked(item) {
+  if (!item) return false;
+  if (Number(item.min || 0) > 0 || item.stockCountedAt) return true;
+  return state.purchases.some((purchase) => purchase.stockItemId === item.id || purchase.ingredientId === item.id || purchase.packagingId === item.id);
+}
+
+function confirmSupplyShortfalls(consumptions) {
+  const rows = supplyShortfalls(consumptions);
+  if (!rows.length) return true;
+  const lines = rows.map((row) => `- ${row.item.name}: ${quantity(row.item.stock || 0)} ${row.unit} em estoque, a produção usa ${quantity(row.qty)} ${row.unit} (fica ${quantity(row.after)} ${row.unit})`);
+  return localizedConfirm(`Faltam insumos para esta produção:\n${lines.join("\n")}\n\nVocê pode salvar mesmo assim. O estoque ficará negativo e aparecerá em "Atenção necessária" até você registrar a compra ou corrigir o estoque.`);
+}
+
+function negativeStockSupplies() {
+  return [
+    ...state.ingredients.map((item) => ({ collection: "ingredients", item })),
+    ...state.packaging.map((item) => ({ collection: "packaging", item })),
+  ].filter(({ item }) => Number(item.stock || 0) < -1e-9 && supplyIsTracked(item));
+}
+
+// Supplies a change to a batch's produced quantity would consume, matching what
+// adjustBatchInventoryTo will apply.
+function batchInventoryConsumption(batch, nextActual) {
+  const recipe = byId("recipes", batch?.recipeId);
+  if (!recipe) return [];
+  const next = shouldConsumeBatch({ ...batch, actual: nextActual }) ? Number(nextActual || 0) : 0;
+  return [{ recipe, bottles: next - batchConsumedQty(batch) }];
+}
+
+// Bottles whose supplies this batch has already consumed. Batches saved before
+// inventoryAdjusted existed are inferred from their status.
+function batchConsumedQty(batch) {
+  if (typeof batch.inventoryAdjusted === "boolean") return batch.inventoryAdjusted ? Number(batch.inventoryQty || batch.actual || 0) : 0;
+  return shouldConsumeBatch(batch) ? Number(batch.inventoryQty ?? batch.actual ?? 0) : 0;
+}
+
 function adjustBatchInventoryTo(batch, nextActual) {
   const recipe = byId("recipes", batch?.recipeId);
   if (!recipe) return { ok: false, message: "Este lote não tem receita vinculada para recalcular insumos." };
-  const previousInventoryQty =
-    typeof batch.inventoryAdjusted === "boolean"
-      ? batch.inventoryAdjusted
-        ? Number(batch.inventoryQty || batch.actual || 0)
-        : 0
-      : shouldConsumeBatch(batch)
-        ? Number(batch.inventoryQty ?? batch.actual ?? 0)
-        : 0;
+  const previousInventoryQty = batchConsumedQty(batch);
   const nextInventoryQty = shouldConsumeBatch({ ...batch, actual: nextActual }) ? Number(nextActual || 0) : 0;
   const delta = nextInventoryQty - previousInventoryQty;
   if (delta > 0) applyBatchInventory(recipe, delta, -1);
@@ -4873,18 +4940,21 @@ function renderDashboard() {
         <h3>Atenção necessária</h3>
         ${dashboardLink("ingredients", "Revisar insumos")}${dashboardLink("packaging", "Embalagens")}
         <div class="alert-list">
+          ${negativeStockSupplies()
+            .map(({ collection, item }) => `<div class="alert-item alert-danger"><strong>Estoque negativo: ${escapeHtml(item.name)}</strong><span>${quantity(item.stock)} ${escapeHtml(stockUnitFor(collection, item))}. A produção usou mais do que o estoque registrado. Registre a compra que faltou ou corrija o estoque.</span></div>`)
+            .join("")}
           ${missingCostIngredients()
             .slice(0, 5)
             .map((item) => `<div class="alert-item"><strong>Custo pendente: ${escapeHtml(item.name)}</strong><span>Complete o custo unitário para a receita calcular margem real.</span></div>`)
             .join("")}
-          ${[...lowStockIngredients(), ...lowStockPackaging()]
+          ${[...lowStockIngredients(), ...lowStockPackaging()].filter((item) => Number(item.stock || 0) >= 0)
             .slice(0, 5)
             .map((item) => `<div class="alert-item"><strong>Estoque baixo: ${escapeHtml(item.name)}</strong><span>Atual ${number(item.stock, 2)} | mínimo ${number(item.min, 2)}</span></div>`)
             .join("")}
           ${nearExpiryBatches()
             .map((batch) => `<div class="alert-item"><strong>Lote próximo ao vencimento: ${escapeHtml(batch.code)}</strong><span>${number(batch.stock)} garrafas vencem em ${escapeHtml(batch.expiry)}</span></div>`)
             .join("")}
-          ${missingCostIngredients().length || lowStockIngredients().length || lowStockPackaging().length || nearExpiryBatches().length ? "" : `<div class="empty-note">Nenhum alerta crítico no momento.</div>`}
+          ${negativeStockSupplies().length || missingCostIngredients().length || lowStockIngredients().length || lowStockPackaging().length || nearExpiryBatches().length ? "" : `<div class="empty-note">Nenhum alerta crítico no momento.</div>`}
         </div>
       </article>
       <article class="admin-card">
@@ -8271,6 +8341,7 @@ function adjustFlavorStockForm(productId) {
       localizedAlert("Um dos lotes não possui receita vinculada. Corrija o vínculo antes de ajustar o estoque.");
       return;
     }
+    if (!confirmSupplyShortfalls(changes.flatMap((change) => batchInventoryConsumption(change.batch, change.nextActual)))) return;
     changes.forEach((change) => {
       adjustBatchInventoryTo(change.batch, change.nextActual);
       change.batch.actual = change.nextActual;
@@ -8349,6 +8420,7 @@ function correctBatchQuantityForm(batchId) {
       localizedAlert(`Não dá para reduzir para ${number(nextActual)} porque ${number(committed)} já estão reservadas/vendidas. Libere reservas ou faça devolução primeiro.`);
       return;
     }
+    if (!confirmSupplyShortfalls(batchInventoryConsumption(batch, nextActual))) return;
     const inventoryResult = adjustBatchInventoryTo(batch, nextActual);
     if (!inventoryResult.ok) {
       localizedAlert(inventoryResult.message);
@@ -8911,6 +8983,7 @@ function newBatchForm() {
       localizedAlert("Selecione pelo menos um sabor e informe uma quantidade válida.");
       return;
     }
+    if (!confirmSupplyShortfalls(selected.map(({ recipe, bottles }) => ({ recipe, bottles })))) return;
     const createdAt = new Date().toISOString();
     const created = selected.map(({ recipe, bottles, code }) => {
       const plan = batchDatePlan(data.date);
@@ -9199,7 +9272,10 @@ function findOrCreateIngredient(data) {
     if (costValue <= 0) ingredient.status = "custo pendente";
   }
   applyIngredientPackageCost(ingredient, data);
-  if (data.stock !== "") ingredient.stock = Number(data.stock);
+  if (data.stock !== "") {
+    ingredient.stock = Number(data.stock);
+    ingredient.stockCountedAt = new Date().toISOString();
+  }
   if (data.min !== "") ingredient.min = Number(data.min);
   return ingredient;
 }
@@ -9228,7 +9304,10 @@ function findOrCreatePackaging(data) {
   material.supplier = data.supplier || material.supplier;
   material.unit = data.unit || material.unit || "un";
   material.costEach = Number(data.costEach || material.costEach || 0);
-  if (data.stock !== "") material.stock = Number(data.stock);
+  if (data.stock !== "") {
+    material.stock = Number(data.stock);
+    material.stockCountedAt = new Date().toISOString();
+  }
   if (data.min !== "") material.min = Number(data.min);
   return material;
 }
@@ -9451,7 +9530,7 @@ function readRecordForm(form, fields) {
   }, {});
 }
 
-function editRecordForm(collection, recordId, title, fields, afterSave) {
+function editRecordForm(collection, recordId, title, fields, afterSave, { beforeSave } = {}) {
   const record = byId(collection, recordId);
   if (!record) return;
   openModal(
@@ -9472,6 +9551,9 @@ function editRecordForm(collection, recordId, title, fields, afterSave) {
   document.querySelector("#editRecordForm").addEventListener("submit", (event) => {
     event.preventDefault();
     const data = readRecordForm(event.target, fields);
+    // beforeSave sees the record as it would be saved and can cancel the save
+    // before anything changes.
+    if (beforeSave && beforeSave({ ...record, ...data }, record) === false) return;
     Object.assign(record, data);
     afterSave?.(record, data);
     addAudit(`${title} atualizado`, record.name || record.flavor || record.code || record.description || record.item || record.id);
@@ -9632,7 +9714,8 @@ const ingredientFields = [
   { name: "packageUnit", label: "Unidade do pacote", type: "select", value: "g", options: ["kg", "g", "l", "ml", "un"] },
   { name: "packageTotal", label: "Total pago", type: "number", min: 0, step: "0.01" },
   { name: "costPerUnit", label: "Custo calculado/un.", type: "number", min: 0, step: "0.000001" },
-  { name: "stock", label: "Estoque atual", type: "number", min: 0, step: "0.01" },
+  // No minimum: a supply can legitimately be negative after production.
+  { name: "stock", label: "Estoque atual", type: "number", step: "0.01" },
   { name: "min", label: "Estoque mínimo", type: "number", min: 0, step: "0.01" },
   { name: "expires", label: "Vencimento", type: "date" },
   { name: "location", label: "Local" },
@@ -9646,7 +9729,7 @@ const packagingFields = [
   { name: "supplier", label: "Fornecedor" },
   { name: "unit", label: "Unidade", type: "select", options: ["un", "kg", "g", "l", "ml"] },
   { name: "costEach", label: "Custo unitário", type: "number", min: 0, step: "0.01" },
-  { name: "stock", label: "Estoque", type: "number", min: 0, step: "1" },
+  { name: "stock", label: "Estoque", type: "number", step: "1" },
   { name: "min", label: "Mínimo", type: "number", min: 0, step: "1" },
   { name: "location", label: "Local" },
 ];
@@ -9921,6 +10004,17 @@ function editBatchForm(batchId) {
       batch.costSnapshot = buildBatchCostSnapshot(recipe);
     }
     refreshAllOrderReservations();
+  }, {
+    // Mirrors the save above: the original consumption comes back, then the
+    // edited batch consumes again.
+    beforeSave: (next) => {
+      const originalRecipe = byId("recipes", original?.recipeId);
+      const recipe = byId("recipes", next.recipeId);
+      return confirmSupplyShortfalls([
+        { recipe: original?.inventoryAdjusted ? originalRecipe : null, bottles: -batchProducedQuantity(original) },
+        { recipe: recipe && shouldConsumeBatch(next) ? recipe : null, bottles: batchProducedQuantity(next) },
+      ]);
+    },
   });
 }
 
@@ -10706,6 +10800,7 @@ function stockAdjustmentForm() {
     if (!item) return;
     const previous = item.stock;
     item.stock = Number(data.stock);
+    item.stockCountedAt = new Date().toISOString();
     addAudit("Ajuste de estoque", `${item.name}: ${previous} -> ${item.stock}. Motivo: ${data.reason}`);
     closeModal();
     render();
@@ -10979,6 +11074,7 @@ function handleAction(action) {
         const packageChanged = ["packageCount", "packageSize", "packageTotal"].some((key) => Number(record[key] || 0) !== Number(before[key] || 0))
           || record.packageUnit !== (before.packageUnit || before.purchaseUnit || "g");
         if (packageChanged) applyIngredientPackageCost(record, record);
+        if (Number(record.stock || 0) !== Number(before.stock || 0)) record.stockCountedAt = new Date().toISOString();
         if (Number(record.costPerUnit || 0) > 0) {
           record.needsCost = false;
           if (record.status === "custo pendente") record.status = "ativo";
@@ -10989,7 +11085,12 @@ function handleAction(action) {
       });
     },
     "delete-ingredient": (itemId) => deleteRecord("ingredients", itemId),
-    "edit-packaging": (itemId) => editRecordForm("packaging", itemId, "Editar material", packagingFields),
+    "edit-packaging": (itemId) => {
+      const beforeStock = Number(byId("packaging", itemId)?.stock || 0);
+      editRecordForm("packaging", itemId, "Editar material", packagingFields, (record) => {
+        if (Number(record.stock || 0) !== beforeStock) record.stockCountedAt = new Date().toISOString();
+      });
+    },
     "delete-packaging": (itemId) => deleteRecord("packaging", itemId),
     "edit-supplier": (itemId) => editRecordForm("suppliers", itemId, "Editar fornecedor", supplierFields),
     "delete-supplier": (itemId) => deleteRecord("suppliers", itemId),

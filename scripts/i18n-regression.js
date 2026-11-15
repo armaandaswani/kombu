@@ -55,6 +55,9 @@ assert.strictEqual(locale.translateMessage("Excluir \"Maracujá\"? Esta acao rem
 const dialog = locale.translateMessage("Excluir \"Chá\"? Esta acao remove o registro deste painel.\n\nEste registro ainda e usado por:\n- 2 receitas");
 assert.strictEqual(dialog.split("\n").length, 4, "multi-line dialogs keep their line breaks");
 assert.ok(!/Excluir|usado por/.test(dialog), `dialog still Portuguese: ${dialog}`);
+const shortfall = locale.translateMessage("Faltam insumos para esta produção:\n- Chá preto: 100 g em estoque, a produção usa 120 g (fica -20 g)\n\nVocê pode salvar mesmo assim. O estoque ficará negativo e aparecerá em \"Atenção necessária\" até você registrar a compra ou corrigir o estoque.");
+assert.strictEqual(shortfall.split("\n")[1], "- Chá preto: 100 g in stock, this production uses 120 g (leaves -20 g)");
+assert.ok(!/Faltam|estoque|Você/.test(shortfall), `shortfall warning still Portuguese: ${shortfall}`);
 locale.setLocale("pt");
 assert.strictEqual(locale.translate("Pedidos"), "Pedidos", "Portuguese passes through untouched");
 

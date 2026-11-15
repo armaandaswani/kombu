@@ -2795,6 +2795,15 @@ textarea:focus-visible {
   line-height: 1.25;
 }
 
+.alert-item.alert-danger {
+  border-color: var(--danger);
+  border-left-width: 4px;
+}
+
+.alert-item.alert-danger strong {
+  color: var(--danger);
+}
+
 .alert-item span,
 .stock-row span,
 .audit-row span,

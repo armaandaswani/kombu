@@ -821,13 +821,16 @@ console.log("Dashboard regression: monthly finances, missing costs and overview 
   assert.equal(item().costPerUnit, 0.03);
   // Consumption does not change the average.
   item().stock = 500;
-  // Taking the 0.035 purchase back out of 500 g would leave a negative value,
-  // so the average is kept rather than invented.
+  // Taking the 1000 g purchase back out of 500 g leaves a real 500 g deficit,
+  // which is kept (negative stock is allowed and flagged), and the average is
+  // kept rather than invented.
   call("returnAtAverageCost", "ingredients", item(), 1000, 0.035);
-  assert.equal(item().stock, 0);
+  assert.equal(item().stock, -500);
   assert.equal(item().costPerUnit, 0.03);
-  // With no stock on hand the next purchase sets the price outright.
-  call("receiveAtAverageCost", "ingredients", item(), 400, 0.04);
+  // With nothing on hand the next purchase sets the price outright; it first
+  // covers the deficit.
+  call("receiveAtAverageCost", "ingredients", item(), 900, 0.04);
+  assert.equal(item().stock, 400);
   assert.equal(item().costPerUnit, 0.04);
   // Reversal with stock left: 400 g at 0.04 + 600 g at 0.02 = 0.028 average;
   // removing the 600 g purchase restores 0.04.
@@ -843,4 +846,41 @@ console.log("Dashboard regression: monthly finances, missing costs and overview 
   assert.equal(admin.__getState().packaging[0].stock, 100);
   assert.equal(admin.__getState().packaging[0].costEach, 1.2);
   console.log("Purchase costing: weighted average on receipt, reversal, empty stock and uncosted stock passed.");
+}
+
+// Production may take supplies below zero after a warning (owner decision, 15
+// November 2026). The shortfall check nets returns against new consumption and
+// the dashboard lists every negative supply until it is covered.
+{
+  const recipe = { id: "r", flavor: "Tea", bottleMl: 500, yieldBottles: 1, ingredients: [{ ingredientId: "tea", qty: 10, unit: "g" }], packaging: [{ itemId: "bottle", qty: 1 }] };
+  load({
+    recipes: [recipe],
+    ingredients: [{ id: "tea", name: "Tea", purchaseUnit: "g", stock: 100, costPerUnit: 0.03, stockCountedAt: "2026-11-15T10:00:00Z" }],
+    packaging: [{ id: "bottle", name: "Bottle", unit: "un", stock: 50, costEach: 1 }],
+  });
+  const state = () => admin.__getState();
+  const shortfalls = (consumptions) => plain(call("supplyShortfalls", consumptions)).map((row) => [row.item.id, row.qty, row.after]);
+  // 8 bottles need 80 g tea and 8 bottles: enough of both.
+  assert.deepEqual(shortfalls([{ recipe: state().recipes[0], bottles: 8 }]), []);
+  // 12 bottles need 120 g tea: 20 g short. Bottles are fine. 60 bottles would
+  // also exhaust the 50 bottles, but bottles were never counted or bought, so
+  // only the tracked tea is reported.
+  assert.deepEqual(shortfalls([{ recipe: state().recipes[0], bottles: 60 }]), [["tea", 600, -500]]);
+  assert.deepEqual(shortfalls([{ recipe: state().recipes[0], bottles: 12 }]), [["tea", 120, -20]]);
+  // Editing a 12-bottle batch to 14 only consumes 2 more: no shortfall.
+  assert.deepEqual(shortfalls([{ recipe: state().recipes[0], bottles: -12 }, { recipe: state().recipes[0], bottles: 14 }]), []);
+  // Accepting the warning keeps the true negative and flags it on the dashboard.
+  call("applyBatchInventory", state().recipes[0], 12, -1);
+  assert.equal(state().ingredients[0].stock, -20);
+  assert.deepEqual(plain(call("negativeStockSupplies")).map((row) => row.item.id), ["tea"]);
+  // An untracked supply that goes negative is not flagged.
+  state().packaging[0].stock = -5;
+  assert.deepEqual(plain(call("negativeStockSupplies")).map((row) => row.item.id), ["tea"]);
+  assert.match(call("renderDashboard"), /Estoque negativo: Tea/);
+  // A purchase covering the deficit clears the alert.
+  call("receiveAtAverageCost", "ingredients", state().ingredients[0], 1000, 0.025);
+  assert.equal(state().ingredients[0].stock, 980);
+  assert.deepEqual(plain(call("negativeStockSupplies")), []);
+  assert.doesNotMatch(call("renderDashboard"), /Estoque negativo/);
+  console.log("Supply shortfalls: netted check, kept negative balance, dashboard flag and clearing purchase passed.");
 }

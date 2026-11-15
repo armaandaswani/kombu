@@ -6,6 +6,7 @@
 // scripts/i18n-coverage.js fails when a rendered screen still shows one.
 window.KOMBU_I18N = {
   en: {
+    "- {0}: {1} {2} em estoque, a produção usa {3} {4} (fica {5} {6})": "- {0}: {1} {2} in stock, this production uses {3} {4} (leaves {5} {6})",
     "- 1 embalagens vinculadas": "- 1 linked packaging",
     "- 1 lotes": "- 1 batches",
     "- 1 receitas": "- 1 recipes",
@@ -19,6 +20,7 @@ window.KOMBU_I18N = {
     "{0} {1} entram no estoque por {2}.": "{0} {1} enter stock for {2}.",
     "{0} {1} ml: {2} -> {3} disponível(is). Motivo: {4}": "{0} {1} ml: {2} -> {3} available. Reason: {4}",
     "{0} {1} por {2} | total {3}": "{0} {1} for {2} | total {3}",
+    "{0} {1}. A produção usou mais do que o estoque registrado. Registre a compra que faltou ou corrija o estoque.": "{0} {1}. Production used more than the recorded stock. Record the missing purchase or correct the stock.",
     "{0} {1}ml | {2} produzidas | lote {3} | {4} reservadas{5}": "{0} {1}ml | {2} produced | batch {3} | {4} reserved{5}",
     "{0} → {1} disponível(is)": "{0} → {1} available",
     "{0} | {1} | lote {2} | reservado {3} → {4}; faltando {5} → {6} | Motivo: {7}": "{0} | {1} | batch {2} | reserved {3} → {4}; missing {5} → {6} | Reason: {7}",
@@ -132,6 +134,7 @@ window.KOMBU_I18N = {
     "A imagem será encaixada em {0}, sem distorcer.": "The image will be fitted to {0}, without distortion.",
     "a importância de {0} ({1}), referente {2}.": "the amount of {0} ({1}), regarding {2}.",
     "A prazo": "On credit",
+    "A produção usou mais do que o estoque registrado. Registre a compra que faltou ou corrija o estoque.": "Production used more than the recorded stock. Record the missing purchase or correct the stock.",
     "A quantidade escolhida não está totalmente reservada em lotes.": "The chosen quantity is not fully reserved in batches.",
     "A receber": "Receivable",
     "A reserva mudou antes da confirmação. Abra a remessa novamente.": "The reservation changed before confirmation. Open the shipment again.",
@@ -561,6 +564,7 @@ window.KOMBU_I18N = {
     "Estoque livre": "Free stock",
     "Estoque livre usado": "Free stock used",
     "Estoque mínimo": "Minimum stock",
+    "Estoque negativo: {0}": "Negative stock: {0}",
     "Estoque por sabor": "Stock by flavor",
     "Estoque/custo": "Stock/cost",
     "Estornado": "Refunded",
@@ -601,6 +605,8 @@ window.KOMBU_I18N = {
     "Exportar CSV": "Export CSV",
     "falta {0}": "missing {0}",
     "falta 7": "missing 7",
+    "Faltam insumos para esta produção:": "This production needs more supplies than are in stock:",
+    "Faltam insumos para esta produção: {0} Você pode salvar mesmo assim. O estoque ficará negativo e aparecerá em \"Atenção necessária\" até você registrar a compra ou corrigir o estoque.": "This production needs more supplies than are in stock: {0} You can save anyway. Stock will go negative and appear under \"Attention needed\" until you record the purchase or correct the stock.",
     "faltando": "missing",
     "Faltando": "Missing",
     "Faltantes": "Missing",
@@ -1488,6 +1494,7 @@ window.KOMBU_I18N = {
     "Visibilidade": "Visibility",
     "Visível no site": "Visible on the site",
     "Visualizar": "View",
+    "Você pode salvar mesmo assim. O estoque ficará negativo e aparecerá em \"Atenção necessária\" até você registrar a compra ou corrigir o estoque.": "You can save anyway. Stock will go negative and appear under \"Attention needed\" until you record the purchase or correct the stock.",
     "Voltar": "Back",
     "Voltar a acompanhar o pedido": "Follow the order again",
     "Voltar ao site público": "Back to public site",
