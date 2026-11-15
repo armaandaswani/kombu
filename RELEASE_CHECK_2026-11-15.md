@@ -1,0 +1,80 @@
+# Release check: Kombú admin, branch `admin/recovery-phase2`
+
+Date: 15 November 2026 · Base: `179fc51` · Head: see `git log` (9 commits, listed below) · Not pushed, not deployed.
+
+## Verdict
+
+**Release blocked under the brief's own gates.** Two P0 items are open, and three gates can only be passed on a staging copy of the database, which does not exist yet. Every change is tested locally and the branch is safe to keep building on.
+
+**Practical recommendation:** do not merge to production yet. First create the staging database (`STAGING.md`, about 20 minutes), then run the checks in "What a release needs" below on a copy of production data. If those pass, merging is low risk: nothing in this branch rewrites stored data, and rolling back is a single revert (see "Rollback").
+
+## What this branch changes
+
+| Commit | Change |
+| --- | --- |
+| `5b639d0` | Full English/Portuguese coverage (1,599 catalog entries); customer documents stay in Portuguese |
+| `53b3bfb` | Ingredients and packaging valued at weighted average cost |
+| `0f7255f` | Warning before production takes supplies below zero; negative supplies flagged |
+| `5c25769` | Bottles can be sold beyond stock as sales waiting for the next batch |
+| `4cb00b1` | One access level with full access (view selector that disabled buttons removed); receipt reader core |
+| `ab14ea9` | "Ler nota (foto)": receipts read on the device (tesseract.js 7.0.0, audited) |
+| `685ab37` | "Modo simples" for operators and `GUIA_DO_OPERADOR.md` |
+| `f234021` | Financial reconciliation; unknown costs no longer shown as profit |
+| (this check) | Test server serves clean URLs; public site suites added to the default run |
+
+## Evidence (run on 15 November 2026, all passing)
+
+- `npm test`: 10 test scripts with 16 result groups. Areas covered:
+  - API: auth, state validation, concurrency, business invariants, sales ledger.
+  - Reservations: 27 scenarios.
+  - Admin logic: 37 scenarios plus the new scenario groups for weighted cost, supply shortfalls, pending-batch sales, access and financial reconciliation.
+  - Cloud save, i18n, receipt reading and the operator guide.
+  - Storefront stock and checkout.
+- `npm run check`: syntax of every shipped script.
+- `node scripts/run-browser-tests.js`: 12 browser suites, all under the production security headers read from `vercel.json`.
+  - Admin, dashboard (19 modules at 3 widths), orders and production, reservations, purchase cost, supply shortfall, oversell, receipt capture, operator mode, English coverage, public site, storefront.
+  - Mobile (390 px) and desktop (1440 px) widths are covered.
+- Contrast of the new colour pairs, measured: all pass WCAG AA. The lowest is 4.81:1, the "Confira" badge.
+- Mutation checks: the purchase-cost, supply-shortfall, oversell and receipt-document tests were run against the previous code and fail there.
+
+## Release gates (from the brief)
+
+| Gate | Status | Evidence or gap |
+| --- | --- | --- |
+| All P0 issues resolved | **Fail** | Open: the server-side posting contracts, so each purchase, production and sale becomes its own atomic, auditable event (needs staging). Also open: the interaction inventory of every control on every screen. |
+| Core workflows pass end to end | Pass locally | Purchase (form and photo), production, sale, oversell, correction, stock, orders and reservations, receipts, all in browser suites. Not yet run against staging. |
+| Both languages fully covered and tested | Pass (admin) | The browser walk opens every module and dialog in English and fails on any untranslated string. Switching back to PT restores the page, and the choice survives a reload. The public site's own text is out of scope. |
+| Every visible primary action works | Partial | Every action the suites click works, and silently disabled buttons were removed. A full inventory of every control has not been done. |
+| Financial calculations reconcile | Pass | Two-month fixture checked to the cent, with months adding up to totals and CSV in cents. Four accounting classifications await the accountant (plan, "Accounting questions"). |
+| Inventory integrity | Partial | Weighted cost, shortfalls, pending sales, the server's over-allocation check and reconciliation are tested. Concurrent edits from two devices, and retries after a lost response at the movement level, need the posting contracts. |
+| Charts and reports show verified data | Pass | Dashboard, Vendas, Despesas and Reports use one cost rule, and incomplete costs are labeled, never shown as profit. |
+| No critical console errors in tested workflows | Pass | Every browser suite fails on page errors. The receipt suite also fails on CSP violations. |
+| Critical workflows pass accessibility checks | Partial | Targets of at least 44 px, visible focus, no horizontal scroll at 390 px, and AA contrast on the new screens are verified. No screen-reader pass and no full WCAG audit of older screens. |
+| Receipt capture works on agreed cases | Partial | Real on-device reading passes on rendered receipt images, blur and blocked-WebAssembly cases. Real phone photos of the company's receipts have not been tested. |
+| Production data stays intact | Pass by design, not drilled | No server, schema or data-loading code changed. New fields are additive. No backup restore drill was run. |
+| No critical regressions | Pass | All 10 node test scripts and all 12 browser suites pass. |
+
+## Risks to know before deploying
+
+1. **Preview deployments use the live database.** Per `STAGING.md`, Vercel previews read and write production data. Pushing this branch could create a preview that touches real data. Set up staging first.
+2. **The first load will show new alerts.** Supplies with purchases on record and negative stock appear in red under "Atenção necessária". Bottles sold without stock appear the same way. These are real problems that were previously silent.
+3. **Opening average costs** are each item's current unit cost, which is its last purchase price. History is not recomputed.
+4. **The CSP now allows WebAssembly** (`'wasm-unsafe-eval'`) site-wide, as approved. On iOS before 16 the receipt reader shows a message and the normal form.
+5. **About 13 MB of reader files** are added under `assets/vendor/tesseract-7.0.0/`. They load only when a receipt is read.
+6. **Development machine:** the disk is 97% full and iCloud is offloading project files. That made two test runs fail on files that read as empty, which was fixed by reading the files back. Free disk space, or keep the project out of the iCloud Desktop folder, before relying on local test runs.
+
+## What a release needs
+
+1. Create the staging Supabase project and scope the Vercel variables (`STAGING.md`).
+2. Seed staging with a copy of production. Deploy this branch as a preview and open it once on the owner's phone and computer.
+3. In the preview, check:
+   - The dashboard figures for last month against the owner's own numbers.
+   - One purchase by photo with a real receipt.
+   - One production and one sale.
+   - "Modo simples" with an older operator, using `GUIA_DO_OPERADOR.md`.
+4. Take a database backup (Supabase dashboard) and confirm it restores into staging.
+5. Merge to `main` only after the owner approves.
+
+## Rollback
+
+Revert the merge commit and redeploy. Fields this branch adds are ignored by the previous code: `pendingBatch` sales, `stockCountedAt`, the receipt `document*` fields on purchases, and the device's `kombuAdminHome` setting. One effect remains after a rollback: sales recorded without a batch keep an unknown cost until edited.

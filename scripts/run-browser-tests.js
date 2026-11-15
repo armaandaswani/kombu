@@ -24,7 +24,9 @@ const server = http.createServer(async (req, res) => {
       return res.end('{"error":"Local fixture server: backend disabled"}');
     }
     if (req.method !== "GET" && req.method !== "HEAD") { res.writeHead(405); return res.end(); }
-    const filename = pathname === "/" ? "index.html" : pathname === "/admin" ? "admin.html" : pathname.slice(1);
+    // vercel.json sets cleanUrls: "/experimente" serves experimente.html.
+    const requested = pathname === "/" ? "index.html" : pathname.slice(1);
+    const filename = path.extname(requested) ? requested : `${requested}.html`;
     const file = path.resolve(root, filename);
     if (!file.startsWith(root + path.sep)) { res.writeHead(403); return res.end(); }
     const body = await fs.readFile(file);
@@ -39,7 +41,7 @@ const server = http.createServer(async (req, res) => {
   try {
     // Pass suite file names to run only those, e.g. node scripts/run-browser-tests.js i18n-coverage.js
     const suites = process.argv.slice(2).length ? process.argv.slice(2)
-      : ["admin-regression.js", "dashboard-regression.js", "order-production-regression.js", "reservation-workflow-regression.js", "purchase-cost-regression.js", "supply-shortfall-regression.js", "oversell-regression.js", "receipt-capture-regression.js", "operator-regression.js", "i18n-coverage.js"];
+      : ["admin-regression.js", "dashboard-regression.js", "order-production-regression.js", "reservation-workflow-regression.js", "purchase-cost-regression.js", "supply-shortfall-regression.js", "oversell-regression.js", "receipt-capture-regression.js", "operator-regression.js", "i18n-coverage.js", "public-regression.js", "storefront-browser-regression.js"];
     for (const suite of suites) {
       const code = await new Promise((resolve, reject) => {
         const child = spawn(process.execPath, [path.join(__dirname, suite)], {

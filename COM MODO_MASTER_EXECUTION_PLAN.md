@@ -110,7 +110,7 @@ The panel already has working business logic and fixture coverage for sales, res
     - PDF receipts are not read yet. That needs a PDF renderer (pdf.js), which would need its own security review.
 - [ ] **P1** Validate import/export, catalog and CMS changes against legacy records and existing public integrations. Test preview, validation, duplicate handling and rollback.
 - [ ] **P2** Add reorder signals and historical stock reporting after reliable movements exist. Withhold forecasts when the history is insufficient.
-- [ ] **P0** Run release gates and assemble evidence. Record commits, executed suites and limitations, operator walkthrough and guide, localization and finance results, restore drill, and release recommendation. Production deployment requires explicit authorization.
+- [ ] **P0** Release check run on 15 November 2026: `RELEASE_CHECK_2026-11-15.md`. Verdict: blocked by its own gates. The posting contracts and the interaction inventory are open, and staging, a restore drill and real receipt photos are needed. All 10 node test scripts and all 12 browser suites pass under the production headers. Re-run after staging exists. Original task: run release gates and assemble evidence. Record commits, executed suites and limitations, operator walkthrough and guide, localization and finance results, restore drill, and release recommendation. Production deployment requires explicit authorization.
 
 ## Decisions needed from the owner
 
