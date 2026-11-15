@@ -947,3 +947,72 @@ console.log("Dashboard regression: monthly finances, missing costs and overview 
   assert.equal(admin.__eval("typeof canWrite"), "undefined");
   console.log("Access: one full-access level, no disabled actions or read-only notices passed.");
 }
+
+// Financial reconciliation: every money figure ties back to its records, to
+// the cent, and the months add up to the all-time totals. October: 10 bottles
+// at R$ 22 less a R$ 5 discount and 2 gifted, all from a batch that cost R$ 4
+// a bottle; a R$ 100 expense. November: 5 at R$ 15 plus R$ 8 delivery and 1
+// lost, from a batch at R$ 5; 3 sold before any batch existed; a R$ 40
+// operating purchase and a R$ 300 stock purchase (which reaches profit through
+// batch costs, never as an expense).
+{
+  const snapshot = (cost) => ({ version: 1, costPerBottle: cost, yieldBottles: 1 });
+  load({
+    products: [{ id: "p", item: "K1", flavor: "Tea", sizeMl: 500, retailPrice: 22, wholesalePrice: 15, status: "ativo" }],
+    recipes: [{ id: "r", productId: "p", flavor: "Tea", bottleMl: 500, yieldBottles: 1, ingredients: [], packaging: [] }],
+    packaging: [],
+    batches: [
+      { id: "b1", code: "OCT", productId: "p", recipeId: "r", flavor: "Tea", sizeMl: 500, actual: 20, date: "2026-10-01", status: "aprovado", costSnapshot: snapshot(4) },
+      { id: "b2", code: "NOV", productId: "p", recipeId: "r", flavor: "Tea", sizeMl: 500, actual: 20, date: "2026-11-01", status: "aprovado", costSnapshot: snapshot(5) },
+    ],
+    sales: [
+      { id: "s1", date: "2026-10-05", batchCode: "OCT", productId: "p", flavor: "Tea", movementType: "venda", qty: 10, unitPrice: 22, discount: 5, delivery: 0 },
+      { id: "s2", date: "2026-10-31", batchCode: "OCT", productId: "p", flavor: "Tea", movementType: "presente", qty: 2, unitPrice: 0, discount: 0, delivery: 0 },
+      { id: "s3", date: "2026-11-01", batchCode: "NOV", productId: "p", flavor: "Tea", movementType: "venda", qty: 5, unitPrice: 15, discount: 0, delivery: 8 },
+      { id: "s4", date: "2026-11-20", batchCode: "NOV", productId: "p", flavor: "Tea", movementType: "perda", qty: 1, unitPrice: 0, discount: 0, delivery: 0 },
+      { id: "s5", date: "2026-11-21", batchCode: "", pendingBatch: true, productId: "p", flavor: "Tea", movementType: "venda", qty: 3, unitPrice: 20, discount: 0, delivery: 0 },
+    ],
+    purchases: [
+      { id: "op", kind: "operational", date: "2026-11-10", item: "Gás", total: 40 },
+      { id: "st", kind: "stock", date: "2026-11-02", item: "Açúcar", total: 300, qty: 60000, unit: "g" },
+    ],
+    expenses: [{ id: "e1", date: "2026-10-15", category: "Aluguel", description: "Aluguel", amount: 100 }],
+  });
+  call("syncPurchaseExpense", admin.__getState().purchases[0]);
+  call("syncPurchaseExpense", admin.__getState().purchases[1]);
+  const cents = (value) => Math.round(value * 100);
+  const october = plain(call("dashboardFinancials", "2026-10"));
+  const november = plain(call("dashboardFinancials", "2026-11"));
+  assert.deepEqual([cents(october.revenue), cents(october.cogs), cents(october.expenses), cents(october.net), october.unknownCosts], [21500, 4800, 10000, 6700, 0]);
+  assert.deepEqual([cents(november.revenue), cents(november.cogs), cents(november.expenses), november.unknownCosts], [13500, 3000, 4000, 1], "the batchless sale makes November's cost incomplete");
+  const total = plain(call("totals"));
+  assert.equal(cents(total.salesRevenue), cents(october.revenue + november.revenue), "months add up to the total revenue");
+  assert.equal(cents(total.cogs), cents(october.cogs + november.cogs));
+  assert.equal(cents(total.expenses), cents(october.expenses + november.expenses), "the stock purchase is not an expense");
+  assert.equal(cents(total.deliveryFees), 800, "delivery is reported apart from revenue");
+  assert.equal(total.unknownCosts, 1);
+  admin.__eval(`dashboardMonth = "2026-11"`);
+  assert.match(call("renderDashboard"), /Custo incompleto/, "the dashboard never shows a profit it cannot compute");
+
+  // Per-sale profit in Vendas: a sale whose cost is unknown shows no profit.
+  admin.__eval('currentSalesPeriod = "custom"; salesCustomStart = "2026-11-01"; salesCustomEnd = "2026-11-30";');
+  const salesScreen = call("renderSales");
+  assert.match(salesScreen, /Lucro<\/small><strong>R\$\s50,00/, "5 x 15 less 5 x 5 cost");
+  assert.match(salesScreen, /Lucro<\/small><strong>Custo pendente/, "unknown cost is said, not shown as profit");
+  assert.doesNotMatch(salesScreen, /Lucro<\/small><strong>R\$\s60,00/, "the batchless sale's R$ 60 is not profit");
+
+  // Despesas tells stock purchases apart from what the dashboard counts.
+  const expensesScreen = call("renderExpenses");
+  assert.match(expensesScreen, /no custo dos lotes/);
+  assert.match(expensesScreen, /Despesas que entram no resultado: <strong>R\$\s140,00<\/strong>\. Compras de estoque: <strong>R\$\s300,00/);
+
+  // The CSV carries money in cents, never floating point noise.
+  admin.__getState().expenses.push({ id: "e2", date: "2026-11-25", category: "Taxas", description: "Tarifa", amount: 0.1 }, { id: "e3", date: "2026-11-26", category: "Taxas", description: "Tarifa", amount: 0.2 });
+  admin.__eval("window.__csv = null; exportCSV = (name, rows) => { window.__csv = rows; };");
+  call("handleAction", "export-reports");
+  const csv = plain(admin.__eval("window.__csv"));
+  csv.slice(1).forEach(([label, value]) => assert.ok(value === "" || /^-?\d+(\.\d{1,2})?$/.test(String(value)), `${label} is not in cents: ${value}`));
+  assert.deepEqual(csv.find((row) => row[0] === "Receita (sem frete)"), ["Receita (sem frete)", 350]);
+  assert.deepEqual(csv.find((row) => row[0] === "Despesas"), ["Despesas", 140.3], "0.10 + 0.20 is 0.30, not 0.30000000000000004");
+  console.log("Financial reconciliation: monthly revenue, cost, expenses and result to the cent, months adding up to totals, stock purchases kept out of expenses, delivery apart, unknown costs never shown as profit, and a clean CSV passed.");
+}

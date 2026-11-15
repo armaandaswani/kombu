@@ -5987,7 +5987,9 @@ function renderSales() {
       const revenue = saleRevenue(sale);
       const batch = state.batches.find((item) => item.code === sale.batchCode);
       const product = byId("products", sale.productId) || productForBatch(batch);
-      const cogs = Number(sale.qty) * (batch ? batchCost(batch).batchCostPerBottle : 0);
+      // Same cost rule as the dashboard: a sale without a batch, or from a batch
+      // whose cost is unknown, has no profit to show yet.
+      const cost = movementCost(sale);
       return `
         <article class="sale-compact-card">
           <div class="sale-compact-head">
@@ -6009,7 +6011,7 @@ function renderSales() {
           ` : ""}
           <div class="sale-compact-totals">
             <span><small>Valor</small><strong>${brl(revenue)}</strong></span>
-            <span><small>Lucro</small><strong>${brl(revenue - cogs)}</strong></span>
+            <span><small>Lucro</small><strong>${cost.unknown ? "Custo pendente" : brl(revenue - cost.amount)}</strong></span>
           </div>
           <div class="sale-compact-actions">${rowActions([
             tableAction(`edit-sale:${sale.id}`, "Editar venda"),
@@ -6422,9 +6424,14 @@ function renderPartners() {
   `;
 }
 
+// Stock purchases are listed here because they are money spent, but they reach
+// the result through batch costs, so the dashboard does not count them as
+// expenses. Each one says so, and the totals are split the same way.
 function renderExpenses() {
-  const rows = state.expenses
-    .filter((item) => matchesSearch(item))
+  const shown = state.expenses.filter((item) => matchesSearch(item));
+  const operating = shown.filter(isOperatingExpense).reduce((sum, item) => sum + Number(item.amount || 0), 0);
+  const stock = shown.filter((item) => !isOperatingExpense(item)).reduce((sum, item) => sum + Number(item.amount || 0), 0);
+  const rows = shown
     .map(
       (expense) => `
         <tr>
@@ -6433,13 +6440,14 @@ function renderExpenses() {
           <td><strong>${escapeHtml(expense.description)}</strong></td>
           <td class="num">${brl(expense.amount)}</td>
           <td>${escapeHtml(expense.method)}</td>
-          <td><span class="status ${expense.recurring ? "warn" : "good"}">${expense.recurring ? "recorrente" : "avulsa"}</span></td>
+          <td>${isOperatingExpense(expense) ? `<span class="status ${expense.recurring ? "warn" : "good"}">${expense.recurring ? "recorrente" : "avulsa"}</span>` : `<span class="status">compra de estoque, no custo dos lotes</span>`}</td>
           <td>${rowActions([tableAction(`edit-expense:${expense.id}`, "Editar despesa"), tableAction(`delete-expense:${expense.id}`, "Excluir despesa", "delete", "danger")])}</td>
         </tr>
       `,
     );
   return `
     ${pageHead("Despesas", "Registre custos fixos e variáveis para estimar resultado líquido por período.", actionButton("new-expense", "Nova despesa", "add"))}
+    <p class="expense-split">Despesas que entram no resultado: <strong>${brl(operating)}</strong>. Compras de estoque: <strong>${brl(stock)}</strong>, que entram no custo dos lotes e não são descontadas de novo.</p>
     ${table(
       [
         { label: "Data" },
@@ -11854,7 +11862,9 @@ function handleAction(action) {
     "export-leads": () => exportCSV("kombu-leads-crm", [["Criado em", "Tipo", "Status", "Nome", "Negócio", "Tipo negócio", "Local", "WhatsApp", "Instagram", "Mensagem", "Código informado"], ...state.leads.map((lead) => [lead.createdAt, lead.type, lead.status, lead.name, lead.business, lead.businessType, lead.location, lead.whatsapp, lead.instagram, lead.message, lead.couponCode || ""])]),
     "export-reports": () => {
       const total = totals();
-      exportCSV("kombu-relatorio", [["Métrica", "Valor"], ["Receita (sem frete)", total.salesRevenue], ["Frete cobrado", total.deliveryFees], ["COGS", total.unknownCosts ? "" : total.cogs], ["Lucro bruto", total.unknownCosts ? "" : total.grossProfit], ["Despesas", total.expenses], ["Líquido", total.unknownCosts ? "" : total.net], ["Saídas com custo pendente", total.unknownCosts], ["Pedidos em aberto", total.openOrderValue], ["A receber", total.receivable], ["Produção faltante", total.productionMissing]]);
+      // Money in cents: sums of decimals otherwise print as 140.30000000000001.
+      const cents = (value) => Math.round(Number(value || 0) * 100) / 100;
+      exportCSV("kombu-relatorio", [["Métrica", "Valor"], ["Receita (sem frete)", cents(total.salesRevenue)], ["Frete cobrado", cents(total.deliveryFees)], ["COGS", total.unknownCosts ? "" : cents(total.cogs)], ["Lucro bruto", total.unknownCosts ? "" : cents(total.grossProfit)], ["Despesas", cents(total.expenses)], ["Líquido", total.unknownCosts ? "" : cents(total.net)], ["Saídas com custo pendente", total.unknownCosts], ["Pedidos em aberto", cents(total.openOrderValue)], ["A receber", cents(total.receivable)], ["Produção faltante", total.productionMissing]]);
     },
     "export-costs": () => {
       const recipe = byId("recipes", activeRecipeId);
