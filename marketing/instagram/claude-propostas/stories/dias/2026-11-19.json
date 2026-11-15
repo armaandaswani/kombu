@@ -1,0 +1,50 @@
+{
+ "date": "2026-11-19",
+ "frames": [
+  {
+   "id": "revista-1119",
+   "formato": "revista",
+   "cena": "14-lavanda-limao-2",
+   "flavor": "lavanda-limao",
+   "title": "Você curte um sabor mais floral?",
+   "body": "Então vai de Lavanda & Limão. Ela é leve e bem cheirosa."
+  },
+  {
+   "id": "fato-1119",
+   "formato": "fato",
+   "cena": "07-flor-fada-azul-2",
+   "flavor": "flor-fada-blueberry",
+   "title": "Sabia que a Flor Fada Azul leva blueberry de verdade?",
+   "body": "A gente usa a fruta, e é dela que vem o lado frutado."
+  },
+  {
+   "id": "pergunta-1119",
+   "formato": "pergunta",
+   "cena": "11-imunidade-1",
+   "flavor": "imunidade",
+   "title": "Já provou a nossa Kombú de Imunidade?",
+   "body": "Ela leva limão, gengibre e cúrcuma, e fica com uma picância gostosa."
+  },
+  {
+   "id": "lista-1119",
+   "formato": "lista",
+   "cena": "05-frutas-vermelhas-1",
+   "flavor": "frutas-vermelhas",
+   "title": "Pra onde a gente leva uma de Frutas Vermelhas",
+   "body": "",
+   "itens": [
+    "Pro almoço de domingo depois da praia.",
+    "Pro piquenique com os amigos.",
+    "Pro sofá, num filme à noite."
+   ]
+  },
+  {
+   "id": "cena-1119",
+   "formato": "cena",
+   "cena": "26-personal-trainers-3",
+   "flavor": "goiaba",
+   "title": "Quinta pede uma de Goiaba bem gelada?",
+   "body": "Marca aqui quem ia dividir uma com você."
+  }
+ ]
+}

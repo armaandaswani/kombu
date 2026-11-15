@@ -1,0 +1,49 @@
+{
+ "date": "2026-11-15",
+ "frames": [
+  {
+   "id": "detalhe-1115",
+   "formato": "detalhe",
+   "cena": "12-como-comprar-2",
+   "flavor": "maracuja",
+   "title": "Já reparou nas sementinhas da de Maracujá?",
+   "body": "É que a gente usa o maracujá de verdade.",
+   "zoom": 1.1
+  },
+  {
+   "id": "cena-1115",
+   "formato": "cena",
+   "cena": "07-flor-fada-azul-2",
+   "flavor": "flor-fada-blueberry",
+   "title": "Domingo pede uma Flor Fada Azul & Blueberry gelada?",
+   "body": "Ela é floral e frutada ao mesmo tempo."
+  },
+  {
+   "id": "revista-1115",
+   "formato": "revista",
+   "cena": "11-imunidade-1",
+   "flavor": "imunidade",
+   "title": "Você gosta de gengibre?",
+   "body": "Então experimenta a de Imunidade. Ela leva limão, gengibre e cúrcuma."
+  },
+  {
+   "id": "enquete-1115",
+   "formato": "enquete",
+   "cena": "14-lavanda-limao-2",
+   "flavor": "lavanda-limao",
+   "cena2": "05-frutas-vermelhas-1",
+   "flavor2": "frutas-vermelhas",
+   "title": "Lavanda & Limão ou Frutas Vermelhas: qual vai pra geladeira hoje?",
+   "body": "",
+   "cta": "Manda o nome da sua por mensagem."
+  },
+  {
+   "id": "fato-1115",
+   "formato": "fato",
+   "cena": "26-personal-trainers-3",
+   "flavor": "goiaba",
+   "title": "Sabia que a de Goiaba leva goiaba de verdade?",
+   "body": "Ela fica suave e refrescante, boa pra uma tarde quente em Manaus."
+  }
+ ]
+}

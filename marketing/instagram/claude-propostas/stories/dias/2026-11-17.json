@@ -1,0 +1,53 @@
+{
+ "date": "2026-11-17",
+ "frames": [
+  {
+   "id": "lista-1117",
+   "formato": "lista",
+   "cena": "11-imunidade-2",
+   "flavor": "imunidade",
+   "title": "O que a gente coloca na de Imunidade",
+   "body": "",
+   "itens": [
+    "Limão, que deixa ela cítrica.",
+    "Gengibre, que dá a picância.",
+    "Cúrcuma, com aquele fundo terroso."
+   ]
+  },
+  {
+   "id": "cena-1117",
+   "formato": "cena",
+   "cena": "14-lavanda-limao-1",
+   "flavor": "lavanda-limao",
+   "title": "Já provou a de Lavanda & Limão?",
+   "body": "O limão chega primeiro e a lavanda fica no final."
+  },
+  {
+   "id": "pergunta-1117",
+   "formato": "pergunta",
+   "cena": "12-como-comprar-1",
+   "flavor": "maracuja",
+   "title": "Já tomou a de Maracujá com gelo?",
+   "body": "A gente gosta dela bem gelada, num copo cheio."
+  },
+  {
+   "id": "detalhe-1117",
+   "formato": "detalhe",
+   "cena": "07-flor-fada-azul-1",
+   "flavor": "flor-fada-blueberry",
+   "title": "Sabia que a cor da de Flor Fada Azul vem da flor?",
+   "body": "A blueberry entra junto e deixa ela frutada."
+  },
+  {
+   "id": "enquete-1117",
+   "formato": "enquete",
+   "cena": "05-frutas-vermelhas-1",
+   "flavor": "frutas-vermelhas",
+   "cena2": "19-como-servir-1",
+   "flavor2": "goiaba",
+   "title": "Frutas Vermelhas ou Goiaba: qual você leva hoje?",
+   "body": "",
+   "cta": "Vota mandando o nome por mensagem."
+  }
+ ]
+}
