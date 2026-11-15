@@ -41,10 +41,10 @@ Date: 15 November 2026 · Base: `179fc51` · Head: see `git log` (9 commits, lis
 
 | Gate | Status | Evidence or gap |
 | --- | --- | --- |
-| All P0 issues resolved | **Fail** | Open: the server-side posting contracts, so each purchase, production and sale becomes its own atomic, auditable event (needs staging). Also open: the interaction inventory of every control on every screen. |
+| All P0 issues resolved | **Fail** | Open: the server-side posting contracts, so each purchase, production and sale becomes its own atomic, auditable event (needs staging), and the staging run with a backup restore drill. The interaction inventory was completed afterwards (see the update below). |
 | Core workflows pass end to end | Pass locally | Purchase (form and photo), production, sale, oversell, correction, stock, orders and reservations, receipts, all in browser suites. Not yet run against staging. |
 | Both languages fully covered and tested | Pass (admin) | The browser walk opens every module and dialog in English and fails on any untranslated string. Switching back to PT restores the page, and the choice survives a reload. The public site's own text is out of scope. |
-| Every visible primary action works | Partial | Every action the suites click works, and silently disabled buttons were removed. A full inventory of every control has not been done. |
+| Every visible primary action works | Pass (update) | All 99 rendered actions have handlers, and the browser crawl presses 157 distinct controls on 20 screens with every one responding. Three dead buttons were found and fixed: dashboard "Ver pedido" and "Histórico", and batch "Histórico". Buttons inside opened forms are covered by the workflow suites. |
 | Financial calculations reconcile | Pass | Two-month fixture checked to the cent, with months adding up to totals and CSV in cents. Four accounting classifications await the accountant (plan, "Accounting questions"). |
 | Inventory integrity | Partial | Weighted cost, shortfalls, pending sales, the server's over-allocation check and reconciliation are tested. Concurrent edits from two devices, and retries after a lost response at the movement level, need the posting contracts. |
 | Charts and reports show verified data | Pass | Dashboard, Vendas, Despesas and Reports use one cost rule, and incomplete costs are labeled, never shown as profit. |
@@ -78,3 +78,7 @@ Date: 15 November 2026 · Base: `179fc51` · Head: see `git log` (9 commits, lis
 ## Rollback
 
 Revert the merge commit and redeploy. Fields this branch adds are ignored by the previous code: `pendingBatch` sales, `stockCountedAt`, the receipt `document*` fields on purchases, and the device's `kombuAdminHome` setting. One effect remains after a rollback: sales recorded without a batch keep an unknown cost until edited.
+
+## Update, same day: interaction inventory
+
+The interaction inventory is complete. Three dead buttons were found and fixed. The browser run now has 13 suites, all passing, and `npm test` includes the action inventory. The verdict is unchanged: blocked until the staging run, the posting contracts and the restore drill are done.

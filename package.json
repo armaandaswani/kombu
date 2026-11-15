@@ -4,7 +4,7 @@
   "private": true,
   "description": "Kombu public site and operational admin platform.",
   "scripts": {
-    "test": "npm run test:api && npm run test:reservations && npm run test:admin && npm run test:i18n && npm run test:receipts && node scripts/guide-regression.js && npm run test:storefront",
+    "test": "npm run test:api && npm run test:reservations && npm run test:admin && npm run test:i18n && npm run test:receipts && node scripts/guide-regression.js && node scripts/action-inventory.js && npm run test:storefront",
     "test:i18n": "node scripts/i18n-regression.js",
     "test:receipts": "node scripts/receipt-reader-regression.js",
     "i18n:extract": "node scripts/i18n-extract.js",

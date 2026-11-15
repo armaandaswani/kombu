@@ -52,6 +52,9 @@
   const compiled = { en: compile(catalog.en) };
   const cache = { en: new Map() };
   const misses = new Map();
+  // Text this layer produced (a filled template such as "Order PED-12") can
+  // be seen again, for example when tr() output reaches the DOM; it is known.
+  const produced = new Set();
   let locale = "pt";
 
   function fillTemplate(template, match, depth) {
@@ -74,7 +77,7 @@
     if (cached) return cached;
     let result = null;
     if (dictionary.exact.has(core)) result = { text: dictionary.exact.get(core), known: true };
-    else if (dictionary.english.has(core) || dictionary.same.has(core)) result = { text: core, known: true };
+    else if (dictionary.english.has(core) || dictionary.same.has(core) || produced.has(core)) result = { text: core, known: true };
     if (!result && depth < 3) {
       for (const template of dictionary.templates) {
         if (!core.includes(template.anchor)) continue;
@@ -115,6 +118,7 @@
       if (depth > 0 || core.length > 1) misses.set(core, (misses.get(core) || 0) + 1);
     }
     cache[locale].set(core, result);
+    if (result.known && result.text !== core) produced.add(result.text);
     return result;
   }
 

@@ -4953,7 +4953,7 @@ function renderDashboard() {
     )}
     <section class="admin-card dashboard-period" aria-label="Período financeiro">
       <label for="dashboardMonth">Resultado de <input id="dashboardMonth" type="month" value="${escapeHtml(dashboardMonth)}" required></label>
-      <button type="button" class="btn btn-outline" data-dashboard-current-month>Mês atual</button>
+      <button type="button" class="btn btn-outline${dashboardMonth === todayIso().slice(0, 7) ? " is-active" : ""}" data-dashboard-current-month aria-pressed="${dashboardMonth === todayIso().slice(0, 7)}">Mês atual</button>
       <p>Vendas e despesas pela data de registro. Estoque e pendências mostram a situação de hoje.</p>
     </section>
     <section class="metric-grid dashboard-key-metrics" aria-label="Indicadores principais">
@@ -11871,7 +11871,11 @@ function handleAction(action) {
       exportCSV("kombu-custo-garrafa", [["Receita", recipe.flavor, recipe.version], ["Custo lote", recipeCost(recipe).total], ["Custo garrafa", recipeCost(recipe).costPerBottle]]);
     },
   };
-  actionMap[action]?.();
+  // Buttons send "view-order:<id>" for entries in this table too. Only the
+  // whole string used to be looked up here, so "Ver pedido" and "Histórico" on
+  // the dashboard and every batch "Histórico" silently did nothing.
+  const handler = actionMap[action] || actionMap[dynamicAction];
+  if (handler) handler(...(dynamicPayload ? [dynamicPayload] : []));
 }
 
 document.querySelector("#adminNav")?.addEventListener("click", (event) => {

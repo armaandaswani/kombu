@@ -1042,6 +1042,7 @@ window.KOMBU_I18N = {
     "Parceiros": "Partners",
     "Parceria": "Partnership",
     "Parcerias": "Partnerships",
+    "parcial": "partial",
     "Parcial": "Partial",
     "Parece que esta compra já foi registrada.": "This purchase seems to have been recorded already.",
     "pausada": "paused",
