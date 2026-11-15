@@ -29,128 +29,45 @@ const SMALL_BOTTLE_RECIPE_RATIO = SMALL_BOTTLE_SIZE_ML / BASE_BOTTLE_SIZE_ML;
 const DEFAULT_RETAIL_MARGIN_TARGET = 80;
 const DEFAULT_WHOLESALE_MARGIN_TARGET = 70;
 
-const ADMIN_I18N = {
-  en: {
-    "Acesso protegido": "Protected access",
-    "Acesso validado no servidor. A senha nunca deve aparecer na URL; use apenas este campo para entrar.": "Access is validated on the server. The password should never appear in the URL; use only this field to sign in.",
-    "Ações": "Actions",
-    "Admin": "Admin",
-    "Arquitetura": "Architecture",
-    "Atualizar item existente": "Update existing item",
-    "Atenção necessária": "Needs attention",
-    "A receber": "Receivable",
-    "Busca": "Search",
-    "Buscar EAN, lotes, ingredientes, pedidos, clientes ou vendas...": "Search barcode, batches, ingredients, orders, customers or sales...",
-    "Cadastrar novo item": "Add new item",
-    "Cliente varejo recorrente": "Recurring retail customer",
-    "Cobranças próximas": "Upcoming collections",
-    "Compras": "Purchases",
-    "Controle operacional e financeiro da Kombú: produção, estoque, custo por garrafa, vendas e alertas.": "Operational and financial control for Kombú: production, inventory, bottle cost, sales and alerts.",
-    "Custo": "Cost",
-    "Custos": "Costs",
-    "Dashboard": "Dashboard",
-    "Data": "Date",
-    "Despesas": "Expenses",
-    "Disponível": "Available",
-    "Embalagens": "Packaging",
-    "Entrar no portal": "Enter portal",
-    "Entre com a senha do admin.": "Enter the admin password.",
-    "Este painel controla custos, receitas, estoque, vendas, CMS e dados operacionais da Kombú.": "This panel controls costs, recipes, inventory, sales, CMS and operational data for Kombú.",
-    "Estoque": "Stock",
-    "Estoque geral por sabor": "Total stock by flavor",
-    "Estoque por sabor": "Stock by flavor",
-    "Tamanho da garrafa": "Bottle size",
-    "Disponível é o saldo livre. Garrafas reservadas continuam em estoque, separadas para pedidos.": "Tap a flavor to correct its available stock.",
-    "Fornecedor": "Supplier",
-    "Fornecedores": "Suppliers",
-    "Garrafas": "Bottles",
-    "Ingredientes": "Ingredients",
-    "Item existente": "Existing item",
-    "Lead CRM": "CRM leads",
-    "Leads CRM": "CRM leads",
-    "Novo cliente": "New customer",
-    "Novo lote": "New batch",
-    "Novo parceiro": "New partner",
-    "Novo pedido": "New order",
-    "Nenhum alerta crítico no momento.": "No critical alerts right now.",
-    "Nenhum registro ainda. Use os botões acima para começar.": "No records yet. Use the buttons above to start.",
-    "Owner / Admin": "Owner / Admin",
-    "Parceiro recorrente": "Recurring partner",
-    "Parceiros": "Partners",
-    "Painel Operacional": "Operations Panel",
-    "Portal interno": "Internal portal",
-    "Produtos": "Products",
-    "Produção": "Production",
-    "Produção faltante": "Missing production",
-    "Produção puxada por pedidos": "Production pulled by orders",
-    "Pronto por cliente": "Ready by customer",
-    "Quantidade": "Quantity",
-    "Receitas": "Recipes",
-    "Receita do período": "Period revenue",
-    "Registrar compra": "Register purchase",
-    "Registrar venda": "Register sale",
-    "Relatórios": "Reports",
-    "Reservado": "Reserved",
-    "Rótulos": "Labels",
-    "Sair": "Log out",
-    "Senha": "Password",
-    "Senha incorreta.": "Incorrect password.",
-    "Site público": "Public site",
-    "Sincronizacao na nuvem ativa.": "Cloud sync active.",
-    "Alteracoes salvas aqui aparecem no site publico, no desktop e no celular.": "Changes saved here appear on the public site, desktop and phone.",
-    "Ultimo salvamento": "Last save",
-    "Leitura rápida para ver o que existe agora, sem abrir lote por lote.": "Quick view of what exists now, without opening each batch.",
-    "Nenhum sabor encontrado.": "No flavor found.",
-    "Resumo simples por sabor, reservas por cliente e lotes disponíveis.": "Simple view by flavor, customer reservations and available batches.",
-    "Separado agora": "Separated now",
-    "Separado para entrega": "Separated for delivery",
-    "disponíveis": "available",
-    "disponível": "available",
-    "reservadas": "reserved",
-    "reservada": "reserved",
-    "disp.": "avail.",
-    "por sabor": "by flavor",
-    "Ajustar": "Adjust",
-    "Vendas": "Sales",
-    "Venda rápida": "Quick sale",
-    "Visão Geral": "Overview",
-  },
-};
-
-const MODULE_LABELS = {
-  dashboard: "Início",
-  products: "Produtos",
-  ingredients: "Ingredientes",
-  purchases: "Compras",
-  suppliers: "Fornecedores",
-  recipes: "Receitas",
-  costs: "Custos",
-  batches: "Produção",
-  stock: "Estoque",
-  packaging: "Embalagens",
-  sales: "Vendas",
-  orders: "Pedidos",
-  receipts: "Recibos",
-  leads: "Leads CRM",
-  partners: "Parceiros",
-  expenses: "Despesas",
-  reports: "Relatórios",
-  cms: "CMS",
-  schema: "Arquitetura",
-};
+// Interface text is written in Portuguese and translated by
+// assets/admin-locale.js from the catalog in assets/admin-i18n.js. The layer
+// translates rendered markup on its own; tr() is for text that never reaches
+// the DOM, and the dialog helpers below cover alert/confirm/prompt.
+const adminLocale = window.KombuLocale || null;
 
 function tr(value) {
   const text = String(value ?? "");
-  if (currentLocale !== "en") return text;
-  return ADMIN_I18N.en[text] || text;
+  return currentLocale === "en" && adminLocale ? adminLocale.translateMessage(text) : text;
 }
 
-function setInlineLabel(element, label) {
-  if (!element) return;
-  const icon = element.querySelector(".material-symbols-outlined");
-  element.textContent = "";
-  if (icon) element.append(icon);
-  element.append(document.createTextNode(` ${tr(label)}`));
+function localizedAlert(message) {
+  return window.alert(tr(message));
+}
+
+function localizedConfirm(message) {
+  return window.confirm(tr(message));
+}
+
+function localizedPrompt(message, defaultValue) {
+  return window.prompt(tr(message), defaultValue);
+}
+
+// Documents sent to customers (receipts, delivery proofs, WhatsApp and email
+// text) stay in Brazilian Portuguese and pt-BR formats whatever the panel
+// language is.
+let documentLocaleDepth = 0;
+
+function inDocumentLocale(build) {
+  documentLocaleDepth += 1;
+  try {
+    return build();
+  } finally {
+    documentLocaleDepth -= 1;
+  }
+}
+
+function formatLocale() {
+  return currentLocale === "en" && !documentLocaleDepth ? "en-US" : "pt-BR";
 }
 
 function applyLocaleToShell() {
@@ -159,42 +76,7 @@ function applyLocaleToShell() {
     button.classList.toggle("is-active", button.dataset.locale === currentLocale);
     button.setAttribute("aria-pressed", button.dataset.locale === currentLocale ? "true" : "false");
   });
-  const loginScreen = document.querySelector("#loginScreen");
-  if (loginScreen) {
-    const brandLabel = loginScreen.querySelector(".brand-name span");
-    if (brandLabel) brandLabel.textContent = tr("Acesso protegido");
-    setInlineLabel(loginScreen.querySelector(".eyebrow"), "Portal interno");
-    const title = loginScreen.querySelector("#loginTitle");
-    if (title) title.textContent = tr("Entre com a senha do admin.");
-    const copy = loginScreen.querySelector("#loginTitle + p");
-    if (copy) copy.textContent = tr("Este painel controla custos, receitas, estoque, vendas, CMS e dados operacionais da Kombú.");
-    const label = loginScreen.querySelector("label[for='adminPassword']");
-    if (label) label.textContent = tr("Senha");
-    setInlineLabel(loginScreen.querySelector("#loginForm .btn-primary"), "Entrar no portal");
-    const error = loginScreen.querySelector("#loginError");
-    if (error && error.textContent.trim() === "Senha incorreta.") error.textContent = tr("Senha incorreta.");
-    const note = loginScreen.querySelector(".login-note");
-    if (note) note.textContent = tr("Acesso validado no servidor. A senha nunca deve aparecer na URL; use apenas este campo para entrar.");
-  }
-  const sidebarLabel = document.querySelector(".admin-sidebar .brand-name span");
-  if (sidebarLabel) sidebarLabel.textContent = tr("Painel Operacional");
-  document.querySelectorAll("#adminNav [data-module]").forEach((button) => {
-    const label = MODULE_LABELS[button.dataset.module] || button.dataset.module;
-    const translated = tr(label);
-    const labelNode = button.querySelector(".label");
-    if (labelNode) labelNode.textContent = translated;
-    button.title = translated;
-  });
-  const mobileSelect = document.querySelector("#mobileModuleSelector");
-  if (mobileSelect) {
-    Array.from(mobileSelect.options).forEach((option) => {
-      option.textContent = tr(MODULE_LABELS[option.value] || option.textContent);
-    });
-  }
-  const search = document.querySelector("#globalSearch");
-  if (search) search.placeholder = tr("Buscar EAN, lotes, ingredientes, pedidos, clientes ou vendas...");
-  setInlineLabel(document.querySelector("#logoutButton"), "Sair");
-  setInlineLabel(document.querySelector(".admin-user a.btn-outline"), "Site público");
+  adminLocale?.setLocale(currentLocale, document);
 }
 
 const PRODUCT_CATALOG_SEED = [
@@ -841,10 +723,10 @@ function bindAuth() {
 }
 
 const brl = (value) =>
-  new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(Number(value || 0));
+  new Intl.NumberFormat(formatLocale(), { style: "currency", currency: "BRL" }).format(Number(value || 0));
 
 const number = (value, digits = 0) =>
-  new Intl.NumberFormat("pt-BR", { minimumFractionDigits: digits, maximumFractionDigits: digits }).format(Number(value || 0));
+  new Intl.NumberFormat(formatLocale(), { minimumFractionDigits: digits, maximumFractionDigits: digits }).format(Number(value || 0));
 
 function inputNumber(value, digits = 6) {
   if (value === "" || value == null) return "";
@@ -2478,7 +2360,8 @@ function orderStatusBadge(status) {
 function shortDate(dateIso) {
   const value = String(dateIso || "").slice(0, 10);
   const match = value.match(/^(\d{4})-(\d{2})-(\d{2})$/);
-  return match ? `${match[3]}/${match[2]}` : value;
+  if (!match) return value;
+  return formatLocale() === "en-US" ? `${match[2]}/${match[3]}` : `${match[3]}/${match[2]}`;
 }
 
 function daysUntil(dateIso) {
@@ -2992,7 +2875,7 @@ function dashboardReadyOrders() {
 function fullDate(dateIso) {
   if (!dateIso) return "-";
   const date = new Date(`${String(dateIso).slice(0, 10)}T12:00:00`);
-  return Number.isNaN(date.getTime()) ? String(dateIso) : new Intl.DateTimeFormat("pt-BR").format(date);
+  return Number.isNaN(date.getTime()) ? String(dateIso) : new Intl.DateTimeFormat(formatLocale()).format(date);
 }
 
 function deliveryProofDefaultQty(item = {}) {
@@ -3242,7 +3125,7 @@ function quickReadyDeliveriesForm() {
     const data = Object.fromEntries(new FormData(form).entries());
     const ids = [...form.querySelectorAll('input[name="orderIds"]:checked')].map((input) => input.value);
     if (!ids.length) {
-      window.alert("Selecione pelo menos um pedido pronto.");
+      localizedAlert("Selecione pelo menos um pedido pronto.");
       return;
     }
     const button = form.querySelector('button[type="submit"]');
@@ -3264,7 +3147,7 @@ function quickReadyDeliveriesForm() {
     } catch (error) {
       console.error(error);
       button.disabled = false;
-      window.alert(error.message || "Não foi possível registrar as entregas selecionadas.");
+      localizedAlert(error.message || "Não foi possível registrar as entregas selecionadas.");
     }
   });
 }
@@ -3272,7 +3155,7 @@ function quickReadyDeliveriesForm() {
 function deliveryProofForm(orderId) {
   const order = byId("orders", orderId);
   if (!order) {
-    window.alert("Pedido não encontrado. Atualize a página e tente novamente.");
+    localizedAlert("Pedido não encontrado. Atualize a página e tente novamente.");
     return;
   }
   const items = orderItems(order).map((item, index) => ({ item, index })).filter(({ item }) => deliveryProofDefaultQty(item) > 0);
@@ -3340,7 +3223,7 @@ function deliveryProofForm(orderId) {
       0,
     );
     if (selectedQuantity <= 0) {
-      window.alert("Informe pelo menos uma garrafa entregue.");
+      localizedAlert("Informe pelo menos uma garrafa entregue.");
       return;
     }
     const button = form.querySelector('button[type="submit"]');
@@ -3355,7 +3238,7 @@ function deliveryProofForm(orderId) {
       render();
     } catch (error) {
       console.error(error);
-      window.alert("Não foi possível gerar o PDF. Atualize a página e tente novamente.");
+      localizedAlert("Não foi possível gerar o PDF. Atualize a página e tente novamente.");
     } finally {
       button.disabled = false;
       button.querySelector(".material-symbols-outlined").textContent = "picture_as_pdf";
@@ -3375,13 +3258,17 @@ function reprintDeliveryProof(payload = "") {
   const order = byId("orders", orderId);
   const delivery = orderDeliveries(order).find((item) => item.id === deliveryId);
   if (!order || !delivery) {
-    window.alert("Não encontrei esta remessa. Atualize a página e tente novamente.");
+    localizedAlert("Não encontrei esta remessa. Atualize a página e tente novamente.");
     return;
   }
   generateDeliveryProofPdf(order, delivery);
 }
 
 function generateDeliveryProofPdf(order, delivery) {
+  return inDocumentLocale(() => buildDeliveryProofPdf(order, delivery));
+}
+
+function buildDeliveryProofPdf(order, delivery) {
   const jsPdf = window.jspdf?.jsPDF;
   if (!jsPdf) throw new Error("jsPDF não foi carregado.");
   const data = {
@@ -3840,7 +3727,7 @@ function bindReceiptWizardEvents() {
     Object.assign(receiptDraft, data);
     if (receiptWizardStep === 1) {
       if (receiptDraft.type === "order" && !(receiptDraft.deliveryIds || []).length) {
-        window.alert("Selecione pelo menos uma entrega.");
+        localizedAlert("Selecione pelo menos uma entrega.");
         return;
       }
       const order = receiptWizardOrder();
@@ -3857,7 +3744,7 @@ function bindReceiptWizardEvents() {
     if (receiptWizardStep === 2) {
       receiptDraft.amount = Number(data.amount || 0);
       if (receiptDraft.amount <= 0) {
-        window.alert("Informe um valor recebido maior que zero.");
+        localizedAlert("Informe um valor recebido maior que zero.");
         return;
       }
       receiptWizardStep = 3;
@@ -3929,11 +3816,15 @@ function moneyInWords(value) {
 }
 
 function receiptPdf(receiptId, mode = "download", secondCopy = false) {
+  return inDocumentLocale(() => buildReceiptPdf(receiptId, mode, secondCopy));
+}
+
+function buildReceiptPdf(receiptId, mode, secondCopy) {
   const receipt = byId("receipts", receiptId);
   if (!receipt) return;
   const Pdf = window.jspdf?.jsPDF;
   if (!Pdf) {
-    window.alert("Gerador de PDF indisponível. Recarregue a página e tente novamente.");
+    localizedAlert("Gerador de PDF indisponível. Recarregue a página e tente novamente.");
     return;
   }
   const doc = new Pdf({ unit: "mm", format: "a4" });
@@ -4081,6 +3972,10 @@ function viewReceipt(receiptId) {
 }
 
 function shareReceipt(receiptId) {
+  return inDocumentLocale(() => buildShareReceipt(receiptId));
+}
+
+function buildShareReceipt(receiptId) {
   const receipt = byId("receipts", receiptId);
   if (!receipt) return;
   receiptPdf(receiptId);
@@ -4091,7 +3986,7 @@ function shareReceipt(receiptId) {
 function cancelReceipt(receiptId) {
   const receipt = byId("receipts", receiptId);
   if (!receipt || receipt.status === "cancelado") return;
-  const reason = window.prompt("Informe o motivo do cancelamento. O recibo continuará no histórico:");
+  const reason = localizedPrompt("Informe o motivo do cancelamento. O recibo continuará no histórico:");
   if (!reason?.trim()) return;
   receipt.status = "cancelado";
   receipt.cancelReason = reason.trim();
@@ -4153,6 +4048,10 @@ function paymentReminderRows() {
 }
 
 function paymentReminderMailto(order) {
+  return inDocumentLocale(() => buildPaymentReminderMailto(order));
+}
+
+function buildPaymentReminderMailto(order) {
   const subject = encodeURIComponent(`Lembrete de cobrança Kombú - ${order.code}`);
   const body = encodeURIComponent(
     [
@@ -4357,10 +4256,10 @@ function resyncSaleWithOrder(saleId) {
   if (!sale || !sale.orderId) return;
   const order = byId("orders", sale.orderId);
   if (!order) {
-    window.alert("O pedido desta venda nao existe mais, entao ela nao pode voltar a acompanha-lo.");
+    localizedAlert("O pedido desta venda nao existe mais, entao ela nao pode voltar a acompanha-lo.");
     return;
   }
-  if (!window.confirm("Esta venda volta a ser calculada pelo pedido. As alteracoes manuais feitas nela serao descartadas. Continuar?")) return;
+  if (!localizedConfirm("Esta venda volta a ser calculada pelo pedido. As alteracoes manuais feitas nela serao descartadas. Continuar?")) return;
   delete sale.manuallyEdited;
   delete sale.manuallyEditedAt;
   delete sale.manuallyEditedBy;
@@ -4384,7 +4283,7 @@ function updateOrderStatus(payload = "") {
   const order = byId("orders", orderId);
   if (!order || !ORDER_STATUSES.includes(status)) return;
   if (status === "entregue" && orderOutstandingQuantity(order) > 0) {
-    window.alert("Ainda há itens pendentes. Registre a remessa pelo botão PDF da entrega; o pedido será concluído automaticamente quando todo o saldo for entregue.");
+    localizedAlert("Ainda há itens pendentes. Registre a remessa pelo botão PDF da entrega; o pedido será concluído automaticamente quando todo o saldo for entregue.");
     return;
   }
   order.status = status;
@@ -4644,7 +4543,7 @@ function monthlySalesRows(limit = 6) {
       const date = new Date(`${row.key}-01T00:00:00`);
       return {
         ...row,
-        label: date.toLocaleDateString("pt-BR", { month: "short", year: "2-digit" }).replace(".", ""),
+        label: date.toLocaleDateString(formatLocale(), { month: "short", year: "2-digit" }).replace(".", ""),
       };
     });
 }
@@ -4696,7 +4595,7 @@ function pageHead(title, description, actions = "") {
 function cloudSyncNotice() {
   if (!isAuthenticated()) return "";
   const local = isLocalPreview();
-  const savedAt = lastCloudSaveAt ? new Date(lastCloudSaveAt).toLocaleString("pt-BR") : "";
+  const savedAt = lastCloudSaveAt ? new Date(lastCloudSaveAt).toLocaleString(formatLocale()) : "";
   if (cloudSaveBlocked && cloudInvariantRegressions.length) {
     const RULE_LABELS = {
       delivered_over_ordered: "entrega maior que a quantidade pedida",
@@ -6224,10 +6123,18 @@ async function openCreatorStore() {
     </form><p id="creatorStoreStatus" role="status"></p><div id="creatorStoreData">Carregando…</div>`);
   const store = document.querySelector("#creatorStoreData");
   const status = document.querySelector("#creatorStoreStatus");
+  // A failed request can return an HTML error page or nothing at all; the
+  // operator gets the same plain message instead of a JSON parser error.
   async function api(body) {
-    const response = await fetch("/api/creators", body ? { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) } : {});
-    const result = await response.json();
-    if (!response.ok) throw new Error("Não foi possível concluir. Confira a configuração do checkout e do Supabase. Um código existente não pode ser reutilizado por outro criador.");
+    const failure = "Não foi possível concluir. Confira a configuração do checkout e do Supabase. Um código existente não pode ser reutilizado por outro criador.";
+    let response;
+    try {
+      response = await fetch("/api/creators", body ? { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) } : {});
+    } catch {
+      throw new Error(failure);
+    }
+    const result = await readJsonSafe(response);
+    if (!response.ok) throw new Error(failure);
     return result;
   }
   const labels = { awaiting_shipping: "Aguardando frete", creating: "Gerando link", pending: "Aguardando pagamento", paid: "Pago", review: "Conferir com InfinitePay antes de tentar novamente", refunded: "Estornado", canceled: "Cancelado" };
@@ -6271,7 +6178,7 @@ function renderLeads() {
     .filter((lead) => matchesSearch(lead))
     .map((lead) => `
       <tr>
-        <td><strong>${lead.type === "revenda" ? "Revenda" : lead.type === "parceria" ? "Parceria" : lead.type === "criador" ? "Criador" : "Contato"}</strong><br><span>${escapeHtml(new Date(lead.createdAt).toLocaleString("pt-BR"))}</span></td>
+        <td><strong>${lead.type === "revenda" ? "Revenda" : lead.type === "parceria" ? "Parceria" : lead.type === "criador" ? "Criador" : "Contato"}</strong><br><span>${escapeHtml(new Date(lead.createdAt).toLocaleString(formatLocale()))}</span></td>
         <td><strong>${escapeHtml(lead.name || "Sem nome")}</strong><br><span>${escapeHtml(lead.whatsapp || "Sem WhatsApp")}</span></td>
         <td>${escapeHtml(lead.business || "-")}<br><span>${escapeHtml(lead.businessType || "")}${lead.location ? ` | ${escapeHtml(lead.location)}` : ""}</span></td>
         <td>${escapeHtml(lead.instagram || "-")}</td>
@@ -6960,7 +6867,7 @@ function leadArchiveMarkup() {
       return `
         <div class="audit-row">
           <strong>${escapeHtml(lead.name || lead.business || "Sem nome")}${evicted ? ` <span class="status warn">fora do painel</span>` : ""}</strong>
-          <span>${escapeHtml(lead.createdAt ? new Date(lead.createdAt).toLocaleString("pt-BR") : "-")} | ${escapeHtml(lead.status || "-")} | ${escapeHtml(lead.type || "-")}</span>
+          <span>${escapeHtml(lead.createdAt ? new Date(lead.createdAt).toLocaleString(formatLocale()) : "-")} | ${escapeHtml(lead.status || "-")} | ${escapeHtml(lead.type || "-")}</span>
           <span>${escapeHtml([lead.business, lead.location, lead.whatsapp, lead.instagram].filter(Boolean).join(" | ") || "-")}</span>
           ${lead.message ? `<span>${escapeHtml(lead.message)}</span>` : ""}
         </div>
@@ -7062,7 +6969,7 @@ function renderAuditRows(limit) {
 
 function auditEventCardMarkup(entry = {}) {
   const detail = auditDetailWithFlavor(entry.detail || "");
-  const timestamp = entry.at ? new Date(entry.at).toLocaleString("pt-BR") : "-";
+  const timestamp = entry.at ? new Date(entry.at).toLocaleString(formatLocale()) : "-";
   return `
     <details class="audit-event-card">
       <summary>
@@ -7220,11 +7127,11 @@ function setModule(module) {
 function openPartnerEditorFromDashboard(partnerId) {
   const partner = byId("partners", partnerId);
   if (!partner) {
-    window.alert("Parceiro não encontrado. Atualize a página e tente novamente.");
+    localizedAlert("Parceiro não encontrado. Atualize a página e tente novamente.");
     return;
   }
   if (!canWrite("partners")) {
-    window.alert("O perfil selecionado não tem permissão para editar parceiros.");
+    localizedAlert("O perfil selecionado não tem permissão para editar parceiros.");
     return;
   }
   setModule("partners");
@@ -7369,16 +7276,16 @@ function globalPriceForm(sizeMl = BASE_BOTTLE_SIZE_ML) {
     const retailTargetMargin = Number(data.get("retailTargetMargin"));
     const wholesaleTargetMargin = Number(data.get("wholesaleTargetMargin"));
     if (![retailPrice, wholesalePrice].every((price) => Number.isFinite(price) && price > 0)) {
-      window.alert("Informe preços de varejo e atacado maiores que zero.");
+      localizedAlert("Informe preços de varejo e atacado maiores que zero.");
       return;
     }
     if (![retailTargetMargin, wholesaleTargetMargin].every((margin) => Number.isFinite(margin) && margin >= 0 && margin <= 95)) {
-      window.alert("As metas de margem devem ficar entre 0% e 95%.");
+      localizedAlert("As metas de margem devem ficar entre 0% e 95%.");
       return;
     }
     const products = state.products.filter((product) => Number(product.sizeMl) === normalizedSize);
     if (!products.length) {
-      window.alert(`Nenhum produto de ${normalizedSize}ml foi encontrado.`);
+      localizedAlert(`Nenhum produto de ${normalizedSize}ml foi encontrado.`);
       return;
     }
     products.forEach((product) => {
@@ -7726,15 +7633,15 @@ function newPurchaseForm() {
     const data = Object.fromEntries(new FormData(form).entries());
     const { target, isNewItem, isOperational, isExistingMode, packageCount, packageSize, packageUnit, stockUnit, qty, total, costPerUnit } = purchaseCalc();
     if ((isNewItem || isOperational) && !data.newItemName.trim()) {
-      window.alert("Informe o nome do novo item.");
+      localizedAlert("Informe o nome do novo item.");
       return;
     }
     if (isExistingMode && !target.item) {
-      window.alert("Escolha o item existente que será atualizado.");
+      localizedAlert("Escolha o item existente que será atualizado.");
       return;
     }
     if ((!qty && !isOperational) || !total) {
-      window.alert("Informe item, quantidade comprada e total pago.");
+      localizedAlert("Informe item, quantidade comprada e total pago.");
       return;
     }
     if (isOperational) {
@@ -7793,7 +7700,7 @@ function newPurchaseForm() {
       });
     }
     if (!stockItem) {
-      window.alert("Escolha um item válido.");
+      localizedAlert("Escolha um item válido.");
       return;
     }
     stockItem.stock = Number(stockItem.stock || 0) + qty;
@@ -7876,16 +7783,16 @@ function reserveStockForm(batchCode) {
     const currentAvailable = batchAvailableStock(batchCode);
     const selection = findOrderItemBySelection(data.orderItemKey);
     if (!selection.order || !selection.item) {
-      window.alert("Pedido não encontrado. Atualize a página e tente novamente.");
+      localizedAlert("Pedido não encontrado. Atualize a página e tente novamente.");
       return;
     }
     const need = orderItemRemainingQty(selection.item);
     if (qty <= 0 || qty > currentAvailable) {
-      window.alert(`Estoque insuficiente neste lote. Disponível: ${number(currentAvailable)} garrafa(s).`);
+      localizedAlert(`Estoque insuficiente neste lote. Disponível: ${number(currentAvailable)} garrafa(s).`);
       return;
     }
     if (qty > need) {
-      window.alert(`Esse item precisa de ${number(need)} garrafa(s). Ajuste a quantidade para não reservar a mais.`);
+      localizedAlert(`Esse item precisa de ${number(need)} garrafa(s). Ajuste a quantidade para não reservar a mais.`);
       return;
     }
     reserveBatchForOrderItem(batchCode, selection.order, selection.item, qty, data.note || "", true);
@@ -7997,7 +7904,7 @@ function adjustOrderReservationForm(orderId) {
   if (!order || !isOpenOrder(order)) return;
   const lines = orderLineRows(order).filter((line) => line.outstanding > 0);
   if (!lines.length) {
-    window.alert("Este pedido não tem itens em aberto para ajustar.");
+    localizedAlert("Este pedido não tem itens em aberto para ajustar.");
     return;
   }
   const byKey = new Map(orderItems(order).map((item) => [item.key || "", item]));
@@ -8161,7 +8068,7 @@ function adjustOrderReservationForm(orderId) {
     render();
     const missed = applied.filter(row => row.to !== requested.find(request => request.key === row.key)?.value);
     if (applied.length < requested.length || missed.length) {
-      window.alert("Algumas quantidades foram limitadas pelo estoque disponível. Confira os valores salvos.");
+      localizedAlert("Algumas quantidades foram limitadas pelo estoque disponível. Confira os valores salvos.");
     }
   });
 }
@@ -8171,7 +8078,7 @@ function writeOffStockForm(batchCode) {
   const product = productForBatch(batch);
   const available = batchAvailableStock(batchCode);
   if (!batch || available <= 0) {
-    window.alert("Este lote não tem garrafas disponíveis para baixa.");
+    localizedAlert("Este lote não tem garrafas disponíveis para baixa.");
     return;
   }
   openModal(
@@ -8199,7 +8106,7 @@ function writeOffStockForm(batchCode) {
     const qty = Number(data.qty || 0);
     const currentAvailable = batchAvailableStock(batchCode);
     if (!Number.isInteger(qty) || qty <= 0 || qty > currentAvailable) {
-      window.alert(`Informe uma quantidade entre 1 e ${number(currentAvailable)}.`);
+      localizedAlert(`Informe uma quantidade entre 1 e ${number(currentAvailable)}.`);
       return;
     }
     state.sales.unshift({
@@ -8293,7 +8200,7 @@ function adjustFlavorStockForm(productId) {
     const data = Object.fromEntries(new FormData(form).entries());
     const nextAvailable = Number(data.available);
     if (!Number.isInteger(nextAvailable) || nextAvailable < 0) {
-      window.alert("Informe uma quantidade inteira igual ou maior que zero.");
+      localizedAlert("Informe uma quantidade inteira igual ou maior que zero.");
       return;
     }
     const delta = nextAvailable - currentAvailable;
@@ -8302,7 +8209,7 @@ function adjustFlavorStockForm(productId) {
       return;
     }
     if (!matchingRows.length) {
-      window.alert("Este sabor ainda não possui um lote aprovado. Crie um lote para adicionar estoque.");
+      localizedAlert("Este sabor ainda não possui um lote aprovado. Crie um lote para adicionar estoque.");
       return;
     }
 
@@ -8317,7 +8224,7 @@ function adjustFlavorStockForm(productId) {
         remaining -= reduction;
       });
       if (remaining > 0) {
-        window.alert(`Só existem ${number(currentAvailable)} garrafa(s) disponíveis para retirar.`);
+        localizedAlert(`Só existem ${number(currentAvailable)} garrafa(s) disponíveis para retirar.`);
         return;
       }
     } else {
@@ -8327,7 +8234,7 @@ function adjustFlavorStockForm(productId) {
     }
 
     if (changes.some((change) => !change.batch || !byId("recipes", change.batch.recipeId))) {
-      window.alert("Um dos lotes não possui receita vinculada. Corrija o vínculo antes de ajustar o estoque.");
+      localizedAlert("Um dos lotes não possui receita vinculada. Corrija o vínculo antes de ajustar o estoque.");
       return;
     }
     changes.forEach((change) => {
@@ -8347,7 +8254,7 @@ function adjustFlavorStockForm(productId) {
     closeModal();
     render();
     if (resultingAvailable !== nextAvailable) {
-      window.alert(
+      localizedAlert(
         `O saldo foi corrigido, mas ${number(nextAvailable - resultingAvailable)} garrafa(s) foram automaticamente direcionadas a pedidos mais antigos. Disponível agora: ${number(resultingAvailable)}.`,
       );
     }
@@ -8405,12 +8312,12 @@ function correctBatchQuantityForm(batchId) {
     const data = Object.fromEntries(new FormData(form).entries());
     const nextActual = Number(data.actual || 0);
     if (nextActual < committed) {
-      window.alert(`Não dá para reduzir para ${number(nextActual)} porque ${number(committed)} já estão reservadas/vendidas. Libere reservas ou faça devolução primeiro.`);
+      localizedAlert(`Não dá para reduzir para ${number(nextActual)} porque ${number(committed)} já estão reservadas/vendidas. Libere reservas ou faça devolução primeiro.`);
       return;
     }
     const inventoryResult = adjustBatchInventoryTo(batch, nextActual);
     if (!inventoryResult.ok) {
-      window.alert(inventoryResult.message);
+      localizedAlert(inventoryResult.message);
       return;
     }
     batch.actual = nextActual;
@@ -8425,7 +8332,7 @@ function correctBatchQuantityForm(batchId) {
     addAudit("Quantidade do lote corrigida", `${batch.code}: ${number(currentActual)} -> ${number(nextActual)}. ${inventoryResult.delta < 0 ? "Insumos devolvidos" : inventoryResult.delta > 0 ? "Insumos baixados" : "Sem mudança de insumos"}. Motivo: ${data.reason}`);
     closeModal();
     render();
-    if (afterReserved > beforeReserved) window.alert(`${number(afterReserved)} garrafa(s) deste lote estão reservadas para pedidos após a correção.`);
+    if (afterReserved > beforeReserved) localizedAlert(`${number(afterReserved)} garrafa(s) deste lote estão reservadas para pedidos após a correção.`);
   });
 }
 
@@ -8465,7 +8372,7 @@ function reverseStockForm(batchCode) {
     const reference = byId("sales", data.saleId);
     const qty = Number(data.qty || 0);
     if (qty <= 0 || qty > Math.max(1, soldQty)) {
-      window.alert(`Quantidade inválida. Saídas líquidas neste lote: ${number(soldQty)}.`);
+      localizedAlert(`Quantidade inválida. Saídas líquidas neste lote: ${number(soldQty)}.`);
       return;
     }
     state.sales.unshift({
@@ -8713,11 +8620,11 @@ function quickSaleForm() {
     const qty = Number(data.qty || 0);
     const plan = planReservedStockWithdrawal(data.batchCode, qty);
     if (!plan.breakdown) {
-      window.alert("Lote não encontrado. Atualize a página e tente novamente.");
+      localizedAlert("Lote não encontrado. Atualize a página e tente novamente.");
       return;
     }
     if (plan.shortfall > 0) {
-      window.alert(`Estoque insuficiente neste lote. Físico: ${number(plan.breakdown.physical)} garrafa(s).`);
+      localizedAlert(`Estoque insuficiente neste lote. Físico: ${number(plan.breakdown.physical)} garrafa(s).`);
       return;
     }
     if (!plan.takes.length) {
@@ -8761,7 +8668,7 @@ function quickSaleForm() {
       // was on screen.
       const fresh = planReservedStockWithdrawal(data.batchCode, qty);
       if (fresh.shortfall > 0) {
-        window.alert("O estoque mudou enquanto a confirmação estava aberta. Abra a venda rápida novamente.");
+        localizedAlert("O estoque mudou enquanto a confirmação estava aberta. Abra a venda rápida novamente.");
         closeModal();
         render();
         return;
@@ -8842,7 +8749,7 @@ function newSaleForm(batchCode = "") {
     const qty = Number(data.qty || 0);
     const available = finishedStockRows().find((row) => row.code === data.batchCode)?.stock || 0;
     if (qty > available) {
-      window.alert(`Estoque insuficiente neste lote. Disponível: ${number(available)} garrafas.`);
+      localizedAlert(`Estoque insuficiente neste lote. Disponível: ${number(available)} garrafas.`);
       return;
     }
     state.sales.unshift({
@@ -8967,7 +8874,7 @@ function newBatchForm() {
       return { recipe, bottles, code: nextBatchCode(recipe, data.date) };
     });
     if (!selected.length || selected.some((selection) => !selection.recipe || !Number.isInteger(selection.bottles) || selection.bottles <= 0)) {
-      window.alert("Selecione pelo menos um sabor e informe uma quantidade válida.");
+      localizedAlert("Selecione pelo menos um sabor e informe uma quantidade válida.");
       return;
     }
     const createdAt = new Date().toISOString();
@@ -9586,7 +9493,7 @@ function deleteRecord(collection, recordId, label) {
   const warning = dependencies.length
     ? `\n\nEste registro ainda e usado por:\n${dependencies.map((row) => `- ${number(row.count)} ${row.label}`).join("\n")}\n\nEsses registros continuam existindo, mas ficam sem referencia. Custos, estoque e relatorios ligados a eles podem parar de bater.`
     : "";
-  if (!window.confirm(`Excluir "${name}"? Esta acao remove o registro deste painel.${warning}`)) return;
+  if (!localizedConfirm(`Excluir "${name}"? Esta acao remove o registro deste painel.${warning}`)) return;
   // Auto-generated 300ml variants are regenerated on load unless we remember
   // that this one was deliberately removed.
   if ((collection === "products" || collection === "recipes") && /-300$/.test(String(recordId))) {
@@ -9603,7 +9510,7 @@ function deleteRecord(collection, recordId, label) {
 function deletePurchase(recordId) {
   const purchase = byId("purchases", recordId);
   if (!purchase) return;
-  if (!window.confirm(`Excluir compra de "${purchase.item}"? O estoque correspondente será ajustado quando possível.`)) return;
+  if (!localizedConfirm(`Excluir compra de "${purchase.item}"? O estoque correspondente será ajustado quando possível.`)) return;
   const target = stockItemForPurchase(purchase);
   if (target?.item) target.item.stock = Math.max(0, Number(target.item.stock || 0) - Number(purchase.qty || 0));
   state.purchases = state.purchases.filter((item) => item.id !== recordId);
@@ -9615,7 +9522,7 @@ function deletePurchase(recordId) {
 function deleteOrder(recordId) {
   const order = byId("orders", recordId);
   if (!order) return;
-  if (!window.confirm(`Excluir pedido de ${orderClientDisplayName(order)}? Vendas automáticas vinculadas a ele também serão removidas.`)) return;
+  if (!localizedConfirm(`Excluir pedido de ${orderClientDisplayName(order)}? Vendas automáticas vinculadas a ele também serão removidas.`)) return;
   state.orders = state.orders.filter((item) => item.id !== recordId);
   state.sales = state.sales.filter((sale) => sale.orderId !== recordId);
   refreshAllOrderReservations();
@@ -9989,7 +9896,7 @@ function deleteBatch(batchId) {
   const warning = dependencies.length
     ? `\n\nEste lote ainda e usado por:\n${dependencies.map((row) => `- ${number(row.count)} ${row.label}`).join("\n")}\n\nAs vendas continuam existindo apontando para um lote que nao existe mais, e as reservas ligadas a ele serao liberadas.`
     : "";
-  if (!window.confirm(`Excluir lote "${batch.code}"? O estoque de ingredientes e materiais sera restaurado quando este lote ja tiver dado baixa.${warning}`)) return;
+  if (!localizedConfirm(`Excluir lote "${batch.code}"? O estoque de ingredientes e materiais sera restaurado quando este lote ja tiver dado baixa.${warning}`)) return;
   const recipe = byId("recipes", batch.recipeId);
   if (batch.inventoryAdjusted && recipe) applyBatchInventory(recipe, batchProducedQuantity(batch), 1);
   state.batches = state.batches.filter((item) => item.id !== batchId);
@@ -10458,11 +10365,11 @@ function orderForm(orderId) {
     const data = Object.fromEntries(new FormData(form).entries());
     const { items, totalQty, totalValue } = updateOrderPreview(form);
     if (!items.length) {
-      window.alert("Adicione pelo menos um item ao pedido.");
+      localizedAlert("Adicione pelo menos um item ao pedido.");
       return;
     }
     if (data.status === "entregue" && items.some((item) => orderItemOutstandingQty(item) > 0)) {
-      window.alert("Para concluir um pedido, registre a entrega pelo botão PDF da entrega. Assim o sistema baixa somente a remessa enviada e mantém o saldo pendente corretamente.");
+      localizedAlert("Para concluir um pedido, registre a entrega pelo botão PDF da entrega. Assim o sistema baixa somente a remessa enviada e mantém o saldo pendente corretamente.");
       return;
     }
     const payload = {
@@ -10897,7 +10804,7 @@ async function handleCmsImageUpload(kind, index, file) {
       : "Imagem preparada no navegador. O envio ao armazenamento falhou; confira a sincronização antes de sair.";
   } catch (error) {
     if (status) status.textContent = "Não foi possível processar. Tente PNG, JPG, WebP ou uma imagem menor.";
-    window.alert("Não consegui processar essa imagem. Tente PNG, JPG, WebP ou uma imagem menor.");
+    localizedAlert("Não consegui processar essa imagem. Tente PNG, JPG, WebP ou uma imagem menor.");
     console.error(error);
   } finally {
     if (input) { input.disabled = false; input.value = ""; }

@@ -30,7 +30,10 @@ const server = http.createServer(async (req, res) => {
   const baseUrl = `http://127.0.0.1:${server.address().port}`;
   console.log(`Local browser fixtures: ${baseUrl} (API disabled)`);
   try {
-    for (const suite of ["admin-regression.js", "dashboard-regression.js", "order-production-regression.js", "reservation-workflow-regression.js"]) {
+    // Pass suite file names to run only those, e.g. node scripts/run-browser-tests.js i18n-coverage.js
+    const suites = process.argv.slice(2).length ? process.argv.slice(2)
+      : ["admin-regression.js", "dashboard-regression.js", "order-production-regression.js", "reservation-workflow-regression.js", "i18n-coverage.js"];
+    for (const suite of suites) {
       const code = await new Promise((resolve, reject) => {
         const child = spawn(process.execPath, [path.join(__dirname, suite)], {
           timeout: 300000, stdio: "inherit", env: { ...process.env, AUDIT_BASE_URL: baseUrl },
