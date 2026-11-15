@@ -1271,18 +1271,6 @@ function addAudit(action, detail = "") {
   saveState();
 }
 
-// NOT a security boundary. currentRole is picked in this browser and the server
-// issues exactly one role with full access, so this only tidies the screen for
-// whoever is using it. Anyone with the password can write everything regardless
-// of what is selected here. Real per-user permissions need server-side accounts.
-function canWrite(module = currentModule) {
-  if (currentRole === "Viewer") return false;
-  if (currentRole === "Produção") return ["dashboard", "products", "ingredients", "recipes", "costs", "batches", "stock", "packaging", "orders"].includes(module);
-  if (currentRole === "Financeiro") return ["dashboard", "products", "purchases", "suppliers", "costs", "expenses", "reports", "orders", "receipts"].includes(module);
-  if (currentRole === "Vendas") return ["dashboard", "products", "sales", "orders", "receipts", "leads", "partners", "cms", "reports"].includes(module);
-  return true;
-}
-
 function byId(collection, itemId) {
   return state[collection].find((item) => item.id === itemId);
 }
@@ -4743,7 +4731,6 @@ function nearExpiryBatches() {
 }
 
 function pageHead(title, description, actions = "") {
-  const roleAlert = canWrite() ? "" : `<p class="empty-note">Perfil ${currentRole}: modo leitura para este módulo.</p>`;
   return `
     <div class="admin-page-head">
       <div>
@@ -4752,7 +4739,6 @@ function pageHead(title, description, actions = "") {
       </div>
       <div class="admin-actions">${actions}</div>
     </div>
-    ${roleAlert}
   `;
 }
 
@@ -4843,17 +4829,15 @@ function cloudSyncNotice() {
   `;
 }
 
-function actionButton(action, label, icon, variant = "btn-primary", module = currentModule) {
-  const disabled = canWrite(module) ? "" : "disabled aria-disabled=\"true\"";
-  return `<button class="btn ${variant}" type="button" data-action="${action}" ${disabled}>
+function actionButton(action, label, icon, variant = "btn-primary") {
+  return `<button class="btn ${variant}" type="button" data-action="${action}">
     <span class="material-symbols-outlined" aria-hidden="true">${icon}</span>${tr(label)}
   </button>`;
 }
 
 function tableAction(action, label, icon = "edit", variant = "") {
-  const disabled = canWrite() ? "" : "disabled aria-disabled=\"true\"";
   return `
-    <button class="icon-btn table-action ${variant}" type="button" data-action="${escapeHtml(action)}" title="${escapeHtml(label)}" aria-label="${escapeHtml(label)}" ${disabled}>
+    <button class="icon-btn table-action ${variant}" type="button" data-action="${escapeHtml(action)}" title="${escapeHtml(label)}" aria-label="${escapeHtml(label)}">
       <span class="material-symbols-outlined" aria-hidden="true">${icon}</span>
     </button>
   `;
@@ -6499,7 +6483,7 @@ function renderReports() {
     .map(([flavor, row]) => `<div class="report-row"><strong>${escapeHtml(flavor)}</strong><span>${number(row.qty)} un | ${brl(row.revenue)} receita | ${row.incomplete ? "lucro indisponível · custo pendente" : `${brl(row.profit)} lucro`}</span></div>`)
     .join("");
   return `
-    ${pageHead("Relatórios", "Todo o histórico. Para selecionar um mês, use o Início. Compras de estoque entram no custo dos lotes; despesas operacionais são descontadas separadamente.", actionButton("export-reports", "Exportar CSV", "download", "btn-outline", "reports"))}
+    ${pageHead("Relatórios", "Todo o histórico. Para selecionar um mês, use o Início. Compras de estoque entram no custo dos lotes; despesas operacionais são descontadas separadamente.", actionButton("export-reports", "Exportar CSV", "download", "btn-outline"))}
     <section class="metric-grid">
       ${metric("Receita", brl(total.salesRevenue), "Vendas registradas (sem frete)", "payments")}
       ${metric("COGS", total.unknownCosts ? "—" : brl(total.cogs), total.unknownCosts ? "Há saídas com custo pendente" : "Custo dos produtos vendidos", "inventory")}
@@ -6630,7 +6614,7 @@ function renderSchema() {
     "Expenses", "Expense Categories", "Cost Assumptions", "Reports", "CMS Pages", "Media Library", "Audit Logs",
   ];
   return `
-    ${pageHead("Arquitetura e Banco de Dados", "Estrutura sugerida para evoluir o site atual para um sistema seguro com autenticação, roles e histórico.", actionButton("reset-demo", "Limpar dados", "restart_alt", "btn-danger", "schema"))}
+    ${pageHead("Arquitetura e Banco de Dados", "Estrutura sugerida para evoluir o site atual para um sistema seguro com autenticação, roles e histórico.", actionButton("reset-demo", "Limpar dados", "restart_alt", "btn-danger"))}
     <section class="admin-card">
       <h3>Entidades mínimas</h3>
       <div class="schema-grid">
@@ -7329,10 +7313,6 @@ function openPartnerEditorFromDashboard(partnerId) {
   const partner = byId("partners", partnerId);
   if (!partner) {
     localizedAlert("Parceiro não encontrado. Atualize a página e tente novamente.");
-    return;
-  }
-  if (!canWrite("partners")) {
-    localizedAlert("O perfil selecionado não tem permissão para editar parceiros.");
     return;
   }
   setModule("partners");
@@ -11189,9 +11169,6 @@ function bindModuleEvents() {
 }
 
 function handleAction(action) {
-  const readOnlyActions = ["export-products", "export-ingredients", "export-purchases", "export-sales", "export-orders", "export-leads", "export-reports", "export-costs", "export-receipts"];
-  const readOnlyPrefixes = ["view-receipt:", "download-receipt:", "print-receipt:", "share-receipt:", "second-copy-receipt:"];
-  if (!canWrite() && !readOnlyActions.includes(action) && !readOnlyPrefixes.some((prefix) => action.startsWith(prefix))) return;
   const [dynamicAction, ...dynamicParts] = action.split(":");
   const dynamicPayload = dynamicParts.join(":");
   const dynamicMap = {
@@ -11430,11 +11407,6 @@ document.querySelector("#adminModal")?.addEventListener("click", (event) => {
 });
 document.querySelector("#globalSearch")?.addEventListener("input", (event) => {
   globalSearch = event.target.value.trim();
-  render();
-});
-document.querySelector("#roleSelector")?.addEventListener("change", (event) => {
-  currentRole = event.target.value;
-  addAudit("Perfil de acesso alterado", currentRole);
   render();
 });
 

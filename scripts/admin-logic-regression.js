@@ -936,3 +936,14 @@ console.log("Dashboard regression: monthly finances, missing costs and overview 
   assert.equal(stateInvariantViolations(plain(state())).byRule.batch_over_allocated, 0);
   console.log("Pending-batch sales: revenue now, profit later, oldest-first linking with splits, and no batch over-allocation passed.");
 }
+
+// One access level with full access (owner decision, 15 November 2026): no
+// screen renders a disabled action and no action is silently ignored.
+{
+  load({ products: [], packaging: [] });
+  ["renderDashboard", "renderPurchases", "renderSales", "renderOrders", "renderStock", "renderReports", "renderPartners", "renderExpenses"].forEach((view) => {
+    assert.doesNotMatch(call(view), /aria-disabled="true"|modo leitura/, `${view} renders a disabled action`);
+  });
+  assert.equal(admin.__eval("typeof canWrite"), "undefined");
+  console.log("Access: one full-access level, no disabled actions or read-only notices passed.");
+}
