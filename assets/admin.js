@@ -1851,8 +1851,8 @@ function confirmSupplyShortfalls(consumptions) {
 
 function negativeStockSupplies() {
   return [
-    ...state.ingredients.map((item) => ({ collection: "ingredients", item })),
-    ...state.packaging.map((item) => ({ collection: "packaging", item })),
+    ...(state.ingredients || []).map((item) => ({ collection: "ingredients", item })),
+    ...(state.packaging || []).map((item) => ({ collection: "packaging", item })),
   ].filter(({ item }) => Number(item.stock || 0) < -1e-9 && supplyIsTracked(item));
 }
 
@@ -2031,6 +2031,64 @@ function batchesWithoutCostSnapshot() {
 
 function soldFromBatch(code) {
   return state.sales.filter((sale) => sale.batchCode === code).reduce((sum, sale) => sum + Number(sale.qty || 0), 0);
+}
+
+// Bottles may be sold beyond recorded stock after a warning (owner decision,
+// 15 November 2026). The excess is saved as a sale with no batch: its revenue
+// counts at once, its cost stays unknown so profit is withheld, and the next
+// batch of the product absorbs it. The server ignores sales without a batch in
+// its over-allocation check, so this never breaks a batch's balance.
+function batchProductId(batch) {
+  return productForBatch(batch)?.id || batch?.productId || "";
+}
+
+function productPhysicalStock(productId) {
+  return finishedStockRows()
+    .filter((row) => batchProductId(row) === productId)
+    .reduce((sum, row) => sum + Math.max(0, batchProducedQuantity(row) - soldFromBatch(row.code)), 0);
+}
+
+function pendingBatchSales(productId = "") {
+  return state.sales.filter((sale) => sale.pendingBatch && !sale.batchCode && (!productId || sale.productId === productId));
+}
+
+function pendingSaleQuantity(productId = "") {
+  return pendingBatchSales(productId).reduce((sum, sale) => sum + Number(sale.qty || 0), 0);
+}
+
+function recordPendingSale(fields) {
+  const sale = { id: id("sale"), ...fields, partner: fields.partner || fields.customerName, batchCode: "", pendingBatch: true };
+  state.sales.unshift(sale);
+  return sale;
+}
+
+// Oldest sale first. A sale larger than what is left is split: the linked part
+// takes the batch, the rest stays pending with its discount and delivery fee,
+// so revenue is counted exactly once. Runs before order reservations, because
+// these bottles have already left.
+function linkPendingSalesToBatch(batch) {
+  const productId = batchProductId(batch);
+  if (!productId || !isBatchEligibleForStock(batch)) return 0;
+  let free = Math.max(0, batchProducedQuantity(batch) - soldFromBatch(batch.code));
+  let linked = 0;
+  const queue = [...pendingBatchSales(productId)].sort((a, b) => String(a.date || "").localeCompare(String(b.date || "")));
+  queue.forEach((sale) => {
+    if (free <= 0) return;
+    const qty = Number(sale.qty || 0);
+    const take = Math.min(free, qty);
+    if (take === qty) {
+      sale.batchCode = batch.code;
+      sale.pendingBatch = false;
+      sale.linkedToBatchAt = new Date().toISOString();
+    } else {
+      sale.qty = qty - take;
+      state.sales.unshift({ ...sale, id: id("sale"), qty: take, discount: 0, delivery: 0, batchCode: batch.code, pendingBatch: false, splitFrom: sale.id, linkedToBatchAt: new Date().toISOString() });
+    }
+    free -= take;
+    linked += take;
+  });
+  if (linked) addAudit("Vendas sem lote vinculadas", `${number(linked)} garrafa(s) vinculada(s) ao lote ${batch.code}`);
+  return linked;
 }
 
 function finishedStockRows() {
@@ -4817,7 +4875,7 @@ function metric(label, value, note, icon = "monitoring") {
 
 function dashboardStockChart() {
   const rows = stockByFlavorRows()
-    .sort((a, b) => (b.available + b.reserved) - (a.available + a.reserved) || a.flavor.localeCompare(b.flavor))
+    .sort((a, b) => (b.available + b.reserved + b.pendingSales) - (a.available + a.reserved + a.pendingSales) || a.flavor.localeCompare(b.flavor))
     .slice(0, 12);
   const max = Math.max(1, ...rows.map((row) => row.available + row.reserved));
   if (!rows.length) {
@@ -4833,7 +4891,7 @@ function dashboardStockChart() {
             <div class="dashboard-stock-row ${row.available + row.reserved <= 0 ? "is-empty" : ""}">
               <div class="dashboard-stock-head">
                 <strong>${escapeHtml(row.flavor)} · ${number(row.sizeMl)} ml</strong>
-                <span>${number(row.available)} disp.${row.reserved ? ` | ${number(row.reserved)} res.` : ""}</span>
+                <span>${number(row.available)} disp.${row.reserved ? ` | ${number(row.reserved)} res.` : ""}${row.pendingSales ? ` | <b class="stock-pending">${number(row.pendingSales)} sem lote</b>` : ""}</span>
               </div>
               <div class="dashboard-stock-track" aria-label="${escapeHtml(row.flavor)}: ${number(row.available)} disponível, ${number(row.reserved)} reservado">
                 <i class="is-available" style="width:${availableWidth}%"></i>
@@ -4940,6 +4998,13 @@ function renderDashboard() {
         <h3>Atenção necessária</h3>
         ${dashboardLink("ingredients", "Revisar insumos")}${dashboardLink("packaging", "Embalagens")}
         <div class="alert-list">
+          ${[...new Set(pendingBatchSales().map((sale) => sale.productId))]
+            .map((productId) => {
+              const product = byId("products", productId);
+              const label = product ? `${product.flavor || product.item} ${productSizeMl(product)} ml` : pendingBatchSales(productId)[0]?.flavor || "Sabor não identificado";
+              return `<div class="alert-item alert-danger"><strong>Vendido sem estoque: ${escapeHtml(label)}</strong><span>${number(pendingSaleQuantity(productId))} garrafa(s) aguardando lote. Registre a produção: o próximo lote é vinculado a essas vendas e o lucro passa a ser calculado.</span></div>`;
+            })
+            .join("")}
           ${negativeStockSupplies()
             .map(({ collection, item }) => `<div class="alert-item alert-danger"><strong>Estoque negativo: ${escapeHtml(item.name)}</strong><span>${quantity(item.stock)} ${escapeHtml(stockUnitFor(collection, item))}. A produção usou mais do que o estoque registrado. Registre a compra que faltou ou corrija o estoque.</span></div>`)
             .join("")}
@@ -4954,7 +5019,7 @@ function renderDashboard() {
           ${nearExpiryBatches()
             .map((batch) => `<div class="alert-item"><strong>Lote próximo ao vencimento: ${escapeHtml(batch.code)}</strong><span>${number(batch.stock)} garrafas vencem em ${escapeHtml(batch.expiry)}</span></div>`)
             .join("")}
-          ${negativeStockSupplies().length || missingCostIngredients().length || lowStockIngredients().length || lowStockPackaging().length || nearExpiryBatches().length ? "" : `<div class="empty-note">Nenhum alerta crítico no momento.</div>`}
+          ${pendingBatchSales().length || negativeStockSupplies().length || missingCostIngredients().length || lowStockIngredients().length || lowStockPackaging().length || nearExpiryBatches().length ? "" : `<div class="empty-note">Nenhum alerta crítico no momento.</div>`}
         </div>
       </article>
       <article class="admin-card">
@@ -5587,6 +5652,8 @@ function stockByFlavorRows() {
       sold: matching.reduce((sum, row) => sum + Number(row.sold || 0), 0),
       produced: matching.reduce((sum, row) => sum + batchProducedQuantity(row), 0),
       batches: matching.length,
+      // Sold beyond stock, waiting for the next batch of this product.
+      pendingSales: [...productIds].reduce((sum, productId) => sum + pendingSaleQuantity(productId), 0),
     };
   });
   const extraRows = batches
@@ -7179,10 +7246,35 @@ function recipeVariantChoices(recipes = state.recipes) {
   });
 }
 
+function saleableProducts(stockRows) {
+  const products = new Map(stockRows.filter((row) => row.product).map((row) => [row.product.id, row.product]));
+  state.products.filter(productIsOperational).forEach((product) => { if (!products.has(product.id)) products.set(product.id, product); });
+  return [...products.values()];
+}
+
+// Confirms a sale beyond recorded stock. Returns false when the operator cancels.
+function confirmPendingSale(product, pendingQty, batchQty = 0) {
+  const label = product ? `${product.flavor || product.item} ${productSizeMl(product)} ml` : "este sabor";
+  const lead = batchQty
+    ? `O estoque registrado de ${label} cobre ${number(batchQty)} garrafa(s). As outras ${number(pendingQty)} não estão em nenhum lote.`
+    : `Não há estoque registrado de ${label}.`;
+  return localizedConfirm(`${lead}\n\nVocê pode vender mesmo assim: ${number(pendingQty)} garrafa(s) ficam como venda sem lote. A receita entra agora e o lucro aparece quando o próximo lote for registrado, que é vinculado a esta venda automaticamente.`);
+}
+
 function populateSaleBatchOptions(form, stockRows, productId, preferredBatchCode = "") {
   const batchSelect = form.elements.batchCode;
   const matches = stockRows.filter((row) => row.product?.id === productId || row.productId === productId);
   const selectedCode = matches.some((row) => row.code === preferredBatchCode) ? preferredBatchCode : matches[0]?.code || "";
+  // A flavour with nothing in stock can still be sold; the sale waits for the
+  // next batch (see recordPendingSale).
+  if (!matches.length) {
+    const product = byId("products", productId);
+    batchSelect.innerHTML = product
+      ? `<option value="" data-retail="${productRetailPrice(product)}" data-wholesale="${productWholesalePrice(product)}" data-stock="0" data-physical="0" data-reserved="0" selected>Sem estoque · próximo lote</option>`
+      : "";
+    batchSelect.disabled = !product;
+    return "";
+  }
   batchSelect.innerHTML = matches
     .map((row) => {
       const stock = batchStockBreakdown(row.code) || { physical: 0, free: 0, reserved: 0 };
@@ -8349,6 +8441,8 @@ function adjustFlavorStockForm(productId) {
       change.batch.correctedAt = change.batch.updatedAt;
       change.batch.correctionReason = data.reason;
     });
+    // Added bottles first absorb sales made without stock.
+    changes.forEach((change) => linkPendingSalesToBatch(change.batch));
     refreshAllOrderReservations();
     addAudit(
       "Estoque disponível ajustado",
@@ -8434,6 +8528,7 @@ function correctBatchQuantityForm(batchId) {
     const beforeReserved = Number(row.reserved || 0);
     // Correcting a quantity upwards is new production: hand out only this
     // batch's own free stock. Correcting downwards just clamps.
+    linkPendingSalesToBatch(batch);
     const afterReserved = allocateNewBatchToOrders(batch);
     addAudit("Quantidade do lote corrigida", `${batch.code}: ${number(currentActual)} -> ${number(nextActual)}. ${inventoryResult.delta < 0 ? "Insumos devolvidos" : inventoryResult.delta > 0 ? "Insumos baixados" : "Sem mudança de insumos"}. Motivo: ${data.reason}`);
     closeModal();
@@ -8615,7 +8710,9 @@ function quickSaleForm() {
   const stockRows = finishedStockRows()
     .filter((row) => row.product && Math.max(0, batchProducedQuantity(row) - soldFromBatch(row.code)) > 0)
     .sort((a, b) => (a.flavor || "").localeCompare(b.flavor || "") || a.code.localeCompare(b.code));
-  if (!stockRows.length) {
+  // Every active product can be sold; one without stock waits for its next batch.
+  const saleProducts = saleableProducts(stockRows);
+  if (!saleProducts.length) {
     openModal(
       "Sem estoque disponível",
       "Vendas",
@@ -8632,7 +8729,7 @@ function quickSaleForm() {
         <div class="input-grid">
           <label class="field field-full"><span>Cliente</span><input name="customerName" list="quickCustomerOptions" value="Balcão" required></label>
           <datalist id="quickCustomerOptions">${[...new Set([...state.partners.map((item) => item.name), ...state.sales.map((sale) => sale.customerName || sale.partner).filter(Boolean)])].map((name) => `<option value="${escapeHtml(name)}"></option>`).join("")}</datalist>
-          ${variantPickerTemplate(productVariantChoices([...new Map(stockRows.map((row) => [row.product.id, row.product])).values()]), stockRows[0]?.product?.id)}
+          ${variantPickerTemplate(productVariantChoices(saleProducts), stockRows[0]?.product?.id || saleProducts[0]?.id)}
           <label class="field field-full"><span>Lote disponível</span><select name="batchCode"></select></label>
           <label class="field"><span>Quantidade</span><input name="qty" type="number" min="1" step="1" value="1" required></label>
           <label class="field"><span>Preço</span><select name="priceType"><option value="varejo">Varejo</option><option value="atacado">Atacado</option><option value="custom">Valor combinado</option><option value="gratis">Sem cobrança</option></select></label>
@@ -8671,10 +8768,15 @@ function quickSaleForm() {
       <span>Estoque físico: ${number(physical)} · livre: ${number(available)} · reservado: ${number(reserved)}.
       ${holders.length ? `Vinculadas a: ${escapeHtml(holders.map((row) => `${orderClientDisplayName(row.order)} (${number(row.qty)})`).join(", "))}.` : "Nenhuma reserva neste lote."}</span>
       ${takesReserved ? `<span class="quick-sale-warning">Esta venda vai usar ${number(qty - available)} garrafa(s) hoje reservada(s) para outro pedido. Você poderá revisar antes de confirmar.</span>` : ""}
+      ${!option?.value
+        ? `<span class="quick-sale-warning">Sem estoque registrado: a venda fica aguardando o próximo lote.</span>`
+        : qty > physical && productPhysicalStock(form.elements.productId.value) <= physical
+          ? `<span class="quick-sale-warning">${number(qty - physical)} garrafa(s) passam do estoque e ficam aguardando o próximo lote.</span>`
+          : ""}
     `;
   };
   populateSaleBatchOptions(form, stockRows, form.elements.productId.value);
-  bindVariantPicker(form, productVariantChoices([...new Map(stockRows.map((row) => [row.product.id, row.product])).values()]), (choice) => {
+  bindVariantPicker(form, productVariantChoices(saleProducts), (choice) => {
     populateSaleBatchOptions(form, stockRows, choice?.id || "");
     updateQuickSale(true);
   });
@@ -8685,36 +8787,38 @@ function quickSaleForm() {
     form.elements.priceType.value = "custom";
     updateQuickSale(false);
   });
-  const commitQuickSale = (data, plan) => {
+  // plan covers the bottles taken from the chosen batch (null when none);
+  // pendingQty is the part sold beyond recorded stock.
+  const commitQuickSale = (data, plan, pendingQty = 0) => {
     const batch = state.batches.find((item) => item.code === data.batchCode);
-    const product = productForBatch(batch);
+    const product = productForBatch(batch) || byId("products", data.productId);
     const qty = Number(data.qty || 0);
+    const batchQty = qty - pendingQty;
     const note = `Venda rápida para ${data.customerName}`;
-    // Reservations are released first so the sale never double-counts a bottle.
-    if (plan.takes.length) applyReservedStockWithdrawal(plan, note);
-    state.sales.unshift({
-      id: id("sale"),
+    const sale = {
       date: data.date,
       partner: data.customerName,
       customerName: data.customerName,
       channel: data.priceType,
       movementType: data.priceType === "gratis" ? "presente" : "venda",
       priceType: data.priceType,
-      flavor: batch?.flavor || "",
+      flavor: batch?.flavor || product?.flavor || "",
       productId: product?.id || "",
-      batchCode: data.batchCode,
-      qty,
       unitPrice: Number(data.unitPrice || 0),
       discount: 0,
       delivery: 0,
       note: "Venda rápida pelo dashboard",
-    });
+    };
+    // Reservations are released first so the sale never double-counts a bottle.
+    if (plan?.takes.length) applyReservedStockWithdrawal(plan, note);
+    if (batchQty > 0) state.sales.unshift({ id: id("sale"), ...sale, batchCode: data.batchCode, qty: batchQty });
+    if (pendingQty > 0) recordPendingSale({ ...sale, qty: pendingQty });
     // Recomputes each order's derived fields and its production need without
     // moving anything between orders.
     refreshAllOrderReservations();
     addAudit(
       data.priceType === "gratis" ? "Saída registrada" : "Venda registrada",
-      `${number(qty)} garrafa(s) de ${batch?.flavor || product?.name || "sabor não identificado"} | lote ${data.batchCode} | ${data.customerName}${plan.takes.length ? ` | ${number(qty - plan.fromFree)} retirada(s) de reserva` : ""}`,
+      `${number(qty)} garrafa(s) de ${sale.flavor || product?.name || "sabor não identificado"} | lote ${data.batchCode || "-"} | ${data.customerName}${plan?.takes.length ? ` | ${number(batchQty - plan.fromFree)} retirada(s) de reserva` : ""}${pendingQty ? ` | ${number(pendingQty)} sem lote, aguardando produção` : ""}`,
     );
     closeModal();
     render();
@@ -8724,17 +8828,32 @@ function quickSaleForm() {
     event.preventDefault();
     const data = Object.fromEntries(new FormData(form).entries());
     const qty = Number(data.qty || 0);
-    const plan = planReservedStockWithdrawal(data.batchCode, qty);
+    if (!data.batchCode) {
+      const product = byId("products", data.productId);
+      if (!product || !(qty > 0)) return;
+      if (confirmPendingSale(product, qty)) commitQuickSale(data, null, qty);
+      return;
+    }
+    let plan = planReservedStockWithdrawal(data.batchCode, qty);
     if (!plan.breakdown) {
       localizedAlert("Lote não encontrado. Atualize a página e tente novamente.");
       return;
     }
+    let pendingQty = 0;
     if (plan.shortfall > 0) {
-      localizedAlert(`Estoque insuficiente neste lote. Físico: ${number(plan.breakdown.physical)} garrafa(s).`);
-      return;
+      const physical = plan.breakdown.physical;
+      // Bottles still on the shelf in another batch must be sold from there.
+      if (productPhysicalStock(batchProductId(plan.breakdown.row)) > physical) {
+        localizedAlert(`Estoque insuficiente neste lote. Físico: ${number(physical)} garrafa(s). Outro lote deste sabor ainda tem garrafas: escolha-o ou registre a venda em duas partes.`);
+        return;
+      }
+      pendingQty = qty - physical;
+      if (!confirmPendingSale(productForBatch(plan.breakdown.row), pendingQty, physical)) return;
+      plan = planReservedStockWithdrawal(data.batchCode, physical);
     }
+    const batchQty = qty - pendingQty;
     if (!plan.takes.length) {
-      commitQuickSale(data, plan);
+      commitQuickSale(data, plan, pendingQty);
       return;
     }
 
@@ -8754,11 +8873,11 @@ function quickSaleForm() {
       "Esta venda usa estoque reservado",
       "Venda rápida",
       `
-        <p class="lead" style="font-size:1rem">Não há garrafas livres suficientes de ${escapeHtml(plan.breakdown.row.flavor || "")} neste lote. A venda vai usar ${number(qty - plan.fromFree)} garrafa(s) hoje reservada(s) para outro pedido.</p>
+        <p class="lead" style="font-size:1rem">Não há garrafas livres suficientes de ${escapeHtml(plan.breakdown.row.flavor || "")} neste lote. A venda vai usar ${number(batchQty - plan.fromFree)} garrafa(s) hoje reservada(s) para outro pedido.</p>
         <div class="order-detail-summary">
-          <span><small>Venda</small><strong>${number(qty)}</strong></span>
+          <span><small>Venda</small><strong>${number(batchQty)}</strong></span>
           <span><small>Estoque livre usado</small><strong>${number(plan.fromFree)}</strong></span>
-          <span><small>Reserva usada</small><strong>${number(qty - plan.fromFree)}</strong></span>
+          <span><small>Reserva usada</small><strong>${number(batchQty - plan.fromFree)}</strong></span>
         </div>
         <p class="empty-note">Pedidos afetados (a reserva sai primeiro de quem precisa mais tarde):</p>
         <div class="stack-list">${rows}</div>
@@ -8772,14 +8891,14 @@ function quickSaleForm() {
     document.querySelector("#confirmReservedSale")?.addEventListener("click", () => {
       // Recomputed at confirmation time in case anything moved while the warning
       // was on screen.
-      const fresh = planReservedStockWithdrawal(data.batchCode, qty);
+      const fresh = planReservedStockWithdrawal(data.batchCode, batchQty);
       if (fresh.shortfall > 0) {
         localizedAlert("O estoque mudou enquanto a confirmação estava aberta. Abra a venda rápida novamente.");
         closeModal();
         render();
         return;
       }
-      commitQuickSale(data, fresh);
+      commitQuickSale(data, fresh, pendingQty);
     });
   });
   updateQuickSale(true);
@@ -8788,7 +8907,8 @@ function quickSaleForm() {
 function newSaleForm(batchCode = "") {
   const allStockRows = finishedStockRows().filter((row) => row.stock > 0 && row.product);
   const stockRows = allStockRows;
-  if (!stockRows.length) {
+  const saleProducts = saleableProducts(stockRows);
+  if (!saleProducts.length) {
     openModal(
       "Sem estoque disponível",
       "Vendas",
@@ -8797,8 +8917,7 @@ function newSaleForm(batchCode = "") {
     );
     return;
   }
-  const selectedStock = stockRows.find((row) => row.code === batchCode) || stockRows[0];
-  const saleProducts = [...new Map(stockRows.map((row) => [row.product.id, row.product])).values()];
+  const selectedStock = stockRows.find((row) => row.code === batchCode) || stockRows[0] || { product: saleProducts[0] };
   openModal(
     batchCode ? "Saída deste lote" : "Nova saída",
     "Vendas",
@@ -8851,33 +8970,44 @@ function newSaleForm(batchCode = "") {
     event.preventDefault();
     const data = Object.fromEntries(new FormData(event.target).entries());
     const batch = state.batches.find((item) => item.code === data.batchCode);
-    const product = productForBatch(batch);
+    const product = productForBatch(batch) || byId("products", data.productId);
     const qty = Number(data.qty || 0);
-    const available = finishedStockRows().find((row) => row.code === data.batchCode)?.stock || 0;
+    if (!product || !(qty > 0)) return;
+    const available = data.batchCode ? finishedStockRows().find((row) => row.code === data.batchCode)?.stock || 0 : 0;
+    let pendingQty = 0;
     if (qty > available) {
-      localizedAlert(`Estoque insuficiente neste lote. Disponível: ${number(available)} garrafas.`);
-      return;
+      const productFree = finishedStockRows().filter((row) => batchProductId(row) === product.id).reduce((sum, row) => sum + Number(row.stock || 0), 0);
+      // A loss can only be of bottles that exist, and free bottles left in
+      // another batch must be sold from there.
+      if (data.movementType === "perda" || productFree > available) {
+        localizedAlert(`Estoque insuficiente neste lote. Disponível: ${number(available)} garrafas.${productFree > available ? " Outro lote deste sabor ainda tem garrafas livres: escolha-o ou registre a saída em duas partes." : ""}`);
+        return;
+      }
+      pendingQty = qty - available;
+      if (!confirmPendingSale(product, pendingQty, available)) return;
     }
-    state.sales.unshift({
-      id: id("sale"),
+    const sale = {
       date: data.date,
       partner: data.customerName,
       customerName: data.customerName,
       channel: data.movementType === "venda" ? data.priceType : data.movementType,
       movementType: data.movementType,
       priceType: data.priceType,
-      flavor: batch?.flavor || "",
-      productId: product?.id || "",
-      batchCode: data.batchCode,
-      qty,
+      flavor: batch?.flavor || product.flavor || "",
+      productId: product.id,
       unitPrice: Number(data.unitPrice),
       discount: Number(data.discount || 0),
       delivery: Number(data.delivery || 0),
       note: data.note || "",
-    });
+    };
+    // Discount and delivery are charged once, on the part taken from stock
+    // when there is one.
+    const batchQty = qty - pendingQty;
+    if (batchQty > 0) state.sales.unshift({ id: id("sale"), ...sale, batchCode: data.batchCode, qty: batchQty });
+    if (pendingQty > 0) recordPendingSale({ ...sale, qty: pendingQty, ...(batchQty > 0 ? { discount: 0, delivery: 0 } : {}) });
     addAudit(
       data.movementType === "venda" ? "Venda registrada" : "Saída registrada",
-      `${number(qty)} garrafa(s) de ${batch?.flavor || product?.name || "sabor não identificado"} | lote ${data.batchCode} | ${data.customerName}`,
+      `${number(qty)} garrafa(s) de ${sale.flavor || product.name || "sabor não identificado"} | lote ${data.batchCode || "-"} | ${data.customerName}${pendingQty ? ` | ${number(pendingQty)} sem lote, aguardando produção` : ""}`,
     );
     closeModal();
     render();
@@ -9012,6 +9142,8 @@ function newBatchForm() {
       };
       state.batches.unshift(batch);
       applyBatchInventory(recipe, bottles, -1);
+      // Bottles already sold without stock leave first, then orders reserve.
+      linkPendingSalesToBatch(batch);
       return { batch, reserved: allocateNewBatchToOrders(batch) };
     });
     addAudit(
@@ -10003,6 +10135,7 @@ function editBatchForm(batchId) {
     if (recipe && recipeChanged && batchCostSnapshot(original)) {
       batch.costSnapshot = buildBatchCostSnapshot(recipe);
     }
+    linkPendingSalesToBatch(batch);
     refreshAllOrderReservations();
   }, {
     // Mirrors the save above: the original consumption comes back, then the

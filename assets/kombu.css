@@ -2910,6 +2910,11 @@ textarea:focus-visible {
   font-weight: 800;
 }
 
+.stock-pending {
+  color: var(--danger);
+  font-weight: 800;
+}
+
 .dashboard-stock-track {
   display: flex;
   height: 12px;

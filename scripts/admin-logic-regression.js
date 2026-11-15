@@ -884,3 +884,55 @@ console.log("Dashboard regression: monthly finances, missing costs and overview 
   assert.doesNotMatch(call("renderDashboard"), /Estoque negativo/);
   console.log("Supply shortfalls: netted check, kept negative balance, dashboard flag and clearing purchase passed.");
 }
+
+// Bottles may be sold beyond stock after a warning (owner decision, 15 November
+// 2026). The excess is a sale with no batch: revenue counts, profit waits, and
+// the next batch of that product absorbs it, oldest sale first, without ever
+// over-allocating the batch on the server's own invariant check.
+{
+  const { stateInvariantViolations } = require("../api/_lib/kombu-backend");
+  const product = { id: "p", item: "KMB1", flavor: "Tea", sizeMl: 500, retailPrice: 20, wholesalePrice: 15, status: "ativo" };
+  const recipe = { id: "r", productId: "p", flavor: "Tea", bottleMl: 500, yieldBottles: 1, ingredients: [], packaging: [] };
+  load({ products: [product], recipes: [recipe], packaging: [] });
+  const state = () => admin.__getState();
+  const sale = (fields) => call("recordPendingSale", { date: "2026-11-10", customerName: "Ana", movementType: "venda", priceType: "varejo", productId: "p", flavor: "Tea", unitPrice: 20, discount: 0, delivery: 0, ...fields });
+  assert.equal(call("productPhysicalStock", "p"), 0);
+  sale({ qty: 7, customerName: "Ana", date: "2026-11-10" });
+  sale({ qty: 5, customerName: "Bia", date: "2026-11-12", discount: 4 });
+  assert.equal(call("pendingSaleQuantity", "p"), 12);
+  // Revenue counts now; profit is withheld while the cost is unknown.
+  assert.equal(call("totals").salesRevenue, 12 * 20 - 4);
+  assert.equal(call("totals").unknownCosts, 2);
+  assert.match(call("renderDashboard"), /Vendido sem estoque/);
+
+  // A 10-bottle batch takes Ana's 7 whole and 3 of Bia's 5, oldest first.
+  const batch = { id: "b1", code: "L1", productId: "p", recipeId: "r", flavor: "Tea", sizeMl: 500, actual: 10, date: "2026-11-15", status: "aprovado", costSnapshot: { version: 1, costPerBottle: 4, yieldBottles: 1 } };
+  state().batches.push(batch);
+  assert.equal(call("linkPendingSalesToBatch", state().batches[0]), 10);
+  const linked = plain(state().sales).filter((row) => row.batchCode === "L1");
+  assert.deepEqual(linked.map((row) => [row.customerName, row.qty]).sort(), [["Ana", 7], ["Bia", 3]]);
+  const pending = plain(state().sales).filter((row) => row.pendingBatch);
+  assert.deepEqual(pending.map((row) => [row.customerName, row.qty, row.discount]), [["Bia", 2, 4]], "the discount stays once, on the part still pending");
+  assert.equal(call("pendingSaleQuantity", "p"), 2);
+  assert.equal(call("batchStockBreakdown", "L1").physical, 0);
+  assert.equal(call("totals").salesRevenue, 12 * 20 - 4, "splitting does not change revenue");
+  assert.equal(stateInvariantViolations(plain(state())).byRule.batch_over_allocated, 0);
+
+  // The server accepts a pending sale and its reconciliation leaves it alone.
+  const { reconcileReservations } = require("../api/_lib/reservations");
+  const { validateAppState } = require("../api/_lib/kombu-backend");
+  assert.equal(validateAppState(plain(state())), "", "a valid state has no error code");
+  const reconciled = reconcileReservations(plain(state()), { reservationMode: "preserve", audit: false }).state;
+  assert.deepEqual(reconciled.sales.filter((row) => row.pendingBatch).map((row) => [row.customerName, row.qty]), [["Bia", 2]]);
+  assert.equal(reconciled.sales.filter((row) => row.batchCode === "L1").reduce((sum, row) => sum + row.qty, 0), 10);
+
+  // The next batch absorbs the rest; the flag clears and profit becomes known.
+  state().batches.push({ ...batch, id: "b2", code: "L2", actual: 6 });
+  assert.equal(call("linkPendingSalesToBatch", state().batches[1]), 2);
+  assert.equal(call("pendingSaleQuantity", "p"), 0);
+  assert.equal(call("batchStockBreakdown", "L2").physical, 4);
+  assert.equal(call("totals").unknownCosts, 0);
+  assert.doesNotMatch(call("renderDashboard"), /Vendido sem estoque/);
+  assert.equal(stateInvariantViolations(plain(state())).byRule.batch_over_allocated, 0);
+  console.log("Pending-batch sales: revenue now, profit later, oldest-first linking with splits, and no batch over-allocation passed.");
+}
