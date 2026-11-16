@@ -4723,6 +4723,126 @@ function lowStockPackaging() {
   return state.packaging.filter((item) => Number(item.min) > 0 && Number(item.stock) <= Number(item.min));
 }
 
+// Replenishment signals. Rates come only from what actually left the shelf or
+// the storeroom in the last 8 weeks. With under 4 weeks of history no forecast
+// is given: a week or two of sales says nothing reliable about the next month.
+const REPLENISH_WINDOW_DAYS = 56;
+const REPLENISH_MIN_HISTORY_DAYS = 28;
+// Bottles should be sold within two months of production ("vender até 2
+// meses"), so stock that would take longer than that to sell is slow.
+const REPLENISH_SLOW_COVER_WEEKS = 8;
+// Display default, not a measured lead time: under two weeks of bottles left,
+// or a supply that runs out before the supplier can deliver plus a week.
+const REPLENISH_LOW_COVER_WEEKS = 2;
+
+function isoDayNumber(dateIso) {
+  const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(dateIso || ""));
+  return match ? Math.round(Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3])) / 86400000) : null;
+}
+
+// events: [{ date, qty }]. historyDates say how long the item has been in the
+// business. Returns the weekly outflow over the window, or null when that
+// history is too short to mean anything.
+function outflowRate(events, historyDates, today) {
+  const end = isoDayNumber(today);
+  const days = historyDates.map(isoDayNumber).filter((day) => day !== null && day <= end);
+  const historyDays = days.length ? end - Math.min(...days) : 0;
+  if (historyDays < REPLENISH_MIN_HISTORY_DAYS) return { weekly: null, historyDays };
+  // Calendar days, both ends included: the last 56, or since the first record
+  // when the history is shorter, so a batch made on that first day counts.
+  const start = Math.max(Math.min(...days), end - REPLENISH_WINDOW_DAYS + 1);
+  const span = end - start + 1;
+  const qty = events.reduce((sum, event) => {
+    const day = isoDayNumber(event.date);
+    return day !== null && day <= end && day >= start ? sum + Number(event.qty || 0) : sum;
+  }, 0);
+  return { weekly: Number((Math.max(0, qty) / (span / 7)).toFixed(4)), historyDays };
+}
+
+function saleProductId(sale) {
+  const batch = sale?.batchCode ? state.batches.find((item) => item.code === sale.batchCode) : null;
+  return (batch && batchProductId(batch)) || sale?.productId || "";
+}
+
+// Sales, gifts and own use all take bottles off the shelf; a loss is not demand.
+// Returns are stored with a negative quantity, so they net out.
+function productReplenishmentRows(today = todayIso()) {
+  return stockByFlavorRows()
+    .filter((row) => row.productIds?.length)
+    .map((row) => {
+      const ids = new Set(row.productIds);
+      const batches = state.batches.filter((batch) => isBatchEligibleForStock(batch) && ids.has(batchProductId(batch)));
+      const outflows = state.sales.filter((sale) => sale.movementType !== "perda" && ids.has(saleProductId(sale)));
+      if (!batches.length && !outflows.length) return null;
+      const { weekly, historyDays } = outflowRate(outflows, [...batches.map((batch) => batch.date), ...outflows.map((sale) => sale.date)], today);
+      const free = Number(row.available || 0) - Number(row.pendingSales || 0);
+      const coverWeeks = weekly > 0 ? Math.max(0, free) / weekly : null;
+      let signal = "bom";
+      if (weekly === null) signal = "insuficiente";
+      else if (weekly === 0) signal = free > 0 ? "parado" : "sem-saida";
+      else if (coverWeeks < REPLENISH_LOW_COVER_WEEKS) signal = "produzir";
+      else if (coverWeeks > REPLENISH_SLOW_COVER_WEEKS) signal = "lento";
+      return { flavor: row.flavor, item: row.item, sizeMl: row.sizeMl, free, weekly, coverWeeks, historyDays, signal };
+    })
+    .filter(Boolean);
+}
+
+// "10 dias", "2 semanas", "1 mês". A bare number is not read as days: the
+// field is free text and a guess here would move the buy date.
+function supplierLeadDays(supplierName) {
+  const supplier = (state.suppliers || []).find((row) => normalizeText(row.name) === normalizeText(supplierName));
+  const match = /(\d+(?:[.,]\d+)?)\s*(dia|semana|mes)/.exec(normalizeText(supplier?.leadTime || ""));
+  if (!match) return null;
+  const amount = Number(match[1].replace(",", "."));
+  return Math.round(amount * { dia: 1, semana: 7, mes: 30 }[match[2]]);
+}
+
+// What each batch took from the storeroom, dated by production. Uses the
+// recipe as it is today, the same one production consumes against.
+function supplyConsumptionEvents() {
+  const events = new Map();
+  state.batches.forEach((batch) => {
+    const bottles = batchConsumedQty(batch);
+    const recipe = byId("recipes", batch.recipeId);
+    if (!bottles || !recipe) return;
+    const usage = batchUsage(recipe, bottles);
+    const push = (collection, item, qty) => {
+      if (!item) return;
+      const key = `${collection}:${item.id}`;
+      if (!events.has(key)) events.set(key, []);
+      events.get(key).push({ date: batch.date, qty });
+    };
+    usage.ingredients.forEach(({ ingredient, qty }) => push("ingredients", ingredient, qty));
+    usage.packaging.forEach(({ item, qty }) => push("packaging", item, qty));
+  });
+  return events;
+}
+
+function supplyReplenishmentRows(today = todayIso()) {
+  const events = supplyConsumptionEvents();
+  const rows = [];
+  [["ingredients", state.ingredients || []], ["packaging", state.packaging || []]].forEach(([collection, items]) => {
+    items.filter(supplyIsTracked).forEach((item) => {
+      const consumed = events.get(`${collection}:${item.id}`) || [];
+      const purchaseDates = state.purchases
+        .filter((purchase) => purchase.stockItemId === item.id || purchase.ingredientId === item.id || purchase.packagingId === item.id)
+        .map((purchase) => purchase.date);
+      const { weekly, historyDays } = outflowRate(consumed, [...consumed.map((event) => event.date), ...purchaseDates], today);
+      const stock = Number(item.stock || 0);
+      const min = Number(item.min || 0);
+      const leadDays = supplierLeadDays(item.supplier);
+      const coverDays = weekly > 0 ? Number((Math.max(0, stock) / (weekly / 7)).toFixed(1)) : null;
+      let signal = "bom";
+      if (stock < 0 || (min > 0 && stock <= min)) signal = "comprar";
+      else if (!consumed.length || weekly === 0) signal = "sem-consumo";
+      else if (weekly === null) signal = "insuficiente";
+      else if (coverDays <= (leadDays === null ? REPLENISH_LOW_COVER_WEEKS * 7 : leadDays + 7)) signal = "comprar";
+      rows.push({ collection, id: item.id, name: item.name, unit: stockUnitFor(collection, item), stock, min, weekly, coverDays, leadDays, historyDays, signal });
+    });
+  });
+  return rows;
+}
+
 function nearExpiryBatches() {
   const now = new Date();
   return finishedStockRows().filter((batch) => {
@@ -5815,6 +5935,7 @@ function renderStock() {
     ["ingredients", "Ingredientes"],
     ["labels", "Rótulos"],
     ["bottles", "Garrafas"],
+    ["replenishment", "Reposição"],
   ]
     .map((view) => `<button class="segment ${currentStockView === view[0] ? "is-active" : ""}" type="button" data-stock-view="${view[0]}">${view[1]}</button>`)
     .join("");
@@ -5909,6 +6030,7 @@ function renderStock() {
         ],
         materialRows(state.packaging.filter((item) => inferPackagingType(item) === "bottle")),
       ),
+    replenishment: replenishmentView,
   };
   if (currentStockView === "kombuchas") {
     return `
@@ -5921,6 +6043,89 @@ function renderStock() {
     ${pageHead("Estoque", "Escolha o tipo de estoque para ver saldos sem poluição visual.", actionButton("stock-adjustment", "Ajuste com motivo", "tune"))}
     <div class="module-tabs">${viewButtons}</div>
     ${inventoryViews[currentStockView]?.() || inventoryViews.kombuchas()}
+  `;
+}
+
+const REPLENISH_BOTTLE_SIGNALS = {
+  produzir: ["bad", "Produzir"],
+  lento: ["warn", "Giro lento"],
+  parado: ["warn", "Parado"],
+  "sem-saida": ["neutral", "Sem saída"],
+  insuficiente: ["neutral", "Histórico insuficiente"],
+  bom: ["good", "Bom"],
+};
+const REPLENISH_SUPPLY_SIGNALS = {
+  comprar: ["bad", "Comprar"],
+  "sem-consumo": ["neutral", "Sem consumo"],
+  insuficiente: ["neutral", "Histórico insuficiente"],
+  bom: ["good", "Bom"],
+};
+const REPLENISH_ORDER = ["produzir", "comprar", "lento", "parado", "insuficiente", "sem-saida", "sem-consumo", "bom"];
+
+function replenishmentBadge(signals, signal) {
+  const [tone, label] = signals[signal] || ["", signal];
+  return `<span class="status ${tone}">${label}</span>`;
+}
+
+function replenishmentView() {
+  const bySignal = (a, b) => REPLENISH_ORDER.indexOf(a.signal) - REPLENISH_ORDER.indexOf(b.signal);
+  const bottles = productReplenishmentRows().sort(bySignal);
+  const supplies = supplyReplenishmentRows().sort(bySignal);
+  const bottleCover = (row) => {
+    if (row.weekly === null) return "menos de 4 semanas de histórico";
+    if (row.signal === "parado") return "nada saiu em 8 semanas";
+    if (row.coverWeeks === null) return "-";
+    return `${number(row.coverWeeks, 1)} semanas de estoque`;
+  };
+  const supplyCover = (row) => {
+    if (row.weekly === null) return "menos de 4 semanas de histórico";
+    if (row.coverDays === null) return "-";
+    return `${number(row.coverDays, 0)} dias de estoque`;
+  };
+  return `
+    <article class="admin-card">
+      <h3>Reposição</h3>
+      <p>Média do que saiu nas últimas 8 semanas. Sem pelo menos 4 semanas de histórico não fazemos previsão. Perdas não contam como venda.</p>
+    </article>
+    <section class="admin-card">
+      <h3>Kombuchas</h3>
+      ${bottles.length
+        ? table(
+            [{ label: "Sabor" }, { label: "Livre", num: true }, { label: "Saída por semana", num: true }, { label: "Dura" }, { label: "Situação" }],
+            bottles.map(
+              (row) => `
+                <tr>
+                  <td><strong>${escapeHtml(row.flavor)}</strong><br><span>${number(row.sizeMl)} ml</span></td>
+                  <td class="num">${number(row.free)}</td>
+                  <td class="num">${row.weekly === null ? "-" : number(row.weekly, 1)}</td>
+                  <td>${bottleCover(row)}</td>
+                  <td>${replenishmentBadge(REPLENISH_BOTTLE_SIGNALS, row.signal)}</td>
+                </tr>
+              `,
+            ),
+          )
+        : `<p class="empty-note">Nenhum lote ou saída registrado ainda.</p>`}
+    </section>
+    <section class="admin-card">
+      <h3>Ingredientes e embalagens</h3>
+      ${supplies.length
+        ? table(
+            [{ label: "Item" }, { label: "Estoque", num: true }, { label: "Uso por semana", num: true }, { label: "Dura" }, { label: "Fornecedor entrega em" }, { label: "Situação" }],
+            supplies.map(
+              (row) => `
+                <tr>
+                  <td><strong>${escapeHtml(row.name)}</strong>${row.min > 0 ? `<br><span>mínimo ${number(row.min, 2)} ${escapeHtml(row.unit)}</span>` : ""}</td>
+                  <td class="num">${number(row.stock, 2)} ${escapeHtml(row.unit)}</td>
+                  <td class="num">${row.weekly === null ? "-" : `${number(row.weekly, 2)} ${escapeHtml(row.unit)}`}</td>
+                  <td>${supplyCover(row)}</td>
+                  <td>${row.leadDays === null ? "prazo não informado" : `${number(row.leadDays)} dias`}</td>
+                  <td>${replenishmentBadge(REPLENISH_SUPPLY_SIGNALS, row.signal)}</td>
+                </tr>
+              `,
+            ),
+          )
+        : `<p class="empty-note">Nenhum ingrediente ou embalagem com estoque acompanhado.</p>`}
+    </section>
   `;
 }
 
@@ -6623,7 +6828,7 @@ function renderSchema() {
     "Expenses", "Expense Categories", "Cost Assumptions", "Reports", "CMS Pages", "Media Library", "Audit Logs",
   ];
   return `
-    ${pageHead("Arquitetura e Banco de Dados", "Estrutura sugerida para evoluir o site atual para um sistema seguro com autenticação, roles e histórico.", actionButton("reset-demo", "Limpar dados", "restart_alt", "btn-danger"))}
+    ${pageHead("Arquitetura e Banco de Dados", "Estrutura sugerida para evoluir o site atual para um sistema seguro com autenticação, roles e histórico.")}
     <section class="admin-card">
       <h3>Entidades mínimas</h3>
       <div class="schema-grid">
@@ -7485,25 +7690,6 @@ function openModal(title, eyebrow, body) {
 
 function closeModal() {
   document.querySelector("#adminModal").classList.remove("is-open");
-}
-
-function upsertById(collection, records) {
-  records.forEach((record) => {
-    const nextRecord = clone(record);
-    const index = state[collection].findIndex((item) => item.id === nextRecord.id);
-    if (index >= 0) state[collection][index] = { ...state[collection][index], ...nextRecord };
-    else state[collection].push(nextRecord);
-  });
-}
-
-function restoreCostBase() {
-  upsertById("products", PRODUCT_CATALOG_SEED);
-  upsertById("ingredients", COST_INGREDIENT_SEED);
-  upsertById("packaging", PACKAGING_SEED);
-  upsertById("recipes", RECIPE_SEED);
-  activeRecipeId = state.recipes[0]?.id || "";
-  addAudit("Base dos prints restaurada", "Produtos EAN, ingredientes, embalagens e receitas 500ml atualizados.");
-  render();
 }
 
 function productsForPriceScope(scope) {
@@ -11732,10 +11918,8 @@ function handleAction(action) {
   }
   const actionMap = {
     "new-product": newProductForm,
-    "global-prices": () => globalPriceForm(BASE_BOTTLE_SIZE_ML),
     "global-prices-500": () => globalPriceForm(BASE_BOTTLE_SIZE_ML),
     "global-prices-300": () => globalPriceForm(SMALL_BOTTLE_SIZE_ML),
-    "import-cost-base": restoreCostBase,
     "new-ingredient": newIngredientForm,
     "new-purchase": newPurchaseForm,
     "full-panel": () => {
@@ -11846,12 +12030,6 @@ function handleAction(action) {
         saveState();
         render();
       }
-    },
-    "reset-demo": () => {
-      state = clone(defaultState);
-      saveState();
-      addAudit("Dados operacionais limpos", "Base de produtos e custos dos prints preservada.");
-      render();
     },
     "export-products": () => exportCSV("kombu-produtos-ean", [["EAN-13", "Item", "Sabor", "Tamanho ml", "Descricao", "Varejo", "Atacado", "Custo receita", "Disponibilidade"], ...state.products.map((p) => [p.ean, p.item, p.flavor, p.sizeMl, p.description, p.retailPrice, p.wholesalePrice, recipeForProduct(p) ? productDisplayCost(p) : "", productIsOperational(p) ? "disponível" : "indisponível"])]),
     "export-ingredients": () => exportCSV("kombu-ingredientes", [["Nome", "Categoria", "Fornecedor", "Estoque", "Unidade", "Custo", "Status"], ...state.ingredients.map((i) => [i.name, i.category, i.supplier, i.stock, i.purchaseUnit, i.costPerUnit, ingredientNeedsCost(i) ? "custo pendente" : i.status])]),

@@ -1016,3 +1016,89 @@ console.log("Dashboard regression: monthly finances, missing costs and overview 
   assert.deepEqual(csv.find((row) => row[0] === "Despesas"), ["Despesas", 140.3], "0.10 + 0.20 is 0.30, not 0.30000000000000004");
   console.log("Financial reconciliation: monthly revenue, cost, expenses and result to the cent, months adding up to totals, stock purchases kept out of expenses, delivery apart, unknown costs never shown as profit, and a clean CSV passed.");
 }
+
+// Replenishment: rates come from what actually left over the last 8 weeks, no
+// forecast is given with under 4 weeks of history, and nothing is written.
+// Today is 16 November 2026, so the window opens after 21 September.
+{
+  const TODAY = "2026-11-16";
+  const product = (id, flavor) => ({ id, item: flavor, flavor, sizeMl: 500, retailPrice: 20, wholesalePrice: 14, status: "ativo" });
+  const lot = (code, productId, actual, date, extra = {}) => ({ id: `b-${code}`, code, productId, flavor: "", sizeMl: 500, actual, date, status: "aprovado", ...extra });
+  const out = (id, batchCode, productId, qty, date, movementType = "venda") => ({ id, batchCode, productId, qty, date, movementType, unitPrice: movementType === "venda" ? 20 : 0, discount: 0, delivery: 0 });
+  const before = load({
+    products: [product("p-a", "Tea"), product("p-b", "Gengibre"), product("p-c", "Hibisco"), product("p-d", "Lima")],
+    recipes: [{ id: "r-a", productId: "p-a", flavor: "Tea", bottleMl: 500, yieldBottles: 1, ingredients: [{ ingredientId: "i-sugar", qty: 100, unit: "g" }], packaging: [{ itemId: "pk-cap", qty: 1 }] }],
+    ingredients: [
+      { id: "i-sugar", name: "Açúcar", purchaseUnit: "g", stock: 1000, min: 0, supplier: "Doce", stockCountedAt: "2026-11-01T12:00:00Z" },
+      { id: "i-tea", name: "Chá verde", purchaseUnit: "g", stock: 5, min: 10, supplier: "Folhas" },
+      { id: "i-label", name: "Carimbo", purchaseUnit: "un", stock: 0, min: 0 },
+    ],
+    packaging: [
+      { id: "pk-cap", name: "Tampa", unit: "un", stock: 500, min: 50 },
+      { id: "pk-box", name: "Caixa", unit: "un", stock: 20, min: 10 },
+    ],
+    suppliers: [{ id: "s1", name: "Doce", leadTime: "10 dias" }, { id: "s2", name: "Folhas", leadTime: "2 semanas" }],
+    batches: [
+      lot("A1", "p-a", 100, "2026-09-01", { recipeId: "r-a", inventoryAdjusted: true, inventoryQty: 100 }),
+      lot("A2", "p-a", 40, "2026-10-26", { recipeId: "r-a", inventoryAdjusted: true, inventoryQty: 40 }),
+      lot("B1", "p-b", 20, "2026-09-01"),
+      lot("C1", "p-c", 30, "2026-11-06"),
+      lot("D1", "p-d", 30, "2026-08-01"),
+    ],
+    sales: [
+      out("a0", "A1", "p-a", 60, "2026-09-05"), // before the window
+      out("a1", "A1", "p-a", 10, "2026-09-25"),
+      out("a2", "A1", "p-a", 10, "2026-10-10"),
+      out("a3", "A1", "p-a", 10, "2026-10-28"),
+      out("a4", "A1", "p-a", 10, "2026-11-10"),
+      out("a5", "A2", "p-a", 2, "2026-11-12", "presente"), // a gift still leaves the shelf
+      out("a6", "A2", "p-a", 5, "2026-11-14", "perda"), // a loss is not demand
+      out("b1", "B1", "p-b", 6, "2026-10-01"),
+      out("b2", "B1", "p-b", 6, "2026-10-20"),
+      out("b3", "B1", "p-b", 6, "2026-11-05"),
+      out("c1", "C1", "p-c", 3, "2026-11-08"),
+      out("c2", "C1", "p-c", 3, "2026-11-12"),
+    ],
+  });
+  const snapshot = JSON.stringify(before);
+  const bottles = Object.fromEntries(plain(call("productReplenishmentRows", TODAY)).map((row) => [row.flavor, row]));
+  assert.deepEqual(Object.keys(bottles).sort(), ["Gengibre", "Hibisco", "Lima", "Tea"]);
+  assert.equal(bottles.Tea.free, 33, "140 made, 60 + 40 sold, 2 gifted, 5 lost");
+  assert.equal(bottles.Tea.weekly, 5.25, "42 bottles left in 8 weeks; the loss and the sale before the window do not count");
+  assert.equal(bottles.Tea.coverWeeks.toFixed(2), "6.29");
+  assert.equal(bottles.Tea.signal, "bom");
+  assert.equal(bottles.Gengibre.signal, "produzir", "2 free bottles at 2.25 a week last under a week");
+  assert.equal(bottles.Hibisco.signal, "insuficiente", "10 days of history is not enough to forecast");
+  assert.equal(bottles.Hibisco.weekly, null);
+  assert.equal(bottles.Hibisco.coverWeeks, null);
+  assert.equal(bottles.Lima.signal, "parado", "stock with nothing leaving for 8 weeks");
+  assert.equal(bottles.Lima.weekly, 0);
+
+  const supplies = Object.fromEntries(plain(call("supplyReplenishmentRows", TODAY)).map((row) => [row.name, row]));
+  assert.deepEqual(Object.keys(supplies).sort(), ["Açúcar", "Caixa", "Chá verde", "Tampa"], "an untracked supply has no stock to forecast");
+  assert.equal(supplies["Açúcar"].weekly, 500, "batch A2 used 40 x 100 g inside the window; A1 is older");
+  assert.equal(supplies["Açúcar"].coverDays, 14);
+  assert.equal(supplies["Açúcar"].leadDays, 10);
+  assert.equal(supplies["Açúcar"].signal, "comprar", "14 days of sugar against a 10-day supplier");
+  assert.equal(supplies["Chá verde"].signal, "comprar", "below its minimum");
+  assert.equal(supplies["Chá verde"].leadDays, 14, "\"2 semanas\" reads as 14 days");
+  assert.equal(supplies.Tampa.weekly, 5);
+  assert.equal(supplies.Tampa.signal, "bom");
+  assert.equal(supplies.Caixa.signal, "sem-consumo");
+  // A short history starts on its first day, and that day's movement counts:
+  // 30 used on 17 October is 30 over 31 days, both ends included.
+  assert.equal(call("outflowRate", [{ date: "2026-10-17", qty: 30 }], ["2026-10-17"], TODAY).weekly, 6.7742);
+
+  admin.__eval('currentStockView = "replenishment"');
+  const screen = call("renderStock");
+  assert.match(screen, /Reposição/);
+  assert.match(screen, /Produzir/);
+  assert.match(screen, /Comprar/);
+  assert.match(screen, /Parado/);
+  const hibiscoRow = screen.slice(screen.indexOf("Hibisco"), screen.indexOf("</tr>", screen.indexOf("Hibisco")));
+  assert.match(hibiscoRow, /Histórico insuficiente/);
+  assert.doesNotMatch(hibiscoRow, /semanas? de estoque/, "no coverage is shown without enough history");
+  admin.__eval('currentStockView = "kombuchas"');
+  assert.equal(JSON.stringify(admin.__getState()), snapshot, "forecasting writes nothing");
+  console.log("Replenishment: 8-week outflow rates, losses excluded, no forecast under 4 weeks, stalled stock, supplier lead times, minimums and no writes passed.");
+}

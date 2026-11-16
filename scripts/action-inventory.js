@@ -45,12 +45,38 @@ const covers = (action, handler) => action === handler || (action.endsWith("-") 
 const unhandled = [...rendered.entries()].filter(([action]) => !ALLOWED_WITHOUT_HANDLER.has(action) && ![...handled].some((handler) => covers(action, handler)));
 const unused = [...handled].filter((handler) => ![...rendered.keys()].some((action) => covers(action, handler)));
 
+// One tap must never replace the whole saved state. "Limpar dados" did exactly
+// that with no confirmation, and the server accepted it because an empty state
+// breaks no invariant.
+function stateReplacingHandlers() {
+  const start = admin.indexOf("function handleAction(action) {");
+  const end = admin.indexOf("\n}\n", start);
+  const body = admin.slice(start, end);
+  const offenders = [];
+  for (const match of body.matchAll(/^\s{4}"([a-z0-9-]+)":/gm)) {
+    const rest = body.slice(match.index + match[0].length);
+    const next = rest.search(/^\s{4}"[a-z0-9-]+":/m);
+    const handlerBody = next < 0 ? rest : rest.slice(0, next);
+    if (/\bstate\s*=\s*clone\(defaultState\)/.test(handlerBody)) offenders.push(match[1]);
+  }
+  return offenders;
+}
+const wipers = stateReplacingHandlers();
+
 if (process.argv.includes("--list")) {
   console.log([...rendered.keys()].sort().join("\n"));
 }
 if (require.main === module) {
   if (unhandled.length) {
     console.error(`Buttons with no handler:\n${unhandled.map(([action, line]) => `  ${action} (first seen near line ${line})`).join("\n")}`);
+    process.exitCode = 1;
+  }
+  if (unused.length) {
+    console.error(`Handlers no button reaches (dead code, remove them): ${unused.join(", ")}`);
+    process.exitCode = 1;
+  }
+  if (wipers.length) {
+    console.error(`Actions that replace the whole saved state: ${wipers.join(", ")}`);
     process.exitCode = 1;
   }
   console.log(`Action inventory: ${rendered.size} rendered actions, ${handled.size} handled, ${unhandled.length} without a handler, ${unused.length} handlers never rendered${unused.length ? ` (${unused.join(", ")})` : ""}.`);

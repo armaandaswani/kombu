@@ -82,3 +82,10 @@ Revert the merge commit and redeploy. Fields this branch adds are ignored by the
 ## Update, same day: interaction inventory
 
 The interaction inventory is complete. Three dead buttons were found and fixed. The browser run now has 13 suites, all passing, and `npm test` includes the action inventory. The verdict is unchanged: blocked until the staging run, the posting contracts and the restore drill are done.
+
+## Update, 16 November: data-loss button removed, replenishment added
+
+- **P0 found and fixed:** "Limpar dados" on the Arquitetura screen replaced all data with the empty default and saved it to the cloud on one tap, with no confirmation. The server's checks allowed it. The button, its handler and the unreachable seed-restore (`restoreCostBase`) are removed. `npm test` now fails if a handler is unreachable or if any action replaces the whole saved state.
+- **Added:** Estoque → "Reposição", a read-only view of what to produce and buy, from the last 8 weeks of records. It gives no forecast with under 4 weeks of history.
+- **Evidence:** `npm run check` and every node suite pass. All 14 browser suites pass under the production headers, including the new `replenishment-regression.js`. The button crawl now presses 158 controls.
+- **Verdict unchanged:** blocked until staging, the posting contracts and the restore drill are done. Nothing in this update changes stored data or the server.

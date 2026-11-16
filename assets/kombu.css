@@ -2771,6 +2771,15 @@ textarea:focus-visible {
   background: var(--danger);
 }
 
+.status.neutral {
+  background: var(--surface-soft);
+  color: var(--muted);
+}
+
+.status.neutral::before {
+  background: var(--faint);
+}
+
 .alert-list,
 .stack-list {
   display: grid;

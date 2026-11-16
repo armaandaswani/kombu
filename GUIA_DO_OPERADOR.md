@@ -57,7 +57,8 @@ Se a leitura não funcionar, o painel mostra um aviso e o botão **Registrar pel
 
 1. No modo simples, toque em **Ver estoque**.
 2. Cada sabor mostra quantas garrafas estão disponíveis e quantas estão reservadas para pedidos.
-3. Para voltar, toque em **Voltar ao modo simples**.
+3. Para saber o que precisa produzir ou comprar, toque em **Reposição**. **Produzir** e **Comprar** aparecem em vermelho. **Histórico insuficiente** quer dizer que ainda não dá para prever.
+4. Para voltar, toque em **Voltar ao modo simples**.
 
 ## 7. Encontrar ou corrigir um lançamento
 
