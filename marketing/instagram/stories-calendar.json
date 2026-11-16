@@ -1089,6 +1089,342 @@
           "source": "claude-propostas/stories"
         }
       ]
+    },
+    {
+      "date": "2026-11-15",
+      "frames": [
+        {
+          "id": "detalhe-1115",
+          "type": "art",
+          "formato": "detalhe",
+          "title": "Já reparou nas sementinhas da de Maracujá?",
+          "body": "É que a gente usa o maracujá de verdade.",
+          "flavor": "maracuja",
+          "cena": "12-como-comprar-2",
+          "imageSource": "assets/stories-art/2026-11-15-detalhe-1115.jpg",
+          "image": "stories/2026-11-15/detalhe-1115.jpg",
+          "source": "claude-propostas/stories"
+        },
+        {
+          "id": "cena-1115",
+          "type": "art",
+          "formato": "cena",
+          "title": "Domingo pede uma Flor Fada Azul & Blueberry gelada?",
+          "body": "Ela é floral e frutada ao mesmo tempo.",
+          "flavor": "flor-fada-blueberry",
+          "cena": "07-flor-fada-azul-2",
+          "imageSource": "assets/stories-art/2026-11-15-cena-1115.jpg",
+          "image": "stories/2026-11-15/cena-1115.jpg",
+          "source": "claude-propostas/stories"
+        },
+        {
+          "id": "revista-1115",
+          "type": "art",
+          "formato": "revista",
+          "title": "Você gosta de gengibre?",
+          "body": "Então experimenta a de Imunidade. Ela leva limão, gengibre e cúrcuma.",
+          "flavor": "imunidade",
+          "cena": "11-imunidade-1",
+          "imageSource": "assets/stories-art/2026-11-15-revista-1115.jpg",
+          "image": "stories/2026-11-15/revista-1115.jpg",
+          "source": "claude-propostas/stories"
+        },
+        {
+          "id": "enquete-1115",
+          "type": "art",
+          "formato": "enquete",
+          "title": "Lavanda & Limão ou Frutas Vermelhas: qual vai pra geladeira hoje?",
+          "body": "",
+          "cta": "Manda o nome da sua por mensagem.",
+          "flavor": "lavanda-limao",
+          "flavor2": "frutas-vermelhas",
+          "cena2": "05-frutas-vermelhas-1",
+          "cena": "14-lavanda-limao-2",
+          "imageSource": "assets/stories-art/2026-11-15-enquete-1115.jpg",
+          "image": "stories/2026-11-15/enquete-1115.jpg",
+          "source": "claude-propostas/stories"
+        },
+        {
+          "id": "fato-1115",
+          "type": "art",
+          "formato": "fato",
+          "title": "Sabia que a de Goiaba leva goiaba de verdade?",
+          "body": "Ela fica suave e refrescante, boa pra uma tarde quente em Manaus.",
+          "flavor": "goiaba",
+          "cena": "26-personal-trainers-3",
+          "imageSource": "assets/stories-art/2026-11-15-fato-1115.jpg",
+          "image": "stories/2026-11-15/fato-1115.jpg",
+          "source": "claude-propostas/stories"
+        }
+      ]
+    },
+    {
+      "date": "2026-11-16",
+      "frames": [
+        {
+          "id": "fato-1116",
+          "type": "art",
+          "formato": "fato",
+          "title": "Sabia que a cor da de Hibisco & Anis Estrelado vem da flor?",
+          "body": "O hibisco traz a cor e a acidez, e o anis estrelado traz o perfume.",
+          "flavor": "hibisco-anis",
+          "cena": "16-de-verdade-1",
+          "imageSource": "assets/stories-art/2026-11-16-fato-1116.jpg",
+          "image": "stories/2026-11-16/fato-1116.jpg",
+          "source": "claude-propostas/stories"
+        },
+        {
+          "id": "pergunta-1116",
+          "type": "art",
+          "formato": "pergunta",
+          "title": "Já provou a de Pêra & Alecrim?",
+          "body": "Ela é delicada, com o aroma do alecrim lá no fundo.",
+          "flavor": "pera-alecrim",
+          "cena": "25-nutricionistas-1",
+          "imageSource": "assets/stories-art/2026-11-16-pergunta-1116.jpg",
+          "image": "stories/2026-11-16/pergunta-1116.jpg",
+          "source": "claude-propostas/stories"
+        },
+        {
+          "id": "parceiro-1116",
+          "type": "art",
+          "formato": "parceiro",
+          "title": "Onde encontrar Já passou na Divina Terra?",
+          "body": "Tem Kombú gelada por lá. Pergunta quais sabores estão na geladeira e depois conta pra gente qual você levou.",
+          "flavor": "maca-canela",
+          "partner": "@divinaterramanaus",
+          "cena": "15-maca-canela-1",
+          "imageSource": "assets/stories-art/2026-11-16-parceiro-1116.jpg",
+          "image": "stories/2026-11-16/parceiro-1116.jpg",
+          "source": "claude-propostas/stories"
+        },
+        {
+          "id": "lista-1116",
+          "type": "art",
+          "formato": "lista",
+          "title": "Quando a gente abre uma de Rosas & Cardamomo",
+          "body": "Depois do almoço, junto com um doce. No brunch do fim de semana. No fim da tarde, com os amigos.",
+          "flavor": "rosas-cardamomo",
+          "cena": "23-cardapio-2",
+          "imageSource": "assets/stories-art/2026-11-16-lista-1116.jpg",
+          "image": "stories/2026-11-16/lista-1116.jpg",
+          "source": "claude-propostas/stories"
+        },
+        {
+          "id": "revista-1116",
+          "type": "art",
+          "formato": "revista",
+          "title": "Já tomou a de Goiaba bem gelada?",
+          "body": "Num calor desses, ela desce suave e refrescante.",
+          "flavor": "goiaba",
+          "cena": "26-personal-trainers-3",
+          "imageSource": "assets/stories-art/2026-11-16-revista-1116.jpg",
+          "image": "stories/2026-11-16/revista-1116.jpg",
+          "source": "claude-propostas/stories"
+        }
+      ]
+    },
+    {
+      "date": "2026-11-17",
+      "frames": [
+        {
+          "id": "lista-1117",
+          "type": "art",
+          "formato": "lista",
+          "title": "O que a gente coloca na de Imunidade",
+          "body": "Limão, que deixa ela cítrica. Gengibre, que dá a picância. Cúrcuma, com aquele fundo terroso.",
+          "flavor": "imunidade",
+          "cena": "11-imunidade-2",
+          "imageSource": "assets/stories-art/2026-11-17-lista-1117.jpg",
+          "image": "stories/2026-11-17/lista-1117.jpg",
+          "source": "claude-propostas/stories"
+        },
+        {
+          "id": "cena-1117",
+          "type": "art",
+          "formato": "cena",
+          "title": "Já provou a de Lavanda & Limão?",
+          "body": "O limão chega primeiro e a lavanda fica no final.",
+          "flavor": "lavanda-limao",
+          "cena": "14-lavanda-limao-1",
+          "imageSource": "assets/stories-art/2026-11-17-cena-1117.jpg",
+          "image": "stories/2026-11-17/cena-1117.jpg",
+          "source": "claude-propostas/stories"
+        },
+        {
+          "id": "pergunta-1117",
+          "type": "art",
+          "formato": "pergunta",
+          "title": "Já tomou a de Maracujá com gelo?",
+          "body": "A gente gosta dela bem gelada, num copo cheio.",
+          "flavor": "maracuja",
+          "cena": "12-como-comprar-1",
+          "imageSource": "assets/stories-art/2026-11-17-pergunta-1117.jpg",
+          "image": "stories/2026-11-17/pergunta-1117.jpg",
+          "source": "claude-propostas/stories"
+        },
+        {
+          "id": "detalhe-1117",
+          "type": "art",
+          "formato": "detalhe",
+          "title": "Sabia que a cor da de Flor Fada Azul vem da flor?",
+          "body": "A blueberry entra junto e deixa ela frutada.",
+          "flavor": "flor-fada-blueberry",
+          "cena": "07-flor-fada-azul-1",
+          "imageSource": "assets/stories-art/2026-11-17-detalhe-1117.jpg",
+          "image": "stories/2026-11-17/detalhe-1117.jpg",
+          "source": "claude-propostas/stories"
+        },
+        {
+          "id": "enquete-1117",
+          "type": "art",
+          "formato": "enquete",
+          "title": "Frutas Vermelhas ou Goiaba: qual você leva hoje?",
+          "body": "",
+          "cta": "Vota mandando o nome por mensagem.",
+          "flavor": "frutas-vermelhas",
+          "flavor2": "goiaba",
+          "cena2": "19-como-servir-1",
+          "cena": "05-frutas-vermelhas-1",
+          "imageSource": "assets/stories-art/2026-11-17-enquete-1117.jpg",
+          "image": "stories/2026-11-17/enquete-1117.jpg",
+          "source": "claude-propostas/stories"
+        }
+      ]
+    },
+    {
+      "date": "2026-11-18",
+      "frames": [
+        {
+          "id": "fato-1118",
+          "type": "art",
+          "formato": "fato",
+          "title": "Sabia que a de Pêra & Alecrim leva pêra de verdade?",
+          "body": "E o alecrim deixa um aroma leve lá no fundo.",
+          "flavor": "pera-alecrim",
+          "cena": "25-nutricionistas-1",
+          "imageSource": "assets/stories-art/2026-11-18-fato-1118.jpg",
+          "image": "stories/2026-11-18/fato-1118.jpg",
+          "source": "claude-propostas/stories"
+        },
+        {
+          "id": "detalhe-1118",
+          "type": "art",
+          "formato": "detalhe",
+          "title": "Já sentiu o perfume do anis estrelado?",
+          "body": "Ele aparece logo que você abre a de Hibisco & Anis Estrelado.",
+          "flavor": "hibisco-anis",
+          "cena": "09-hibisco-1",
+          "imageSource": "assets/stories-art/2026-11-18-detalhe-1118.jpg",
+          "image": "stories/2026-11-18/detalhe-1118.jpg",
+          "source": "claude-propostas/stories"
+        },
+        {
+          "id": "cena-1118",
+          "type": "art",
+          "formato": "cena",
+          "title": "Já provou a de Maçã & Canela?",
+          "body": "A canela dá um quentinho que combina com o fim da tarde.",
+          "flavor": "maca-canela",
+          "cena": "15-maca-canela-1",
+          "imageSource": "assets/stories-art/2026-11-18-cena-1118.jpg",
+          "image": "stories/2026-11-18/cena-1118.jpg",
+          "source": "claude-propostas/stories"
+        },
+        {
+          "id": "enquete-1118",
+          "type": "art",
+          "formato": "enquete",
+          "title": "Rosas & Cardamomo ou Goiaba no almoço de quarta?",
+          "body": "",
+          "cta": "",
+          "flavor": "rosas-cardamomo",
+          "flavor2": "goiaba",
+          "cena2": "19-como-servir-2",
+          "cena": "23-cardapio-2",
+          "imageSource": "assets/stories-art/2026-11-18-enquete-1118.jpg",
+          "image": "stories/2026-11-18/enquete-1118.jpg",
+          "source": "claude-propostas/stories"
+        },
+        {
+          "id": "parceiro-1118",
+          "type": "art",
+          "formato": "parceiro",
+          "title": "Onde encontrar Já passou na Casa Agridoce essa semana?",
+          "body": "Pede uma Kombú gelada e conta pra gente o que você pediu pra acompanhar.",
+          "flavor": "maracuja",
+          "partner": "@casaagridoceam",
+          "cena": "12-como-comprar-1",
+          "imageSource": "assets/stories-art/2026-11-18-parceiro-1118.jpg",
+          "image": "stories/2026-11-18/parceiro-1118.jpg",
+          "source": "claude-propostas/stories"
+        }
+      ]
+    },
+    {
+      "date": "2026-11-19",
+      "frames": [
+        {
+          "id": "revista-1119",
+          "type": "art",
+          "formato": "revista",
+          "title": "Você curte um sabor mais floral?",
+          "body": "Então vai de Lavanda & Limão. Ela é leve e bem cheirosa.",
+          "flavor": "lavanda-limao",
+          "cena": "14-lavanda-limao-2",
+          "imageSource": "assets/stories-art/2026-11-19-revista-1119.jpg",
+          "image": "stories/2026-11-19/revista-1119.jpg",
+          "source": "claude-propostas/stories"
+        },
+        {
+          "id": "fato-1119",
+          "type": "art",
+          "formato": "fato",
+          "title": "Sabia que a Flor Fada Azul leva blueberry de verdade?",
+          "body": "A gente usa a fruta, e é dela que vem o lado frutado.",
+          "flavor": "flor-fada-blueberry",
+          "cena": "07-flor-fada-azul-2",
+          "imageSource": "assets/stories-art/2026-11-19-fato-1119.jpg",
+          "image": "stories/2026-11-19/fato-1119.jpg",
+          "source": "claude-propostas/stories"
+        },
+        {
+          "id": "pergunta-1119",
+          "type": "art",
+          "formato": "pergunta",
+          "title": "Já provou a nossa Kombú de Imunidade?",
+          "body": "Ela leva limão, gengibre e cúrcuma, e fica com uma picância gostosa.",
+          "flavor": "imunidade",
+          "cena": "11-imunidade-1",
+          "imageSource": "assets/stories-art/2026-11-19-pergunta-1119.jpg",
+          "image": "stories/2026-11-19/pergunta-1119.jpg",
+          "source": "claude-propostas/stories"
+        },
+        {
+          "id": "lista-1119",
+          "type": "art",
+          "formato": "lista",
+          "title": "Pra onde a gente leva uma de Frutas Vermelhas",
+          "body": "Pro almoço de domingo depois da praia. Pro piquenique com os amigos. Pro sofá, num filme à noite.",
+          "flavor": "frutas-vermelhas",
+          "cena": "05-frutas-vermelhas-1",
+          "imageSource": "assets/stories-art/2026-11-19-lista-1119.jpg",
+          "image": "stories/2026-11-19/lista-1119.jpg",
+          "source": "claude-propostas/stories"
+        },
+        {
+          "id": "cena-1119",
+          "type": "art",
+          "formato": "cena",
+          "title": "Quinta pede uma de Goiaba bem gelada?",
+          "body": "Marca aqui quem ia dividir uma com você.",
+          "flavor": "goiaba",
+          "cena": "26-personal-trainers-3",
+          "imageSource": "assets/stories-art/2026-11-19-cena-1119.jpg",
+          "image": "stories/2026-11-19/cena-1119.jpg",
+          "source": "claude-propostas/stories"
+        }
+      ]
     }
   ]
 }

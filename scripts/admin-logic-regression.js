@@ -1102,3 +1102,15 @@ console.log("Dashboard regression: monthly finances, missing costs and overview 
   assert.equal(JSON.stringify(admin.__getState()), snapshot, "forecasting writes nothing");
   console.log("Replenishment: 8-week outflow rates, losses excluded, no forecast under 4 weeks, stalled stock, supplier lead times, minimums and no writes passed.");
 }
+{
+  // One tap on "Limpar dados" replaced the whole saved state with the empty
+  // default and saved it. No handler may wipe or reseed the data.
+  const source = require("node:fs").readFileSync(require("node:path").join(__dirname, "..", "assets", "admin.js"), "utf8");
+  const start = source.indexOf("function handleAction(action) {");
+  const handlers = source.slice(start, source.indexOf("\n}\n", start));
+  assert.ok(start > 0, "handleAction is where the actions live");
+  assert.doesNotMatch(handlers, /\bstate\s*=\s*clone\(defaultState\)/, "no action replaces the whole state");
+  assert.doesNotMatch(handlers, /"reset-demo"|"import-cost-base"/, "the wipe and seed-restore actions are gone");
+  assert.doesNotMatch(call("renderSchema"), /data-action="reset-demo"/, "the Arquitetura screen has no wipe button");
+}
+console.log("Data safety regression: no action wipes or reseeds the saved state.");

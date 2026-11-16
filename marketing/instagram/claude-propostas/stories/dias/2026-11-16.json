@@ -1,0 +1,52 @@
+{
+ "date": "2026-11-16",
+ "frames": [
+  {
+   "id": "fato-1116",
+   "formato": "fato",
+   "cena": "16-de-verdade-1",
+   "flavor": "hibisco-anis",
+   "title": "Sabia que a cor da de Hibisco & Anis Estrelado vem da flor?",
+   "body": "O hibisco traz a cor e a acidez, e o anis estrelado traz o perfume."
+  },
+  {
+   "id": "pergunta-1116",
+   "formato": "pergunta",
+   "cena": "25-nutricionistas-1",
+   "flavor": "pera-alecrim",
+   "title": "Já provou a de Pêra & Alecrim?",
+   "body": "Ela é delicada, com o aroma do alecrim lá no fundo."
+  },
+  {
+   "id": "parceiro-1116",
+   "formato": "parceiro",
+   "partner": "@divinaterramanaus",
+   "cena": "15-maca-canela-1",
+   "flavor": "maca-canela",
+   "title": "Já passou na Divina Terra?",
+   "body": "Tem Kombú gelada por lá. Pergunta quais sabores estão na geladeira e depois conta pra gente qual você levou.",
+   "kicker": "Onde encontrar"
+  },
+  {
+   "id": "lista-1116",
+   "formato": "lista",
+   "cena": "23-cardapio-2",
+   "flavor": "rosas-cardamomo",
+   "title": "Quando a gente abre uma de Rosas & Cardamomo",
+   "body": "",
+   "itens": [
+    "Depois do almoço, junto com um doce.",
+    "No brunch do fim de semana.",
+    "No fim da tarde, com os amigos."
+   ]
+  },
+  {
+   "id": "revista-1116",
+   "formato": "revista",
+   "cena": "26-personal-trainers-3",
+   "flavor": "goiaba",
+   "title": "Já tomou a de Goiaba bem gelada?",
+   "body": "Num calor desses, ela desce suave e refrescante."
+  }
+ ]
+}

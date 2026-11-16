@@ -1,0 +1,55 @@
+{
+ "date": "2026-11-14",
+ "frames": [
+  {
+   "id": "parceiro-1114",
+   "formato": "parceiro",
+   "partner": "@ladolcevitagelataria",
+   "cena": "06-la-dolce-vita-1",
+   "flavor": "manga-jasmim",
+   "title": "Vai tomar um gelato na Dolce Vita hoje?",
+   "body": "Tem Kombú gelada por lá também. Pergunta quais sabores estão na geladeira.",
+   "kicker": "Onde encontrar"
+  },
+  {
+   "id": "enquete-1114",
+   "formato": "enquete",
+   "cena": "19-como-servir-1",
+   "flavor": "goiaba",
+   "cena2": "08-revenda-1",
+   "flavor2": "maca-canela",
+   "title": "Goiaba ou Maçã & Canela: qual você abriria primeiro?",
+   "body": "",
+   "cta": "Conta pra gente qual seria a sua."
+  },
+  {
+   "id": "pergunta-1114",
+   "formato": "pergunta",
+   "cena": "09-hibisco-2",
+   "flavor": "hibisco-anis",
+   "title": "Já provou a de Hibisco & Anis Estrelado?",
+   "body": "O hibisco dá a cor e a acidez, e o anis estrelado deixa o perfume."
+  },
+  {
+   "id": "lista-1114",
+   "formato": "lista",
+   "cena": "24-profissionais-3",
+   "flavor": "pera-alecrim",
+   "title": "Com o que a gente serve a de Pêra & Alecrim",
+   "body": "",
+   "itens": [
+    "Com uma salada no almoço.",
+    "Com um prato leve no jantar.",
+    "Sozinha mesmo, bem gelada, no meio da tarde."
+   ]
+  },
+  {
+   "id": "detalhe-1114",
+   "formato": "detalhe",
+   "cena": "23-cardapio-2",
+   "flavor": "rosas-cardamomo",
+   "title": "Já provou a de Rosas & Cardamomo?",
+   "body": "Ela tem pétalas de rosa e o toque especiado do cardamomo."
+  }
+ ]
+}
