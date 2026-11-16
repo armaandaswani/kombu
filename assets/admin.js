@@ -674,6 +674,207 @@ async function restoreServerSession() {
   }
 }
 
+// Passkeys: signing in with Face ID, a fingerprint or the device PIN. The server
+// does all the checking (api/auth/passkey.js); this side only talks to the
+// browser's credential manager and passes the bytes along as base64url text.
+function passkeySupported() {
+  return typeof window.PublicKeyCredential === "function" && Boolean(navigator.credentials?.get) && Boolean(navigator.credentials?.create);
+}
+
+function base64urlToBuffer(value) {
+  const text = String(value || "").replace(/-/g, "+").replace(/_/g, "/");
+  const binary = atob(text.padEnd(Math.ceil(text.length / 4) * 4, "="));
+  const bytes = new Uint8Array(binary.length);
+  for (let index = 0; index < binary.length; index += 1) bytes[index] = binary.charCodeAt(index);
+  return bytes.buffer;
+}
+
+function bufferToBase64url(buffer) {
+  const bytes = new Uint8Array(buffer);
+  let binary = "";
+  for (let index = 0; index < bytes.length; index += 1) binary += String.fromCharCode(bytes[index]);
+  return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+
+async function passkeyRequest(action, body = {}) {
+  const response = await fetch("/api/auth/passkey", {
+    method: "POST",
+    credentials: "same-origin",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ action, ...body }),
+  });
+  const payload = await readJsonSafe(response);
+  return { ...payload, ok: response.ok, status: response.status };
+}
+
+// Resolves to { ok: true } or { ok: false, reason } where reason is one of
+// none, slow, cancelled, refused or error, so the caller can say it plainly.
+async function passkeyLogin() {
+  let options;
+  try {
+    options = await passkeyRequest("login-options");
+  } catch {
+    return { ok: false, reason: "error" };
+  }
+  if (!options.ok) return { ok: false, reason: options.error === "no_passkeys" ? "none" : options.status === 429 ? "slow" : "error" };
+  let credential;
+  try {
+    credential = await navigator.credentials.get({
+      publicKey: {
+        challenge: base64urlToBuffer(options.challenge),
+        rpId: options.rpId,
+        timeout: options.timeout,
+        userVerification: options.userVerification,
+        allowCredentials: (options.allowCredentials || []).map((item) => ({ type: "public-key", id: base64urlToBuffer(item.id), transports: item.transports })),
+      },
+    });
+  } catch (error) {
+    return { ok: false, reason: /^(NotAllowed|Abort)Error$/.test(error?.name) ? "cancelled" : "error" };
+  }
+  try {
+    const done = await passkeyRequest("login", {
+      token: options.token,
+      id: credential.id,
+      response: {
+        clientDataJSON: bufferToBase64url(credential.response.clientDataJSON),
+        authenticatorData: bufferToBase64url(credential.response.authenticatorData),
+        signature: bufferToBase64url(credential.response.signature),
+      },
+    });
+    return done.ok ? { ok: true } : { ok: false, reason: done.status === 429 ? "slow" : "refused" };
+  } catch {
+    return { ok: false, reason: "error" };
+  }
+}
+
+const PASSKEY_LOGIN_MESSAGES = {
+  none: "Nenhum passkey cadastrado ainda. Entre com a senha e cadastre pelo botão Passkey.",
+  slow: "Muitas tentativas. Espere alguns minutos e tente de novo.",
+  cancelled: "Entrada cancelada. Você pode tentar de novo ou usar a senha.",
+  refused: "Não consegui validar este passkey. Entre com a senha.",
+  error: "Não consegui usar o passkey agora. Entre com a senha.",
+};
+
+function guessDeviceName() {
+  const agent = navigator.userAgent || "";
+  if (/iPhone/i.test(agent)) return "iPhone";
+  if (/iPad/i.test(agent)) return "iPad";
+  if (/Android/i.test(agent)) return "Celular Android";
+  if (/Macintosh/i.test(agent)) return "Mac";
+  if (/Windows/i.test(agent)) return "Computador Windows";
+  return "Este aparelho";
+}
+
+function passkeyListMarkup(credentials) {
+  if (!credentials.length) return `<p class="empty-note">Nenhum aparelho cadastrado ainda.</p>`;
+  return `<ul class="passkey-list">${credentials.map((item) => `
+    <li class="passkey-item">
+      <div>
+        <strong data-i18n-skip>${escapeHtml(item.label)}</strong>
+        <small>Cadastrado em ${escapeHtml(fullDate(String(item.createdAt || "").slice(0, 10)))}</small>
+        <small>${item.lastUsedAt ? `Último uso em ${escapeHtml(fullDate(String(item.lastUsedAt).slice(0, 10)))}` : "Ainda não usado"}</small>
+      </div>
+      <button class="btn btn-outline" type="button" data-passkey-remove="${escapeHtml(item.id)}">Remover</button>
+    </li>`).join("")}</ul>`;
+}
+
+// Opened from the "Passkey" button in the top bar. Adding a device asks for the
+// password again, so a borrowed session cannot add a permanent way in.
+async function passkeyManagerForm() {
+  if (!passkeySupported()) {
+    openModal("Passkey", "Segurança", `<p class="empty-note">Este navegador não permite passkey. Use o Safari, o Chrome ou o Edge atualizados.</p>`);
+    return;
+  }
+  openModal(
+    "Passkey: entrar com Face ID ou digital",
+    "Segurança",
+    `
+      <p class="lead" style="font-size:1rem">Com um passkey você entra neste painel com Face ID, digital ou o PIN do aparelho, sem digitar a senha. A senha continua funcionando.</p>
+      <h3>Aparelhos cadastrados</h3>
+      <div id="passkeyList" aria-live="polite"><p class="empty-note">Carregando...</p></div>
+      <form id="passkeyForm" class="input-grid">
+        <label class="field field-full"><span>Nome deste aparelho</span><input name="label" maxlength="40" value="${escapeHtml(guessDeviceName())}" required></label>
+        <label class="field field-full"><span>Sua senha, para confirmar</span><input name="password" type="password" autocomplete="current-password" required></label>
+        <button class="btn btn-primary" type="submit"><span class="material-symbols-outlined" aria-hidden="true">fingerprint</span>Cadastrar este aparelho</button>
+      </form>
+      <p id="passkeyStatus" class="empty-note" role="status"></p>
+    `,
+  );
+  const listBox = document.querySelector("#passkeyList");
+  const status = document.querySelector("#passkeyStatus");
+  const form = document.querySelector("#passkeyForm");
+  const say = (message) => { status.textContent = message; };
+  const refresh = async () => {
+    try {
+      const result = await passkeyRequest("list");
+      listBox.innerHTML = result.ok ? passkeyListMarkup(result.credentials || []) : `<p class="empty-note">Não consegui carregar a lista agora.</p>`;
+    } catch {
+      listBox.innerHTML = `<p class="empty-note">Não consegui carregar a lista agora.</p>`;
+    }
+  };
+  refresh();
+
+  listBox.addEventListener("click", async (event) => {
+    const button = event.target.closest("[data-passkey-remove]");
+    if (!button || !localizedConfirm("Remover este aparelho? Ele não poderá mais entrar com passkey.")) return;
+    button.disabled = true;
+    try {
+      const result = await passkeyRequest("remove", { id: button.dataset.passkeyRemove });
+      say(result.ok ? "Aparelho removido." : "Não consegui remover agora. Tente de novo.");
+    } catch {
+      say("Não consegui remover agora. Tente de novo.");
+    }
+    refresh();
+  });
+
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const submit = form.querySelector('button[type="submit"]');
+    submit.disabled = true;
+    say("");
+    try {
+      const options = await passkeyRequest("register-options", { password: form.elements.password.value });
+      if (!options.ok) {
+        say(options.error === "invalid_password" ? "Senha incorreta." : options.status === 429 ? "Muitas tentativas. Espere alguns minutos e tente de novo." : "Não consegui começar o cadastro agora. Tente de novo.");
+        return;
+      }
+      const credential = await navigator.credentials.create({
+        publicKey: {
+          challenge: base64urlToBuffer(options.challenge),
+          rp: options.rp,
+          user: { id: base64urlToBuffer(options.user.id), name: options.user.name, displayName: options.user.displayName },
+          pubKeyCredParams: options.pubKeyCredParams,
+          authenticatorSelection: options.authenticatorSelection,
+          attestation: options.attestation,
+          timeout: options.timeout,
+          excludeCredentials: (options.excludeCredentials || []).map((item) => ({ type: "public-key", id: base64urlToBuffer(item.id), transports: item.transports })),
+        },
+      });
+      const done = await passkeyRequest("register", {
+        token: options.token,
+        id: credential.id,
+        label: form.elements.label.value,
+        response: {
+          clientDataJSON: bufferToBase64url(credential.response.clientDataJSON),
+          attestationObject: bufferToBase64url(credential.response.attestationObject),
+          transports: typeof credential.response.getTransports === "function" ? credential.response.getTransports() : [],
+        },
+      });
+      if (done.ok) {
+        form.elements.password.value = "";
+        say("Aparelho cadastrado. Na próxima vez, toque em Entrar com Face ID ou digital.");
+        refresh();
+      } else {
+        say("Não consegui cadastrar este aparelho. Tente de novo.");
+      }
+    } catch (error) {
+      say(/^InvalidStateError$/.test(error?.name) ? "Este aparelho já está cadastrado." : /^NotAllowedError$/.test(error?.name) ? "Cadastro cancelado." : "Não consegui cadastrar este aparelho. Tente de novo.");
+    } finally {
+      submit.disabled = false;
+    }
+  });
+}
+
 function bindAuth() {
   const loginForm = document.querySelector("#loginForm");
   const passwordInput = document.querySelector("#adminPassword");
@@ -721,6 +922,29 @@ function bindAuth() {
     if (selectionStart != null && selectionEnd != null) passwordInput.setSelectionRange(selectionStart, selectionEnd);
   });
   document.querySelector("#logoutButton")?.addEventListener("click", logoutAdmin);
+  document.querySelector("#passkeyButton")?.addEventListener("click", passkeyManagerForm);
+  const passkeyLoginButton = document.querySelector("#passkeyLoginButton");
+  if (passkeyLoginButton && passkeySupported()) {
+    passkeyLoginButton.classList.remove("hidden");
+    document.querySelector("#passkeyOr")?.classList.remove("hidden");
+    passkeyLoginButton.addEventListener("click", async () => {
+      loginError?.classList.add("hidden");
+      passkeyLoginButton.disabled = true;
+      try {
+        const result = await passkeyLogin();
+        if (result.ok) {
+          sessionStorage.setItem("kombuAdminAuthenticated", "true");
+          await startAuthenticatedSession();
+          passwordInput.value = "";
+          return;
+        }
+        loginError.textContent = PASSKEY_LOGIN_MESSAGES[result.reason] || PASSKEY_LOGIN_MESSAGES.error;
+        loginError.classList.remove("hidden");
+      } finally {
+        passkeyLoginButton.disabled = false;
+      }
+    });
+  }
 }
 
 const brl = (value) =>

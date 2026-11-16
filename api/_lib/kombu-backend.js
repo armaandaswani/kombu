@@ -949,6 +949,8 @@ module.exports = {
   requireAdmin,
   sanitizePublicState,
   sendEmail,
+  requestError,
+  sessionSecret,
   setSessionCookie,
   supabaseFetch,
   validateAppState,

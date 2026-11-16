@@ -6373,3 +6373,55 @@ textarea:focus-visible {
 .order-filter-status .btn { min-height: 40px; padding: 8px 14px; text-transform: capitalize; }
 .order-filter-status .is-active { background: var(--green); color: white; }
 .order-list-filters .inline-muted { margin: 12px 0 0; line-height: 1.5; }
+
+/* Passkey sign-in: the "or" divider on the login screen and the list of
+   registered devices. */
+.login-or {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.login-or::before,
+.login-or::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--line);
+}
+
+.passkey-list {
+  display: grid;
+  gap: 10px;
+  margin: 0 0 16px;
+  padding: 0;
+  list-style: none;
+}
+
+.passkey-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 12px 14px;
+}
+
+.passkey-item > div {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.passkey-item small {
+  color: var(--muted);
+}
+
+#passkeyLoginButton {
+  min-height: 52px;
+  font-size: 1.05rem;
+}

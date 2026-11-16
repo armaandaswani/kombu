@@ -656,3 +656,8 @@
     transition: none;
   }
 }
+
+/* Adding a passkey is the owner's one-time task, not part of the everyday screen. */
+.admin-shell.is-simple #passkeyButton {
+  display: none;
+}
