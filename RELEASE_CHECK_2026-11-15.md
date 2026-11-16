@@ -105,3 +105,7 @@ At the owner's go-ahead ("Yes, add delivery"), simple mode can now deliver an or
 ## Update, 16 November: published to production
 
 The owner chose to publish the whole reform ("Copiei, pode publicar") after copying the live data in Supabase. The verdict above stands as a risk statement, not as a block: staging was declined on 11 August and the owner accepted the risks listed here. Pushed as a fast-forward, `2e5b9bb..8c10d51`. Checked live without logging in: the served assets match the commit, the Tesseract files return 200, the CSP allows `'wasm-unsafe-eval'`, `/api/state` and `/api/sales` return 401, 10 CMS images and 5 partners, and the public regression passes against production. The admin screens could not be checked live. A restore from backup has still not been tried. Rollback is reverting `8c10d51`.
+
+## Update, 16 November: order-edit fixes published
+
+On the owner's "sim", commit `7a55b91` went to production (`7222c44..7a55b91`) after review and a full test run. It fixes renaming and repricing in simple-mode order edits, closing dates for orders cut to what was delivered, and a bug in the full panel: its "Novo pedido" form pre-selected the payment status "pago", so orders saved without changing it were recorded as paid. The live `admin.js` is byte-identical to the commit; `/api/state` and `/api/sales` still return 401. Not verified: the admin screens, which the check cannot log in to. Open: orders already created through the full panel's "Novo pedido" may be stored as "pago" and were not changed. The owner should check recent orders.
