@@ -2666,6 +2666,12 @@ function refreshOrderReservationStatus(order) {
   if (items.length && items.every((item) => orderItemOutstandingQty(item) <= 0)) {
     order.status = "entregue";
     delete order.statusManual;
+    // An order cut down to what was already delivered ends here, after the
+    // save filled in its dates; it was delivered on its last delivery and is
+    // due when that delivery said, not on the day it was edited.
+    const last = [...orderDeliveries(order)].filter((delivery) => delivery.deliveredAt).sort((a, b) => String(a.deliveredAt).localeCompare(String(b.deliveredAt))).at(-1);
+    if (!order.deliveredAt) order.deliveredAt = order.lastDeliveryAt || last?.deliveredAt || "";
+    if (order.deliveredAt && !order.paymentDueDate) order.paymentDueDate = last?.paymentDueDate || addDaysIso(order.deliveredAt, 15);
     return;
   }
   if (!isOpenOrder(order)) return;
@@ -7877,7 +7883,10 @@ function simpleOrderForm(orderId) {
     return;
   }
   const known = simpleKnownCustomers();
-  const startType = existing ? simplePriceType(existing.clientType) : "";
+  // The partner the order belongs to, found the way the full panel finds it,
+  // so older orders saved without a partnerId keep their partner.
+  const existingPartner = existing ? selectedPartnerForOrder(existing) : null;
+  const startType = existing ? simplePriceType(existing.clientType) || (existingPartner ? "wholesale" : "") : "";
   const ownItems = (productId) => orderItems(existing).filter((item) => item.productId === productId);
   const rows = products.map((product) => ({
     product,
@@ -7933,15 +7942,20 @@ function simpleOrderForm(orderId) {
   const form = document.querySelector("#simpleOrderForm");
   let priceChosen = Boolean(startType);
   const priceType = () => form.elements.priceType.value;
+  // Editing an order keeps who it belongs to, as the full panel does: the name
+  // field is the contact person, and fixing it must not unlink the partner.
   const previous = () => {
-    const name = normalizeText(form.elements.customerName.value);
-    if (existing && name === normalizeText(existing.customerName)) {
-      return { clientType: existing.clientType || "", partnerId: existing.clientType === "parceiro_recorrente" ? existing.partnerId || "" : "" };
+    if (existing) {
+      const type = existing.clientType || (existingPartner ? "parceiro_recorrente" : "");
+      return { clientType: type, partnerId: type === "parceiro_recorrente" ? existingPartner?.id || "" : "" };
     }
-    return known.get(name) || { clientType: "", partnerId: "" };
+    return known.get(normalizeText(form.elements.customerName.value)) || { clientType: "", partnerId: "" };
   };
-  const clientType = () => simpleClientType(priceType(), previous().clientType, previous().partnerId);
-  const repriced = () => Boolean(existing) && priceType() !== startType;
+  // Only a change of price type moves the order to another kind of customer.
+  // When the order had no price type yet, choosing one labels it and keeps
+  // the prices it was made at.
+  const repriced = () => Boolean(existing) && Boolean(startType) && priceType() !== startType;
+  const clientType = () => existing?.clientType && !repriced() ? existing.clientType : simpleClientType(priceType(), previous().clientType, previous().partnerId);
   // An order keeps the price it was made at (it may have been negotiated);
   // new bottles of a size take the price that size already has in the order.
   const unitPrice = (product) => {
@@ -7953,20 +7967,61 @@ function simpleOrderForm(orderId) {
     }
     return priceForOrderClientType(product, clientType());
   };
+  // The order's lines after the steppers, used for both the total shown and
+  // what is saved. Lines and their keys are kept; bottles are added to or
+  // taken from the last line of a flavour, never below what was delivered.
+  const buildItems = () => {
+    const type = clientType();
+    const items = clone(orderItems(existing));
+    rows.forEach((row) => {
+      const target = Math.max(row.delivered, simpleQty(form, row.product.id));
+      const own = items.filter((item) => item.productId === row.product.id);
+      const current = own.reduce((sum, item) => sum + Number(item.qty || 0), 0);
+      if (target > current) {
+        if (own.length) own.at(-1).qty = Number(own.at(-1).qty || 0) + target - current;
+        else items.push({ productId: row.product.id, qty: target, unitPrice: unitPrice(row.product) });
+      } else if (target < current) {
+        let remove = current - target;
+        [...own].reverse().forEach((item) => {
+          const delta = Math.min(remove, Number(item.qty || 0) - orderItemDeliveredQty(item));
+          item.qty = Number(item.qty || 0) - delta;
+          remove -= delta;
+        });
+      }
+    });
+    if (!repriced()) return items;
+    // A new price type applies to bottles not yet delivered. Delivered bottles
+    // were sold at the old price, so a partly delivered line is split: the
+    // delivered part keeps its key and price (its delivery records point at
+    // it), and the rest moves to a new line with the reservation.
+    return items.flatMap((item) => {
+      const price = priceForOrderClientType(byId("products", item.productId), type);
+      const delivered = orderItemDeliveredQty(item);
+      const qty = Number(item.qty || 0);
+      if (!delivered) return [{ ...item, unitPrice: price }];
+      if (delivered >= qty || Number(item.unitPrice || 0) === price) return [item];
+      const { key, ...rest } = item;
+      return [
+        { ...item, qty: delivered, allocations: [], reservedQty: 0, producedQty: 0, batchCode: "", reservationTarget: null, reservationOverride: null },
+        { ...rest, qty: qty - delivered, deliveredQty: 0, unitPrice: price },
+      ];
+    });
+  };
   const refresh = () => {
+    const items = buildItems();
     let bottles = 0;
-    let value = 0;
     rows.forEach((row) => {
       const qty = simpleQty(form, row.product.id);
-      const price = priceType() ? unitPrice(row.product) : null;
+      const prices = new Set(items.filter((item) => item.productId === row.product.id && Number(item.qty || 0) > 0).map((item) => Number(item.unitPrice || 0)));
+      const price = !priceType() ? "" : prices.size > 1 ? "Preços diferentes mantidos" : `${brl(prices.size ? [...prices][0] : unitPrice(row.product))} cada`;
       const free = availableStockForProduct(row.product.id);
       [...form.querySelectorAll("[data-price]")].find((label) => label.dataset.price === row.product.id).textContent = [
-        price == null ? "" : `${brl(price)} cada`,
+        price,
         free > 0 ? `${number(free)} em estoque` : "estoque vazio",
       ].filter(Boolean).join(" · ");
       bottles += qty;
-      value += price == null ? 0 : qty * price;
     });
+    const value = items.reduce((sum, item) => sum + Number(item.qty || 0) * Number(item.unitPrice || 0), 0);
     form.querySelector(".simple-total").textContent = !bottles
       ? "Nenhuma garrafa escolhida ainda."
       : priceType() ? `Total: ${simpleBottles(bottles)} · ${brl(value)}` : `Total: ${simpleBottles(bottles)}`;
@@ -7993,30 +8048,17 @@ function simpleOrderForm(orderId) {
     if (!rows.some((row) => simpleQty(form, row.product.id) > 0)) return simpleError(form, "Escolha pelo menos uma garrafa.");
     const type = clientType();
     const { partnerId } = previous();
-    let items = clone(orderItems(existing));
-    rows.forEach((row) => {
-      const target = Math.max(row.delivered, simpleQty(form, row.product.id));
-      const own = items.filter((item) => item.productId === row.product.id);
-      const current = own.reduce((sum, item) => sum + Number(item.qty || 0), 0);
-      if (target > current) {
-        if (own.length) own.at(-1).qty = Number(own.at(-1).qty || 0) + target - current;
-        else items.push({ productId: row.product.id, qty: target, unitPrice: unitPrice(row.product) });
-      } else if (target < current) {
-        let remove = current - target;
-        [...own].reverse().forEach((item) => {
-          const delta = Math.min(remove, Number(item.qty || 0) - orderItemDeliveredQty(item));
-          item.qty = Number(item.qty || 0) - delta;
-          remove -= delta;
-        });
-      }
-    });
-    if (repriced()) items.forEach((item) => { item.unitPrice = priceForOrderClientType(byId("products", item.productId), type); });
     // The same normalisation the full form applies to its rows.
     const holder = document.createElement("div");
-    holder.innerHTML = items.filter((item) => Number(item.qty || 0) > 0).map((item) => orderItemRowTemplate(item, type)).join("");
-    items = [...holder.children].map(readOrderItemRow).filter(Boolean);
+    holder.innerHTML = buildItems().filter((item) => Number(item.qty || 0) > 0).map((item) => orderItemRowTemplate(item, type)).join("");
+    const items = [...holder.children].map(readOrderItemRow).filter(Boolean);
     const partner = type === "parceiro_recorrente" ? byId("partners", partnerId) : null;
     const nameChanged = existing && normalizeText(name) !== normalizeText(existing.customerName);
+    // A business name that only repeated the old contact name follows the
+    // rename; a real business name, or the partner's, stays.
+    const businessName = !existing ? partner?.name || ""
+      : !nameChanged ? existing.businessName || ""
+      : partner?.name || (normalizeText(existing.businessName) === normalizeText(existing.customerName) ? "" : existing.businessName || "");
     const totalQty = items.reduce((sum, item) => sum + item.qty, 0);
     const shared = {
       customerName: name,
@@ -8030,7 +8072,7 @@ function simpleOrderForm(orderId) {
       updatedAt: new Date().toISOString(),
     };
     if (existing) {
-      commitOrder(existing, { ...shared, businessName: nameChanged ? partner?.name || "" : existing.businessName || "" });
+      commitOrder(existing, { ...shared, businessName });
     } else {
       const today = todayIso();
       commitOrder(null, {
@@ -8042,7 +8084,7 @@ function simpleOrderForm(orderId) {
         paymentStatus: "aberto",
         paymentMethod: "",
         status: "recebido",
-        businessName: partner?.name || "",
+        businessName,
         whatsapp: partner?.whatsapp || "",
         instagram: partner?.instagram || "",
         neighborhood: partner?.neighborhood || "",
@@ -11887,7 +11929,7 @@ function orderForm(orderId) {
             <label class="field"><span>Código</span><input name="code" value="${escapeHtml(existing?.code || nextOrderCode(orderDate))}" required></label>
             <label class="field"><span>Data do pedido</span><input name="orderDate" type="date" value="${orderDate}" required></label>
             <label class="field"><span>Receber até</span><input name="paymentDueDate" type="date" value="${paymentDueDate}"></label>
-            <label class="field"><span>Status pagamento</span><select name="paymentStatus" class="admin-select">${PAYMENT_STATUSES.map((status) => `<option value="${status}" ${orderReceivableStatus(existing || {}) === status || existing?.paymentStatus === status ? "selected" : ""}>${status}</option>`).join("")}</select></label>
+            <label class="field"><span>Status pagamento</span><select name="paymentStatus" class="admin-select">${PAYMENT_STATUSES.map((status) => `<option value="${status}" ${(existing ? orderReceivableStatus(existing) === status || existing.paymentStatus === status : status === "aberto") ? "selected" : ""}>${status}</option>`).join("")}</select></label>
             <label class="field"><span>Forma de pagamento</span><select name="paymentMethod" class="admin-select"><option value="">Não informada</option>${PAYMENT_METHODS.map((method) => `<option value="${method}" ${existing?.paymentMethod === method ? "selected" : ""}>${method}</option>`).join("")}</select></label>
             <label class="field"><span>WhatsApp</span><input name="whatsapp" value="${escapeHtml(existing?.whatsapp || "")}"></label>
             <label class="field"><span>Origem</span><input name="source" value="${escapeHtml(existing?.source || "")}" placeholder="WhatsApp, feira, revendedor..."></label>

@@ -224,19 +224,61 @@ const seed = {
         for (let press = 0; press < 3; press += 1) await passion.locator('[data-step="-1"]').click();
         assert.equal(await passion.locator("[data-qty]").inputValue(), "8");
         assert.match(await passion.innerText(), new RegExp(T("8 garrafas já entregues", "8 bottles already delivered")));
-        await page.evaluate(() => closeModal());
+
+        // Correcting the contact's name keeps the order with its partner and
+        // creates no second partner.
+        for (let press = 0; press < 2; press += 1) await passion.locator('[data-step="1"]').click();
+        await form.locator('[name="customerName"]').fill("Seu Paulo");
+        await form.locator(".simple-save").click();
+        await page.waitForSelector(".operator-notice");
+        const renamed = await order("late");
+        assert.deepEqual([renamed.customerName, renamed.clientType, renamed.partnerId, renamed.businessName], ["Seu Paulo", "parceiro_recorrente", "cafe", "Café Centro"]);
+        assert.equal(await page.evaluate(() => state.partners.length), 1, "a rename does not create a partner");
+
+        // A new price type applies to the bottles still owed. The 8 delivered
+        // were sold at the negotiated price, so their line keeps it.
+        await cafe().locator('[data-action^="simple-edit-order"]').click();
+        await page.waitForSelector("#simpleOrderForm");
+        await form.locator('[name="priceType"][value="retail"]').check();
+        assert.match(await form.locator(".simple-total").innerText(), /R\$\s?196[.,]00/, "the total shown is what will be saved");
+        await form.locator(".simple-save").click();
+        await page.waitForSelector(".operator-notice");
+        const repriced = await order("late");
+        assert.equal(repriced.clientType, "novo_cliente");
+        assert.deepEqual(repriced.items.map((item) => [item.productId, item.qty, item.unitPrice, item.deliveredQty]), [["mar", 8, 13.5, 8], ["mar", 2, 22, 0], ["gen", 2, 22, 0]]);
+        assert.equal(repriced.items[0].key, "k1", "the delivered line keeps the key its delivery points at");
+        assert.equal(await page.evaluate(() => orderTotal(state.orders.find((item) => item.id === "late"))), 196);
+
+        // Cutting the order to what was delivered closes it on the delivery's
+        // dates, not on the day it was edited.
+        await cafe().locator('[data-action^="simple-edit-order"]').click();
+        await page.waitForSelector("#simpleOrderForm");
+        await passion.locator("[data-qty]").fill("0");
+        await passion.locator("[data-qty]").dispatchEvent("change");
+        await flavor("Gengibre").locator("[data-qty]").fill("0");
+        await flavor("Gengibre").locator("[data-qty]").dispatchEvent("change");
+        await form.locator(".simple-save").click();
+        await page.waitForSelector(".operator-notice");
+        const closed = await order("late");
+        assert.equal(closed.status, "entregue");
+        assert.deepEqual([closed.deliveredAt, closed.paymentDueDate], [closed.deliveries[0].deliveredAt, closed.deliveries[0].paymentDueDate]);
 
         if (locale === "en") {
           // Names and amounts are data; any other leftover is interface text.
-          const data = new Set(["Café Centro", "Dona Rosa", "Seu Jorge", "Gengibre", "Hibisco", "Maracujá"]);
+          const data = new Set(["Café Centro", "Café Centro)", "Seu Paulo", "Dona Rosa", "Seu Jorge", "Gengibre", "Hibisco", "Maracujá"]);
           const leftovers = await page.evaluate(() => window.KombuLocale.misses().map((miss) => miss.text));
           assert.deepEqual(leftovers.filter((text) => !data.has(text) && !/^R\$\s?[\d.,]+$/.test(text)), [], "simple mode has untranslated text");
         }
+        // The full panel's new order starts unpaid, as simple mode's does.
+        // Checked after the translation check, which covers simple mode only.
+        await page.evaluate(() => orderForm());
+        assert.equal(await page.locator('#orderForm [name="paymentStatus"]').inputValue(), "aberto");
+        await page.evaluate(() => closeModal());
         assert.deepEqual(errors, []);
         await context.close();
       }
     }
-    console.log("Simple orders: new order priced by customer type, known partner wholesale, edit keeping price/partner/history, delivered list, production reserving for the waiting order, delivery of the set-aside bottles with sales and proof PDF, 48px targets, PT/EN and no overflow passed at 390/1440px.");
+    console.log("Simple orders: new order priced by customer type, known partner wholesale, edit keeping price/partner/history, delivered list, production reserving for the waiting order, delivery of the set-aside bottles with sales and proof PDF, rename keeping the partner, repricing only undelivered bottles, closing on the delivery's dates, full-panel new order unpaid, 48px targets, PT/EN and no overflow passed at 390/1440px.");
   } finally {
     await browser.close();
   }
