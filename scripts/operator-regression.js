@@ -48,17 +48,25 @@ const seed = {
       for (const box of await tasks.evaluateAll((nodes) => nodes.map((node) => node.getBoundingClientRect().height))) assert.ok(box >= 80, `task height ${box}`);
       assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), "no horizontal scroll");
 
-      // Every task opens its form.
-      await tasks.filter({ hasText: "Registrar produção" }).click();
-      await page.waitForSelector("#batchForm");
+      // Every task opens its form or screen.
+      await tasks.filter({ hasText: "Novo pedido" }).click();
+      await page.waitForSelector("#simpleOrderForm");
       await closeModal();
-      await tasks.filter({ hasText: "Registrar compra" }).click();
+      await tasks.filter({ hasText: "Registrar produção" }).click();
+      await page.waitForSelector("#simpleBatchForm");
+      await closeModal();
+      await tasks.filter({ hasText: "Ver pedidos" }).click();
+      await page.waitForSelector(".simple-tabs");
+      await page.click('.operator-back');
+      await page.waitForSelector(".operator-tasks");
+      await page.click('.operator-more [data-action="read-receipt"]');
       await page.waitForSelector("[data-receipt-photo]");
       await closeModal();
-      await page.click(".operator-alt .link-button");
+      await page.click('.operator-more [data-action="new-purchase"]');
       await page.waitForSelector("#purchaseForm");
       await closeModal();
-      await tasks.filter({ hasText: "Encontrar ou corrigir" }).click();
+      await page.click('.operator-more [data-action="operator-find"]');
+      await page.waitForSelector("#operatorSearch");
       assert.equal(await page.evaluate(() => document.activeElement?.id), "operatorSearch", "find focuses the search box");
 
       // The list: newest first, searchable by name, client and date, one tap to correct.
@@ -85,6 +93,7 @@ const seed = {
       for (const box of await page.locator(".operator-fix").evaluateAll((nodes) => nodes.map((node) => node.getBoundingClientRect().height))) assert.ok(box >= 44, `button height ${box}`);
 
       // Stock opens the full screen with a way back.
+      await page.click(".operator-back");
       await tasks.filter({ hasText: "Ver estoque" }).click();
       await page.waitForSelector(".operator-return");
       assert.equal(await page.evaluate(() => currentModule), "stock");
@@ -110,7 +119,7 @@ const seed = {
       assert.deepEqual(errors, []);
       await context.close();
     }
-    console.log("Operator mode: menu entry, hidden sidebar, four tasks opening their forms, search by name/client/date keeping focus, one-tap corrections, return from stock, visible focus, 44px targets, no overflow and remembered home passed at 390/1440px.");
+    console.log("Operator mode: menu entry, hidden sidebar, four tasks and other tasks opening their forms, search by name/client/date keeping focus, one-tap corrections, return from stock, visible focus, 44px targets, no overflow and remembered home passed at 390/1440px.");
   } finally {
     await browser.close();
   }

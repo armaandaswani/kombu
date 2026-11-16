@@ -7577,7 +7577,94 @@ function operatorTask(action, icon, label, help) {
     </button>`;
 }
 
-function renderOperator() {
+// Simple mode shows one screen at a time: home, the orders, or the list of
+// entries to correct. A short confirmation is shown once after a save.
+let operatorView = "home";
+let operatorOrdersTab = "open";
+let operatorNotice = "";
+const OPERATOR_HOME_ORDERS = 3;
+const OPERATOR_DELIVERED_LIMIT = 20;
+
+function simpleBottles(qty) {
+  return Number(qty) === 1 ? "1 garrafa" : `${number(qty)} garrafas`;
+}
+
+// Only the date the customer asked for. The estimated ready date is the
+// panel's own default (a week after the order) and is not a promise.
+function simpleOrderDueDate(order) {
+  return order.neededBy || "";
+}
+
+// The state of an order in plain words, from the same reservation figures the
+// full panel uses: bottles already set aside count as ready.
+function simpleOrderSituation(order, today = todayIso()) {
+  if (normalizeText(order.status).startsWith("cancelad")) return { tone: "neutral", text: "Cancelado", late: false };
+  const outstanding = orderOutstandingQuantity(order);
+  if (!isOpenOrder(order) || outstanding <= 0) {
+    return { tone: "good", text: order.deliveredAt ? `Entregue em ${fullDate(order.deliveredAt)}` : "Entregue", late: false };
+  }
+  const ready = orderItems(order).reduce((sum, item) => sum + orderItemReservedQty(item), 0);
+  const missing = outstanding - ready;
+  const due = simpleOrderDueDate(order);
+  const late = Boolean(due) && due < today;
+  if (missing <= 0) return { tone: late ? "bad" : "good", text: "Pronto para entregar", late };
+  const text = missing === 1 ? "Falta produzir 1 garrafa" : `Faltam produzir ${number(missing)} garrafas`;
+  return { tone: late ? "bad" : "warn", text: ready > 0 ? `${text} (${simpleBottles(ready)} já separadas)` : text, late };
+}
+
+function simpleOrderItemsText(order) {
+  const totals = new Map();
+  orderItems(order).forEach((item) => {
+    const product = byId("products", item.productId);
+    const size = Number(item.sizeMl || product?.sizeMl || BASE_BOTTLE_SIZE_ML);
+    const name = `${item.flavor || product?.flavor || orderProductText(item)}${size === BASE_BOTTLE_SIZE_ML ? "" : ` ${number(size)} ml`}`;
+    totals.set(name, (totals.get(name) || 0) + Number(item.qty || 0));
+  });
+  return [...totals].filter(([, qty]) => qty > 0).map(([name, qty]) => `${number(qty)} ${name}`).join(" · ");
+}
+
+// Open orders, the one needed soonest first; orders with no date go last.
+function simpleOpenOrders() {
+  return (state.orders || [])
+    .filter(isOpenOrder)
+    .sort((a, b) => (simpleOrderDueDate(a) || "9999").localeCompare(simpleOrderDueDate(b) || "9999") || String(a.orderDate || "").localeCompare(String(b.orderDate || "")));
+}
+
+function simpleDeliveredOrders() {
+  return (state.orders || [])
+    .filter((order) => !isOpenOrder(order) && !normalizeText(order.status).startsWith("cancelad"))
+    .sort((a, b) => String(b.deliveredAt || b.orderDate || "").localeCompare(String(a.deliveredAt || a.orderDate || "")))
+    .slice(0, OPERATOR_DELIVERED_LIMIT);
+}
+
+function simpleOrderCard(order) {
+  const situation = simpleOrderSituation(order);
+  const due = simpleOrderDueDate(order);
+  const open = isOpenOrder(order);
+  return `
+    <li class="simple-order">
+      <div class="simple-order-text">
+        <strong data-i18n-skip>${escapeHtml(orderClientDisplayName(order))}</strong>
+        <span class="simple-order-items" data-i18n-skip>${escapeHtml(simpleOrderItemsText(order))}</span>
+        <span>${simpleBottles(orderQuantity(order))} · ${brl(orderTotal(order))}</span>
+        ${open && due ? `<span class="simple-order-due">${situation.late ? `<span class="status bad">Atrasado</span>` : ""}<span>Entregar até ${fullDate(due)}</span></span>` : ""}
+        <span class="status ${situation.tone}">${situation.text}</span>
+      </div>
+      ${open ? `<button class="btn btn-outline operator-fix" type="button" data-action="simple-edit-order:${escapeHtml(order.id)}" aria-label="${escapeHtml(`Editar pedido de ${orderClientDisplayName(order)}`)}">Editar pedido</button>` : ""}
+    </li>`;
+}
+
+function operatorNoticeMarkup() {
+  const notice = operatorNotice;
+  operatorNotice = "";
+  return notice ? `<p class="operator-notice" role="status"><span class="material-symbols-outlined" aria-hidden="true">check_circle</span><span>${escapeHtml(notice)}</span></p>` : "";
+}
+
+function operatorBackButton() {
+  return `<button class="btn btn-outline operator-back" type="button" data-action="operator-home"><span class="material-symbols-outlined" aria-hidden="true">arrow_back</span>Voltar ao início</button>`;
+}
+
+function renderOperatorHome() {
   const attention = [
     ...[...new Set(pendingBatchSales().map((sale) => sale.productId))].map((productId) => {
       const product = byId("products", productId);
@@ -7585,30 +7672,456 @@ function renderOperator() {
     }),
     ...negativeStockSupplies().map(({ collection, item }) => `Estoque negativo: ${item.name} (${quantity(item.stock)} ${stockUnitFor(collection, item)}). Registre a compra que faltou.`),
   ];
+  const open = simpleOpenOrders();
   return `
-    <section class="operator" aria-labelledby="operatorTitle">
-      <div class="operator-head">
-        <h1 id="operatorTitle">O que você vai registrar?</h1>
-        <button class="btn btn-outline" type="button" data-action="full-panel"><span class="material-symbols-outlined" aria-hidden="true">dashboard</span>Painel completo</button>
+    <div class="operator-head">
+      <h1 id="operatorTitle">O que você quer fazer?</h1>
+      <button class="btn btn-outline" type="button" data-action="full-panel"><span class="material-symbols-outlined" aria-hidden="true">dashboard</span>Painel completo</button>
+    </div>
+    ${operatorNoticeMarkup()}
+    <div class="operator-tasks">
+      ${operatorTask("simple-new-order", "add_shopping_cart", "Novo pedido", "Anotar o pedido de um cliente")}
+      ${operatorTask("operator-orders", "receipt_long", "Ver pedidos", open.length ? (open.length === 1 ? "1 pedido em aberto" : `${number(open.length)} pedidos em aberto`) : "Nenhum pedido em aberto")}
+      ${operatorTask("simple-new-batch", "factory", "Registrar produção", "Garrafas que ficaram prontas")}
+      ${operatorTask("operator-stock", "inventory_2", "Ver estoque", "Quanto tem de cada sabor")}
+    </div>
+    ${attention.length ? `<div class="operator-attention" role="status"><h2>Precisa de atenção</h2><ul>${attention.map((line) => `<li>${escapeHtml(line)}</li>`).join("")}</ul></div>` : ""}
+    <section class="operator-ledger" aria-labelledby="operatorNextTitle">
+      <h2 id="operatorNextTitle">Próximos pedidos</h2>
+      ${open.length
+        ? `<ol class="simple-orders">${open.slice(0, OPERATOR_HOME_ORDERS).map(simpleOrderCard).join("")}</ol>
+           ${open.length > OPERATOR_HOME_ORDERS ? `<button class="btn btn-outline operator-wide" type="button" data-action="operator-orders">Ver todos os pedidos (${number(open.length)})</button>` : ""}`
+        : `<p class="empty-note">Nenhum pedido em aberto. Para anotar um, toque em Novo pedido.</p>`}
+    </section>
+    <section class="operator-more" aria-labelledby="operatorMoreTitle">
+      <h2 id="operatorMoreTitle">Outras tarefas</h2>
+      <div class="operator-more-actions">
+        <button class="btn btn-outline" type="button" data-action="read-receipt"><span class="material-symbols-outlined" aria-hidden="true">photo_camera</span>Registrar compra pela foto da nota</button>
+        <button class="btn btn-outline" type="button" data-action="new-purchase"><span class="material-symbols-outlined" aria-hidden="true">edit_note</span>Registrar compra sem foto</button>
+        <button class="btn btn-outline" type="button" data-action="operator-find"><span class="material-symbols-outlined" aria-hidden="true">search</span>Corrigir um lançamento</button>
       </div>
-      <div class="operator-tasks">
-        ${operatorTask("new-batch", "factory", "Registrar produção", "Um lote novo de kombucha")}
-        ${operatorTask("read-receipt", "photo_camera", "Registrar compra", "Tire uma foto da nota")}
-        ${operatorTask("operator-stock", "inventory_2", "Ver estoque", "Quanto tem de cada sabor")}
-        ${operatorTask("operator-find", "search", "Encontrar ou corrigir", "Uma compra, produção ou venda")}
-      </div>
-      <p class="operator-alt">Sem a nota em mãos? <button class="link-button" type="button" data-action="new-purchase">Registrar compra sem foto</button></p>
-      ${attention.length ? `<div class="operator-attention" role="status"><h2>Precisa de atenção</h2><ul>${attention.map((line) => `<li>${escapeHtml(line)}</li>`).join("")}</ul></div>` : ""}
-      <section class="operator-ledger" aria-labelledby="operatorLedgerTitle">
-        <h2 id="operatorLedgerTitle">Lançamentos recentes</h2>
-        <label class="operator-search">
-          <span>Encontrar uma compra, produção ou venda</span>
-          <input id="operatorSearch" type="search" value="${escapeHtml(operatorSearch)}" placeholder="Nome, sabor, cliente ou data" autocomplete="off">
-        </label>
-        <div id="operatorEntries" aria-live="polite">${operatorEntriesMarkup()}</div>
-      </section>
     </section>
   `;
+}
+
+function renderOperatorOrders() {
+  const open = simpleOpenOrders();
+  const showOpen = operatorOrdersTab !== "delivered";
+  const list = showOpen ? open : simpleDeliveredOrders();
+  return `
+    ${operatorBackButton()}
+    <div class="operator-head">
+      <h1 id="operatorTitle">Pedidos</h1>
+      <button class="btn btn-primary" type="button" data-action="simple-new-order"><span class="material-symbols-outlined" aria-hidden="true">add</span>Novo pedido</button>
+    </div>
+    ${operatorNoticeMarkup()}
+    <div class="simple-tabs" role="group" aria-label="Quais pedidos mostrar">
+      <button type="button" class="${showOpen ? "is-active" : ""}" aria-pressed="${showOpen}" data-action="operator-orders-tab:open">Em aberto (${number(open.length)})</button>
+      <button type="button" class="${showOpen ? "" : "is-active"}" aria-pressed="${!showOpen}" data-action="operator-orders-tab:delivered">Entregues</button>
+    </div>
+    ${list.length
+      ? `<ol class="simple-orders">${list.map(simpleOrderCard).join("")}</ol>`
+      : `<p class="empty-note">${showOpen ? "Nenhum pedido em aberto. Para anotar um, toque em Novo pedido." : "Nenhum pedido entregue ainda."}</p>`}
+    ${!showOpen && list.length >= OPERATOR_DELIVERED_LIMIT ? `<p class="empty-note">Mostrando os ${number(OPERATOR_DELIVERED_LIMIT)} mais recentes.</p>` : ""}
+    <p class="operator-alt">Para registrar a entrega, cobrar ou cancelar um pedido, use o <button class="link-button" type="button" data-action="operator-full-orders">painel completo</button>.</p>
+  `;
+}
+
+function renderOperatorFind() {
+  return `
+    ${operatorBackButton()}
+    <div class="operator-head"><h1 id="operatorTitle">Corrigir um lançamento</h1></div>
+    <section class="operator-ledger" aria-label="Lançamentos recentes">
+      <label class="operator-search">
+        <span>Encontrar uma compra, produção ou venda</span>
+        <input id="operatorSearch" type="search" value="${escapeHtml(operatorSearch)}" placeholder="Nome, sabor, cliente ou data" autocomplete="off">
+      </label>
+      <div id="operatorEntries" aria-live="polite">${operatorEntriesMarkup()}</div>
+    </section>
+  `;
+}
+
+function renderOperator() {
+  const views = { home: renderOperatorHome, orders: renderOperatorOrders, find: renderOperatorFind };
+  return `<section class="operator" aria-labelledby="operatorTitle">${(views[operatorView] || renderOperatorHome)()}</section>`;
+}
+
+// Large − and + buttons around a number box, for people who find small
+// number fields hard to use. The box can still be typed into.
+function simpleStepper(key, value, min, label) {
+  return `
+    <span class="simple-stepper">
+      <button type="button" class="simple-step" data-step="-1" aria-label="${escapeHtml(`Menos ${label}`)}">−</button>
+      <input type="number" inputmode="numeric" min="${min}" step="1" value="${value}" data-qty="${escapeHtml(key)}" aria-label="${escapeHtml(`Garrafas de ${label}`)}">
+      <button type="button" class="simple-step" data-step="1" aria-label="${escapeHtml(`Mais ${label}`)}">+</button>
+    </span>`;
+}
+
+function bindSimpleSteppers(form, onChange) {
+  // A message about a missing answer goes away as soon as anything changes.
+  form.addEventListener("input", () => { form.querySelector(".simple-error").hidden = true; });
+  form.addEventListener("click", (event) => {
+    if (event.target.closest("[data-step]") || event.target.matches("input")) form.querySelector(".simple-error").hidden = true;
+  });
+  const settle = (input, value) => {
+    input.value = String(Math.max(Number(input.min || 0), Math.round(Number(value)) || 0));
+    onChange();
+  };
+  form.addEventListener("click", (event) => {
+    const step = event.target.closest("[data-step]");
+    if (!step) return;
+    const input = step.parentElement.querySelector("[data-qty]");
+    settle(input, Number(input.value || 0) + Number(step.dataset.step));
+  });
+  form.addEventListener("input", (event) => {
+    if (event.target.matches("[data-qty]")) onChange();
+  });
+  form.addEventListener("change", (event) => {
+    if (event.target.matches("[data-qty]")) settle(event.target, event.target.value);
+  });
+}
+
+function simpleQty(form, key) {
+  const input = [...form.querySelectorAll("[data-qty]")].find((field) => field.dataset.qty === key);
+  return Math.max(0, Math.round(Number(input?.value || 0)) || 0);
+}
+
+function simpleError(form, message) {
+  const box = form.querySelector(".simple-error");
+  box.textContent = message;
+  box.hidden = false;
+  box.scrollIntoView({ block: "nearest" });
+}
+
+// Rows grouped by bottle size, 500 ml first, flavours in alphabetical order.
+function simpleFlavorGroups(rows, rowMarkup) {
+  const sizes = [...new Set(rows.map((row) => row.sizeMl))].sort((a, b) => b - a);
+  return sizes.map((size) => `
+    ${sizes.length > 1 ? `<h3 class="simple-size">Garrafa de ${number(size)} ml</h3>` : ""}
+    <ul class="simple-flavor-list">
+      ${rows.filter((row) => row.sizeMl === size).sort((a, b) => String(a.label).localeCompare(String(b.label))).map(rowMarkup).join("")}
+    </ul>`).join("");
+}
+
+const SIMPLE_PRICE_TYPES = [
+  { value: "wholesale", label: "Revenda ou parceiro", help: "Preço de atacado" },
+  { value: "retail", label: "Consumidor final", help: "Preço de varejo" },
+];
+
+function simplePriceType(clientType) {
+  const type = ORDER_CLIENT_TYPES.find((item) => item.value === clientType);
+  if (!type) return "";
+  return type.price === "wholesale" ? "wholesale" : "retail";
+}
+
+// Keeps the more specific kind of customer an order already had (a recurring
+// partner, a recurring retail customer) while the price type stays the same.
+function simpleClientType(priceType, previousType, partnerId) {
+  if (priceType === "wholesale") {
+    if (partnerId) return "parceiro_recorrente";
+    return simplePriceType(previousType) === "wholesale" && previousType !== "parceiro_recorrente" ? previousType : "novo_parceiro";
+  }
+  return simplePriceType(previousType) === "retail" ? previousType : "novo_cliente";
+}
+
+// Names already known, so a returning customer brings back their price type.
+// Registered partners win over a name that only appears on past orders.
+function simpleKnownCustomers() {
+  const known = new Map();
+  [...(state.orders || [])]
+    .sort((a, b) => String(a.orderDate || "").localeCompare(String(b.orderDate || "")))
+    .forEach((order) => {
+      const name = String(order.customerName || "").trim();
+      if (name) known.set(normalizeText(name), { name, clientType: order.clientType || "", partnerId: order.clientType === "parceiro_recorrente" ? order.partnerId || "" : "" });
+    });
+  (state.partners || []).forEach((partner) => {
+    const name = String(partner.name || "").trim();
+    if (name) known.set(normalizeText(name), { name, clientType: "parceiro_recorrente", partnerId: partner.id });
+  });
+  return known;
+}
+
+// The order form for simple mode: who, which flavours, how many, and for
+// when. Prices come from the price table for the kind of customer. Payment,
+// delivery and reservations are left as they were and handled in the full
+// panel; saving goes through the same commitOrder as the full form.
+function simpleOrderForm(orderId) {
+  const existing = orderId ? byId("orders", orderId) : null;
+  if (orderId && !existing) {
+    localizedAlert("Pedido não encontrado. Atualize a página e tente novamente.");
+    return;
+  }
+  const inOrder = new Set(orderItems(existing).map((item) => item.productId));
+  const products = state.products.filter((product) => productIsOperational(product) || inOrder.has(product.id));
+  if (!products.length) {
+    orderForm();
+    return;
+  }
+  const known = simpleKnownCustomers();
+  const startType = existing ? simplePriceType(existing.clientType) : "";
+  const ownItems = (productId) => orderItems(existing).filter((item) => item.productId === productId);
+  const rows = products.map((product) => ({
+    product,
+    sizeMl: productSizeMl(product),
+    label: product.flavor || product.item || "Kombucha",
+    qty: ownItems(product.id).reduce((sum, item) => sum + Number(item.qty || 0), 0),
+    delivered: ownItems(product.id).reduce((sum, item) => sum + orderItemDeliveredQty(item), 0),
+  }));
+  openModal(
+    existing ? "Editar pedido" : "Novo pedido",
+    "Pedidos",
+    `
+      <form id="simpleOrderForm" class="simple-form" novalidate>
+        <label class="simple-field">
+          <span>Nome do cliente</span>
+          <input name="customerName" list="simpleCustomers" value="${escapeHtml(existing?.customerName || "")}" autocomplete="off" required>
+        </label>
+        <datalist id="simpleCustomers">${[...known.values()].map((customer) => `<option value="${escapeHtml(customer.name)}"></option>`).join("")}</datalist>
+        <fieldset class="simple-choice">
+          <legend>Que preço usar?</legend>
+          ${SIMPLE_PRICE_TYPES.map((type) => `
+            <label class="simple-choice-option">
+              <input type="radio" name="priceType" value="${type.value}" ${startType === type.value ? "checked" : ""}>
+              <span><strong>${type.label}</strong><small>${type.help}</small></span>
+            </label>`).join("")}
+        </fieldset>
+        <fieldset class="simple-flavors">
+          <legend>Quantas garrafas de cada sabor?</legend>
+          ${simpleFlavorGroups(rows, (row) => `
+            <li class="simple-flavor">
+              <span class="simple-flavor-name">
+                <strong data-i18n-skip>${escapeHtml(row.label)}</strong>
+                <small data-price="${escapeHtml(row.product.id)}"></small>
+                ${row.delivered ? `<small>${simpleBottles(row.delivered)} já entregues</small>` : ""}
+              </span>
+              ${simpleStepper(row.product.id, row.qty, row.delivered, row.label)}
+            </li>`)}
+        </fieldset>
+        <label class="simple-field">
+          <span>Para quando? (opcional)</span>
+          <input type="date" name="neededBy" value="${escapeHtml(existing?.neededBy || "")}">
+        </label>
+        <label class="simple-field">
+          <span>Observação (opcional)</span>
+          <textarea name="notes" rows="2">${escapeHtml(existing?.notes || "")}</textarea>
+        </label>
+        <p class="simple-total" aria-live="polite"></p>
+        <p class="simple-error" role="alert" hidden></p>
+        <button class="btn btn-primary simple-save" type="submit"><span class="material-symbols-outlined" aria-hidden="true">save</span>Salvar pedido</button>
+      </form>
+    `,
+  );
+  const form = document.querySelector("#simpleOrderForm");
+  let priceChosen = Boolean(startType);
+  const priceType = () => form.elements.priceType.value;
+  const previous = () => {
+    const name = normalizeText(form.elements.customerName.value);
+    if (existing && name === normalizeText(existing.customerName)) {
+      return { clientType: existing.clientType || "", partnerId: existing.clientType === "parceiro_recorrente" ? existing.partnerId || "" : "" };
+    }
+    return known.get(name) || { clientType: "", partnerId: "" };
+  };
+  const clientType = () => simpleClientType(priceType(), previous().clientType, previous().partnerId);
+  const repriced = () => Boolean(existing) && priceType() !== startType;
+  // An order keeps the price it was made at (it may have been negotiated);
+  // new bottles of a size take the price that size already has in the order.
+  const unitPrice = (product) => {
+    if (!repriced()) {
+      const own = ownItems(product.id);
+      if (own.length) return Number(own.at(-1).unitPrice || 0);
+      const sameSize = new Set(orderItems(existing).filter((item) => productSizeMl(byId("products", item.productId)) === productSizeMl(product)).map((item) => Number(item.unitPrice || 0)));
+      if (sameSize.size === 1) return [...sameSize][0];
+    }
+    return priceForOrderClientType(product, clientType());
+  };
+  const refresh = () => {
+    let bottles = 0;
+    let value = 0;
+    rows.forEach((row) => {
+      const qty = simpleQty(form, row.product.id);
+      const price = priceType() ? unitPrice(row.product) : null;
+      const free = availableStockForProduct(row.product.id);
+      [...form.querySelectorAll("[data-price]")].find((label) => label.dataset.price === row.product.id).textContent = [
+        price == null ? "" : `${brl(price)} cada`,
+        free > 0 ? `${number(free)} em estoque` : "estoque vazio",
+      ].filter(Boolean).join(" · ");
+      bottles += qty;
+      value += price == null ? 0 : qty * price;
+    });
+    form.querySelector(".simple-total").textContent = !bottles
+      ? "Nenhuma garrafa escolhida ainda."
+      : priceType() ? `Total: ${simpleBottles(bottles)} · ${brl(value)}` : `Total: ${simpleBottles(bottles)}`;
+  };
+  bindSimpleSteppers(form, refresh);
+  form.addEventListener("change", (event) => {
+    if (event.target.name === "priceType") {
+      priceChosen = true;
+      refresh();
+    }
+  });
+  form.elements.customerName.addEventListener("input", () => {
+    const match = known.get(normalizeText(form.elements.customerName.value));
+    const type = match && simplePriceType(match.clientType);
+    if (type && !priceChosen) form.querySelector(`[name="priceType"][value="${type}"]`).checked = true;
+    refresh();
+  });
+  refresh();
+  form.addEventListener("submit", (event) => {
+    event.preventDefault();
+    const name = form.elements.customerName.value.trim();
+    if (!name) return simpleError(form, "Escreva o nome do cliente.");
+    if (!priceType()) return simpleError(form, "Escolha que preço usar.");
+    if (!rows.some((row) => simpleQty(form, row.product.id) > 0)) return simpleError(form, "Escolha pelo menos uma garrafa.");
+    const type = clientType();
+    const { partnerId } = previous();
+    let items = clone(orderItems(existing));
+    rows.forEach((row) => {
+      const target = Math.max(row.delivered, simpleQty(form, row.product.id));
+      const own = items.filter((item) => item.productId === row.product.id);
+      const current = own.reduce((sum, item) => sum + Number(item.qty || 0), 0);
+      if (target > current) {
+        if (own.length) own.at(-1).qty = Number(own.at(-1).qty || 0) + target - current;
+        else items.push({ productId: row.product.id, qty: target, unitPrice: unitPrice(row.product) });
+      } else if (target < current) {
+        let remove = current - target;
+        [...own].reverse().forEach((item) => {
+          const delta = Math.min(remove, Number(item.qty || 0) - orderItemDeliveredQty(item));
+          item.qty = Number(item.qty || 0) - delta;
+          remove -= delta;
+        });
+      }
+    });
+    if (repriced()) items.forEach((item) => { item.unitPrice = priceForOrderClientType(byId("products", item.productId), type); });
+    // The same normalisation the full form applies to its rows.
+    const holder = document.createElement("div");
+    holder.innerHTML = items.filter((item) => Number(item.qty || 0) > 0).map((item) => orderItemRowTemplate(item, type)).join("");
+    items = [...holder.children].map(readOrderItemRow).filter(Boolean);
+    const partner = type === "parceiro_recorrente" ? byId("partners", partnerId) : null;
+    const nameChanged = existing && normalizeText(name) !== normalizeText(existing.customerName);
+    const totalQty = items.reduce((sum, item) => sum + item.qty, 0);
+    const shared = {
+      customerName: name,
+      clientType: type,
+      partnerId: partner?.id || "",
+      neededBy: form.elements.neededBy.value,
+      notes: form.elements.notes.value.trim(),
+      items,
+      totalQty,
+      totalValue: items.reduce((sum, item) => sum + item.qty * Number(item.unitPrice || 0), 0),
+      updatedAt: new Date().toISOString(),
+    };
+    if (existing) {
+      commitOrder(existing, { ...shared, businessName: nameChanged ? partner?.name || "" : existing.businessName || "" });
+    } else {
+      const today = todayIso();
+      commitOrder(null, {
+        code: nextOrderCode(today),
+        orderDate: today,
+        estimatedReadyDate: addDaysIso(today, 7),
+        deliveredAt: "",
+        paymentDueDate: "",
+        paymentStatus: "aberto",
+        paymentMethod: "",
+        status: "recebido",
+        businessName: partner?.name || "",
+        whatsapp: partner?.whatsapp || "",
+        instagram: partner?.instagram || "",
+        neighborhood: partner?.neighborhood || "",
+        city: partner?.city || "Manaus",
+        source: partner ? "Parceiro cadastrado" : "",
+        ...shared,
+      });
+    }
+    closeModal();
+    operatorNotice = existing ? `Pedido de ${name} atualizado.` : `Pedido de ${name} salvo: ${simpleBottles(totalQty)}.`;
+    operatorView = "orders";
+    operatorOrdersTab = "open";
+    setModule("operator");
+  });
+}
+
+// Bottles still owed to open orders and not yet set aside, per product.
+function simpleBottlesWaiting(productId) {
+  return (state.orders || [])
+    .filter(isOpenOrder)
+    .flatMap(orderItems)
+    .filter((item) => item.productId === productId)
+    .reduce((sum, item) => sum + Math.max(0, orderItemOutstandingQty(item) - orderItemReservedQty(item)), 0);
+}
+
+// Simple mode's production form: how many bottles of each flavour are ready.
+// Only active recipes are offered; saving goes through recordProduction, the
+// same as the full form, so stock, costs and reservations follow.
+function simpleBatchForm() {
+  const recipes = state.recipes.filter((recipe) => normalizeText(recipe.status || "ativa") === "ativa");
+  if (!recipes.length) {
+    newBatchForm();
+    return;
+  }
+  const choices = recipeVariantChoices(recipes);
+  const repeated = (choice) => choices.filter((other) => other.flavor === choice.flavor && other.sizeMl === choice.sizeMl).length > 1;
+  const rows = choices.map((choice) => {
+    const recipe = byId("recipes", choice.id);
+    return { recipe, sizeMl: choice.sizeMl, label: repeated(choice) ? `${choice.flavor} (${recipe.version || recipe.id})` : choice.flavor, waiting: simpleBottlesWaiting(recipe.productId) };
+  });
+  const lastResponsible = state.batches.find((batch) => String(batch.responsible || "").trim())?.responsible || "";
+  openModal(
+    "Registrar produção",
+    "Produção",
+    `
+      <form id="simpleBatchForm" class="simple-form" novalidate>
+        <fieldset class="simple-flavors">
+          <legend>Quantas garrafas ficaram prontas?</legend>
+          ${simpleFlavorGroups(rows, (row) => `
+            <li class="simple-flavor">
+              <span class="simple-flavor-name">
+                <strong data-i18n-skip>${escapeHtml(row.label)}</strong>
+                ${row.waiting ? `<small class="simple-waiting">Pedidos esperando: ${simpleBottles(row.waiting)}</small>` : ""}
+              </span>
+              ${simpleStepper(row.recipe.id, 0, 0, row.label)}
+            </li>`)}
+        </fieldset>
+        <div class="simple-row">
+          <label class="simple-field"><span>Data</span><input type="date" name="date" value="${todayIso()}" required></label>
+          <label class="simple-field"><span>Seu nome</span><input name="responsible" value="${escapeHtml(lastResponsible)}" autocomplete="name" required></label>
+        </div>
+        <p class="simple-total" aria-live="polite"></p>
+        <p class="simple-error" role="alert" hidden></p>
+        <button class="btn btn-primary simple-save" type="submit"><span class="material-symbols-outlined" aria-hidden="true">factory</span>Salvar produção</button>
+      </form>
+    `,
+  );
+  const form = document.querySelector("#simpleBatchForm");
+  const refresh = () => {
+    const chosen = rows.filter((row) => simpleQty(form, row.recipe.id) > 0);
+    const bottles = chosen.reduce((sum, row) => sum + simpleQty(form, row.recipe.id), 0);
+    form.querySelector(".simple-total").textContent = bottles
+      ? `Total: ${simpleBottles(bottles)} de ${chosen.length === 1 ? "1 sabor" : `${number(chosen.length)} sabores`}`
+      : "Nenhuma garrafa escolhida ainda.";
+  };
+  bindSimpleSteppers(form, refresh);
+  refresh();
+  form.addEventListener("submit", (event) => {
+    event.preventDefault();
+    const date = form.elements.date.value;
+    const responsible = form.elements.responsible.value.trim();
+    const selected = rows
+      .map((row) => ({ recipe: row.recipe, bottles: simpleQty(form, row.recipe.id), code: nextBatchCode(row.recipe, date) }))
+      .filter((selection) => selection.bottles > 0);
+    if (!selected.length) return simpleError(form, "Escolha pelo menos uma garrafa.");
+    if (!date) return simpleError(form, "Escolha a data da produção.");
+    if (!responsible) return simpleError(form, "Escreva seu nome.");
+    const created = recordProduction(selected, date, responsible);
+    if (!created) return;
+    const bottles = created.reduce((sum, { batch }) => sum + Number(batch.actual || 0), 0);
+    const reserved = created.reduce((sum, { reserved: qty }) => sum + Number(qty || 0), 0);
+    closeModal();
+    operatorNotice = reserved
+      ? `Produção salva: ${simpleBottles(bottles)}. ${simpleBottles(reserved)} já separadas para pedidos.`
+      : `Produção salva: ${simpleBottles(bottles)}.`;
+    operatorView = "home";
+    setModule("operator");
+  });
 }
 
 // Only the list is redrawn while typing, so the search box keeps its focus.
@@ -9762,50 +10275,8 @@ function newBatchForm() {
       localizedAlert("Selecione pelo menos um sabor e informe uma quantidade válida.");
       return;
     }
-    if (!confirmSupplyShortfalls(selected.map(({ recipe, bottles }) => ({ recipe, bottles })))) return;
-    const createdAt = new Date().toISOString();
-    const created = selected.map(({ recipe, bottles, code }) => {
-      const plan = batchDatePlan(data.date);
-      const batch = {
-        id: id("bat"),
-        code,
-        flavor: recipe.flavor || "",
-        productId: recipe.productId || "",
-        recipeId: recipe.id,
-        sizeMl: Number(recipe.bottleMl || BASE_BOTTLE_SIZE_ML),
-        date: data.date,
-        responsible: data.responsible,
-        expected: bottles,
-        actual: bottles,
-        idealSellBy: plan.idealSellBy,
-        sellBy: plan.sellBy,
-        expiry: plan.expiry,
-        status: "aprovado",
-        inventoryAdjusted: true,
-        inventoryQty: bottles,
-        createdAt,
-        updatedAt: createdAt,
-        // Freeze what this production actually cost. Later ingredient price
-        // changes must not rewrite the cost of stock that already exists.
-        costSnapshot: buildBatchCostSnapshot(recipe),
-      };
-      state.batches.unshift(batch);
-      applyBatchInventory(recipe, bottles, -1);
-      // Bottles already sold without stock leave first, then orders reserve.
-      linkPendingSalesToBatch(batch);
-      return { batch, reserved: allocateNewBatchToOrders(batch) };
-    });
-    addAudit(
-      "Lotes criados",
-      created
-        .map(({ batch, reserved }) => {
-          const destinations = batchReservationRows(batch.code)
-            .map((row) => `${number(row.qty)}x ${orderClientDisplayName(row.order)} (${row.order.code || row.order.id})`)
-            .join(", ");
-          return `${batch.flavor} ${number(batch.sizeMl)}ml | ${number(batch.actual)} produzidas | lote ${batch.code} | ${number(reserved)} reservadas${destinations ? ` para: ${destinations}` : ""}`;
-        })
-        .join("\n"),
-    );
+    const created = recordProduction(selected, data.date, data.responsible);
+    if (!created) return;
     closeModal();
     currentStockView = "kombuchas";
     currentKombuchaStockSize = created.at(-1)?.batch.sizeMl || BASE_BOTTLE_SIZE_ML;
@@ -9814,6 +10285,56 @@ function newBatchForm() {
     if (search) search.value = "";
     setModule("stock");
   });
+}
+
+// Shared by the full panel and simple mode. Returns null when the operator
+// declines the supply-shortfall warning, so nothing is recorded.
+function recordProduction(selected, date, responsible) {
+  if (!confirmSupplyShortfalls(selected.map(({ recipe, bottles }) => ({ recipe, bottles })))) return null;
+  const createdAt = new Date().toISOString();
+  const created = selected.map(({ recipe, bottles, code }) => {
+    const plan = batchDatePlan(date);
+    const batch = {
+      id: id("bat"),
+      code,
+      flavor: recipe.flavor || "",
+      productId: recipe.productId || "",
+      recipeId: recipe.id,
+      sizeMl: Number(recipe.bottleMl || BASE_BOTTLE_SIZE_ML),
+      date,
+      responsible,
+      expected: bottles,
+      actual: bottles,
+      idealSellBy: plan.idealSellBy,
+      sellBy: plan.sellBy,
+      expiry: plan.expiry,
+      status: "aprovado",
+      inventoryAdjusted: true,
+      inventoryQty: bottles,
+      createdAt,
+      updatedAt: createdAt,
+      // Freeze what this production actually cost. Later ingredient price
+      // changes must not rewrite the cost of stock that already exists.
+      costSnapshot: buildBatchCostSnapshot(recipe),
+    };
+    state.batches.unshift(batch);
+    applyBatchInventory(recipe, bottles, -1);
+    // Bottles already sold without stock leave first, then orders reserve.
+    linkPendingSalesToBatch(batch);
+    return { batch, reserved: allocateNewBatchToOrders(batch) };
+  });
+  addAudit(
+    "Lotes criados",
+    created
+      .map(({ batch, reserved }) => {
+        const destinations = batchReservationRows(batch.code)
+          .map((row) => `${number(row.qty)}x ${orderClientDisplayName(row.order)} (${row.order.code || row.order.id})`)
+          .join(", ");
+        return `${batch.flavor} ${number(batch.sizeMl)}ml | ${number(batch.actual)} produzidas | lote ${batch.code} | ${number(reserved)} reservadas${destinations ? ` para: ${destinations}` : ""}`;
+      })
+      .join("\n"),
+  );
+  return created;
 }
 
 function unitOptions(selected = "kg") {
@@ -11308,21 +11829,28 @@ function orderForm(orderId) {
       totalValue,
       updatedAt: new Date().toISOString(),
     };
-    if (existing) {
-      Object.assign(existing, payload);
-      syncOrderIntegrations(existing);
-      autoAllocateOrderStock();
-      addAudit("Pedido atualizado", `${payload.code}: ${payload.customerName}`);
-    } else {
-      const order = { id: id("ord"), createdAt: new Date().toISOString(), ...payload };
-      syncOrderIntegrations(order);
-      state.orders.unshift(order);
-      autoAllocateOrderStock();
-      addAudit("Pedido criado", `${payload.code}: ${payload.customerName} | ${number(totalQty)} garrafas`);
-    }
+    commitOrder(existing, payload);
     closeModal();
     setModule("orders");
   });
+}
+
+// Shared by the full panel and simple mode: saves the order, then lets the
+// reservation engine place stock on it.
+function commitOrder(existing, payload) {
+  if (existing) {
+    Object.assign(existing, payload);
+    syncOrderIntegrations(existing);
+    autoAllocateOrderStock();
+    addAudit("Pedido atualizado", `${existing.code}: ${existing.customerName}`);
+    return existing;
+  }
+  const order = { id: id("ord"), createdAt: new Date().toISOString(), ...payload };
+  syncOrderIntegrations(order);
+  state.orders.unshift(order);
+  autoAllocateOrderStock();
+  addAudit("Pedido criado", `${order.code}: ${order.customerName} | ${number(order.totalQty)} garrafas`);
+  return order;
 }
 
 function editPurchaseForm(purchaseId) {
@@ -11841,6 +12369,11 @@ function handleAction(action) {
   const [dynamicAction, ...dynamicParts] = action.split(":");
   const dynamicPayload = dynamicParts.join(":");
   const dynamicMap = {
+    "simple-edit-order": simpleOrderForm,
+    "operator-orders-tab": (tab) => {
+      operatorOrdersTab = tab === "delivered" ? "delivered" : "open";
+      render();
+    },
     "edit-product": editProductForm,
     "delete-product": (itemId) => deleteRecord("products", itemId),
     "edit-ingredient": (itemId) => {
@@ -11926,13 +12459,23 @@ function handleAction(action) {
       rememberHome("dashboard");
       setModule("dashboard");
     },
-    "operator-home": () => setModule("operator"),
+    "operator-home": () => {
+      operatorView = "home";
+      setModule("operator");
+    },
+    "operator-orders": () => {
+      operatorView = "orders";
+      setModule("operator");
+    },
+    "operator-full-orders": () => setModule("orders"),
     "operator-stock": () => setModule("stock"),
     "operator-find": () => {
-      const search = document.querySelector("#operatorSearch");
-      search?.scrollIntoView({ block: "center" });
-      search?.focus();
+      operatorView = "find";
+      setModule("operator");
+      document.querySelector("#operatorSearch")?.focus();
     },
+    "simple-new-order": () => simpleOrderForm(),
+    "simple-new-batch": simpleBatchForm,
     "read-receipt": receiptReadForm,
     "quick-sale": quickSaleForm,
     "new-sale": newSaleForm,

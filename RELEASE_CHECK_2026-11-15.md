@@ -93,3 +93,7 @@ The interaction inventory is complete. Three dead buttons were found and fixed. 
 ## Update, 16 November: the wipe removal is live
 
 On the owner's go-ahead, the "Limpar dados" removal went to production alone, as commit `2e5b9bb` on `main`, built from `main`. `npm run check`, `npm test` (with a new guard that failed before the fix) and main's four browser suites passed. The served `assets/admin.js` matches the commit byte for byte. The no-login checks pass: pages 200, `/api/state` and `/api/sales` 401, 10 CMS images, 5 partners. The rest of this branch is still not deployed, and the verdict for it is unchanged.
+
+## Update, 16 November: simple mode rebuilt around orders and production
+
+At the owner's request, simple mode is now built for an older operator around four tasks: new order, see orders, record production and check stock. The new order and production forms are one column with large − / + controls, and they save through the same code as the full panel (`commitOrder`, `recordProduction`). Editing an order keeps its negotiated price, partner and history. Evidence: the new `simple-orders-regression.js` (390 and 1440 px, PT and EN), every node suite and all 15 browser suites pass, and the button crawl presses 158 controls. Not in simple mode yet: delivery, charging and cancelling, which stay in the full panel. Not tested with a real older operator. Not deployed. The verdict for this branch is unchanged.

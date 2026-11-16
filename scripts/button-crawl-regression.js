@@ -54,13 +54,13 @@ const skip = new Set(["reset-demo", "import-json", "restore-cost-base"]);
 
     // Presses also change view settings (a stock size, an order filter), which
     // change which buttons render, so those are restored with the data.
-    const view = await page.evaluate(() => JSON.stringify({ currentStockView, currentKombuchaStockSize, currentSalesPeriod, currentDashboardOrderView, dashboardMonth, orderListFilters, globalSearch }));
+    const view = await page.evaluate(() => JSON.stringify({ currentStockView, currentKombuchaStockSize, currentSalesPeriod, currentDashboardOrderView, dashboardMonth, orderListFilters, globalSearch, operatorView, operatorOrdersTab }));
     const reset = (moduleName) => page.evaluate(({ snapshot, view, moduleName }) => {
       closeModal();
       state = JSON.parse(snapshot);
       persistLocalState();
       operatorSearch = "";
-      ({ currentStockView, currentKombuchaStockSize, currentSalesPeriod, currentDashboardOrderView, dashboardMonth, orderListFilters, globalSearch } = JSON.parse(view));
+      ({ currentStockView, currentKombuchaStockSize, currentSalesPeriod, currentDashboardOrderView, dashboardMonth, orderListFilters, globalSearch, operatorView, operatorOrdersTab } = JSON.parse(view));
       setModule(moduleName);
       window.scrollTo(0, 0);
     }, { snapshot: saved, view, moduleName });

@@ -222,9 +222,381 @@
   font-size: 1.05rem;
 }
 
+/* Simple mode screens: the confirmation after a save, the way back, the
+   order cards and the two order lists. */
+.operator-notice {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0;
+  border: 2px solid var(--green);
+  border-radius: var(--radius);
+  background: var(--surface-soft);
+  padding: 14px 18px;
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+
+.operator-notice .material-symbols-outlined {
+  color: var(--green);
+  font-size: 28px;
+}
+
+.operator-head .btn {
+  min-height: 52px;
+  font-size: 1.05rem;
+}
+
+.operator-back {
+  justify-self: start;
+  min-height: 52px;
+  font-size: 1.05rem;
+}
+
+.operator-wide {
+  min-height: 52px;
+  font-size: 1.05rem;
+}
+
+.simple-orders {
+  display: grid;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.simple-order {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface-strong);
+  padding: 16px 18px;
+}
+
+.simple-order-text {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  font-size: 1rem;
+}
+
+.simple-order-text strong {
+  font-size: 1.2rem;
+  overflow-wrap: break-word;
+}
+
+.simple-order-text > span {
+  overflow-wrap: break-word;
+}
+
+.simple-order-items {
+  font-size: 1.05rem;
+}
+
+.simple-order-due {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  font-weight: 700;
+}
+
+.simple-order-text .status {
+  justify-self: start;
+  font-size: 0.95rem;
+}
+
+.simple-tabs {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.simple-tabs button {
+  min-height: 52px;
+  border: 2px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface-strong);
+  color: var(--ink);
+  font: inherit;
+  font-size: 1.05rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.simple-tabs button.is-active {
+  border-color: var(--green);
+  background: var(--surface-soft);
+  color: var(--green);
+}
+
+.operator-more {
+  display: grid;
+  gap: 12px;
+}
+
+.operator-more h2 {
+  margin: 0;
+  font-size: 1.25rem;
+}
+
+.operator-more-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.operator-more-actions .btn {
+  min-height: 52px;
+  font-size: 1rem;
+}
+
+/* The simple order and production forms. One column, large text, nothing
+   hidden behind a disclosure. */
+.simple-form {
+  display: grid;
+  gap: 22px;
+  font-size: 1.05rem;
+}
+
+.simple-field {
+  display: grid;
+  gap: 8px;
+  font-weight: 700;
+}
+
+.simple-field input,
+.simple-field textarea {
+  min-height: 56px;
+  border: 2px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface-strong);
+  color: var(--ink);
+  padding: 10px 14px;
+  font: inherit;
+  font-size: 1.1rem;
+  font-weight: 400;
+}
+
+.simple-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.simple-choice,
+.simple-flavors {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  border: 0;
+  padding: 0;
+  min-width: 0;
+}
+
+.simple-choice legend,
+.simple-flavors legend {
+  margin-bottom: 10px;
+  padding: 0;
+  font-size: 1.15rem;
+  font-weight: 700;
+}
+
+.simple-choice {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.simple-choice-option {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 64px;
+  border: 2px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface-strong);
+  padding: 12px 14px;
+  cursor: pointer;
+}
+
+.simple-choice-option:has(input:checked) {
+  border-color: var(--green);
+  background: var(--surface-soft);
+}
+
+.simple-choice-option input {
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+  accent-color: var(--green);
+}
+
+.simple-choice-option span {
+  display: grid;
+}
+
+.simple-choice-option small,
+.simple-flavor-name small {
+  color: var(--muted);
+  font-size: 0.95rem;
+}
+
+.simple-size {
+  margin: 6px 0 0;
+  font-size: 1rem;
+  color: var(--muted);
+}
+
+.simple-flavor-list {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.simple-flavor {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border-bottom: 1px solid var(--line);
+  padding: 8px 0;
+}
+
+.simple-flavor-name {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.simple-flavor-name strong {
+  font-size: 1.1rem;
+  overflow-wrap: break-word;
+}
+
+.simple-flavor-name .simple-waiting {
+  color: var(--warning);
+  font-weight: 700;
+}
+
+.simple-stepper {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.simple-step {
+  width: 52px;
+  height: 52px;
+  border: 2px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface-strong);
+  color: var(--ink);
+  font: inherit;
+  font-size: 1.6rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.simple-step:active {
+  background: var(--surface-soft);
+}
+
+.simple-stepper input {
+  width: 64px;
+  height: 52px;
+  border: 2px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface-strong);
+  color: var(--ink);
+  font: inherit;
+  font-size: 1.3rem;
+  font-weight: 700;
+  text-align: center;
+  -moz-appearance: textfield;
+}
+
+.simple-stepper input::-webkit-outer-spin-button,
+.simple-stepper input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.simple-total {
+  margin: 0;
+  font-size: 1.2rem;
+  font-weight: 700;
+}
+
+.simple-error {
+  margin: 0;
+  border: 2px solid var(--warning);
+  border-radius: var(--radius);
+  background: var(--surface-warm);
+  padding: 12px 14px;
+  font-weight: 700;
+}
+
+.simple-save {
+  min-height: 60px;
+  font-size: 1.15rem;
+}
+
+.simple-tabs button:focus-visible,
+.simple-step:focus-visible,
+.simple-stepper input:focus-visible,
+.simple-field input:focus-visible,
+.simple-field textarea:focus-visible,
+.simple-choice-option:has(input:focus-visible),
+.operator-back:focus-visible {
+  outline: 3px solid var(--green);
+  outline-offset: 2px;
+}
+
 @media (max-width: 760px) {
   .operator-tasks {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  .simple-order {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .simple-order .operator-fix,
+  .operator-more-actions .btn {
+    width: 100%;
+  }
+
+  .simple-choice,
+  .simple-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  /* On a phone the − and + buttons get their own line under the flavour,
+     so the price and stock text is not squeezed. */
+  .simple-flavor {
+    flex-wrap: wrap;
+  }
+
+  .simple-flavor-name {
+    flex: 1 1 100%;
+  }
+
+  .simple-stepper {
+    flex: 1 1 100%;
+  }
+
+  .simple-step {
+    width: 64px;
+  }
+
+  .simple-stepper input {
+    flex: 1 1 auto;
   }
 
   .operator-task {
