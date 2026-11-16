@@ -1324,6 +1324,7 @@ function persistLocalState() {
 }
 
 function saveState() {
+  clearStaleZeroConfirmations();
   persistLocalState();
   scheduleCloudSave();
 }
@@ -2084,11 +2085,35 @@ function supplyIsTracked(item) {
   return state.purchases.some((purchase) => purchase.stockItemId === item.id || purchase.ingredientId === item.id || purchase.packagingId === item.id);
 }
 
-function confirmSupplyShortfalls(consumptions) {
-  const rows = supplyShortfalls(consumptions);
-  if (!rows.length) return true;
-  const lines = rows.map((row) => `- ${row.item.name}: ${quantity(row.item.stock || 0)} ${row.unit} em estoque, a produção usa ${quantity(row.qty)} ${row.unit} (fica ${quantity(row.after)} ${row.unit})`);
-  return localizedConfirm(`Faltam insumos para esta produção:\n${lines.join("\n")}\n\nVocê pode salvar mesmo assim. O estoque ficará negativo e aparecerá em "Atenção necessária" até você registrar a compra ou corrigir o estoque.`);
+// Messages for the next screen, shown once. Saving never waits for an answer
+// (owner decision, 16 November 2026: no locks), so what the operator should
+// know afterwards is said here instead of in a yes/no dialog.
+let pendingNotices = [];
+
+function queueNotice(text, tone = "ok") {
+  pendingNotices.push({ text, tone });
+}
+
+function takeNotices() {
+  const notices = pendingNotices;
+  pendingNotices = [];
+  return notices;
+}
+
+function noticesMarkup(notices = takeNotices()) {
+  return notices
+    .map(({ text, tone }) => `<div class="operator-notice${tone === "warn" ? " is-warn" : ""}" role="status"><span class="material-symbols-outlined" aria-hidden="true">${tone === "warn" ? "warning" : "check_circle"}</span><span>${escapeHtml(text)}</span></div>`)
+    .join("");
+}
+
+// A save that takes a supply below zero goes ahead. The operator is told
+// afterwards, and the item stays under "Atenção necessária" until a purchase or
+// a correction covers it. Always returns true so callers can stay as they were.
+function noteSupplyShortfalls(consumptions) {
+  supplyShortfalls(consumptions).forEach((row) => {
+    queueNotice(`Atenção: faltou ${row.item.name} no estoque (ficou ${quantity(row.after)} ${row.unit}). Confira a compra ou corrija o estoque.`, "warn");
+  });
+  return true;
 }
 
 function negativeStockSupplies() {
@@ -2096,6 +2121,36 @@ function negativeStockSupplies() {
     ...(state.ingredients || []).map((item) => ({ collection: "ingredients", item })),
     ...(state.packaging || []).map((item) => ({ collection: "packaging", item })),
   ].filter(({ item }) => Number(item.stock || 0) < -1e-9 && supplyIsTracked(item));
+}
+
+// A supply that reads exactly 0 may really be empty, or may only look empty
+// because a purchase was never recorded. It asks once and never blocks anything.
+function zeroStockSupplies() {
+  return [
+    ...(state.ingredients || []).map((item) => ({ collection: "ingredients", item })),
+    ...(state.packaging || []).map((item) => ({ collection: "packaging", item })),
+  ].filter(({ item }) => Math.abs(Number(item.stock || 0)) < 1e-9 && !item.zeroConfirmed && supplyIsTracked(item));
+}
+
+// The two answers to "is it really 0?", as buttons.
+function zeroSupplyButtons(collection, item) {
+  return `<span class="alert-actions"><button class="btn btn-outline" type="button" data-action="confirm-zero-supply:${collection}:${escapeHtml(item.id)}">É isso mesmo</button><button class="btn btn-outline" type="button" data-action="fix-supply-stock:${collection}:${escapeHtml(item.id)}">Corrigir estoque</button></span>`;
+}
+
+function confirmZeroSupply(collection, itemId) {
+  const item = byId(collection, itemId);
+  if (!item) return;
+  item.zeroConfirmed = true;
+  item.stockCountedAt = new Date().toISOString();
+  addAudit("Estoque zerado confirmado", `${item.name}: 0 ${stockUnitFor(collection, item)}`);
+}
+
+// "It really is 0" holds only while the stock stays at 0. Any save that finds
+// the stock moved forgets it, so the question returns if it comes back to 0.
+function clearStaleZeroConfirmations() {
+  [...(state.ingredients || []), ...(state.packaging || [])].forEach((item) => {
+    if (item.zeroConfirmed && Math.abs(Number(item.stock || 0)) >= 1e-9) delete item.zeroConfirmed;
+  });
 }
 
 // Supplies a change to a batch's produced quantity would consume, matching what
@@ -4586,6 +4641,12 @@ function derivedSalesForOrder(order) {
     });
     return rows;
   }
+  // An order closed to start over ("Encerrar pedidos antigos") is delivered and
+  // paid on paper only. Without this line the next page load would read it as
+  // delivered with no deliveries and create a sale, and revenue, of its whole
+  // quantity. The marker is set only on orders that were still open, so orders
+  // that were already delivered keep the sales they have.
+  if (order.closedFreshStart) return rows;
   if (order.status !== "entregue") return rows;
   orderItems(order).forEach((item) => {
     if (Number(item.qty || 0) <= 0) return;
@@ -5375,6 +5436,9 @@ function renderDashboard() {
           ${negativeStockSupplies()
             .map(({ collection, item }) => `<div class="alert-item alert-danger"><strong>Estoque negativo: ${escapeHtml(item.name)}</strong><span>${quantity(item.stock)} ${escapeHtml(stockUnitFor(collection, item))}. A produção usou mais do que o estoque registrado. Registre a compra que faltou ou corrija o estoque.</span></div>`)
             .join("")}
+          ${zeroStockSupplies()
+            .map(({ collection, item }) => `<div class="alert-item"><strong>${escapeHtml(item.name)} está com 0. É 0 mesmo?</strong><span>Se acabou, confirme. Se ainda tem, corrija o estoque. Isso não impede a produção.</span>${zeroSupplyButtons(collection, item)}</div>`)
+            .join("")}
           ${missingCostIngredients()
             .slice(0, 5)
             .map((item) => `<div class="alert-item"><strong>Custo pendente: ${escapeHtml(item.name)}</strong><span>Complete o custo unitário para a receita calcular margem real.</span></div>`)
@@ -5386,7 +5450,7 @@ function renderDashboard() {
           ${nearExpiryBatches()
             .map((batch) => `<div class="alert-item"><strong>Lote próximo ao vencimento: ${escapeHtml(batch.code)}</strong><span>${number(batch.stock)} garrafas vencem em ${escapeHtml(batch.expiry)}</span></div>`)
             .join("")}
-          ${pendingBatchSales().length || negativeStockSupplies().length || missingCostIngredients().length || lowStockIngredients().length || lowStockPackaging().length || nearExpiryBatches().length ? "" : `<div class="empty-note">Nenhum alerta crítico no momento.</div>`}
+          ${pendingBatchSales().length || negativeStockSupplies().length || zeroStockSupplies().length || missingCostIngredients().length || lowStockIngredients().length || lowStockPackaging().length || nearExpiryBatches().length ? "" : `<div class="empty-note">Nenhum alerta crítico no momento.</div>`}
         </div>
       </article>
       <article class="admin-card">
@@ -6296,13 +6360,13 @@ function renderStock() {
   };
   if (currentStockView === "kombuchas") {
     return `
-      ${pageHead("Estoque", "Resumo simples por sabor, reservas por cliente e lotes disponíveis.", actionButton("stock-adjustment", "Ajuste com motivo", "tune"))}
+      ${pageHead("Estoque", "Resumo simples por sabor, reservas por cliente e lotes disponíveis.", `${actionButton("count-bottles", "Contar garrafas", "fact_check")} ${actionButton("stock-adjustment", "Ajustar ingredientes", "tune", "btn-outline")}`)}
       <div class="module-tabs">${viewButtons}</div>
       ${inventoryViews.kombuchas()}
     `;
   }
   return `
-    ${pageHead("Estoque", "Escolha o tipo de estoque para ver saldos sem poluição visual.", actionButton("stock-adjustment", "Ajuste com motivo", "tune"))}
+    ${pageHead("Estoque", "Escolha o tipo de estoque para ver saldos sem poluição visual.", `${actionButton("count-bottles", "Contar garrafas", "fact_check")} ${actionButton("stock-adjustment", "Ajustar ingredientes", "tune", "btn-outline")}`)}
     <div class="module-tabs">${viewButtons}</div>
     ${inventoryViews[currentStockView]?.() || inventoryViews.kombuchas()}
   `;
@@ -6720,7 +6784,7 @@ function renderOrders() {
     ${pageHead(
       "Pedidos",
       "Novos pedidos e lotes recebem reservas automaticamente. A prioridade é a data do pedido, do mais antigo ao mais novo.",
-      `${actionButton("new-order", "Novo pedido", "add")} ${actionButton("quick-deliver-ready", `Dar baixa nos prontos${readyForDelivery.length ? ` (${number(readyForDelivery.length)})` : ""}`, "local_shipping", "btn-outline")} ${actionButton("recalculate-reservations", "Autoalocar estoque", "autorenew", "btn-outline")} ${actionButton("export-orders", "CSV", "download", "btn-outline")}`,
+      `${actionButton("new-order", "Novo pedido", "add")} ${actionButton("quick-deliver-ready", `Dar baixa nos prontos${readyForDelivery.length ? ` (${number(readyForDelivery.length)})` : ""}`, "local_shipping", "btn-outline")} ${actionButton("recalculate-reservations", "Autoalocar estoque", "autorenew", "btn-outline")} ${actionButton("export-orders", "CSV", "download", "btn-outline")} ${actionButton("close-old-orders", "Encerrar pedidos antigos", "task_alt", "btn-outline")}`,
     )}
     ${orderListFiltersMarkup()}
     <p class="inline-muted">${number(filteredOrders.length)} pedido(s) nesta visão</p>
@@ -7928,13 +7992,16 @@ function operatorNoticeMarkup() {
   const action = operatorNoticeAction;
   operatorNotice = "";
   operatorNoticeAction = null;
-  if (!notice) return "";
+  // Messages queued by the save itself (what a count did, a supply that ran
+  // short) follow the confirmation.
+  const queued = noticesMarkup();
+  if (!notice) return queued;
   return `
     <div class="operator-notice" role="status">
       <span class="material-symbols-outlined" aria-hidden="true">check_circle</span>
       <span>${escapeHtml(notice)}</span>
       ${action ? `<button class="btn btn-outline" type="button" data-action="${escapeHtml(action.action)}"><span class="material-symbols-outlined" aria-hidden="true">${action.icon}</span>${escapeHtml(action.label)}</button>` : ""}
-    </div>`;
+    </div>${queued}`;
 }
 
 function operatorBackButton() {
@@ -7945,9 +8012,10 @@ function renderOperatorHome() {
   const attention = [
     ...[...new Set(pendingBatchSales().map((sale) => sale.productId))].map((productId) => {
       const product = byId("products", productId);
-      return `Vendido sem estoque: ${product ? `${product.flavor || product.item} ${productSizeMl(product)} ml` : "sabor não identificado"}. Registre a produção.`;
+      return { text: `Vendido sem estoque: ${product ? `${product.flavor || product.item} ${productSizeMl(product)} ml` : "sabor não identificado"}. Registre a produção.` };
     }),
-    ...negativeStockSupplies().map(({ collection, item }) => `Estoque negativo: ${item.name} (${quantity(item.stock)} ${stockUnitFor(collection, item)}). Registre a compra que faltou.`),
+    ...negativeStockSupplies().map(({ collection, item }) => ({ text: `Estoque negativo: ${item.name} (${quantity(item.stock)} ${stockUnitFor(collection, item)}). Registre a compra que faltou.` })),
+    ...zeroStockSupplies().map(({ collection, item }) => ({ text: `${item.name} está com 0. É 0 mesmo?`, buttons: zeroSupplyButtons(collection, item) })),
   ];
   const open = simpleOpenOrders();
   return `
@@ -7962,7 +8030,7 @@ function renderOperatorHome() {
       ${operatorTask("simple-new-batch", "factory", "Registrar produção", "Garrafas que ficaram prontas")}
       ${operatorTask("operator-stock", "inventory_2", "Ver estoque", "Quanto tem de cada sabor")}
     </div>
-    ${attention.length ? `<div class="operator-attention" role="status"><h2>Precisa de atenção</h2><ul>${attention.map((line) => `<li>${escapeHtml(line)}</li>`).join("")}</ul></div>` : ""}
+    ${attention.length ? `<div class="operator-attention" role="status"><h2>Precisa de atenção</h2><ul>${attention.map((line) => `<li>${escapeHtml(line.text)}${line.buttons || ""}</li>`).join("")}</ul></div>` : ""}
     <section class="operator-ledger" aria-labelledby="operatorNextTitle">
       <h2 id="operatorNextTitle">Próximos pedidos</h2>
       ${open.length
@@ -7975,6 +8043,7 @@ function renderOperatorHome() {
       <div class="operator-more-actions">
         <button class="btn btn-outline" type="button" data-action="read-receipt"><span class="material-symbols-outlined" aria-hidden="true">photo_camera</span>Registrar compra pela foto da nota</button>
         <button class="btn btn-outline" type="button" data-action="new-purchase"><span class="material-symbols-outlined" aria-hidden="true">edit_note</span>Registrar compra sem foto</button>
+        <button class="btn btn-outline" type="button" data-action="count-bottles"><span class="material-symbols-outlined" aria-hidden="true">fact_check</span>Contar o estoque</button>
         <button class="btn btn-outline" type="button" data-action="operator-find"><span class="material-symbols-outlined" aria-hidden="true">search</span>Corrigir um lançamento</button>
       </div>
     </section>
@@ -8528,7 +8597,6 @@ function simpleBatchForm() {
     if (!date) return simpleError(form, "Escolha a data da produção.");
     if (!responsible) return simpleError(form, "Escreva seu nome.");
     const created = recordProduction(selected, date, responsible);
-    if (!created) return;
     const bottles = created.reduce((sum, { batch }) => sum + Number(batch.actual || 0), 0);
     const reserved = created.reduce((sum, { reserved: qty }) => sum + Number(qty || 0), 0);
     closeModal();
@@ -8537,6 +8605,78 @@ function simpleBatchForm() {
       : `Produção salva: ${simpleBottles(bottles)}.`;
     operatorView = "home";
     setModule("operator");
+  });
+}
+
+// "Contar garrafas": one stepper per flavour, prefilled with what the system
+// believes is on the shelf. The operator changes the numbers that are wrong and
+// saves, with no reason and no confirmation. More bottles than recorded enter as
+// production (supplies and cost follow); fewer are a loss. Used from simple mode
+// and from the Estoque page.
+function bottleCountForm() {
+  const rows = bottleCountRows();
+  if (!rows.length) {
+    localizedAlert("Não há sabores cadastrados para contar.");
+    return;
+  }
+  const start = (row) => Math.max(0, row.expected);
+  openModal(
+    "Contar garrafas",
+    "Estoque",
+    `
+      <form id="bottleCountForm" class="simple-form" novalidate>
+        <p class="simple-lead">Digite quantas garrafas de cada sabor existem de verdade na prateleira. O sistema ajusta o resto sozinho: o que sobrar entra como produção e o que faltar vira perda.</p>
+        <fieldset class="simple-flavors">
+          <legend>Quantas garrafas você contou?</legend>
+          ${simpleFlavorGroups(rows, (row) => `
+            <li class="simple-flavor">
+              <span class="simple-flavor-name">
+                <strong data-i18n-skip>${escapeHtml(row.label)}</strong>
+                <small>No sistema: ${simpleBottles(start(row))}</small>
+                <small class="simple-diff" data-diff="${escapeHtml(row.productId)}"></small>
+                ${row.hasRecipe ? "" : `<small class="simple-waiting">Sem receita ativa: só dá para diminuir.</small>`}
+              </span>
+              ${simpleStepper(row.productId, start(row), 0, row.label, row.hasRecipe ? null : start(row))}
+            </li>`)}
+        </fieldset>
+        <p class="simple-total" aria-live="polite"></p>
+        <p class="simple-error" role="alert" hidden></p>
+        <button class="btn btn-primary simple-save" type="submit"><span class="material-symbols-outlined" aria-hidden="true">fact_check</span>Salvar contagem</button>
+      </form>
+    `,
+  );
+  const form = document.querySelector("#bottleCountForm");
+  const changed = () => rows.filter((row) => simpleQty(form, row.productId) !== start(row));
+  const refresh = () => {
+    rows.forEach((row) => {
+      const counted = simpleQty(form, row.productId);
+      const label = [...form.querySelectorAll("[data-diff]")].find((node) => node.dataset.diff === row.productId);
+      if (counted === start(row)) label.textContent = "";
+      else if (counted > row.expected) label.textContent = counted - row.expected === 1 ? "Entra 1 garrafa" : `Entram ${number(counted - row.expected)} garrafas`;
+      else label.textContent = row.expected - counted === 1 ? "1 garrafa vira perda" : `${number(row.expected - counted)} garrafas viram perda`;
+    });
+    const count = changed().length;
+    form.querySelector(".simple-total").textContent = !count ? "Nenhuma contagem mudou ainda." : count === 1 ? "1 sabor muda." : `${number(count)} sabores mudam.`;
+  };
+  bindSimpleSteppers(form, refresh);
+  refresh();
+  form.addEventListener("submit", (event) => {
+    event.preventDefault();
+    const counts = changed().map((row) => ({ productId: row.productId, counted: simpleQty(form, row.productId) }));
+    if (!counts.length) return simpleError(form, "Nenhuma contagem mudou.");
+    const results = applyBottleCount(counts);
+    closeModal();
+    results.forEach((row) => {
+      queueNotice(row.message, row.kind === "no-recipe" ? "warn" : "ok");
+      if (row.reservations.length) queueNotice(`Reserva retirada: ${row.reservations.map((item) => `${item.client} (${number(item.qty)})`).join(", ")}.`, "warn");
+    });
+    if (currentModule === "operator") {
+      operatorNotice = "Contagem salva.";
+      operatorView = "home";
+      setModule("operator");
+    } else {
+      render();
+    }
   });
 }
 
@@ -8580,7 +8720,10 @@ function render() {
     schema: renderSchema,
   }[currentModule];
   const openPanels = [...document.querySelectorAll("[data-dashboard-panel][open]")].map((panel) => panel.dataset.dashboardPanel);
-  document.querySelector("#adminContent").innerHTML = `${operatorReturnBar()}${cloudSyncNotice()}${view()}`;
+  // Messages queued by a save are shown once, at the top of the next screen.
+  // Simple mode places them under its own confirmation instead.
+  const queuedNotices = currentModule === "operator" ? "" : noticesMarkup();
+  document.querySelector("#adminContent").innerHTML = `${operatorReturnBar()}${cloudSyncNotice()}${queuedNotices}${view()}`;
   document.querySelector("#adminShell")?.classList.toggle("is-simple", currentModule === "operator");
   document.querySelectorAll("[data-dashboard-panel]").forEach((panel) => { panel.open = openPanels.includes(panel.dataset.dashboardPanel); });
   applyLocaleToShell();
@@ -10011,7 +10154,7 @@ function adjustFlavorStockForm(productId) {
       localizedAlert("Um dos lotes não possui receita vinculada. Corrija o vínculo antes de ajustar o estoque.");
       return;
     }
-    if (!confirmSupplyShortfalls(changes.flatMap((change) => batchInventoryConsumption(change.batch, change.nextActual)))) return;
+    if (!noteSupplyShortfalls(changes.flatMap((change) => batchInventoryConsumption(change.batch, change.nextActual)))) return;
     changes.forEach((change) => {
       adjustBatchInventoryTo(change.batch, change.nextActual);
       change.batch.actual = change.nextActual;
@@ -10092,7 +10235,7 @@ function correctBatchQuantityForm(batchId) {
       localizedAlert(`Não dá para reduzir para ${number(nextActual)} porque ${number(committed)} já estão reservadas/vendidas. Libere reservas ou faça devolução primeiro.`);
       return;
     }
-    if (!confirmSupplyShortfalls(batchInventoryConsumption(batch, nextActual))) return;
+    if (!noteSupplyShortfalls(batchInventoryConsumption(batch, nextActual))) return;
     const inventoryResult = adjustBatchInventoryTo(batch, nextActual);
     if (!inventoryResult.ok) {
       localizedAlert(inventoryResult.message);
@@ -10692,7 +10835,6 @@ function newBatchForm() {
       return;
     }
     const created = recordProduction(selected, data.date, data.responsible);
-    if (!created) return;
     closeModal();
     currentStockView = "kombuchas";
     currentKombuchaStockSize = created.at(-1)?.batch.sizeMl || BASE_BOTTLE_SIZE_ML;
@@ -10703,10 +10845,12 @@ function newBatchForm() {
   });
 }
 
-// Shared by the full panel and simple mode. Returns null when the operator
-// declines the supply-shortfall warning, so nothing is recorded.
-function recordProduction(selected, date, responsible) {
-  if (!confirmSupplyShortfalls(selected.map(({ recipe, bottles }) => ({ recipe, bottles })))) return null;
+// Shared by the full panel, simple mode and the bottle count. It always saves:
+// a supply that falls below zero is reported in a notice afterwards. `source`
+// and `note` mark batches that were not a production run, such as an entry made
+// by a stock count.
+function recordProduction(selected, date, responsible, { source = "", note = "" } = {}) {
+  noteSupplyShortfalls(selected.map(({ recipe, bottles }) => ({ recipe, bottles })));
   const createdAt = new Date().toISOString();
   const created = selected.map(({ recipe, bottles, code }) => {
     const plan = batchDatePlan(date);
@@ -10729,6 +10873,8 @@ function recordProduction(selected, date, responsible) {
       inventoryQty: bottles,
       createdAt,
       updatedAt: createdAt,
+      ...(source ? { source } : {}),
+      ...(note ? { note } : {}),
       // Freeze what this production actually cost. Later ingredient price
       // changes must not rewrite the cost of stock that already exists.
       costSnapshot: buildBatchCostSnapshot(recipe),
@@ -10751,6 +10897,120 @@ function recordProduction(selected, date, responsible) {
       .join("\n"),
   );
   return created;
+}
+
+// The recipe used to make new bottles of a product: the one marked "ativa".
+// An archived or paused recipe is never used, and nothing is guessed without one.
+function activeRecipeForProduct(product) {
+  if (!product) return null;
+  const active = (recipe) => normalizeText(recipe.status || "ativa") === "ativa";
+  return (
+    state.recipes.find((recipe) => active(recipe) && recipe.productId === product.id) ||
+    state.recipes.find((recipe) => active(recipe) && recipe.flavor === product.flavor && Number(recipe.bottleMl) === Number(productSizeMl(product))) ||
+    null
+  );
+}
+
+// Bottles the system believes are on the shelf: physical stock (reserved
+// bottles included) minus bottles already sold before any batch existed.
+function expectedBottles(productId) {
+  return productPhysicalStock(productId) - pendingSaleQuantity(productId);
+}
+
+// One row per product that can be counted: every active one, and any other
+// that still has bottles recorded.
+function bottleCountRows() {
+  return state.products
+    .map((product) => ({
+      productId: product.id,
+      sizeMl: productSizeMl(product),
+      label: product.flavor || product.item || "Kombucha",
+      expected: expectedBottles(product.id),
+      hasRecipe: Boolean(activeRecipeForProduct(product)),
+      operational: productIsOperational(product),
+    }))
+    .filter((row) => row.operational || row.expected !== 0);
+}
+
+function bottleCountMessage(row) {
+  const from = Math.max(0, row.expected);
+  if (row.kind === "entry") return `${row.label}: ${number(from)} → ${number(row.counted)}, ${row.qty === 1 ? "entrou 1 garrafa." : `entraram ${number(row.qty)} garrafas.`}`;
+  if (row.kind === "loss") return `${row.label}: ${number(from)} → ${number(row.counted)}, ${row.qty === 1 ? "1 perdida." : `${number(row.qty)} perdidas.`}`;
+  if (row.kind === "no-recipe") return `${row.label}: sem receita ativa, a entrada não foi registrada.`;
+  return `${row.label}: sem mudança.`;
+}
+
+// Fewer bottles than recorded are a loss. It is taken from the oldest batch
+// that still has bottles; when those bottles are reserved, the reservation is
+// taken from the order needed latest, the same way a sale from reserved stock is.
+function recordCountLoss(product, row, date, note) {
+  let remaining = row.qty;
+  finishedStockRows()
+    .filter((batchRow) => batchProductId(batchRow) === product.id)
+    .map((batchRow) => ({ batchRow, physical: Math.max(0, batchProducedQuantity(batchRow) - soldFromBatch(batchRow.code)) }))
+    .filter(({ physical }) => physical > 0)
+    .sort((a, b) => String(a.batchRow.date || "").localeCompare(String(b.batchRow.date || "")) || String(a.batchRow.code || "").localeCompare(String(b.batchRow.code || "")))
+    .forEach(({ batchRow, physical }) => {
+      if (remaining <= 0) return;
+      const qty = Math.min(remaining, physical);
+      const plan = planReservedStockWithdrawal(batchRow.code, qty);
+      applyReservedStockWithdrawal(plan, note);
+      plan.takes.forEach((withdrawal) => row.reservations.push({ client: orderClientDisplayName(withdrawal.order), qty: withdrawal.take }));
+      state.sales.unshift({
+        id: id("sale"),
+        date,
+        partner: "Ajuste de estoque",
+        customerName: "Ajuste de estoque",
+        channel: "perda",
+        movementType: "perda",
+        priceType: "gratis",
+        flavor: batchRow.flavor || product.flavor || "",
+        productId: product.id,
+        unitPrice: 0,
+        discount: 0,
+        delivery: 0,
+        note,
+        batchCode: batchRow.code,
+        qty,
+        source: "contagem",
+      });
+      remaining -= qty;
+    });
+}
+
+// Counts are { productId, counted }. More than expected enters as a batch made
+// by the active recipe (supplies, cost and bottles sold without stock follow);
+// fewer is a loss. Nothing is asked and nothing is blocked.
+function applyBottleCount(counts, { date = todayIso(), responsible = "Ajuste de estoque" } = {}) {
+  const rows = counts
+    .map(({ productId, counted }) => {
+      const product = byId("products", productId);
+      if (!product) return null;
+      const target = Math.max(0, Math.round(Number(counted) || 0));
+      const expected = expectedBottles(productId);
+      const row = { productId, label: `${product.flavor || product.item || "Kombucha"} ${number(productSizeMl(product))} ml`, expected, counted: target, qty: 0, kind: "same", reservations: [] };
+      const note = `Contagem de estoque: sistema ${expected}, contado ${target}`;
+      if (target > expected) {
+        const recipe = activeRecipeForProduct(product);
+        if (!recipe) {
+          row.kind = "no-recipe";
+        } else {
+          row.kind = "entry";
+          row.qty = target - expected;
+          recordProduction([{ recipe, bottles: row.qty, code: nextBatchCode(recipe, date) }], date, responsible, { source: "ajuste", note });
+        }
+      } else if (target < expected) {
+        row.kind = "loss";
+        row.qty = expected - target;
+        recordCountLoss(product, row, date, note);
+      }
+      row.message = bottleCountMessage(row);
+      if (row.kind !== "same") addAudit("Contagem de estoque", row.reservations.length ? `${row.message} Reserva retirada: ${row.reservations.map((item) => `${item.client} (${number(item.qty)})`).join(", ")}.` : row.message);
+      return row;
+    })
+    .filter(Boolean);
+  if (rows.some((row) => row.kind === "loss")) refreshAllOrderReservations();
+  return rows;
 }
 
 function unitOptions(selected = "kg") {
@@ -11729,7 +11989,7 @@ function editBatchForm(batchId) {
     beforeSave: (next) => {
       const originalRecipe = byId("recipes", original?.recipeId);
       const recipe = byId("recipes", next.recipeId);
-      return confirmSupplyShortfalls([
+      return noteSupplyShortfalls([
         { recipe: original?.inventoryAdjusted ? originalRecipe : null, bottles: -batchProducedQuantity(original) },
         { recipe: recipe && shouldConsumeBatch(next) ? recipe : null, bottles: batchProducedQuantity(next) },
       ]);
@@ -12269,6 +12529,127 @@ function commitOrder(existing, payload) {
   return order;
 }
 
+// "Só fechar" (owner decision, 16 November 2026), for starting the system over:
+// every order that is not cancelled becomes delivered and paid, and nothing else
+// moves. No sale, no revenue, no cost, no receipt, no stock movement; the stock is
+// counted afterwards with "Contar garrafas". It runs once, on the owner's
+// word, after a preview. The only way back is the copy of the database.
+const FRESH_START_WORD = "ENCERRAR";
+
+function isFreshStartWord(text) {
+  return typeof text === "string" && text.trim().toUpperCase() === FRESH_START_WORD;
+}
+
+// Orders still open, and delivered orders still waiting for payment. Cancelled
+// orders and orders already delivered and paid are left alone.
+function freshStartPreview() {
+  const orders = (state.orders || []).filter((order) => !normalizeText(order.status).startsWith("cancelad") && (isOpenOrder(order) || orderReceivableStatus(order) !== "pago"));
+  const open = orders.filter(isOpenOrder);
+  const lines = open.flatMap((order) => orderItems(order));
+  return {
+    orders,
+    open: open.length,
+    unpaid: orders.length - open.length,
+    bottles: lines.reduce((sum, line) => sum + orderItemOutstandingQty(line), 0),
+    value: lines.reduce((sum, line) => sum + orderItemOutstandingQty(line) * Number(line.unitPrice || 0), 0),
+  };
+}
+
+// Returns null, changing nothing, unless the typed word is right and there is
+// something to close. An order that was still open is marked delivered with every
+// item delivered, its reservations released, and the marker that keeps it out of
+// the sales derived from orders. An order already delivered only becomes paid, so
+// the deliveries and sales it already has stay exactly as they are.
+function closeOrdersForFreshStart(word, today = todayIso()) {
+  if (!isFreshStartWord(word)) return null;
+  const preview = freshStartPreview();
+  if (!preview.orders.length) return null;
+  const stamp = new Date().toISOString();
+  const noteDate = today.split("-").reverse().join("/");
+  preview.orders.forEach((order) => {
+    if (isOpenOrder(order)) {
+      orderItems(order).forEach((line) => {
+        line.deliveredQty = Number(line.qty || 0);
+        line.allocations = [];
+        line.reservedQty = 0;
+        line.producedQty = 0;
+        line.reservationTarget = null;
+        line.reservationOverride = null;
+        line.batchCode = "";
+        line.productionStatus = "entregue";
+      });
+      const own = order.neededBy || order.orderDate || today;
+      order.status = "entregue";
+      delete order.statusManual;
+      order.deliveredAt = order.deliveredAt || (own > today ? today : own);
+      order.paymentDueDate = order.paymentDueDate || addDaysIso(order.deliveredAt, 15);
+      order.closedFreshStart = today;
+      order.notes = [String(order.notes || "").trim(), `Encerrado em ${noteDate} ao recomeçar o sistema (sem venda, sem baixa de estoque)`].filter(Boolean).join("\n");
+      order.updatedAt = stamp;
+    }
+    // An order that was already delivered changes this and nothing else.
+    order.paymentStatus = "pago";
+  });
+  // The same pass a page load runs: it must find no sale to create.
+  preview.orders.forEach((order) => syncOrderIntegrations(order));
+  refreshAllOrderReservations();
+  const result = { closed: preview.orders.length, opened: preview.open, paidOnly: preview.unpaid, bottles: preview.bottles, value: preview.value, codes: preview.orders.map((order) => order.code || order.id) };
+  addAudit(
+    "Pedidos encerrados ao recomeçar",
+    `${number(result.closed)} pedido(s): ${number(result.opened)} em aberto, ${number(result.paidOnly)} entregue(s) sem pagamento. ${number(result.bottles)} garrafa(s) fechadas sem sair do estoque, ${brl(result.value)}. Sem venda, sem baixa de estoque, sem recibo. Pedidos: ${result.codes.join(", ")}.`,
+  );
+  return result;
+}
+
+// The preview shown before anything changes. The typed word keeps a stray tap
+// from closing every order: this is a bulk change to live data, which is why it
+// asks, unlike the stock of supplies, which never does.
+function closeOldOrdersForm() {
+  const preview = freshStartPreview();
+  if (!preview.orders.length) {
+    openModal("Encerrar pedidos antigos", "Pedidos", `<p class="empty-note">Não há pedidos para encerrar: todos já estão entregues e pagos, ou cancelados.</p>`);
+    return;
+  }
+  openModal(
+    "Encerrar pedidos antigos",
+    "Pedidos",
+    `
+      <form id="freshStartForm" class="simple-form" novalidate>
+        <p class="simple-lead">Todos os pedidos que não foram cancelados passam a entregues e pagos. Use uma vez só, ao recomeçar o sistema.</p>
+        <div class="order-detail-summary">
+          <span><small>Pedidos a encerrar</small><strong>${number(preview.orders.length)}</strong></span>
+          <span><small>Em aberto</small><strong>${number(preview.open)}</strong></span>
+          <span><small>Entregues sem pagamento</small><strong>${number(preview.unpaid)}</strong></span>
+          <span><small>Garrafas sem entrega</small><strong>${number(preview.bottles)}</strong></span>
+          <span><small>Valor dessas garrafas</small><strong>${brl(preview.value)}</strong></span>
+        </div>
+        <p class="simple-lead"><strong>Não cria vendas, não muda o estoque, não gera recibos. Para desfazer, só pela cópia do banco.</strong></p>
+        <label class="simple-field"><span>Para confirmar, digite ENCERRAR</span><input name="word" autocomplete="off" autocapitalize="characters" spellcheck="false"></label>
+        <p class="simple-error" role="alert" hidden></p>
+        <button class="btn btn-danger simple-save" type="submit" disabled><span class="material-symbols-outlined" aria-hidden="true">task_alt</span>Encerrar pedidos</button>
+      </form>
+    `,
+  );
+  const form = document.querySelector("#freshStartForm");
+  const word = form.elements.word;
+  const button = form.querySelector(".simple-save");
+  word.addEventListener("input", () => {
+    button.disabled = !isFreshStartWord(word.value);
+    form.querySelector(".simple-error").hidden = true;
+  });
+  form.addEventListener("submit", (event) => {
+    event.preventDefault();
+    if (!isFreshStartWord(word.value)) return simpleError(form, "Digite ENCERRAR para confirmar.");
+    const result = closeOrdersForFreshStart(word.value);
+    closeModal();
+    if (result) {
+      queueNotice(`Pedidos encerrados: ${number(result.closed)} (${number(result.opened)} em aberto, ${number(result.paidOnly)} entregues sem pagamento). Garrafas fechadas sem sair do estoque: ${number(result.bottles)}.`);
+      queueNotice("Nenhuma venda, nenhum recibo e nenhuma baixa de estoque foram criados.");
+    }
+    render();
+  });
+}
+
 function editPurchaseForm(purchaseId) {
   const purchase = byId("purchases", purchaseId);
   if (purchase?.kind === "operational") {
@@ -12499,7 +12880,11 @@ function simpleRecordForm(collection, title, fields) {
   });
 }
 
-function stockAdjustmentForm() {
+// Corrects the stock of an ingredient or packaging item. No reason is needed:
+// the count itself is the reason, and one can still be written. `selectedKey`
+// opens the form on one item ("ingredients:sugar"), as the "is it really 0?"
+// question does.
+function stockAdjustmentForm(selectedKey = "") {
   const options = [
     ...state.ingredients.map((item) => ({ key: `ingredients:${item.id}`, label: `Ingrediente - ${item.name}`, stock: item.stock, unit: item.purchaseUnit })),
     ...state.packaging.map((item) => ({ key: `packaging:${item.id}`, label: `${inferPackagingType(item) === "label" ? "Rótulo" : inferPackagingType(item) === "bottle" ? "Garrafa/material" : "Material"} - ${item.name}`, stock: item.stock, unit: item.unit })),
@@ -12510,9 +12895,9 @@ function stockAdjustmentForm() {
     `
       <form id="adjustForm">
         <div class="input-grid">
-          <label class="field field-full"><span>Item de estoque</span><select name="stockKey">${options.map((item) => `<option value="${escapeHtml(item.key)}">${escapeHtml(item.label)} (${number(item.stock, 2)} ${escapeHtml(item.unit)})</option>`).join("")}</select></label>
+          <label class="field field-full"><span>Item de estoque</span><select name="stockKey">${options.map((item) => `<option value="${escapeHtml(item.key)}" ${item.key === selectedKey ? "selected" : ""}>${escapeHtml(item.label)} (${number(item.stock, 2)} ${escapeHtml(item.unit)})</option>`).join("")}</select></label>
           <label class="field"><span>Nova quantidade</span><input name="stock" type="number" step="0.01" required></label>
-          <label class="field field-full"><span>Motivo obrigatório</span><input name="reason" required placeholder="Perda, inventário, devolução, correção..."></label>
+          <label class="field field-full"><span>Motivo (opcional)</span><input name="reason" placeholder="Perda, inventário, devolução, correção..."></label>
         </div>
         <button class="btn btn-primary" type="submit">Registrar ajuste</button>
       </form>
@@ -12527,7 +12912,7 @@ function stockAdjustmentForm() {
     const previous = item.stock;
     item.stock = Number(data.stock);
     item.stockCountedAt = new Date().toISOString();
-    addAudit("Ajuste de estoque", `${item.name}: ${previous} -> ${item.stock}. Motivo: ${data.reason}`);
+    addAudit("Ajuste de estoque", `${item.name}: ${previous} -> ${item.stock}. Motivo: ${String(data.reason || "").trim() || "Contagem de estoque"}`);
     closeModal();
     render();
   });
@@ -12787,6 +13172,13 @@ function handleAction(action) {
   const dynamicMap = {
     "simple-edit-order": simpleOrderForm,
     "simple-deliver": simpleDeliveryForm,
+    // "É isso mesmo" and "Corrigir estoque", the two answers to "is it really 0?".
+    "confirm-zero-supply": (payload) => {
+      const [collection, itemId] = payload.split(":");
+      confirmZeroSupply(collection, itemId);
+      render();
+    },
+    "fix-supply-stock": stockAdjustmentForm,
     "operator-orders-tab": (tab) => {
       operatorOrdersTab = tab === "delivered" ? "delivered" : "open";
       render();
@@ -12900,7 +13292,9 @@ function handleAction(action) {
     "new-receipt": () => startReceiptWizard(),
     "new-batch": newBatchForm,
     "quick-deliver-ready": quickReadyDeliveriesForm,
-    "stock-adjustment": stockAdjustmentForm,
+    "close-old-orders": closeOldOrdersForm,
+    "stock-adjustment": () => stockAdjustmentForm(),
+    "count-bottles": bottleCountForm,
     "new-supplier": () =>
       simpleRecordForm("suppliers", "Novo fornecedor", [
         { name: "name", label: "Nome", required: true },

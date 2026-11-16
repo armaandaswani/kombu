@@ -1114,3 +1114,262 @@ console.log("Dashboard regression: monthly finances, missing costs and overview 
   assert.doesNotMatch(call("renderSchema"), /data-action="reset-demo"/, "the Arquitetura screen has no wipe button");
 }
 console.log("Data safety regression: no action wipes or reseeds the saved state.");
+
+// Counting finished bottles directly (owner request, 16 November 2026). The
+// operator types what is on the shelf and the system works out the rest, with
+// no reason, no confirmation and no lock. More bottles than recorded enter as a
+// batch made by the recipe, so supplies, cost and sales made without stock
+// follow. Fewer are a loss, taken from the oldest batch first and, when those
+// bottles were reserved, from the order needed latest.
+{
+  const { stateInvariantViolations } = require("../api/_lib/kombu-backend");
+  const product = { id: "tea", item: "KMB1", flavor: "Tea", sizeMl: 500, retailPrice: 22, wholesalePrice: 15, status: "ativo", visible: true };
+  const recipe = (extra = {}) => ({ id: "r-tea", productId: "tea", flavor: "Tea", version: "v1", status: "ativa", bottleMl: 500, yieldBottles: 1, ingredients: [{ ingredientId: "leaf", qty: 10, unit: "g" }], packaging: [], ...extra });
+  const leaf = (stock = 1000) => ({ id: "leaf", name: "Folha", category: "chá", purchaseUnit: "g", stock, costPerUnit: 0.05, stockCountedAt: "2026-11-01T10:00:00Z" });
+  const batch = (code, actual, date) => ({ id: `b-${code}`, code, productId: "tea", recipeId: "r-tea", flavor: "Tea", sizeMl: 500, actual, expected: actual, date, status: "aprovado", inventoryAdjusted: true, inventoryQty: actual, costSnapshot: { costPerBottle: 2, yieldBottles: 1, total: 2, ingredientCost: 2 } });
+  const order = (orderId, due, qty, allocations, createdAt) => ({ id: orderId, code: orderId.toUpperCase(), status: "confirmado", orderDate: "2026-11-01", neededBy: due, createdAt, customerName: orderId, items: [{ key: `k-${orderId}`, productId: "tea", flavor: "Tea", sizeMl: 500, qty, unitPrice: 22, allocations }] });
+  const state = () => admin.__getState();
+  const count = (counted, productId = "tea") => plain(call("applyBottleCount", [{ productId, counted }]));
+  const reserved = (orderId) => call("orderItemReservedQty", state().orders.find((item) => item.id === orderId).items[0]);
+  // Nothing here may open a dialog.
+  admin.confirm = () => { throw new Error("a blocking dialog was opened"); };
+  admin.alert = () => { throw new Error("a blocking alert was opened"); };
+
+  // More on the shelf than recorded: an entry made by the recipe.
+  load({ products: [product], recipes: [recipe()], ingredients: [leaf()], batches: [batch("T-1", 9, "2026-11-01")] });
+  assert.equal(call("expectedBottles", "tea"), 9);
+  const untouched = JSON.stringify(state());
+  assert.equal(count(9)[0].kind, "same");
+  assert.equal(JSON.stringify(state()), untouched, "counting the number already recorded writes nothing");
+  const entry = count(12);
+  assert.deepEqual([entry[0].kind, entry[0].expected, entry[0].counted, entry[0].qty], ["entry", 9, 12, 3]);
+  assert.equal(entry[0].message, "Tea 500 ml: 9 → 12, entraram 3 garrafas.");
+  const made = state().batches[0];
+  assert.deepEqual([made.source, made.actual, made.recipeId, made.productId, made.status], ["ajuste", 3, "r-tea", "tea", "aprovado"]);
+  assert.match(made.note, /sistema 9.*contado 12/);
+  assert.equal(state().ingredients[0].stock, 970, "the entry takes the recipe's 30 g of leaf");
+  assert.equal(made.costSnapshot.costPerBottle, 0.5, "the cost of the new bottles is frozen from the recipe");
+  assert.equal(call("expectedBottles", "tea"), 12);
+  assert.match(state().audit.find((row) => row.action === "Contagem de estoque")?.detail || "", /Tea 500 ml: 9 → 12/);
+  // The server accepts what a count writes: the batch's source and note.
+  const { validateAppState } = require("../api/_lib/kombu-backend");
+  assert.equal(validateAppState(plain(state())), "", "the server accepts a state with a count entry");
+
+  // Fewer than recorded: a loss, oldest batch first. T-1 has 2 on the shelf, all
+  // reserved by the order needed latest; T-2 has 6 with 4 reserved.
+  load({
+    products: [product], recipes: [recipe()], ingredients: [leaf()],
+    batches: [batch("T-1", 3, "2026-10-01"), batch("T-2", 6, "2026-11-01")],
+    sales: [{ id: "s1", date: "2026-01-05", batchCode: "T-1", productId: "tea", flavor: "Tea", qty: 1, unitPrice: 22, movementType: "venda", customerName: "Ana" }],
+    orders: [order("old", "2026-11-20", 4, [{ batchCode: "T-2", qty: 4 }], "2026-11-01T10:00:00Z"), order("new", "2026-12-20", 2, [{ batchCode: "T-1", qty: 2 }], "2026-11-05T10:00:00Z")],
+  });
+  assert.equal(call("expectedBottles", "tea"), 8);
+  const loss = count(4);
+  assert.deepEqual([loss[0].kind, loss[0].qty], ["loss", 4]);
+  assert.equal(loss[0].message, "Tea 500 ml: 8 → 4, 4 perdidas.");
+  const lost = plain(state().sales).filter((sale) => sale.movementType === "perda");
+  assert.deepEqual(lost.map((sale) => [sale.batchCode, sale.qty]).sort(), [["T-1", 2], ["T-2", 2]], "the loss is spread oldest batch first");
+  lost.forEach((sale) => {
+    assert.deepEqual([sale.unitPrice, sale.customerName, sale.productId, sale.date], [0, "Ajuste de estoque", "tea", call("todayIso")]);
+    assert.match(sale.note, /sistema 8.*contado 4/);
+  });
+  assert.equal(reserved("new"), 0, "the order needed latest gave up its bottles");
+  assert.equal(reserved("old"), 4, "the older order keeps its reservation");
+  assert.equal(call("expectedBottles", "tea"), 4);
+  assert.equal(state().ingredients[0].stock, 1000, "a loss does not touch supplies");
+  assert.equal(stateInvariantViolations(plain(state())).byRule.batch_over_allocated, 0, "the server would accept the saved state");
+  // The loss costs what the bottles cost and earns nothing.
+  const finance = plain(call("dashboardFinancials", call("todayIso").slice(0, 7)));
+  assert.deepEqual([finance.revenue, finance.cogs], [0, 8]);
+
+  // One batch, two orders: the order needed latest gives up first.
+  load({
+    products: [product], recipes: [recipe()], ingredients: [leaf()], batches: [batch("T-1", 4, "2026-11-01")],
+    orders: [order("old", "2026-11-20", 2, [{ batchCode: "T-1", qty: 2 }], "2026-11-01T10:00:00Z"), order("new", "2026-12-20", 2, [{ batchCode: "T-1", qty: 2 }], "2026-11-05T10:00:00Z")],
+  });
+  count(1);
+  assert.deepEqual([reserved("new"), reserved("old")], [0, 1]);
+  assert.equal(stateInvariantViolations(plain(state())).byRule.batch_over_allocated, 0);
+
+  // Bottles already sold before any batch existed are not on the shelf, so the
+  // count is compared with what is left after them, and a new entry covers them.
+  load({ products: [product], recipes: [recipe()], ingredients: [leaf()], batches: [batch("T-1", 3, "2026-11-01")] });
+  call("recordPendingSale", { date: "2026-11-10", customerName: "Ana", movementType: "venda", priceType: "varejo", productId: "tea", flavor: "Tea", qty: 2, unitPrice: 22, discount: 0, delivery: 0 });
+  assert.deepEqual([call("productPhysicalStock", "tea"), call("pendingSaleQuantity", "tea"), call("expectedBottles", "tea")], [3, 2, 1]);
+  assert.deepEqual([count(4)[0].kind, count(4)[0].kind], ["entry", "same"]);
+  assert.deepEqual([call("pendingSaleQuantity", "tea"), call("productPhysicalStock", "tea"), call("expectedBottles", "tea")], [0, 4, 4], "the entry covered the bottles already sold");
+
+  // No active recipe: the entry is not made and no cost is invented.
+  load({ products: [product], recipes: [recipe({ status: "arquivada" })], ingredients: [leaf()], batches: [batch("T-1", 3, "2026-11-01")] });
+  const none = count(5);
+  assert.equal(none[0].kind, "no-recipe");
+  assert.match(none[0].message, /sem receita ativa/);
+  assert.deepEqual([state().batches.length, state().ingredients[0].stock], [1, 1000]);
+
+  // Supplies never block. Production that takes a supply below zero saves, and a
+  // notice is queued for the next screen instead of a yes/no dialog.
+  load({ products: [product], recipes: [recipe()], ingredients: [leaf(100)] });
+  const produced = plain(call("recordProduction", [{ recipe: state().recipes[0], bottles: 12, code: "T-X" }], "2026-11-16", "Dona Maria"));
+  assert.equal(produced.length, 1);
+  assert.equal(state().ingredients[0].stock, -20, "the true negative balance is kept");
+  const notices = plain(call("takeNotices"));
+  assert.equal(notices.length, 1);
+  assert.equal(notices[0].tone, "warn");
+  assert.match(notices[0].text, /Folha.*20/);
+  assert.deepEqual(plain(call("takeNotices")), [], "a notice is shown once");
+
+  // A supply at exactly 0 asks "is it really 0?" and is never a block. Only
+  // supplies whose stock is kept are asked about.
+  load({
+    ingredients: [
+      { id: "sugar", name: "Açúcar", purchaseUnit: "g", stock: 0, costPerUnit: 0.005, stockCountedAt: "2026-11-01T10:00:00Z" },
+      { id: "stamp", name: "Carimbo", purchaseUnit: "un", stock: 0, costPerUnit: 0 },
+      { id: "salt", name: "Sal", purchaseUnit: "g", stock: -5, costPerUnit: 0.01, stockCountedAt: "2026-11-01T10:00:00Z" },
+    ],
+    packaging: [],
+  });
+  assert.deepEqual(plain(call("zeroStockSupplies")).map((row) => row.item.id), ["sugar"]);
+  const dashboard = call("renderDashboard");
+  assert.match(dashboard, /Açúcar está com 0\. É 0 mesmo\?/);
+  assert.match(dashboard, /data-action="confirm-zero-supply:ingredients:sugar"/);
+  assert.match(dashboard, /data-action="fix-supply-stock:ingredients:sugar"/);
+  assert.match(call("renderOperator"), /Açúcar está com 0/, "simple mode asks too");
+  assert.match(dashboard, /Estoque negativo: Sal/, "negative supplies keep their alert");
+  call("confirmZeroSupply", "ingredients", "sugar");
+  assert.deepEqual(plain(call("zeroStockSupplies")), []);
+  assert.ok(state().ingredients[0].stockCountedAt > "2026-11-02", "confirming counts the item");
+  assert.equal(state().ingredients[0].zeroConfirmed, true);
+  assert.equal(require("../api/_lib/kombu-backend").validateAppState(plain(state())), "", "the server accepts a supply with zeroConfirmed");
+  assert.doesNotMatch(call("renderDashboard"), /É 0 mesmo/);
+  // Once the stock moves and comes back to zero, the question returns.
+  state().ingredients[0].stock = 300;
+  call("saveState");
+  state().ingredients[0].stock = 0;
+  assert.deepEqual(plain(call("zeroStockSupplies")).map((row) => row.item.id), ["sugar"]);
+
+  admin.confirm = () => true;
+  admin.alert = () => {};
+}
+console.log("Stock count: entry by recipe, loss oldest batch first, reserved bottles from the newest order, bottles sold without stock, no recipe, supplies never blocking and the zero-stock question passed.");
+
+// "Só fechar" (owner decision, 16 November 2026): every order that is not
+// cancelled becomes delivered and paid, and nothing else moves. No sale, no
+// revenue, no cost, no receipt, no stock movement. The danger is a path that
+// derives sales from orders: an order marked delivered with no deliveries is
+// read, on every page load, as a sale of its whole quantity. A marker keeps the
+// closed orders out of that path, and orders that were already delivered keep
+// the sales they have.
+{
+  const { stateInvariantViolations, validateAppState } = require("../api/_lib/kombu-backend");
+  const { reconcileReservations } = require("../api/_lib/reservations");
+  const today = () => call("todayIso");
+  const item = (key, qty, extra = {}) => ({ key, productId: "tea", flavor: "Tea", sizeMl: 500, qty, unitPrice: 22, deliveredQty: 0, allocations: [], reservedQty: 0, producedQty: 0, ...extra });
+  const delivery = (deliveryId, orderItemKey, qty, deliveredAt) => ({ id: deliveryId, number: 1, deliveredAt, paymentDueDate: `${deliveredAt.slice(0, 8)}28`, createdAt: `${deliveredAt}T10:00:00Z`, items: [{ orderItemKey, productId: "tea", flavor: "Tea", qty, unitPrice: 22, allocations: [{ batchCode: "T-1", qty }] }], totalQty: qty, productsTotal: qty * 22, total: qty * 22, deliveryFee: 0, paymentMethod: "Pix" });
+  const order = (orderId, fields) => ({ id: orderId, code: `PED-${orderId.toUpperCase()}`, customerName: `Cliente ${orderId}`, clientType: "novo_cliente", orderDate: "2026-11-01", paymentStatus: "aberto", ...fields });
+  load({
+    products: [{ id: "tea", item: "KMB1", flavor: "Tea", sizeMl: 500, retailPrice: 22, wholesalePrice: 15, status: "ativo", visible: true }],
+    recipes: [{ id: "r-tea", productId: "tea", flavor: "Tea", version: "v1", status: "ativa", bottleMl: 500, yieldBottles: 1, ingredients: [], packaging: [] }],
+    batches: [{ id: "b1", code: "T-1", productId: "tea", recipeId: "r-tea", flavor: "Tea", sizeMl: 500, actual: 20, expected: 20, date: "2026-10-01", status: "aprovado", inventoryAdjusted: true, inventoryQty: 20, costSnapshot: { costPerBottle: 2, yieldBottles: 1, total: 2, ingredientCost: 2 } }],
+    packaging: [],
+    orders: [
+      // Open, nothing delivered, 4 bottles reserved.
+      order("a", { status: "confirmado", neededBy: "2026-11-10", items: [item("ka", 4, { allocations: [{ batchCode: "T-1", qty: 4 }], reservedQty: 4, producedQty: 4 })] }),
+      // Open, 2 of 5 delivered through the system, 3 reserved.
+      order("b", { status: "confirmado", orderDate: "2026-11-02", items: [item("kb", 5, { deliveredQty: 2, allocations: [{ batchCode: "T-1", qty: 3 }], reservedQty: 3, producedQty: 3 })], deliveries: [delivery("d1", "kb", 2, "2026-11-05")] }),
+      // Delivered through the system, not paid.
+      order("c", { status: "entregue", orderDate: "2026-10-20", deliveredAt: "2026-10-25", paymentDueDate: "2026-11-09", paymentStatus: "aguardando pagamento", items: [item("kc", 3, { deliveredQty: 3 })], deliveries: [delivery("d2", "kc", 3, "2026-10-25")] }),
+      // Delivered the old way (no deliveries): its sales come from the order itself.
+      order("d", { status: "entregue", orderDate: "2026-10-10", deliveredAt: "2026-10-12", paymentDueDate: "2026-10-27", paymentStatus: "aguardando pagamento", items: [item("kd", 2, { deliveredQty: 2, allocations: [{ batchCode: "T-1", qty: 2 }] })] }),
+      order("e", { status: "cancelado", items: [item("ke", 9)] }),
+      order("f", { status: "entregue", orderDate: "2026-10-01", deliveredAt: "2026-10-03", paymentDueDate: "2026-10-18", paymentStatus: "pago", items: [item("kf", 1, { deliveredQty: 1 })], deliveries: [delivery("d3", "kf", 1, "2026-10-03")] }),
+      // Open, needed in the far future, no allocation.
+      order("g", { status: "recebido", orderDate: "2026-11-03", neededBy: "2099-01-01", items: [item("kg", 1)] }),
+    ],
+  });
+  const state = () => admin.__getState();
+  const syncAll = () => admin.__eval("state.orders.forEach(syncOrderIntegrations); refreshAllOrderReservations();");
+  syncAll();
+  syncAll();
+  const orderById = (orderId) => state().orders.find((row) => row.id === orderId);
+  const month = (offset = 0) => call("todayIso").slice(0, 7);
+  const money = () => ({
+    sales: JSON.stringify(state().sales), batches: JSON.stringify(state().batches), receipts: JSON.stringify(state().receipts || []),
+    purchases: JSON.stringify(state().purchases), expenses: JSON.stringify(state().expenses), ingredients: JSON.stringify(state().ingredients),
+    physical: call("productPhysicalStock", "tea"),
+    totals: (({ salesRevenue, cogs, expenses, unknownCosts, produced, sold }) => ({ salesRevenue, cogs, expenses, unknownCosts, produced, sold }))(plain(call("totals"))),
+    months: ["2026-10", "2026-11", month()].map((key) => plain(call("dashboardFinancials", key))),
+  });
+  const before = money();
+  const untouched = ["c", "d", "e", "f"].map((orderId) => JSON.stringify(orderById(orderId)));
+  const salesBefore = plain(state().sales);
+  assert.equal(salesBefore.length, 4, "the system already holds 4 sales: B's delivery, C's, D's own and F's");
+  assert.ok(plain(call("totals")).receivable > 0, "two delivered orders are waiting for payment");
+  const freeBefore = plain(call("finishedStockRows")).reduce((sum, row) => sum + row.stock, 0);
+
+  // The preview counts what will close, and changes nothing.
+  const preview = plain(call("freshStartPreview"));
+  assert.deepEqual([preview.orders.map((row) => row.id), preview.open, preview.unpaid, preview.bottles, preview.value], [["a", "b", "c", "d", "g"], 3, 2, 4 + 3 + 1, 8 * 22]);
+  assert.equal(JSON.stringify(money()), JSON.stringify(before), "the preview writes nothing");
+
+  // Only the typed word closes anything.
+  assert.deepEqual(["ENCERRAR", " encerrar ", "Encerrar"].map((word) => call("isFreshStartWord", word)), [true, true, true]);
+  assert.deepEqual(["", "ENCERRA", "sim", "ENCERRAR TUDO", null].map((word) => call("isFreshStartWord", word)), [false, false, false, false, false]);
+  const ordersBefore = JSON.stringify(state().orders);
+  ["", "ENCERRA", "sim"].forEach((word) => assert.equal(call("closeOrdersForFreshStart", word), null, `"${word}" closes nothing`));
+  assert.equal(JSON.stringify(money()), JSON.stringify(before));
+  assert.equal(JSON.stringify(state().orders), ordersBefore, "a wrong word leaves every order as it was");
+
+  const result = plain(call("closeOrdersForFreshStart", "ENCERRAR"));
+  assert.deepEqual([result.closed, result.opened, result.paidOnly, result.bottles, result.value], [5, 3, 2, 8, 176]);
+
+  // Closed: delivered and paid, reservations released, dates from the order itself.
+  const a = orderById("a");
+  assert.deepEqual([a.status, a.paymentStatus, a.deliveredAt, a.paymentDueDate, a.closedFreshStart], ["entregue", "pago", "2026-11-10", "2026-11-25", today()]);
+  assert.deepEqual(a.items.map((row) => [row.qty, row.deliveredQty, row.reservedQty, row.producedQty, row.allocations.length, row.reservationTarget, row.reservationOverride, row.productionStatus]), [[4, 4, 0, 0, 0, null, null, "entregue"]]);
+  assert.match(a.notes, new RegExp(`Encerrado em ${today().split("-").reverse().join("/")} ao recomeçar o sistema \\(sem venda, sem baixa de estoque\\)`));
+  const b = orderById("b");
+  assert.deepEqual([b.status, b.paymentStatus, b.items[0].deliveredQty, b.items[0].allocations.length, b.deliveredAt], ["entregue", "pago", 5, 0, "2026-11-02"]);
+  assert.equal(JSON.stringify(b.deliveries), JSON.stringify(salesBefore.length && state().orders.find((row) => row.id === "b").deliveries), "the delivery on record is kept");
+  const g = orderById("g");
+  assert.equal(g.deliveredAt, today(), "a date in the future is never used");
+  // Delivered and unpaid: only the payment status changes, and their sales stay.
+  ["c", "d"].forEach((orderId) => {
+    const row = orderById(orderId);
+    assert.equal(row.paymentStatus, "pago");
+    assert.equal(row.closedFreshStart, undefined, `${orderId} was already delivered, so it is not marked as closed`);
+    const rest = JSON.parse(untouched[["c", "d", "e", "f"].indexOf(orderId)]);
+    assert.equal(JSON.stringify({ ...row, paymentStatus: rest.paymentStatus }), JSON.stringify(rest), `${orderId} changed only its payment status`);
+  });
+  // Cancelled and already paid orders are not touched at all.
+  assert.deepEqual(["e", "f"].map((orderId) => JSON.stringify(orderById(orderId))), [untouched[2], untouched[3]]);
+
+  // The page loads again: nothing in the order-derived paths creates a sale.
+  syncAll();
+  const after = money();
+  assert.equal(after.sales, before.sales, "no sale was created, changed or removed");
+  assert.deepEqual({ ...after, sales: 0 }, { ...before, sales: 0 }, "revenue, cost, expenses, batches, receipts and physical stock are identical");
+  assert.equal(JSON.stringify(plain(state().sales)), JSON.stringify(salesBefore));
+  const totalsAfter = plain(call("totals"));
+  assert.deepEqual([totalsAfter.receivable, totalsAfter.openOrderQty, totalsAfter.productionMissing], [0, 0, 0], "nothing is left to receive, deliver or produce");
+  // What changed: the reservations are gone, so the bottles are free again.
+  const freeAfter = plain(call("finishedStockRows")).reduce((sum, row) => sum + row.stock, 0);
+  assert.equal(freeAfter - freeBefore, 4 + 3, "the 7 reserved bottles are free again; none left the shelf");
+
+  // The server accepts it and leaves it alone.
+  assert.equal(validateAppState(plain(state())), "");
+  assert.equal(stateInvariantViolations(plain(state())).total, 0);
+  const reconciled = reconcileReservations(plain(state()), { reservationMode: "preserve", audit: false }).state;
+  assert.equal(JSON.stringify(reconciled.sales), JSON.stringify(plain(state().sales)), "the server's reconciliation adds no sale");
+  assert.deepEqual(reconciled.orders.filter((row) => ["a", "b", "g"].includes(row.id) && (row.items || []).some((entry) => (entry.allocations || []).length)).map((row) => row.id), [], "the server does not hand the closed orders any bottle again");
+
+  // One audit entry names every order and the counts. A second run finds nothing.
+  const entries = state().audit.filter((row) => row.action === "Pedidos encerrados ao recomeçar");
+  assert.equal(entries.length, 1);
+  ["PED-A", "PED-B", "PED-C", "PED-D", "PED-G"].forEach((code) => assert.match(entries[0].detail, new RegExp(code)));
+  assert.doesNotMatch(entries[0].detail, /PED-E|PED-F/);
+  const again = JSON.stringify(state());
+  assert.equal(plain(call("freshStartPreview")).orders.length, 0);
+  assert.equal(call("closeOrdersForFreshStart", "ENCERRAR"), null);
+  assert.equal(JSON.stringify(state()), again, "running it again changes nothing");
+}
+console.log("Fresh start: only the typed word closes, delivered and paid with no sale, revenue, cost, receipt or stock movement, reservations released, already delivered orders keep their sales, cancelled and paid untouched, server accepts it passed.");

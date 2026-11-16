@@ -65,7 +65,7 @@ Se faltar produzir alguma garrafa, o pedido continua **Em aberto** e mostra quan
 
 As garrafas novas são separadas sozinhas para os pedidos que estavam esperando, e o painel avisa quantas foram separadas.
 
-Se faltar algum ingrediente no estoque, aparece um aviso dizendo quanto falta. Você pode salvar mesmo assim, e o item vai aparecer em **Precisa de atenção** até alguém registrar a compra.
+A produção sempre salva, mesmo que o painel ache que falta ingrediente. Se faltar, depois de salvar aparece um aviso amarelo dizendo qual ingrediente ficou negativo, e o item vai para **Precisa de atenção** até alguém registrar a compra ou corrigir o estoque. O painel não pergunta nada antes e não impede o trabalho.
 
 ## 7. Registrar uma compra pela foto da nota
 
@@ -98,7 +98,26 @@ Se a leitura não funcionar, o painel mostra um aviso e o botão **Registrar pel
 3. Para saber o que precisa produzir ou comprar, toque em **Reposição**. **Produzir** e **Comprar** aparecem em vermelho. **Histórico insuficiente** quer dizer que ainda não dá para prever.
 4. Para voltar, toque em **Voltar ao modo simples**.
 
-## 10. Corrigir um lançamento
+## 10. Contar o estoque
+
+Use quando o número do painel não bate com o que está na prateleira. Você não precisa lançar produção nem escrever motivo.
+
+1. Em **Outras tarefas**, toque em **Contar o estoque**. No painel completo, o botão é **Contar garrafas**, na tela Estoque.
+2. Em **Quantas garrafas você contou?**, cada sabor já mostra o número que o painel acha que existe. Mude só os que estiverem errados, com **+** e **−**.
+3. Embaixo do número aparece o que vai acontecer: **Entram** garrafas ou **viram perda**.
+4. Toque em **Salvar contagem**.
+
+O que o painel faz sozinho:
+- Se você contou **mais** do que o painel tinha, as garrafas a mais entram como produção. O painel usa a receita do sabor para dar baixa nos ingredientes e calcular o custo.
+- Se você contou **menos**, as garrafas que faltam viram **perda**. Saem primeiro do lote mais antigo. Se estavam reservadas para um pedido, a reserva sai do pedido que o cliente precisa mais tarde, e o painel avisa de quem.
+- Garrafa vendida antes de existir produção é coberta pelas garrafas que entram.
+- Sabor sem receita ativa só pode diminuir, porque o painel não inventa custo.
+
+Cada mudança fica no histórico como **Contagem de estoque**. Se nada mudou, o painel diz **Nenhuma contagem mudou.**
+
+Para ingredientes e embalagens, o botão **Ajustar ingredientes** (na tela Estoque do painel completo) abre a correção. O motivo é opcional.
+
+## 11. Corrigir um lançamento
 
 1. Em **Outras tarefas**, toque em **Corrigir um lançamento**.
 2. A lista mostra as compras, produções e vendas mais novas primeiro.
@@ -109,13 +128,14 @@ Se a leitura não funcionar, o painel mostra um aviso e o botão **Registrar pel
 
 Toda correção fica registrada no histórico, com data e hora.
 
-## 11. Avisos que podem aparecer
+## 12. Avisos que podem aparecer
 
 - **Precisa de atenção** (no modo simples) ou **Atenção necessária** (no painel completo): lista o que precisa ser resolvido.
 - **Estoque negativo**: a produção usou mais do que estava registrado. Registre a compra que faltou ou peça para corrigirem o estoque.
+- **É 0 mesmo?**: um ingrediente aparece com 0 no painel. Se acabou de verdade, toque em **É isso mesmo**. Se ainda tem, toque em **Corrigir estoque** e digite quanto tem. Isso nunca impede a produção.
 - **Vendido sem estoque**: houve uma venda antes da produção ser registrada. Registre a produção: o painel liga a venda ao lote novo automaticamente.
 
-## 12. Quando pedir ajuda
+## 13. Quando pedir ajuda
 
 - O painel diz que a senha está errada.
 - Uma tela ficou parada por mais de dois minutos.

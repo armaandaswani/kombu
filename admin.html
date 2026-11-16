@@ -10,7 +10,12 @@
     />
     <meta name="robots" content="noindex,nofollow,noarchive" />
     <meta name="theme-color" content="#28552a" />
-    <link rel="manifest" href="/manifest.webmanifest" />
+    <!-- The admin is its own app: added to a home screen it opens /admin, not the
+         public site, which has its own manifest starting at "/". -->
+    <link rel="manifest" href="/manifest-admin.webmanifest" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="Kombú Admin" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <link rel="apple-touch-icon" href="/assets/kombu-k-logo.png" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -19,8 +24,8 @@
       rel="stylesheet"
     />
     <link rel="icon" href="favicon.svg" type="image/svg+xml" />
-    <link rel="stylesheet" href="assets/kombu.css?v=20261116c" />
-    <link rel="stylesheet" href="assets/operator.css?v=20261116c" />
+    <link rel="stylesheet" href="assets/kombu.css?v=20261116d" />
+    <link rel="stylesheet" href="assets/operator.css?v=20261116d" />
   </head>
   <body class="admin-body">
     <section class="admin-login" id="loginScreen" aria-labelledby="loginTitle">
@@ -210,9 +215,9 @@
     </div>
 
     <script src="assets/vendor/jspdf.umd.min.js?v=4.0.0"></script>
-    <script src="assets/admin-i18n.js?v=20261116c"></script>
+    <script src="assets/admin-i18n.js?v=20261116d"></script>
     <script src="assets/admin-locale.js?v=20261115b"></script>
     <script src="assets/receipt-reader.js?v=20261115a"></script>
-    <script src="assets/admin.js?v=20261116c"></script>
+    <script src="assets/admin.js?v=20261116d"></script>
   </body>
 </html>

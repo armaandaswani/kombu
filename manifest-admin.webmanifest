@@ -1,0 +1,20 @@
+{
+  "id": "/admin",
+  "name": "Kombú Admin",
+  "short_name": "Kombú Admin",
+  "description": "Painel interno da Kombú: pedidos, produção e estoque.",
+  "lang": "pt-BR",
+  "start_url": "/admin",
+  "scope": "/admin",
+  "display": "standalone",
+  "background_color": "#f7f8f3",
+  "theme_color": "#28552a",
+  "icons": [
+    {
+      "src": "/assets/kombu-k-logo.png",
+      "sizes": "1024x1024",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

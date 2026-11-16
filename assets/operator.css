@@ -661,3 +661,50 @@
 .admin-shell.is-simple #passkeyButton {
   display: none;
 }
+/* Messages after a save that need a second look (a supply that ran short, a
+   reservation taken by a count), the "is it really 0?" buttons and the count
+   screen's notes. Shared by simple mode and the full panel. */
+#adminContent > .operator-notice {
+  margin-bottom: 12px;
+}
+
+.operator-notice.is-warn {
+  border-color: var(--warning);
+  background: var(--surface-warm);
+}
+
+.operator-notice.is-warn .material-symbols-outlined {
+  color: var(--warning);
+}
+
+.alert-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.alert-actions .btn {
+  min-height: 48px;
+  font-size: 1rem;
+}
+
+.simple-lead {
+  margin: 0;
+  font-size: 1.05rem;
+}
+
+.simple-diff {
+  color: var(--green);
+  font-weight: 700;
+}
+
+.simple-diff:empty {
+  display: none;
+}
+
+@media (max-width: 760px) {
+  .alert-actions .btn {
+    flex: 1 1 100%;
+  }
+}
