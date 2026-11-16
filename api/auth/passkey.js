@@ -35,7 +35,9 @@ async function loginOptions(rp) {
     rpId: rp.rpId,
     timeout: passkeys.CHALLENGE_TTL_MS,
     userVerification: "required",
-    allowCredentials: mine.map((item) => ({ id: item.id, transports: item.transports || [] })),
+    // Empty on purpose: this answer goes to anyone, so it must not list which
+    // credentials exist. The device offers the passkeys it holds for this site.
+    allowCredentials: [],
   };
 }
 
@@ -59,6 +61,9 @@ async function login(req, res, body, rp) {
   await passkeys.changePasskeys((doc) => {
     const current = doc.credentials.find((item) => item.id === id && item.rpId === rp.rpId);
     if (!current) throw fail(401, "passkey_unknown");
+    // Against the stored value, not the one read earlier: a slower sign-in must
+    // not move the counter back behind a faster one.
+    passkeys.checkCounter(current.signCount, signCount);
     passkeys.spendChallenge(doc, payload);
     current.signCount = signCount;
     current.lastUsedAt = new Date().toISOString();
@@ -99,7 +104,13 @@ async function register(body, rp, session) {
   if (!input.id || !input.clientDataJSON || !input.attestationObject) throw fail(400, "invalid_request");
   const payload = passkeys.verifyChallenge(body.token, "reg");
   if (payload.sub !== session.sub) throw fail(401, "passkey_invalid_challenge");
-  const created = passkeys.verifyRegistration(input, { challenge: payload.c, rpId: rp.rpId, origins: rp.origins });
+  let created;
+  try {
+    created = passkeys.verifyRegistration(input, { challenge: payload.c, rpId: rp.rpId, origins: rp.origins });
+  } catch (error) {
+    // Anything the parsers did not name is a malformed request, not a server fault.
+    throw error.status ? error : fail(400, "passkey_invalid_attestation");
+  }
   const entry = {
     id: created.id,
     publicKey: created.publicKey,
@@ -114,6 +125,9 @@ async function register(body, rp, session) {
   await passkeys.changePasskeys((doc) => {
     if (doc.credentials.some((item) => item.id === entry.id)) throw fail(409, "passkey_exists");
     if (doc.credentials.length >= passkeys.MAX_PASSKEYS) throw fail(409, "too_many_passkeys");
+    // A registration challenge works once, like a sign-in one: one password entry
+    // adds one device, not as many as can be sent within two minutes.
+    passkeys.spendChallenge(doc, payload);
     doc.credentials.push(entry);
     return doc;
   });
@@ -126,6 +140,12 @@ module.exports = async function handler(req, res) {
     return json(res, 405, { ok: false, error: "method_not_allowed" });
   }
   if (!hasSessionSecret()) return json(res, 503, { ok: false, error: "admin_auth_not_configured" });
+  // JSON only. The body reader also accepts form posts, which a page on another
+  // site can send with the visitor's cookie; this door takes only what the admin's
+  // own script sends.
+  if (!String(req.headers?.["content-type"] || "").toLowerCase().startsWith("application/json")) {
+    return json(res, 415, { ok: false, error: "unsupported_media_type" });
+  }
 
   let body;
   try {
@@ -133,6 +153,7 @@ module.exports = async function handler(req, res) {
   } catch (error) {
     return json(res, error.status || 400, { ok: false, error: error.code || "invalid_request" });
   }
+  if (!body || typeof body !== "object" || Array.isArray(body)) body = {};
   const action = String(body.action || "");
   const rp = passkeys.relyingParty(req);
   if (!rp) return json(res, 400, { ok: false, error: "invalid_host" });
@@ -172,8 +193,11 @@ module.exports = async function handler(req, res) {
     });
     return found ? json(res, 200, { ok: true }) : json(res, 404, { ok: false, error: "passkey_not_found" });
   } catch (error) {
-    // Anyone can try to sign in, so a failed sign-in never says why.
-    if (signingIn && error.status && error.status < 500 && error.status !== 404) return json(res, 401, { ok: false, error: "passkey_invalid" });
+    // Anyone can try to sign in, so a failed sign-in never says why: every fault
+    // in what the caller sent, named or not, answers the same 401. Only "there is
+    // no passkey yet" and a backend that is down are told apart.
+    const backendDown = error.message === "supabase_request_failed" || error.code === "passkeys_not_configured" || error.code === "admin_auth_not_configured";
+    if (signingIn && error.code !== "no_passkeys" && !backendDown) return json(res, 401, { ok: false, error: "passkey_invalid" });
     const status = error.status && error.status < 600 ? error.status : 500;
     return json(res, status, { ok: false, error: status === 500 ? "server_error" : error.code || "server_error" });
   }

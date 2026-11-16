@@ -7,9 +7,10 @@ const SUPABASE_URL = "http://supabase.test";
 
 function installFakeSupabase() {
   const rows = new Map();
-  const control = { rows, failNextPatch: false, failPatches: false, calls: [] };
+  const control = { rows, failNextPatch: false, failPatches: false, hold: null, throwNext: null, calls: [] };
   const reply = (data, status = 200) => ({ ok: status < 400, status, text: async () => JSON.stringify(data) });
   global.fetch = async (url, options = {}) => {
+    if (control.throwNext) { const failure = control.throwNext; control.throwNext = null; throw failure; }
     if (!String(url).startsWith(SUPABASE_URL)) throw new Error(`unexpected request to ${url}`);
     const parsed = new URL(url);
     const method = options.method || "GET";
@@ -23,6 +24,7 @@ function installFakeSupabase() {
       return reply([row]);
     }
     if (method === "PATCH") {
+      if (control.hold) { const gate = control.hold; control.hold = null; await gate; }
       const row = rows.get(id);
       const expected = (parsed.searchParams.get("updated_at") || "").replace(/^eq\./, "");
       if (control.failPatches) return reply([]);
@@ -103,8 +105,9 @@ function createAuthenticator(alg = "ES256") {
       };
     },
     // What it returns from navigator.credentials.get().
-    get({ challenge, origin, rpId, flags = FLAGS.present | FLAGS.verified, counter = 0, tamper = false }) {
-      const data = authenticatorData({ rpId, flags, counter });
+    get({ challenge, origin, rpId, flags = FLAGS.present | FLAGS.verified, counter = 0, tamper = false, attested = false }) {
+      // "attested" signs real credential data into the answer, which a sign-in never carries.
+      const data = authenticatorData({ rpId, flags: attested ? flags | FLAGS.attested : flags, counter, credentialId, cose });
       const client = clientData("webauthn.get", challenge, origin);
       let signature = sign(Buffer.concat([data, sha256(client)]));
       if (tamper) { signature = Buffer.from(signature); signature[signature.length - 1] ^= 1; }

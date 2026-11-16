@@ -31,10 +31,14 @@ function cborDecode(buffer, offset = 0, depth = 0) {
   const info = initial & 31;
   let cursor = offset + 1;
   let length = info;
-  if (info === 24) { length = buffer[cursor]; cursor += 1; }
-  else if (info === 25) { length = buffer.readUInt16BE(cursor); cursor += 2; }
-  else if (info === 26) { length = buffer.readUInt32BE(cursor); cursor += 4; }
+  // Every read is checked against the end first: a short buffer is an error the
+  // caller can name, never an exception that escapes as a server error.
+  const need = (bytes) => { if (cursor + bytes > buffer.length) throw requestError("passkey_invalid_cbor", 400); };
+  if (info === 24) { need(1); length = buffer[cursor]; cursor += 1; }
+  else if (info === 25) { need(2); length = buffer.readUInt16BE(cursor); cursor += 2; }
+  else if (info === 26) { need(4); length = buffer.readUInt32BE(cursor); cursor += 4; }
   else if (info === 27) {
+    need(8);
     const big = buffer.readBigUInt64BE(cursor);
     if (big > BigInt(Number.MAX_SAFE_INTEGER)) throw requestError("passkey_invalid_cbor", 400);
     length = Number(big);
@@ -98,13 +102,18 @@ function parseAuthData(buffer) {
 function coseToPublicKey(cose) {
   const type = cose.get(1);
   const alg = cose.get(3);
+  // Key parts must be byte strings of a sane size, whatever the sender claims.
+  const bytes = (value) => {
+    if (!Buffer.isBuffer(value) || value.length === 0 || value.length > 1024) throw requestError("passkey_invalid_key", 400);
+    return value.toString("base64url");
+  };
   let jwk;
   if (type === 2 && alg === -7 && cose.get(-1) === 1) {
-    jwk = { kty: "EC", crv: "P-256", x: cose.get(-2)?.toString("base64url"), y: cose.get(-3)?.toString("base64url") };
+    jwk = { kty: "EC", crv: "P-256", x: bytes(cose.get(-2)), y: bytes(cose.get(-3)) };
   } else if (type === 3 && alg === -257) {
-    jwk = { kty: "RSA", n: cose.get(-1)?.toString("base64url"), e: cose.get(-2)?.toString("base64url") };
+    jwk = { kty: "RSA", n: bytes(cose.get(-1)), e: bytes(cose.get(-2)) };
   } else if (type === 1 && alg === -8 && cose.get(-1) === 6) {
-    jwk = { kty: "OKP", crv: "Ed25519", x: cose.get(-2)?.toString("base64url") };
+    jwk = { kty: "OKP", crv: "Ed25519", x: bytes(cose.get(-2)) };
   } else {
     throw requestError("passkey_unsupported_key", 400);
   }
@@ -180,6 +189,8 @@ function readClientData(clientDataJSON, { type, challenge, origins }) {
   } catch {
     throw requestError("passkey_invalid_client_data", 400);
   }
+  // "null", a number or a list parse fine as JSON but are not client data.
+  if (!data || typeof data !== "object" || Array.isArray(data)) throw requestError("passkey_invalid_client_data", 400);
   if (data.type !== type || !sameText(data.challenge, challenge)) throw requestError("passkey_wrong_challenge", 401);
   if (!origins.includes(data.origin) || data.crossOrigin === true) throw requestError("passkey_wrong_origin", 401);
   return raw;
@@ -215,6 +226,8 @@ function verifyAssertion({ clientDataJSON, authenticatorData, signature }, crede
   const clientData = readClientData(clientDataJSON, { type: "webauthn.get", challenge, origins });
   const authBytes = Buffer.from(String(authenticatorData || ""), "base64url");
   const auth = parseAuthData(authBytes);
+  // A sign-in carries no new credential; attested data here is never legitimate.
+  if (auth.credentialId || auth.coseKey) throw requestError("passkey_invalid_auth_data", 400);
   checkAuthData(auth, rpId);
   const signed = Buffer.concat([authBytes, crypto.createHash("sha256").update(clientData).digest()]);
   const key = crypto.createPublicKey({ key: Buffer.from(credential.publicKey, "base64url"), format: "der", type: "spki" });
@@ -226,11 +239,17 @@ function verifyAssertion({ clientDataJSON, authenticatorData, signature }, crede
     valid = false;
   }
   if (!valid) throw requestError("passkey_bad_signature", 401);
-  // Synced passkeys (iCloud, Google) always report 0. When a counter is kept, a
-  // value that does not move forward means the key was copied.
-  const previous = Number(credential.signCount || 0);
-  if (auth.signCount > 0 && previous > 0 && auth.signCount <= previous) throw requestError("passkey_counter_regressed", 401);
+  checkCounter(credential.signCount, auth.signCount);
   return { signCount: auth.signCount };
+}
+
+// Synced passkeys (iCloud, Google) report 0 forever, and that is fine. Once a
+// device has reported a counter, it must keep moving forward, and 0 is not
+// forward: a value that stands still or drops means the key was copied. Checked
+// again inside the write, against the stored value, so a slow sign-in cannot
+// move the counter back behind a faster one.
+function checkCounter(previous, next) {
+  if (Number(previous || 0) > 0 && Number(next || 0) <= Number(previous)) throw requestError("passkey_counter_regressed", 401);
 }
 
 // ---------------------------------------------------------------- storage
@@ -313,6 +332,7 @@ module.exports = {
   CHALLENGE_TTL_MS,
   MAX_PASSKEYS,
   changePasskeys,
+  checkCounter,
   cborDecode,
   cleanLabel,
   cleanTransports,

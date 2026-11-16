@@ -31,7 +31,7 @@ async function call(target, body, { cookie = "", ip = freshIp(), host = HOST, me
     setHeader(name, value) { this.headers[name.toLowerCase()] = value; },
     end(value = "") { this.body = value; },
   };
-  await target({ method, headers: { host, cookie, "x-forwarded-for": ip }, body }, res);
+  await target({ method, headers: { host, cookie, "x-forwarded-for": ip, "content-type": "application/json" }, body }, res);
   return { status: res.statusCode, data: res.body ? JSON.parse(res.body) : {}, headers: res.headers };
 }
 const act = (action, body = {}, options) => call(handler, { action, ...body }, options);
@@ -99,8 +99,14 @@ async function signIn(authenticator, overrides = {}, { token, ip } = {}) {
   assert.equal((await call(sessionHandler, {}, { cookie: sessionCookie, method: "GET" })).status, 200, "the new session is accepted");
   assert.ok(database.rows.get("admin_passkeys").state.credentials[0].lastUsedAt, "last use is recorded");
   const loginOptions = await act("login-options");
-  assert.deepEqual(loginOptions.data.allowCredentials.map((item) => item.id), [iphone.id]);
+  assert.deepEqual(loginOptions.data.allowCredentials, [], "the sign-in challenge does not tell anyone which credentials exist");
+  assert.equal(JSON.stringify(loginOptions.data).includes(iphone.id), false);
   assert.equal(loginOptions.data.userVerification, "required");
+  // JSON only: a form post, which another site can send with the visitor's cookie, is refused.
+  const formPost = { statusCode: 200, headers: {}, body: "", setHeader() {}, end(value) { this.body = value; } };
+  await handler({ method: "POST", headers: { host: HOST, cookie, "content-type": "application/x-www-form-urlencoded", "x-forwarded-for": freshIp() }, body: { action: "remove", id: iphone.id } }, formPost);
+  assert.equal(formPost.statusCode, 415);
+  assert.equal(database.rows.get("admin_passkeys").state.credentials.length, 1, "a form post removes nothing");
 
   // --- Every way a sign-in must fail answers the same way and sets no cookie.
   const refuse = async (label, result) => {
@@ -187,6 +193,25 @@ async function signIn(authenticator, overrides = {}, { token, ip } = {}) {
   await refuse("a counter that did not move (copied key)", await signIn(laptop, { counter: 5 }));
   assert.equal((await signIn(laptop, { counter: 6 })).status, 200);
   assert.equal((await signIn(iphone, { counter: 0 })).status, 200, "a synced passkey always reports 0");
+  // A device that has kept a counter cannot fall back to 0: that would switch the check off.
+  await refuse("a counter that fell back to 0 after one was kept", await signIn(laptop, { counter: 0 }));
+  await refuse("a counter that went down", await signIn(laptop, { counter: 3 }));
+  const storedCounter = () => database.rows.get("admin_passkeys").state.credentials.find((item) => item.id === laptop.id).signCount;
+  assert.equal(storedCounter(), 6, "a refused sign-in does not change the stored counter");
+  // A slower sign-in cannot move the counter back behind a faster one; the check is
+  // repeated inside the write, against what is stored by then.
+  const slow = (await act("login-options")).data;
+  const slowAnswer = laptop.get({ challenge: slow.challenge, ...RP, counter: 20 });
+  const fast = (await act("login-options")).data;
+  const fastAnswer = laptop.get({ challenge: fast.challenge, ...RP, counter: 21 });
+  let letSlowFinish;
+  database.hold = new Promise((resolve) => { letSlowFinish = resolve; });
+  const slowSignIn = act("login", { token: slow.token, id: slowAnswer.id, response: slowAnswer.response });
+  await new Promise((resolve) => setTimeout(resolve, 25));
+  assert.equal((await act("login", { token: fast.token, id: fastAnswer.id, response: fastAnswer.response })).status, 200);
+  letSlowFinish();
+  await refuse("the slower sign-in finishing last", await slowSignIn);
+  assert.equal(storedCounter(), 21, "the counter never moves backwards");
 
   // --- Other key types.
   const windows = createAuthenticator("RS256");
@@ -227,6 +252,79 @@ async function signIn(authenticator, overrides = {}, { token, ip } = {}) {
   await refuse("a removed passkey", await signIn(windows));
   assert.equal((await act("list", {}, { cookie })).data.credentials.length, 3);
 
+  // --- One password entry adds one device: a registration challenge works once.
+  const oneEntry = (await act("register-options", { password: process.env.ADMIN_PORTAL_PASSWORD }, { cookie })).data;
+  const tries = [];
+  for (const kind of ["ES256", "ES256", "RS256"]) {
+    const created = createAuthenticator(kind).create({ challenge: oneEntry.challenge, ...RP });
+    tries.push((await act("register", { token: oneEntry.token, id: created.id, response: created.response }, { cookie })).status);
+  }
+  assert.deepEqual([tries[0], tries[1] !== 200, tries[2] !== 200], [200, true, true], "the same registration challenge adds only one device");
+  const racedEntry = (await act("register-options", { password: process.env.ADMIN_PORTAL_PASSWORD }, { cookie })).data;
+  const racedTries = await Promise.all(["ES256", "ES256", "RS256"].map((kind) => {
+    const created = createAuthenticator(kind).create({ challenge: racedEntry.challenge, ...RP });
+    return act("register", { token: racedEntry.token, id: created.id, response: created.response }, { cookie });
+  }));
+  assert.equal(racedTries.filter((result) => result.status === 200).length, 1, "three registrations sent at once with one challenge: exactly one is added");
+  assert.equal((await act("list", {}, { cookie })).data.credentials.length, 5);
+
+  // --- Malformed answers get the same 401 as any other failed sign-in, never a 500
+  // that would tell an outsider the challenge and the credential were real.
+  const malformed = async (label, change) => {
+    const options = (await act("login-options")).data;
+    const answer = iphone.get({ challenge: options.challenge, ...RP });
+    await refuse(label, await act("login", { token: options.token, id: answer.id, response: change(answer.response) }));
+  };
+  const attested = authenticatorData({ rpId: RP.rpId, flags: FLAGS.present | FLAGS.verified | FLAGS.attested, credentialId: Buffer.alloc(32, 1), cose: new Map([[1, 2]]) });
+  await malformed("truncated attested data", (r) => ({ ...r, authenticatorData: Buffer.concat([sha256(RP.rpId), Buffer.from([0x45]), Buffer.alloc(4), Buffer.alloc(30)]).toString("base64url") }));
+  await malformed("attested data in a sign-in", (r) => ({ ...r, authenticatorData: attested.toString("base64url") }));
+  await malformed("client data that is null", (r) => ({ ...r, clientDataJSON: Buffer.from("null").toString("base64url") }));
+  await malformed("client data that is a list", (r) => ({ ...r, clientDataJSON: Buffer.from("[1]").toString("base64url") }));
+  await malformed("client data that is not JSON", (r) => ({ ...r, clientDataJSON: Buffer.from("not json").toString("base64url") }));
+  await malformed("a signature that is not base64", (r) => ({ ...r, signature: "!!!" }));
+  await malformed("fields that are not text", (r) => ({ ...r, clientDataJSON: 5, signature: { a: 1 } }));
+  // Each guard is also tested alone, because the others would still refuse these:
+  // a validly signed sign-in that carries credential data is refused for that reason alone.
+  const withCredentialData = (await act("login-options")).data;
+  const carrying = iphone.get({ challenge: withCredentialData.challenge, ...RP, attested: true });
+  await refuse("a validly signed sign-in that carries credential data", await act("login", { token: withCredentialData.token, id: carrying.id, response: carrying.response }));
+  // An error nobody named (a crash inside the server) still answers like any failed sign-in.
+  const crashing = (await act("login-options")).data;
+  const crashAnswer = iphone.get({ challenge: crashing.challenge, ...RP });
+  database.throwNext = new TypeError("something unexpected");
+  await refuse("an unexpected server error during sign-in", await act("login", { token: crashing.token, id: crashAnswer.id, response: crashAnswer.response }));
+  assert.equal((await act("login", { token: crashing.token, id: crashAnswer.id, response: crashAnswer.response })).status, 200, "and the same answer works once the fault is gone");
+  const storedIphone = database.rows.get("admin_passkeys").state.credentials.find((item) => item.id === iphone.id);
+  const unitAnswer = iphone.get({ challenge: "x", ...RP }).response;
+  for (const [label, text] of [["null", "null"], ["a list", "[1]"], ["a number", "5"]]) {
+    assert.throws(
+      () => passkeys.verifyAssertion({ ...unitAnswer, clientDataJSON: Buffer.from(text).toString("base64url") }, storedIphone, { challenge: "x", ...RP, origins: [RP.origin] }),
+      (error) => error.code === "passkey_invalid_client_data",
+      `client data that is ${label} is named, not an exception`,
+    );
+  }
+  assert.throws(() => passkeys.coseToPublicKey(new Map([[1, 2], [3, -7], [-1, 1], [-2, 5], [-3, 6]])), (error) => error.code === "passkey_invalid_key", "a key part that is a number is named, not an exception");
+  assert.throws(() => passkeys.coseToPublicKey(new Map([[1, 2], [3, -7], [-1, 1], [-2, Buffer.alloc(0)], [-3, Buffer.alloc(32)]])), (error) => error.code === "passkey_invalid_key", "an empty key part is refused");
+  const odd = await act("login", { token: 5, id: ["x"], response: "text" });
+  assert.equal(odd.status, 401);
+  assert.equal(odd.data.error, "passkey_invalid");
+  assert.equal((await call(handler, [])).status, 400, "a body that is not an object is a plain bad request");
+
+  // A registration with a broken key is a bad request, not a server fault.
+  const badKey = createAuthenticator("ES256");
+  const badOptions = (await act("register-options", { password: process.env.ADMIN_PORTAL_PASSWORD }, { cookie })).data;
+  const badData = authenticatorData({ rpId: RP.rpId, flags: FLAGS.present | FLAGS.verified | FLAGS.attested, credentialId: badKey.credentialId, cose: new Map([[1, 2], [3, -7], [-1, 1], [-2, 5], [-3, 6]]) });
+  const badRegistration = await act("register", {
+    token: badOptions.token,
+    id: badKey.id,
+    response: {
+      clientDataJSON: Buffer.from(JSON.stringify({ type: "webauthn.create", challenge: badOptions.challenge, origin: RP.origin, crossOrigin: false })).toString("base64url"),
+      attestationObject: cbor(new Map([["fmt", "none"], ["attStmt", new Map()], ["authData", badData]])).toString("base64url"),
+    },
+  }, { cookie });
+  assert.equal(badRegistration.status, 400, "a key part that is a number is refused as a bad request");
+  assert.equal((await act("list", {}, { cookie })).data.credentials.length, 5, "and nothing was stored");
+
   // --- A label is cleaned, and the limit holds.
   const labelled = createAuthenticator("ES256");
   const labelOptions = await act("register-options", { password: process.env.ADMIN_PORTAL_PASSWORD }, { cookie });
@@ -261,6 +359,13 @@ async function signIn(authenticator, overrides = {}, { token, ip } = {}) {
   assert.throws(() => passkeys.cborDecode(Buffer.from([0x9f, 0x01, 0xff])), /passkey_invalid_cbor/, "indefinite lengths are refused");
   assert.throws(() => passkeys.cborDecode(Buffer.from([0x81, 0x81, 0x81, 0x81, 0x81, 0x81, 0x81, 0x81, 0x81, 0x81, 0x01])), /passkey_invalid_cbor/, "deep nesting is refused");
   assert.throws(() => passkeys.cborDecode(Buffer.from([0x58, 0x20, 0x01])), /passkey_invalid_cbor/, "a truncated string is refused");
+  // Every length field is checked against the end of the data before it is read.
+  for (const cut of [[0x18], [0x19, 0x00], [0x1a, 0, 0, 0], [0x1b, 0, 0, 0, 0], [0x58], [0x59, 0x00]]) {
+    assert.throws(() => passkeys.cborDecode(Buffer.from(cut)), /passkey_invalid_cbor/, `a cut-off length field ${cut.map((byte) => byte.toString(16)).join(" ")} is refused`);
+  }
+  assert.throws(() => passkeys.checkCounter(10, 0), /passkey_counter_regressed/, "0 after a kept counter is not forward");
+  assert.doesNotThrow(() => passkeys.checkCounter(0, 0), "a passkey that never kept a counter stays at 0");
+  assert.doesNotThrow(() => passkeys.checkCounter(0, 7), "a counter that starts later is fine");
   assert.throws(() => passkeys.parseAuthData(Buffer.alloc(10)), /passkey_invalid_auth_data/);
   const weak = new Map([[1, 3], [3, -257], [-1, Buffer.alloc(128, 1)], [-2, Buffer.from([1, 0, 1])]]);
   assert.throws(() => passkeys.coseToPublicKey(weak), /passkey_(weak|invalid)_key/, "a small RSA key is refused");
