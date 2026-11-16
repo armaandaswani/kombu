@@ -4388,6 +4388,12 @@ function derivedSalesForOrder(order) {
     });
     return rows;
   }
+  // An order closed to start over ("Encerrar pedidos antigos") is delivered and
+  // paid on paper only. Without this line the next page load would read it as
+  // delivered with no deliveries and create a sale, and revenue, of its whole
+  // quantity. The marker is set only on orders that were still open, so orders
+  // that were already delivered keep the sales they have.
+  if (order.closedFreshStart) return rows;
   if (order.status !== "entregue") return rows;
   orderItems(order).forEach((item) => {
     if (Number(item.qty || 0) <= 0) return;
@@ -6525,7 +6531,7 @@ function renderOrders() {
     ${pageHead(
       "Pedidos",
       "Novos pedidos e lotes recebem reservas automaticamente. A prioridade é a data do pedido, do mais antigo ao mais novo.",
-      `${actionButton("new-order", "Novo pedido", "add")} ${actionButton("quick-deliver-ready", `Dar baixa nos prontos${readyForDelivery.length ? ` (${number(readyForDelivery.length)})` : ""}`, "local_shipping", "btn-outline")} ${actionButton("recalculate-reservations", "Autoalocar estoque", "autorenew", "btn-outline")} ${actionButton("export-orders", "CSV", "download", "btn-outline")}`,
+      `${actionButton("new-order", "Novo pedido", "add")} ${actionButton("quick-deliver-ready", `Dar baixa nos prontos${readyForDelivery.length ? ` (${number(readyForDelivery.length)})` : ""}`, "local_shipping", "btn-outline")} ${actionButton("recalculate-reservations", "Autoalocar estoque", "autorenew", "btn-outline")} ${actionButton("export-orders", "CSV", "download", "btn-outline")} ${actionButton("close-old-orders", "Encerrar pedidos antigos", "task_alt", "btn-outline")}`,
     )}
     ${orderListFiltersMarkup()}
     <p class="inline-muted">${number(filteredOrders.length)} pedido(s) nesta visão</p>
@@ -12270,6 +12276,127 @@ function commitOrder(existing, payload) {
   return order;
 }
 
+// "Só fechar" (owner decision, 16 November 2026), for starting the system over:
+// every order that is not cancelled becomes delivered and paid, and nothing else
+// moves. No sale, no revenue, no cost, no receipt, no stock movement; the stock is
+// counted afterwards with "Contar garrafas". It runs once, on the owner's
+// word, after a preview. The only way back is the copy of the database.
+const FRESH_START_WORD = "ENCERRAR";
+
+function isFreshStartWord(text) {
+  return typeof text === "string" && text.trim().toUpperCase() === FRESH_START_WORD;
+}
+
+// Orders still open, and delivered orders still waiting for payment. Cancelled
+// orders and orders already delivered and paid are left alone.
+function freshStartPreview() {
+  const orders = (state.orders || []).filter((order) => !normalizeText(order.status).startsWith("cancelad") && (isOpenOrder(order) || orderReceivableStatus(order) !== "pago"));
+  const open = orders.filter(isOpenOrder);
+  const lines = open.flatMap((order) => orderItems(order));
+  return {
+    orders,
+    open: open.length,
+    unpaid: orders.length - open.length,
+    bottles: lines.reduce((sum, line) => sum + orderItemOutstandingQty(line), 0),
+    value: lines.reduce((sum, line) => sum + orderItemOutstandingQty(line) * Number(line.unitPrice || 0), 0),
+  };
+}
+
+// Returns null, changing nothing, unless the typed word is right and there is
+// something to close. An order that was still open is marked delivered with every
+// item delivered, its reservations released, and the marker that keeps it out of
+// the sales derived from orders. An order already delivered only becomes paid, so
+// the deliveries and sales it already has stay exactly as they are.
+function closeOrdersForFreshStart(word, today = todayIso()) {
+  if (!isFreshStartWord(word)) return null;
+  const preview = freshStartPreview();
+  if (!preview.orders.length) return null;
+  const stamp = new Date().toISOString();
+  const noteDate = today.split("-").reverse().join("/");
+  preview.orders.forEach((order) => {
+    if (isOpenOrder(order)) {
+      orderItems(order).forEach((line) => {
+        line.deliveredQty = Number(line.qty || 0);
+        line.allocations = [];
+        line.reservedQty = 0;
+        line.producedQty = 0;
+        line.reservationTarget = null;
+        line.reservationOverride = null;
+        line.batchCode = "";
+        line.productionStatus = "entregue";
+      });
+      const own = order.neededBy || order.orderDate || today;
+      order.status = "entregue";
+      delete order.statusManual;
+      order.deliveredAt = order.deliveredAt || (own > today ? today : own);
+      order.paymentDueDate = order.paymentDueDate || addDaysIso(order.deliveredAt, 15);
+      order.closedFreshStart = today;
+      order.notes = [String(order.notes || "").trim(), `Encerrado em ${noteDate} ao recomeçar o sistema (sem venda, sem baixa de estoque)`].filter(Boolean).join("\n");
+      order.updatedAt = stamp;
+    }
+    // An order that was already delivered changes this and nothing else.
+    order.paymentStatus = "pago";
+  });
+  // The same pass a page load runs: it must find no sale to create.
+  preview.orders.forEach((order) => syncOrderIntegrations(order));
+  refreshAllOrderReservations();
+  const result = { closed: preview.orders.length, opened: preview.open, paidOnly: preview.unpaid, bottles: preview.bottles, value: preview.value, codes: preview.orders.map((order) => order.code || order.id) };
+  addAudit(
+    "Pedidos encerrados ao recomeçar",
+    `${number(result.closed)} pedido(s): ${number(result.opened)} em aberto, ${number(result.paidOnly)} entregue(s) sem pagamento. ${number(result.bottles)} garrafa(s) fechadas sem sair do estoque, ${brl(result.value)}. Sem venda, sem baixa de estoque, sem recibo. Pedidos: ${result.codes.join(", ")}.`,
+  );
+  return result;
+}
+
+// The preview shown before anything changes. The typed word keeps a stray tap
+// from closing every order: this is a bulk change to live data, which is why it
+// asks, unlike the stock of supplies, which never does.
+function closeOldOrdersForm() {
+  const preview = freshStartPreview();
+  if (!preview.orders.length) {
+    openModal("Encerrar pedidos antigos", "Pedidos", `<p class="empty-note">Não há pedidos para encerrar: todos já estão entregues e pagos, ou cancelados.</p>`);
+    return;
+  }
+  openModal(
+    "Encerrar pedidos antigos",
+    "Pedidos",
+    `
+      <form id="freshStartForm" class="simple-form" novalidate>
+        <p class="simple-lead">Todos os pedidos que não foram cancelados passam a entregues e pagos. Use uma vez só, ao recomeçar o sistema.</p>
+        <div class="order-detail-summary">
+          <span><small>Pedidos a encerrar</small><strong>${number(preview.orders.length)}</strong></span>
+          <span><small>Em aberto</small><strong>${number(preview.open)}</strong></span>
+          <span><small>Entregues sem pagamento</small><strong>${number(preview.unpaid)}</strong></span>
+          <span><small>Garrafas sem entrega</small><strong>${number(preview.bottles)}</strong></span>
+          <span><small>Valor dessas garrafas</small><strong>${brl(preview.value)}</strong></span>
+        </div>
+        <p class="simple-lead"><strong>Não cria vendas, não muda o estoque, não gera recibos. Para desfazer, só pela cópia do banco.</strong></p>
+        <label class="simple-field"><span>Para confirmar, digite ENCERRAR</span><input name="word" autocomplete="off" autocapitalize="characters" spellcheck="false"></label>
+        <p class="simple-error" role="alert" hidden></p>
+        <button class="btn btn-danger simple-save" type="submit" disabled><span class="material-symbols-outlined" aria-hidden="true">task_alt</span>Encerrar pedidos</button>
+      </form>
+    `,
+  );
+  const form = document.querySelector("#freshStartForm");
+  const word = form.elements.word;
+  const button = form.querySelector(".simple-save");
+  word.addEventListener("input", () => {
+    button.disabled = !isFreshStartWord(word.value);
+    form.querySelector(".simple-error").hidden = true;
+  });
+  form.addEventListener("submit", (event) => {
+    event.preventDefault();
+    if (!isFreshStartWord(word.value)) return simpleError(form, "Digite ENCERRAR para confirmar.");
+    const result = closeOrdersForFreshStart(word.value);
+    closeModal();
+    if (result) {
+      queueNotice(`Pedidos encerrados: ${number(result.closed)} (${number(result.opened)} em aberto, ${number(result.paidOnly)} entregues sem pagamento). Garrafas fechadas sem sair do estoque: ${number(result.bottles)}.`);
+      queueNotice("Nenhuma venda, nenhum recibo e nenhuma baixa de estoque foram criados.");
+    }
+    render();
+  });
+}
+
 function editPurchaseForm(purchaseId) {
   const purchase = byId("purchases", purchaseId);
   if (purchase?.kind === "operational") {
@@ -12912,6 +13039,7 @@ function handleAction(action) {
     "new-receipt": () => startReceiptWizard(),
     "new-batch": newBatchForm,
     "quick-deliver-ready": quickReadyDeliveriesForm,
+    "close-old-orders": closeOldOrdersForm,
     "stock-adjustment": () => stockAdjustmentForm(),
     "count-bottles": bottleCountForm,
     "new-supplier": () =>
