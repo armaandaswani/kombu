@@ -6518,7 +6518,7 @@ function renderSchema() {
     "Expenses", "Expense Categories", "Cost Assumptions", "Reports", "CMS Pages", "Media Library", "Audit Logs",
   ];
   return `
-    ${pageHead("Arquitetura e Banco de Dados", "Estrutura sugerida para evoluir o site atual para um sistema seguro com autenticação, roles e histórico.", actionButton("reset-demo", "Limpar dados", "restart_alt", "btn-danger", "schema"))}
+    ${pageHead("Arquitetura e Banco de Dados", "Estrutura sugerida para evoluir o site atual para um sistema seguro com autenticação, roles e histórico.")}
     <section class="admin-card">
       <h3>Entidades mínimas</h3>
       <div class="schema-grid">
@@ -7213,25 +7213,6 @@ function openModal(title, eyebrow, body) {
 
 function closeModal() {
   document.querySelector("#adminModal").classList.remove("is-open");
-}
-
-function upsertById(collection, records) {
-  records.forEach((record) => {
-    const nextRecord = clone(record);
-    const index = state[collection].findIndex((item) => item.id === nextRecord.id);
-    if (index >= 0) state[collection][index] = { ...state[collection][index], ...nextRecord };
-    else state[collection].push(nextRecord);
-  });
-}
-
-function restoreCostBase() {
-  upsertById("products", PRODUCT_CATALOG_SEED);
-  upsertById("ingredients", COST_INGREDIENT_SEED);
-  upsertById("packaging", PACKAGING_SEED);
-  upsertById("recipes", RECIPE_SEED);
-  activeRecipeId = state.recipes[0]?.id || "";
-  addAudit("Base dos prints restaurada", "Produtos EAN, ingredientes, embalagens e receitas 500ml atualizados.");
-  render();
 }
 
 function productsForPriceScope(scope) {
@@ -11066,7 +11047,6 @@ function handleAction(action) {
     "global-prices": () => globalPriceForm(BASE_BOTTLE_SIZE_ML),
     "global-prices-500": () => globalPriceForm(BASE_BOTTLE_SIZE_ML),
     "global-prices-300": () => globalPriceForm(SMALL_BOTTLE_SIZE_ML),
-    "import-cost-base": restoreCostBase,
     "new-ingredient": newIngredientForm,
     "new-purchase": newPurchaseForm,
     "quick-sale": quickSaleForm,
@@ -11165,12 +11145,6 @@ function handleAction(action) {
         saveState();
         render();
       }
-    },
-    "reset-demo": () => {
-      state = clone(defaultState);
-      saveState();
-      addAudit("Dados operacionais limpos", "Base de produtos e custos dos prints preservada.");
-      render();
     },
     "export-products": () => exportCSV("kombu-produtos-ean", [["EAN-13", "Item", "Sabor", "Tamanho ml", "Descricao", "Varejo", "Atacado", "Custo receita", "Disponibilidade"], ...state.products.map((p) => [p.ean, p.item, p.flavor, p.sizeMl, p.description, p.retailPrice, p.wholesalePrice, recipeForProduct(p) ? productDisplayCost(p) : "", productIsOperational(p) ? "disponível" : "indisponível"])]),
     "export-ingredients": () => exportCSV("kombu-ingredientes", [["Nome", "Categoria", "Fornecedor", "Estoque", "Unidade", "Custo", "Status"], ...state.ingredients.map((i) => [i.name, i.category, i.supplier, i.stock, i.purchaseUnit, i.costPerUnit, ingredientNeedsCost(i) ? "custo pendente" : i.status])]),
