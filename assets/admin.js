@@ -3187,11 +3187,14 @@ function ordersReadyForBulkDelivery() {
   return (state.orders || []).filter(orderReadyForDelivery).sort(compareOrdersByReservationPriority);
 }
 
-function buildReadyOrderDelivery(order, data = {}) {
+// Delivers every bottle set aside for the order, or, given chosen (order line
+// key → bottles), that many of each line, never more than is set aside.
+function buildReadyOrderDelivery(order, data = {}, chosen = null) {
   const deliveredAt = data.deliveryDate || todayIso();
   const items = orderItems(order)
     .map((item) => {
-      const qty = deliveryProofDefaultQty(item);
+      const ready = deliveryProofDefaultQty(item);
+      const qty = chosen ? Math.min(ready, Math.max(0, Math.round(Number(chosen.get(item.key) || 0)))) : ready;
       if (!qty) return null;
       return {
         orderItemKey: item.key,
@@ -7582,6 +7585,7 @@ function operatorTask(action, icon, label, help) {
 let operatorView = "home";
 let operatorOrdersTab = "open";
 let operatorNotice = "";
+let operatorNoticeAction = null;
 const OPERATOR_HOME_ORDERS = 3;
 const OPERATOR_DELIVERED_LIMIT = 20;
 
@@ -7641,23 +7645,37 @@ function simpleOrderCard(order) {
   const situation = simpleOrderSituation(order);
   const due = simpleOrderDueDate(order);
   const open = isOpenOrder(order);
+  const lastDelivery = orderDeliveries(order).at(-1);
   return `
     <li class="simple-order">
       <div class="simple-order-text">
         <strong data-i18n-skip>${escapeHtml(orderClientDisplayName(order))}</strong>
         <span class="simple-order-items" data-i18n-skip>${escapeHtml(simpleOrderItemsText(order))}</span>
         <span>${simpleBottles(orderQuantity(order))} · ${brl(orderTotal(order))}</span>
+        ${open && orderDeliveredQuantity(order) > 0 ? `<span>${simpleBottles(orderDeliveredQuantity(order))} já entregues</span>` : ""}
         ${open && due ? `<span class="simple-order-due">${situation.late ? `<span class="status bad">Atrasado</span>` : ""}<span>Entregar até ${fullDate(due)}</span></span>` : ""}
         <span class="status ${situation.tone}">${situation.text}</span>
       </div>
-      ${open ? `<button class="btn btn-outline operator-fix" type="button" data-action="simple-edit-order:${escapeHtml(order.id)}" aria-label="${escapeHtml(`Editar pedido de ${orderClientDisplayName(order)}`)}">Editar pedido</button>` : ""}
+      <div class="simple-order-actions">
+        ${open && orderReadyForDelivery(order) ? `<button class="btn btn-primary operator-fix" type="button" data-action="simple-deliver:${escapeHtml(order.id)}" aria-label="${escapeHtml(`Entregar pedido de ${orderClientDisplayName(order)}`)}"><span class="material-symbols-outlined" aria-hidden="true">local_shipping</span>Entregar</button>` : ""}
+        ${open ? `<button class="btn btn-outline operator-fix" type="button" data-action="simple-edit-order:${escapeHtml(order.id)}" aria-label="${escapeHtml(`Editar pedido de ${orderClientDisplayName(order)}`)}">Editar pedido</button>` : ""}
+        ${lastDelivery ? `<button class="btn btn-outline operator-fix" type="button" data-action="delivery-proof-reprint:${escapeHtml(order.id)}:${escapeHtml(lastDelivery.id)}" aria-label="${escapeHtml(`Comprovante da última entrega de ${orderClientDisplayName(order)}`)}"><span class="material-symbols-outlined" aria-hidden="true">picture_as_pdf</span>Comprovante</button>` : ""}
+      </div>
     </li>`;
 }
 
 function operatorNoticeMarkup() {
   const notice = operatorNotice;
+  const action = operatorNoticeAction;
   operatorNotice = "";
-  return notice ? `<p class="operator-notice" role="status"><span class="material-symbols-outlined" aria-hidden="true">check_circle</span><span>${escapeHtml(notice)}</span></p>` : "";
+  operatorNoticeAction = null;
+  if (!notice) return "";
+  return `
+    <div class="operator-notice" role="status">
+      <span class="material-symbols-outlined" aria-hidden="true">check_circle</span>
+      <span>${escapeHtml(notice)}</span>
+      ${action ? `<button class="btn btn-outline" type="button" data-action="${escapeHtml(action.action)}"><span class="material-symbols-outlined" aria-hidden="true">${action.icon}</span>${escapeHtml(action.label)}</button>` : ""}
+    </div>`;
 }
 
 function operatorBackButton() {
@@ -7723,7 +7741,7 @@ function renderOperatorOrders() {
       ? `<ol class="simple-orders">${list.map(simpleOrderCard).join("")}</ol>`
       : `<p class="empty-note">${showOpen ? "Nenhum pedido em aberto. Para anotar um, toque em Novo pedido." : "Nenhum pedido entregue ainda."}</p>`}
     ${!showOpen && list.length >= OPERATOR_DELIVERED_LIMIT ? `<p class="empty-note">Mostrando os ${number(OPERATOR_DELIVERED_LIMIT)} mais recentes.</p>` : ""}
-    <p class="operator-alt">Para registrar a entrega, cobrar ou cancelar um pedido, use o <button class="link-button" type="button" data-action="operator-full-orders">painel completo</button>.</p>
+    <p class="operator-alt">Para cobrar ou cancelar um pedido, use o <button class="link-button" type="button" data-action="operator-full-orders">painel completo</button>.</p>
   `;
 }
 
@@ -7748,11 +7766,11 @@ function renderOperator() {
 
 // Large − and + buttons around a number box, for people who find small
 // number fields hard to use. The box can still be typed into.
-function simpleStepper(key, value, min, label) {
+function simpleStepper(key, value, min, label, max = null) {
   return `
     <span class="simple-stepper">
       <button type="button" class="simple-step" data-step="-1" aria-label="${escapeHtml(`Menos ${label}`)}">−</button>
-      <input type="number" inputmode="numeric" min="${min}" step="1" value="${value}" data-qty="${escapeHtml(key)}" aria-label="${escapeHtml(`Garrafas de ${label}`)}">
+      <input type="number" inputmode="numeric" min="${min}" ${max == null ? "" : `max="${max}"`} step="1" value="${value}" data-qty="${escapeHtml(key)}" aria-label="${escapeHtml(`Garrafas de ${label}`)}">
       <button type="button" class="simple-step" data-step="1" aria-label="${escapeHtml(`Mais ${label}`)}">+</button>
     </span>`;
 }
@@ -7764,7 +7782,8 @@ function bindSimpleSteppers(form, onChange) {
     if (event.target.closest("[data-step]") || event.target.matches("input")) form.querySelector(".simple-error").hidden = true;
   });
   const settle = (input, value) => {
-    input.value = String(Math.max(Number(input.min || 0), Math.round(Number(value)) || 0));
+    const max = input.max === "" ? Infinity : Number(input.max);
+    input.value = String(Math.min(max, Math.max(Number(input.min || 0), Math.round(Number(value)) || 0)));
     onChange();
   };
   form.addEventListener("click", (event) => {
@@ -8036,6 +8055,108 @@ function simpleOrderForm(orderId) {
     operatorNotice = existing ? `Pedido de ${name} atualizado.` : `Pedido de ${name} salvo: ${simpleBottles(totalQty)}.`;
     operatorView = "orders";
     operatorOrdersTab = "open";
+    setModule("operator");
+  });
+}
+
+// The ways to pay offered in simple mode. The default is the panel's own:
+// paid within 15 days through a link sent on WhatsApp.
+const SIMPLE_PAYMENT_METHODS = [DELIVERY_PROOF_DEFAULT_PAYMENT_METHOD, "Pix", "Dinheiro", "Cartão"];
+
+function simplePaymentLabel(method) {
+  return method === DELIVERY_PROOF_DEFAULT_PAYMENT_METHOD ? "Em 15 dias (link pelo WhatsApp)" : method;
+}
+
+// Simple mode's delivery: the bottles set aside for the order go out, all of
+// them unless fewer are chosen. Built and recorded by the same code as the
+// full panel's "Dar baixa nos prontos", so sales, reservations, payment due
+// date and the delivery proof follow. Bottles not yet produced stay on the
+// order for a later delivery.
+function simpleDeliveryForm(orderId) {
+  const order = byId("orders", orderId);
+  if (!order || !orderReadyForDelivery(order)) {
+    localizedAlert("Este pedido não tem garrafas separadas para entregar.");
+    return;
+  }
+  const lines = orderItems(order)
+    .filter((item) => orderItemOutstandingQty(item) > 0)
+    .map((item) => ({ item, ready: deliveryProofDefaultQty(item), label: orderFlavorText(item) }));
+  const later = lines.reduce((sum, line) => sum + orderItemOutstandingQty(line.item) - line.ready, 0);
+  const current = deliveryProofPaymentMethod(order);
+  const methods = SIMPLE_PAYMENT_METHODS.includes(current) ? SIMPLE_PAYMENT_METHODS : [...SIMPLE_PAYMENT_METHODS, current];
+  const fee = orderDeliveries(order).length ? 0 : Math.max(0, Number(order.deliveryFee || 0));
+  openModal(
+    "Entregar pedido",
+    "Pedidos",
+    `
+      <form id="simpleDeliveryForm" class="simple-form" novalidate>
+        <p class="simple-customer" data-i18n-skip>${escapeHtml(orderClientDisplayName(order))}</p>
+        <fieldset class="simple-flavors">
+          <legend>Quantas garrafas vão agora?</legend>
+          <ul class="simple-flavor-list">
+            ${lines.filter((line) => line.ready > 0).map((line) => `
+              <li class="simple-flavor">
+                <span class="simple-flavor-name">
+                  <strong data-i18n-skip>${escapeHtml(line.label)}</strong>
+                  <small>${line.ready === 1 ? "1 garrafa pronta" : `${number(line.ready)} garrafas prontas`}</small>
+                </span>
+                ${simpleStepper(line.item.key, line.ready, 0, line.label, line.ready)}
+              </li>`).join("")}
+          </ul>
+        </fieldset>
+        ${later > 0 ? `<p class="simple-later">Ficam para uma próxima entrega: ${simpleBottles(later)} que ainda não foram produzidas.</p>` : ""}
+        <fieldset class="simple-choice simple-pay">
+          <legend>Como o cliente vai pagar?</legend>
+          ${methods.map((method) => `
+            <label class="simple-choice-option">
+              <input type="radio" name="paymentMethod" value="${escapeHtml(method)}" ${method === current ? "checked" : ""}>
+              <span><strong>${escapeHtml(simplePaymentLabel(method))}</strong></span>
+            </label>`).join("")}
+        </fieldset>
+        <label class="simple-field"><span>Data da entrega</span><input type="date" name="deliveryDate" value="${todayIso()}" required></label>
+        <p class="simple-total" aria-live="polite"></p>
+        <p class="simple-error" role="alert" hidden></p>
+        <button class="btn btn-primary simple-save" type="submit"><span class="material-symbols-outlined" aria-hidden="true">local_shipping</span>Confirmar entrega</button>
+      </form>
+    `,
+  );
+  const form = document.querySelector("#simpleDeliveryForm");
+  const chosen = () => new Map(lines.map((line) => [line.item.key, Math.min(line.ready, simpleQty(form, line.item.key))]));
+  const refresh = () => {
+    const quantities = chosen();
+    const bottles = [...quantities.values()].reduce((sum, qty) => sum + qty, 0);
+    const value = lines.reduce((sum, line) => sum + quantities.get(line.item.key) * Number(line.item.unitPrice || 0), 0) + (bottles ? fee : 0);
+    form.querySelector(".simple-total").textContent = !bottles
+      ? "Nenhuma garrafa escolhida ainda."
+      : fee ? `Total: ${simpleBottles(bottles)} · ${brl(value)} (com frete de ${brl(fee)})` : `Total: ${simpleBottles(bottles)} · ${brl(value)}`;
+  };
+  bindSimpleSteppers(form, refresh);
+  refresh();
+  form.addEventListener("submit", (event) => {
+    event.preventDefault();
+    const quantities = chosen();
+    if (![...quantities.values()].some((qty) => qty > 0)) return simpleError(form, "Escolha pelo menos uma garrafa.");
+    const deliveryDate = form.elements.deliveryDate.value;
+    if (!deliveryDate) return simpleError(form, "Escolha a data da entrega.");
+    const snapshot = clone(state);
+    let delivery;
+    try {
+      delivery = buildReadyOrderDelivery(order, { deliveryDate, paymentMethod: form.elements.paymentMethod.value || current, notes: order.deliveryNotes || "" }, quantities);
+      registerOrderDelivery(order, delivery);
+    } catch (error) {
+      state = snapshot;
+      console.error(error);
+      return simpleError(form, error.message || "Não foi possível registrar a entrega. Atualize a página e tente novamente.");
+    }
+    addAudit("Entrega parcial registrada", deliveryAuditDetail(order, delivery));
+    const left = orderOutstandingQuantity(order);
+    const name = orderClientDisplayName(order);
+    closeModal();
+    operatorNotice = left
+      ? `Entrega registrada: ${simpleBottles(delivery.totalQty)} para ${name}. Ainda faltam ${simpleBottles(left)}.`
+      : `Entrega registrada: ${simpleBottles(delivery.totalQty)} para ${name}. Pedido concluído.`;
+    operatorNoticeAction = { action: `delivery-proof-reprint:${order.id}:${delivery.id}`, icon: "picture_as_pdf", label: "Baixar comprovante" };
+    operatorView = "orders";
     setModule("operator");
   });
 }
@@ -12370,6 +12491,7 @@ function handleAction(action) {
   const dynamicPayload = dynamicParts.join(":");
   const dynamicMap = {
     "simple-edit-order": simpleOrderForm,
+    "simple-deliver": simpleDeliveryForm,
     "operator-orders-tab": (tab) => {
       operatorOrdersTab = tab === "delivered" ? "delivered" : "open";
       render();

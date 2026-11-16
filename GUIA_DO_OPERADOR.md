@@ -42,9 +42,21 @@ Se faltar alguma coisa, o painel avisa em uma caixa amarela o que falta preenche
    - **Atrasado**: a data que o cliente pediu já passou.
 3. Para mudar um pedido, toque em **Editar pedido**, ajuste e toque em **Salvar pedido**. O preço combinado do pedido continua o mesmo.
 
-Para registrar a entrega, cobrar ou cancelar um pedido, use o **painel completo**.
+Para cobrar ou cancelar um pedido, use o **painel completo**.
 
-## 5. Registrar uma produção
+## 5. Entregar um pedido
+
+O botão **Entregar** aparece no pedido quando já existem garrafas separadas para ele.
+
+1. Toque em **Entregar**.
+2. Em **Quantas garrafas vão agora?**, o painel já mostra todas as garrafas prontas. Se for entregar menos, toque em **−**.
+3. Em **Como o cliente vai pagar?**, deixe **Em 15 dias (link pelo WhatsApp)** ou escolha **Pix**, **Dinheiro** ou **Cartão**.
+4. Confira a **Data da entrega** e toque em **Confirmar entrega**.
+5. Para imprimir ou mandar o comprovante ao cliente, toque em **Baixar comprovante**. Depois ele continua no pedido, no botão **Comprovante**.
+
+Se faltar produzir alguma garrafa, o pedido continua **Em aberto** e mostra quantas já foram entregues. Quando tudo for entregue, ele passa para **Entregues**.
+
+## 6. Registrar uma produção
 
 1. Toque em **Registrar produção**.
 2. Em cada sabor que ficou pronto, toque em **+** até chegar no número de garrafas. **Pedidos esperando** mostra quantas garrafas os clientes estão aguardando.
@@ -55,7 +67,7 @@ As garrafas novas são separadas sozinhas para os pedidos que estavam esperando,
 
 Se faltar algum ingrediente no estoque, aparece um aviso dizendo quanto falta. Você pode salvar mesmo assim, e o item vai aparecer em **Precisa de atenção** até alguém registrar a compra.
 
-## 6. Registrar uma compra pela foto da nota
+## 7. Registrar uma compra pela foto da nota
 
 1. Em **Outras tarefas**, toque em **Registrar compra pela foto da nota**.
 2. Toque em **Tirar foto da nota**.
@@ -70,23 +82,23 @@ Se faltar algum ingrediente no estoque, aparece um aviso dizendo quanto falta. V
 
 Se a mesma nota for fotografada duas vezes, o painel avisa **Esta nota já foi registrada** e não lança de novo.
 
-Se a leitura não funcionar, o painel mostra um aviso e o botão **Registrar pelo formulário normal**. Use o item 7.
+Se a leitura não funcionar, o painel mostra um aviso e o botão **Registrar pelo formulário normal**. Use o item 8.
 
-## 7. Registrar uma compra sem foto
+## 8. Registrar uma compra sem foto
 
 1. Em **Outras tarefas**, toque em **Registrar compra sem foto**.
 2. Escolha o item que foi comprado e o fornecedor.
 3. Digite quantos pacotes vieram, o conteúdo de cada pacote e o **Total pago**.
 4. Toque em **Registrar e atualizar estoque**.
 
-## 8. Ver o estoque
+## 9. Ver o estoque
 
 1. No modo simples, toque em **Ver estoque**.
 2. Cada sabor mostra quantas garrafas estão disponíveis e quantas estão reservadas para pedidos.
 3. Para saber o que precisa produzir ou comprar, toque em **Reposição**. **Produzir** e **Comprar** aparecem em vermelho. **Histórico insuficiente** quer dizer que ainda não dá para prever.
 4. Para voltar, toque em **Voltar ao modo simples**.
 
-## 9. Corrigir um lançamento
+## 10. Corrigir um lançamento
 
 1. Em **Outras tarefas**, toque em **Corrigir um lançamento**.
 2. A lista mostra as compras, produções e vendas mais novas primeiro.
@@ -97,13 +109,13 @@ Se a leitura não funcionar, o painel mostra um aviso e o botão **Registrar pel
 
 Toda correção fica registrada no histórico, com data e hora.
 
-## 10. Avisos que podem aparecer
+## 11. Avisos que podem aparecer
 
 - **Precisa de atenção** (no modo simples) ou **Atenção necessária** (no painel completo): lista o que precisa ser resolvido.
 - **Estoque negativo**: a produção usou mais do que estava registrado. Registre a compra que faltou ou peça para corrigirem o estoque.
 - **Vendido sem estoque**: houve uma venda antes da produção ser registrada. Registre a produção: o painel liga a venda ao lote novo automaticamente.
 
-## 11. Quando pedir ajuda
+## 12. Quando pedir ajuda
 
 - O painel diz que a senha está errada.
 - Uma tela ficou parada por mais de dois minutos.

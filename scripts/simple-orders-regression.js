@@ -2,7 +2,8 @@
 // browser: a new order with the right price for the kind of customer, a known
 // partner bringing back the wholesale price, editing an order without losing
 // its price or partner, the order list with late and delivered orders, and a
-// production that sets bottles aside for the waiting order. Every save goes
+// production that sets bottles aside for the waiting order, then delivering
+// those bottles with the proof of delivery. Every save goes
 // through the same code as the full panel. Checked at phone and desktop width,
 // in Portuguese and English, with large targets and no horizontal scroll.
 const assert = require("node:assert/strict");
@@ -58,6 +59,7 @@ const seed = {
           .filter((box) => box.height < 48), selector);
         const order = (orderId) => page.evaluate((idToFind) => state.orders.find((item) => item.id === idToFind), orderId);
         const T = (pt, en) => (locale === "en" ? en : pt);
+        const notice = () => page.locator(".operator-notice > span:not(.material-symbols-outlined)").innerText();
 
         // Home: the four everyday tasks, and the next orders with the late one flagged.
         const tasks = await page.locator(".operator-task strong").allInnerTexts();
@@ -100,7 +102,7 @@ const seed = {
         await shot("novo-pedido");
         await form.locator(".simple-save").click();
         await page.waitForSelector(".operator-notice");
-        assert.equal(await page.locator(".operator-notice > span:last-child").innerText(), T("Pedido de Dona Rosa salvo: 5 garrafas.", "Order for Dona Rosa saved: 5 bottles."));
+        assert.equal(await notice(), T("Pedido de Dona Rosa salvo: 5 garrafas.", "Order for Dona Rosa saved: 5 bottles."));
         const rosa = await page.evaluate(() => state.orders.find((item) => item.customerName === "Dona Rosa"));
         assert.equal(rosa.clientType, "novo_cliente");
         assert.equal(rosa.status, "recebido");
@@ -171,12 +173,58 @@ const seed = {
         await shot("producao");
         await batchForm.locator(".simple-save").click();
         await page.waitForSelector(".operator-notice");
-        assert.equal(await page.locator(".operator-notice > span:last-child").innerText(), T("Produção salva: 10 garrafas. 8 garrafas já separadas para pedidos.", "Production saved: 10 bottles. 8 bottles already set aside for orders."));
+        assert.equal(await notice(), T("Produção salva: 10 garrafas. 8 garrafas já separadas para pedidos.", "Production saved: 10 bottles. 8 bottles already set aside for orders."));
         const batch = await page.evaluate(() => state.batches[0]);
         assert.deepEqual([batch.recipeId, batch.actual, batch.responsible, batch.status], ["r-mar", 10, "Dona Maria", "aprovado"]);
         const afterProduction = await order("late");
         assert.equal(afterProduction.items[0].allocations.reduce((sum, allocation) => sum + allocation.qty, 0), 8);
         assert.match(await page.locator(".simple-order").filter({ hasText: "Café Centro" }).innerText(), new RegExp(T("Faltam produzir 2 garrafas \\(8 garrafas já separadas\\)", "2 bottles still to produce \\(8 bottles already set aside\\)")));
+
+        // Delivery: the 8 bottles set aside go out, the 2 not yet produced stay
+        // on the order, and the proof of delivery can be downloaded.
+        const cafe = () => page.locator(".simple-order").filter({ hasText: "Café Centro" });
+        assert.equal(await page.locator(".simple-order").filter({ hasText: "Dona Rosa" }).locator('[data-action^="simple-deliver"]').count(), 0, "nothing to deliver without bottles set aside");
+        await cafe().locator('[data-action^="simple-deliver"]').click();
+        await page.waitForSelector("#simpleDeliveryForm");
+        const delivery = page.locator("#simpleDeliveryForm");
+        const deliveryRow = delivery.locator(".simple-flavor");
+        assert.equal(await deliveryRow.count(), 1, "only flavours with bottles ready are offered");
+        assert.equal(await deliveryRow.locator("[data-qty]").inputValue(), "8");
+        await deliveryRow.locator('[data-step="1"]').click();
+        assert.equal(await deliveryRow.locator("[data-qty]").inputValue(), "8", "no more than the bottles set aside");
+        assert.match(await delivery.innerText(), new RegExp(T("Ficam para uma próxima entrega: 2 garrafas", "Left for a later delivery: 2 bottles")));
+        assert.equal(await delivery.locator('[name="paymentMethod"]:checked').inputValue(), "Prazo – 15 dias corridos após a entrega", "the panel's default way to pay is preselected");
+        assert.match(await delivery.locator(".simple-total").innerText(), /R\$\s?108[.,]00/);
+        await delivery.locator('[name="paymentMethod"][value="Pix"]').check();
+        assert.deepEqual(await smallTargets("#simpleDeliveryForm button, #simpleDeliveryForm input:not([type=radio]), #simpleDeliveryForm .simple-choice-option"), [], "every control in the delivery form is at least 48px tall");
+        await noOverflow("delivery form");
+        await shot("entrega");
+        await delivery.locator(".simple-save").click();
+        await page.waitForSelector(".operator-notice");
+        assert.equal(await notice(), T("Entrega registrada: 8 garrafas para Café Centro. Ainda faltam 2 garrafas.", "Delivery recorded: 8 bottles for Café Centro. 2 bottles still to go."));
+        const delivered = await order("late");
+        assert.equal(delivered.deliveries.length, 1);
+        assert.deepEqual([delivered.deliveries[0].totalQty, delivered.deliveries[0].paymentMethod, delivered.deliveries[0].total], [8, "Pix", 108]);
+        assert.equal(delivered.items[0].deliveredQty, 8);
+        assert.equal(delivered.status, "confirmado", "the order stays open for the 2 bottles still owed");
+        const sold = await page.evaluate(() => state.sales.filter((sale) => sale.orderId === "late"));
+        assert.equal(sold.reduce((sum, sale) => sum + Number(sale.qty || 0), 0), 8, "the delivery becomes sales");
+        assert.equal(await cafe().locator('[data-action^="simple-deliver"]').count(), 0, "nothing left set aside to deliver");
+        assert.match(await cafe().innerText(), new RegExp(T("8 garrafas já entregues", "8 bottles already delivered")), "the card says what was already delivered");
+        const download = page.waitForEvent("download");
+        await page.click('.operator-notice [data-action^="delivery-proof-reprint"]');
+        assert.match((await download).suggestedFilename(), /\.pdf$/);
+        await noOverflow("after delivery");
+        await shot("entregue");
+
+        // Editing the order now cannot go below the bottles already delivered.
+        await cafe().locator('[data-action^="simple-edit-order"]').click();
+        await page.waitForSelector("#simpleOrderForm");
+        const passion = flavor("Maracujá").first();
+        for (let press = 0; press < 3; press += 1) await passion.locator('[data-step="-1"]').click();
+        assert.equal(await passion.locator("[data-qty]").inputValue(), "8");
+        assert.match(await passion.innerText(), new RegExp(T("8 garrafas já entregues", "8 bottles already delivered")));
+        await page.evaluate(() => closeModal());
 
         if (locale === "en") {
           // Names and amounts are data; any other leftover is interface text.
@@ -188,7 +236,7 @@ const seed = {
         await context.close();
       }
     }
-    console.log("Simple orders: new order priced by customer type, known partner wholesale, edit keeping price/partner/history, delivered list, production reserving for the waiting order, 48px targets, PT/EN and no overflow passed at 390/1440px.");
+    console.log("Simple orders: new order priced by customer type, known partner wholesale, edit keeping price/partner/history, delivered list, production reserving for the waiting order, delivery of the set-aside bottles with sales and proof PDF, 48px targets, PT/EN and no overflow passed at 390/1440px.");
   } finally {
     await browser.close();
   }

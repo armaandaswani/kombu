@@ -242,6 +242,43 @@
   font-size: 28px;
 }
 
+/* The tick and the message share a row; a follow-up button sits under them. */
+.operator-notice {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+}
+
+.operator-notice .btn {
+  grid-column: 1 / -1;
+  justify-self: start;
+  min-height: 52px;
+  font-size: 1rem;
+}
+
+.simple-order-actions {
+  display: grid;
+  gap: 8px;
+}
+
+.simple-order-actions:empty {
+  display: none;
+}
+
+.simple-customer {
+  margin: 0;
+  font-size: 1.3rem;
+  font-weight: 700;
+}
+
+.simple-later {
+  margin: -8px 0 0;
+  color: var(--muted);
+}
+
+.simple-choice.simple-pay {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
 .operator-head .btn {
   min-height: 52px;
   font-size: 1.05rem;
@@ -573,6 +610,7 @@
   }
 
   .simple-choice,
+  .simple-choice.simple-pay,
   .simple-row {
     grid-template-columns: minmax(0, 1fr);
   }
