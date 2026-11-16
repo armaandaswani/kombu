@@ -53,11 +53,17 @@ async function login(req, res, body, rp) {
   const credential = list.find((item) => item.id === id && item.rpId === rp.rpId);
   if (!credential) throw fail(401, "passkey_unknown");
   const { signCount } = passkeys.verifyAssertion(input, credential, { challenge: payload.c, rpId: rp.rpId, origins: rp.origins });
-  try {
-    await passkeys.changePasskeys((items) => items.map((item) => (item.id === id ? { ...item, signCount, lastUsedAt: new Date().toISOString() } : item)));
-  } catch {
-    // Recording the last use is a convenience; it must not stop a valid sign-in.
-  }
+  // The sign-in is only granted if this write lands: it spends the challenge, so
+  // the same signed answer cannot be sent a second time, and it records the use.
+  // If the write fails the sign-in fails, and the password still works.
+  await passkeys.changePasskeys((doc) => {
+    const current = doc.credentials.find((item) => item.id === id && item.rpId === rp.rpId);
+    if (!current) throw fail(401, "passkey_unknown");
+    passkeys.spendChallenge(doc, payload);
+    current.signCount = signCount;
+    current.lastUsedAt = new Date().toISOString();
+    return doc;
+  });
   setSessionCookie(req, res, { sub: "kombu-admin", role: "Owner / Admin", iat: Date.now(), exp: Date.now() + SESSION_MS, via: "passkey" });
   return { ok: true };
 }
@@ -105,10 +111,11 @@ async function register(body, rp, session) {
     createdAt: new Date().toISOString(),
     lastUsedAt: null,
   };
-  await passkeys.changePasskeys((items) => {
-    if (items.some((item) => item.id === entry.id)) throw fail(409, "passkey_exists");
-    if (items.length >= passkeys.MAX_PASSKEYS) throw fail(409, "too_many_passkeys");
-    return [...items, entry];
+  await passkeys.changePasskeys((doc) => {
+    if (doc.credentials.some((item) => item.id === entry.id)) throw fail(409, "passkey_exists");
+    if (doc.credentials.length >= passkeys.MAX_PASSKEYS) throw fail(409, "too_many_passkeys");
+    doc.credentials.push(entry);
+    return doc;
   });
   return { ok: true, credential: passkeys.publicCredential(entry) };
 }
@@ -158,9 +165,10 @@ module.exports = async function handler(req, res) {
     const id = text(body.id, 1400);
     if (!id) return json(res, 400, { ok: false, error: "invalid_request" });
     let found = false;
-    await passkeys.changePasskeys((items) => {
-      found = items.some((item) => item.id === id);
-      return items.filter((item) => item.id !== id);
+    await passkeys.changePasskeys((doc) => {
+      found = doc.credentials.some((item) => item.id === id);
+      doc.credentials = doc.credentials.filter((item) => item.id !== id);
+      return doc;
     });
     return found ? json(res, 200, { ok: true }) : json(res, 404, { ok: false, error: "passkey_not_found" });
   } catch (error) {

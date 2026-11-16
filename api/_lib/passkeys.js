@@ -239,11 +239,13 @@ async function readPasskeyRow() {
   const rows = await supabaseFetch(`/rest/v1/app_state?id=eq.${PASSKEY_ROW}&select=state,updated_at`);
   const row = Array.isArray(rows) ? rows[0] : null;
   const list = Array.isArray(row?.state?.credentials) ? row.state.credentials : [];
-  return { list, updatedAt: row?.updated_at || "" };
+  // Sign-in challenges already spent, kept until they would have expired anyway.
+  const used = Array.isArray(row?.state?.used) ? row.state.used : [];
+  return { list, used, updatedAt: row?.updated_at || "" };
 }
 
-async function writePasskeys(list, updatedAt) {
-  const state = { credentials: list };
+async function writePasskeys(doc, updatedAt) {
+  const state = { credentials: doc.credentials, used: doc.used };
   if (!updatedAt) {
     const rows = await supabaseFetch("/rest/v1/app_state", {
       method: "POST",
@@ -253,19 +255,25 @@ async function writePasskeys(list, updatedAt) {
     if (!Array.isArray(rows) || rows.length === 0) throw requestError("state_conflict", 409);
     return;
   }
+  // The row's version is its timestamp, so two writes must never share one: the
+  // second would not see the first. Each write moves it forward by at least 1 ms.
+  const nextVersion = new Date(Math.max(Date.now(), (Date.parse(updatedAt) || 0) + 1)).toISOString();
   const rows = await supabaseFetch(`/rest/v1/app_state?id=eq.${PASSKEY_ROW}&updated_at=eq.${encodeURIComponent(updatedAt)}`, {
     method: "PATCH",
     headers: { Prefer: "return=representation" },
-    body: JSON.stringify({ state, updated_by: "passkeys", updated_at: new Date().toISOString() }),
+    body: JSON.stringify({ state, updated_by: "passkeys", updated_at: nextVersion }),
   });
   if (!Array.isArray(rows) || rows.length === 0) throw requestError("state_conflict", 409);
 }
 
 // Read, change, write back; two changes at once retry instead of overwriting.
+// The mutator gets a copy of { credentials, used } and returns what to store; it
+// runs again on a fresh read after a conflict, so a check made inside it holds
+// even when two requests race.
 async function changePasskeys(mutator, retries = 3) {
   for (let attempt = 0; attempt < retries; attempt += 1) {
-    const { list, updatedAt } = await readPasskeyRow();
-    const next = mutator(list.map((item) => ({ ...item })));
+    const { list, used, updatedAt } = await readPasskeyRow();
+    const next = mutator({ credentials: list.map((item) => ({ ...item })), used: used.map((item) => ({ ...item })) });
     try {
       await writePasskeys(next, updatedAt);
       return next;
@@ -274,6 +282,17 @@ async function changePasskeys(mutator, retries = 3) {
     }
   }
   throw requestError("state_conflict", 409);
+}
+
+// A sign-in challenge works once. Synced passkeys always report a counter of 0,
+// so the counter cannot stop a captured sign-in from being sent again; recording
+// the challenge in the same write that records the sign-in does.
+function spendChallenge(doc, payload, now = Date.now()) {
+  const fresh = doc.used.filter((entry) => entry.exp > now);
+  if (fresh.some((entry) => entry.c === payload.c)) throw requestError("passkey_replayed", 401);
+  fresh.push({ c: payload.c, exp: payload.exp });
+  doc.used = fresh.slice(-200);
+  return doc;
 }
 
 function cleanLabel(value) {
@@ -303,6 +322,7 @@ module.exports = {
   readPasskeyRow,
   relyingParty,
   signChallenge,
+  spendChallenge,
   verifyAssertion,
   verifyChallenge,
   verifyRegistration,

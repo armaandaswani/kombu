@@ -582,6 +582,8 @@ function lockAdmin() {
   shell?.classList.add("is-locked");
   shell?.setAttribute("aria-hidden", "true");
   document.querySelector("#adminPassword")?.focus();
+  // Back on the login screen: have a fresh passkey challenge ready for the next tap.
+  prefetchPasskeyOptions();
 }
 
 function isLocalPreview() {
@@ -707,16 +709,40 @@ async function passkeyRequest(action, body = {}) {
   return { ...payload, ok: response.ok, status: response.status };
 }
 
+// Safari only shows the Face ID prompt shortly after a tap, and can refuse it when
+// a network call has run in between. So the challenge is fetched as soon as the
+// login screen shows, and the tap goes straight to the prompt. It is used once
+// and only while fresh (the server's challenge lives two minutes).
+let passkeyPrefetch = null;
+
+async function prefetchPasskeyOptions() {
+  if (!passkeySupported()) return;
+  try {
+    const options = await passkeyRequest("login-options");
+    passkeyPrefetch = options.ok ? { options, at: Date.now() } : null;
+  } catch {
+    passkeyPrefetch = null;
+  }
+}
+
+function takePrefetchedPasskeyOptions() {
+  const hit = passkeyPrefetch;
+  passkeyPrefetch = null;
+  return hit && Date.now() - hit.at < 100000 ? hit.options : null;
+}
+
 // Resolves to { ok: true } or { ok: false, reason } where reason is one of
 // none, slow, cancelled, refused or error, so the caller can say it plainly.
 async function passkeyLogin() {
-  let options;
-  try {
-    options = await passkeyRequest("login-options");
-  } catch {
-    return { ok: false, reason: "error" };
+  let options = takePrefetchedPasskeyOptions();
+  if (!options) {
+    try {
+      options = await passkeyRequest("login-options");
+    } catch {
+      return { ok: false, reason: "error" };
+    }
+    if (!options.ok) return { ok: false, reason: options.error === "no_passkeys" ? "none" : options.status === 429 ? "slow" : "error" };
   }
-  if (!options.ok) return { ok: false, reason: options.error === "no_passkeys" ? "none" : options.status === 429 ? "slow" : "error" };
   let credential;
   try {
     credential = await navigator.credentials.get({
@@ -927,6 +953,7 @@ function bindAuth() {
   if (passkeyLoginButton && passkeySupported()) {
     passkeyLoginButton.classList.remove("hidden");
     document.querySelector("#passkeyOr")?.classList.remove("hidden");
+    prefetchPasskeyOptions();
     passkeyLoginButton.addEventListener("click", async () => {
       loginError?.classList.add("hidden");
       passkeyLoginButton.disabled = true;
@@ -940,6 +967,8 @@ function bindAuth() {
         }
         loginError.textContent = PASSKEY_LOGIN_MESSAGES[result.reason] || PASSKEY_LOGIN_MESSAGES.error;
         loginError.classList.remove("hidden");
+        // The challenge was spent; have the next tap ready too.
+        if (result.reason !== "slow") prefetchPasskeyOptions();
       } finally {
         passkeyLoginButton.disabled = false;
       }

@@ -64,6 +64,10 @@ const server = http.createServer(async (req, res) => {
         await context.addInitScript((lang) => localStorage.setItem("kombuAdminLocale", lang), locale);
         const page = await context.newPage();
         const errors = [];
+        const optionRequests = [];
+        page.on("request", (request) => {
+          if (request.url().endsWith("/api/auth/passkey") && /login-options/.test(request.postData() || "")) optionRequests.push(request.url());
+        });
         page.on("pageerror", (error) => errors.push(error.message));
         page.on("dialog", (dialog) => dialog.accept());
         const client = await context.newCDPSession(page);
@@ -124,10 +128,27 @@ const server = http.createServer(async (req, res) => {
         await page.waitForSelector("#loginScreen:not(.is-hidden)");
         const cookieAfterLogout = (await context.cookies()).find((cookie) => cookie.name === "kombu_admin_session");
         assert.ok(!cookieAfterLogout || !cookieAfterLogout.value, "logging out clears the session");
+        // Safari wants the Face ID prompt right after the tap, so the challenge is
+        // fetched when the login screen shows and the tap makes no request first.
+        await page.waitForFunction(() => passkeyPrefetch !== null);
+        const requestsBeforeTap = optionRequests.length;
         await passkeyButton.click();
         await page.waitForSelector("#adminShell:not(.is-locked)");
+        assert.equal(optionRequests.length, requestsBeforeTap, "the tap used the challenge fetched when the screen appeared");
         assert.equal((await page.evaluate(() => fetch("/api/auth/session", { credentials: "same-origin" }).then((r) => r.status))), 200, "the passkey gave a real server session");
         assert.equal(database.rows.get("admin_passkeys").state.credentials[0].lastUsedAt !== null, true);
+        await page.reload();
+        await page.waitForSelector("#adminShell:not(.is-locked)");
+
+        // A challenge fetched long ago is not used; the tap fetches a fresh one.
+        await page.click("#logoutButton");
+        await page.waitForSelector("#loginScreen:not(.is-hidden)");
+        await page.waitForFunction(() => passkeyPrefetch !== null);
+        await page.evaluate(() => { passkeyPrefetch.at -= 200000; });
+        const requestsBeforeStale = optionRequests.length;
+        await passkeyButton.click();
+        await page.waitForSelector("#adminShell:not(.is-locked)");
+        assert.equal(optionRequests.length, requestsBeforeStale + 1, "an old challenge is replaced by a new request");
         await page.reload();
         await page.waitForSelector("#adminShell:not(.is-locked)");
 

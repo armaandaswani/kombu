@@ -139,6 +139,37 @@ async function signIn(authenticator, overrides = {}, { token, ip } = {}) {
   await refuse("a signature made for another challenge", await act("login", { token: otherChallenge.data.token, id: assertion.id, response: assertion.response }));
   await refuse("an incomplete request", await act("login", { token: first.data.token, id: assertion.id, response: {} }));
 
+  // --- A signed-in answer works once. Synced passkeys report a counter of 0, so
+  // only recording the challenge stops a captured answer from being sent again.
+  const replayOptions = await act("login-options");
+  const replayAssertion = iphone.get({ challenge: replayOptions.data.challenge, ...RP });
+  const replayBody = { token: replayOptions.data.token, id: replayAssertion.id, response: replayAssertion.response };
+  assert.equal((await act("login", replayBody)).status, 200, "the first use works");
+  await refuse("the same answer sent again", await act("login", replayBody));
+  const racing = await act("login-options");
+  const racingAssertion = iphone.get({ challenge: racing.data.challenge, ...RP });
+  const racingBody = { token: racing.data.token, id: racingAssertion.id, response: racingAssertion.response };
+  const raced = await Promise.all([act("login", racingBody), act("login", racingBody)]);
+  assert.deepEqual(raced.map((result) => result.status).sort(), [200, 401], "two copies sent at once: exactly one gets in");
+  // If the use cannot be recorded the sign-in is refused, not granted unguarded.
+  const unrecorded = await act("login-options");
+  const unrecordedAssertion = iphone.get({ challenge: unrecorded.data.challenge, ...RP });
+  database.failPatches = true;
+  await refuse("a sign-in whose use cannot be recorded", await act("login", { token: unrecorded.data.token, id: unrecordedAssertion.id, response: unrecordedAssertion.response }));
+  database.failPatches = false;
+  assert.equal((await signIn(iphone)).status, 200, "and it works again once the database does");
+  // Spent challenges are forgotten once they would have expired anyway.
+  assert.ok(database.rows.get("admin_passkeys").state.used.length >= 2, "spent challenges are recorded");
+  Date.now = () => realNow() + 10 * 60 * 1000;
+  try {
+    const later = await act("login-options");
+    const laterAssertion = iphone.get({ challenge: later.data.challenge, ...RP });
+    assert.equal((await act("login", { token: later.data.token, id: laterAssertion.id, response: laterAssertion.response })).status, 200);
+  } finally {
+    Date.now = realNow;
+  }
+  assert.equal(database.rows.get("admin_passkeys").state.used.length, 1, "old spent challenges are dropped");
+
   // --- A challenge handed out on the login screen must never work as a session cookie.
   const publicChallenge = (await act("login-options")).data.token;
   assert.equal((await call(sessionHandler, {}, { cookie: `kombu_admin_session=${publicChallenge}`, method: "GET" })).status, 401, "a challenge is not a session");

@@ -7,7 +7,7 @@ const SUPABASE_URL = "http://supabase.test";
 
 function installFakeSupabase() {
   const rows = new Map();
-  const control = { rows, failNextPatch: false, calls: [] };
+  const control = { rows, failNextPatch: false, failPatches: false, calls: [] };
   const reply = (data, status = 200) => ({ ok: status < 400, status, text: async () => JSON.stringify(data) });
   global.fetch = async (url, options = {}) => {
     if (!String(url).startsWith(SUPABASE_URL)) throw new Error(`unexpected request to ${url}`);
@@ -25,6 +25,7 @@ function installFakeSupabase() {
     if (method === "PATCH") {
       const row = rows.get(id);
       const expected = (parsed.searchParams.get("updated_at") || "").replace(/^eq\./, "");
+      if (control.failPatches) return reply([]);
       if (control.failNextPatch) {
         control.failNextPatch = false;
         return reply([]);
