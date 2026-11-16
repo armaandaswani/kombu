@@ -89,3 +89,7 @@ The interaction inventory is complete. Three dead buttons were found and fixed. 
 - **Added:** Estoque → "Reposição", a read-only view of what to produce and buy, from the last 8 weeks of records. It gives no forecast with under 4 weeks of history.
 - **Evidence:** `npm run check` and every node suite pass. All 14 browser suites pass under the production headers, including the new `replenishment-regression.js`. The button crawl now presses 158 controls.
 - **Verdict unchanged:** blocked until staging, the posting contracts and the restore drill are done. Nothing in this update changes stored data or the server.
+
+## Update, 16 November: the wipe removal is live
+
+On the owner's go-ahead, the "Limpar dados" removal went to production alone, as commit `2e5b9bb` on `main`, built from `main`. `npm run check`, `npm test` (with a new guard that failed before the fix) and main's four browser suites passed. The served `assets/admin.js` matches the commit byte for byte. The no-login checks pass: pages 200, `/api/state` and `/api/sales` 401, 10 CMS images, 5 partners. The rest of this branch is still not deployed, and the verdict for it is unchanged.
