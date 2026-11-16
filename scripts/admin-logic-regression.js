@@ -1114,3 +1114,140 @@ console.log("Dashboard regression: monthly finances, missing costs and overview 
   assert.doesNotMatch(call("renderSchema"), /data-action="reset-demo"/, "the Arquitetura screen has no wipe button");
 }
 console.log("Data safety regression: no action wipes or reseeds the saved state.");
+
+// Counting finished bottles directly (owner request, 16 November 2026). The
+// operator types what is on the shelf and the system works out the rest, with
+// no reason, no confirmation and no lock. More bottles than recorded enter as a
+// batch made by the recipe, so supplies, cost and sales made without stock
+// follow. Fewer are a loss, taken from the oldest batch first and, when those
+// bottles were reserved, from the order needed latest.
+{
+  const { stateInvariantViolations } = require("../api/_lib/kombu-backend");
+  const product = { id: "tea", item: "KMB1", flavor: "Tea", sizeMl: 500, retailPrice: 22, wholesalePrice: 15, status: "ativo", visible: true };
+  const recipe = (extra = {}) => ({ id: "r-tea", productId: "tea", flavor: "Tea", version: "v1", status: "ativa", bottleMl: 500, yieldBottles: 1, ingredients: [{ ingredientId: "leaf", qty: 10, unit: "g" }], packaging: [], ...extra });
+  const leaf = (stock = 1000) => ({ id: "leaf", name: "Folha", category: "chá", purchaseUnit: "g", stock, costPerUnit: 0.05, stockCountedAt: "2026-11-01T10:00:00Z" });
+  const batch = (code, actual, date) => ({ id: `b-${code}`, code, productId: "tea", recipeId: "r-tea", flavor: "Tea", sizeMl: 500, actual, expected: actual, date, status: "aprovado", inventoryAdjusted: true, inventoryQty: actual, costSnapshot: { costPerBottle: 2, yieldBottles: 1, total: 2, ingredientCost: 2 } });
+  const order = (orderId, due, qty, allocations, createdAt) => ({ id: orderId, code: orderId.toUpperCase(), status: "confirmado", orderDate: "2026-11-01", neededBy: due, createdAt, customerName: orderId, items: [{ key: `k-${orderId}`, productId: "tea", flavor: "Tea", sizeMl: 500, qty, unitPrice: 22, allocations }] });
+  const state = () => admin.__getState();
+  const count = (counted, productId = "tea") => plain(call("applyBottleCount", [{ productId, counted }]));
+  const reserved = (orderId) => call("orderItemReservedQty", state().orders.find((item) => item.id === orderId).items[0]);
+  // Nothing here may open a dialog.
+  admin.confirm = () => { throw new Error("a blocking dialog was opened"); };
+  admin.alert = () => { throw new Error("a blocking alert was opened"); };
+
+  // More on the shelf than recorded: an entry made by the recipe.
+  load({ products: [product], recipes: [recipe()], ingredients: [leaf()], batches: [batch("T-1", 9, "2026-11-01")] });
+  assert.equal(call("expectedBottles", "tea"), 9);
+  const untouched = JSON.stringify(state());
+  assert.equal(count(9)[0].kind, "same");
+  assert.equal(JSON.stringify(state()), untouched, "counting the number already recorded writes nothing");
+  const entry = count(12);
+  assert.deepEqual([entry[0].kind, entry[0].expected, entry[0].counted, entry[0].qty], ["entry", 9, 12, 3]);
+  assert.equal(entry[0].message, "Tea 500 ml: 9 → 12, entraram 3 garrafas.");
+  const made = state().batches[0];
+  assert.deepEqual([made.source, made.actual, made.recipeId, made.productId, made.status], ["ajuste", 3, "r-tea", "tea", "aprovado"]);
+  assert.match(made.note, /sistema 9.*contado 12/);
+  assert.equal(state().ingredients[0].stock, 970, "the entry takes the recipe's 30 g of leaf");
+  assert.equal(made.costSnapshot.costPerBottle, 0.5, "the cost of the new bottles is frozen from the recipe");
+  assert.equal(call("expectedBottles", "tea"), 12);
+  assert.match(state().audit.find((row) => row.action === "Contagem de estoque")?.detail || "", /Tea 500 ml: 9 → 12/);
+  // The server accepts what a count writes: the batch's source and note.
+  const { validateAppState } = require("../api/_lib/kombu-backend");
+  assert.equal(validateAppState(plain(state())), "", "the server accepts a state with a count entry");
+
+  // Fewer than recorded: a loss, oldest batch first. T-1 has 2 on the shelf, all
+  // reserved by the order needed latest; T-2 has 6 with 4 reserved.
+  load({
+    products: [product], recipes: [recipe()], ingredients: [leaf()],
+    batches: [batch("T-1", 3, "2026-10-01"), batch("T-2", 6, "2026-11-01")],
+    sales: [{ id: "s1", date: "2026-01-05", batchCode: "T-1", productId: "tea", flavor: "Tea", qty: 1, unitPrice: 22, movementType: "venda", customerName: "Ana" }],
+    orders: [order("old", "2026-11-20", 4, [{ batchCode: "T-2", qty: 4 }], "2026-11-01T10:00:00Z"), order("new", "2026-12-20", 2, [{ batchCode: "T-1", qty: 2 }], "2026-11-05T10:00:00Z")],
+  });
+  assert.equal(call("expectedBottles", "tea"), 8);
+  const loss = count(4);
+  assert.deepEqual([loss[0].kind, loss[0].qty], ["loss", 4]);
+  assert.equal(loss[0].message, "Tea 500 ml: 8 → 4, 4 perdidas.");
+  const lost = plain(state().sales).filter((sale) => sale.movementType === "perda");
+  assert.deepEqual(lost.map((sale) => [sale.batchCode, sale.qty]).sort(), [["T-1", 2], ["T-2", 2]], "the loss is spread oldest batch first");
+  lost.forEach((sale) => {
+    assert.deepEqual([sale.unitPrice, sale.customerName, sale.productId, sale.date], [0, "Ajuste de estoque", "tea", call("todayIso")]);
+    assert.match(sale.note, /sistema 8.*contado 4/);
+  });
+  assert.equal(reserved("new"), 0, "the order needed latest gave up its bottles");
+  assert.equal(reserved("old"), 4, "the older order keeps its reservation");
+  assert.equal(call("expectedBottles", "tea"), 4);
+  assert.equal(state().ingredients[0].stock, 1000, "a loss does not touch supplies");
+  assert.equal(stateInvariantViolations(plain(state())).byRule.batch_over_allocated, 0, "the server would accept the saved state");
+  // The loss costs what the bottles cost and earns nothing.
+  const finance = plain(call("dashboardFinancials", call("todayIso").slice(0, 7)));
+  assert.deepEqual([finance.revenue, finance.cogs], [0, 8]);
+
+  // One batch, two orders: the order needed latest gives up first.
+  load({
+    products: [product], recipes: [recipe()], ingredients: [leaf()], batches: [batch("T-1", 4, "2026-11-01")],
+    orders: [order("old", "2026-11-20", 2, [{ batchCode: "T-1", qty: 2 }], "2026-11-01T10:00:00Z"), order("new", "2026-12-20", 2, [{ batchCode: "T-1", qty: 2 }], "2026-11-05T10:00:00Z")],
+  });
+  count(1);
+  assert.deepEqual([reserved("new"), reserved("old")], [0, 1]);
+  assert.equal(stateInvariantViolations(plain(state())).byRule.batch_over_allocated, 0);
+
+  // Bottles already sold before any batch existed are not on the shelf, so the
+  // count is compared with what is left after them, and a new entry covers them.
+  load({ products: [product], recipes: [recipe()], ingredients: [leaf()], batches: [batch("T-1", 3, "2026-11-01")] });
+  call("recordPendingSale", { date: "2026-11-10", customerName: "Ana", movementType: "venda", priceType: "varejo", productId: "tea", flavor: "Tea", qty: 2, unitPrice: 22, discount: 0, delivery: 0 });
+  assert.deepEqual([call("productPhysicalStock", "tea"), call("pendingSaleQuantity", "tea"), call("expectedBottles", "tea")], [3, 2, 1]);
+  assert.deepEqual([count(4)[0].kind, count(4)[0].kind], ["entry", "same"]);
+  assert.deepEqual([call("pendingSaleQuantity", "tea"), call("productPhysicalStock", "tea"), call("expectedBottles", "tea")], [0, 4, 4], "the entry covered the bottles already sold");
+
+  // No active recipe: the entry is not made and no cost is invented.
+  load({ products: [product], recipes: [recipe({ status: "arquivada" })], ingredients: [leaf()], batches: [batch("T-1", 3, "2026-11-01")] });
+  const none = count(5);
+  assert.equal(none[0].kind, "no-recipe");
+  assert.match(none[0].message, /sem receita ativa/);
+  assert.deepEqual([state().batches.length, state().ingredients[0].stock], [1, 1000]);
+
+  // Supplies never block. Production that takes a supply below zero saves, and a
+  // notice is queued for the next screen instead of a yes/no dialog.
+  load({ products: [product], recipes: [recipe()], ingredients: [leaf(100)] });
+  const produced = plain(call("recordProduction", [{ recipe: state().recipes[0], bottles: 12, code: "T-X" }], "2026-11-16", "Dona Maria"));
+  assert.equal(produced.length, 1);
+  assert.equal(state().ingredients[0].stock, -20, "the true negative balance is kept");
+  const notices = plain(call("takeNotices"));
+  assert.equal(notices.length, 1);
+  assert.equal(notices[0].tone, "warn");
+  assert.match(notices[0].text, /Folha.*20/);
+  assert.deepEqual(plain(call("takeNotices")), [], "a notice is shown once");
+
+  // A supply at exactly 0 asks "is it really 0?" and is never a block. Only
+  // supplies whose stock is kept are asked about.
+  load({
+    ingredients: [
+      { id: "sugar", name: "Açúcar", purchaseUnit: "g", stock: 0, costPerUnit: 0.005, stockCountedAt: "2026-11-01T10:00:00Z" },
+      { id: "stamp", name: "Carimbo", purchaseUnit: "un", stock: 0, costPerUnit: 0 },
+      { id: "salt", name: "Sal", purchaseUnit: "g", stock: -5, costPerUnit: 0.01, stockCountedAt: "2026-11-01T10:00:00Z" },
+    ],
+    packaging: [],
+  });
+  assert.deepEqual(plain(call("zeroStockSupplies")).map((row) => row.item.id), ["sugar"]);
+  const dashboard = call("renderDashboard");
+  assert.match(dashboard, /Açúcar está com 0\. É 0 mesmo\?/);
+  assert.match(dashboard, /data-action="confirm-zero-supply:ingredients:sugar"/);
+  assert.match(dashboard, /data-action="fix-supply-stock:ingredients:sugar"/);
+  assert.match(call("renderOperator"), /Açúcar está com 0/, "simple mode asks too");
+  assert.match(dashboard, /Estoque negativo: Sal/, "negative supplies keep their alert");
+  call("confirmZeroSupply", "ingredients", "sugar");
+  assert.deepEqual(plain(call("zeroStockSupplies")), []);
+  assert.ok(state().ingredients[0].stockCountedAt > "2026-11-02", "confirming counts the item");
+  assert.equal(state().ingredients[0].zeroConfirmed, true);
+  assert.equal(require("../api/_lib/kombu-backend").validateAppState(plain(state())), "", "the server accepts a supply with zeroConfirmed");
+  assert.doesNotMatch(call("renderDashboard"), /É 0 mesmo/);
+  // Once the stock moves and comes back to zero, the question returns.
+  state().ingredients[0].stock = 300;
+  call("saveState");
+  state().ingredients[0].stock = 0;
+  assert.deepEqual(plain(call("zeroStockSupplies")).map((row) => row.item.id), ["sugar"]);
+
+  admin.confirm = () => true;
+  admin.alert = () => {};
+}
+console.log("Stock count: entry by recipe, loss oldest batch first, reserved bottles from the newest order, bottles sold without stock, no recipe, supplies never blocking and the zero-stock question passed.");
