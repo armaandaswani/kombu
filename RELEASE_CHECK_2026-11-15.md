@@ -109,3 +109,7 @@ The owner chose to publish the whole reform ("Copiei, pode publicar") after copy
 ## Update, 16 November: order-edit fixes published
 
 On the owner's "sim", commit `7a55b91` went to production (`7222c44..7a55b91`) after review and a full test run. It fixes renaming and repricing in simple-mode order edits, closing dates for orders cut to what was delivered, and a bug in the full panel: its "Novo pedido" form pre-selected the payment status "pago", so orders saved without changing it were recorded as paid. The live `admin.js` is byte-identical to the commit; `/api/state` and `/api/sales` still return 401. Not verified: the admin screens, which the check cannot log in to. Open: orders already created through the full panel's "Novo pedido" may be stored as "pago" and were not changed. The owner should check recent orders.
+
+## Update, 16 November: admin shortcut fixed
+
+On the owner's "Sim, publicar", commit `c690304` went to production (`d238d98..c690304`). The admin page used the public site's manifest, whose start URL is `/`, so a home-screen shortcut opened the public site. The admin now has its own manifest starting at `/admin`. Live checks: the admin page links `/manifest-admin.webmanifest`, which serves 200 as `application/manifest+json` with `start_url` `/admin`; the public site still links `/manifest.webmanifest` starting at `/`; `/api/state` still returns 401. Not verified on a real iPhone. A shortcut made before this must be deleted and added again.
