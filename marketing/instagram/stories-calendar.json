@@ -1425,6 +1425,75 @@
           "source": "claude-propostas/stories"
         }
       ]
+    },
+    {
+      "date": "2026-11-20",
+      "frames": [
+        {
+          "id": "detalhe-1120",
+          "type": "art",
+          "formato": "detalhe",
+          "title": "Sexta pede uma Pêra & Alecrim bem gelada?",
+          "body": "Ela é leve, do tipo que desce fácil no calor de Manaus.",
+          "flavor": "pera-alecrim",
+          "cena": "24-profissionais-3",
+          "imageSource": "assets/stories-art/2026-11-20-detalhe-1120.jpg",
+          "image": "stories/2026-11-20/detalhe-1120.jpg",
+          "source": "claude-propostas/stories"
+        },
+        {
+          "id": "parceiro-1120",
+          "type": "art",
+          "formato": "parceiro",
+          "title": "Onde encontrar Já conhece a Cafeteria Garden?",
+          "body": "Passa lá, pede uma Kombú gelada e conta pra gente o que achou.",
+          "flavor": "pera-alecrim",
+          "partner": "@cafeteriagarden_",
+          "cena": "13-cafeteria-garden-1",
+          "imageSource": "assets/stories-art/2026-11-20-parceiro-1120.jpg",
+          "image": "stories/2026-11-20/parceiro-1120.jpg",
+          "source": "claude-propostas/stories"
+        },
+        {
+          "id": "enquete-1120",
+          "type": "art",
+          "formato": "enquete",
+          "title": "Hibisco & Anis Estrelado ou Maçã & Canela: qual combina mais com a sua sexta?",
+          "body": "",
+          "cta": "",
+          "flavor": "hibisco-anis",
+          "flavor2": "maca-canela",
+          "cena2": "15-maca-canela-1",
+          "cena": "16-de-verdade-1",
+          "imageSource": "assets/stories-art/2026-11-20-enquete-1120.jpg",
+          "image": "stories/2026-11-20/enquete-1120.jpg",
+          "source": "claude-propostas/stories"
+        },
+        {
+          "id": "revista-1120",
+          "type": "art",
+          "formato": "revista",
+          "title": "Você gosta de sabor mais azedinho?",
+          "body": "Então experimenta a de Maracujá. A gente usa a fruta de verdade, com semente e tudo.",
+          "flavor": "maracuja",
+          "cena": "12-como-comprar-2",
+          "imageSource": "assets/stories-art/2026-11-20-revista-1120.jpg",
+          "image": "stories/2026-11-20/revista-1120.jpg",
+          "source": "claude-propostas/stories"
+        },
+        {
+          "id": "pergunta-1120",
+          "type": "art",
+          "formato": "pergunta",
+          "title": "Já provou a de Rosas & Cardamomo?",
+          "body": "Ela é floral, com um toque de especiaria que pega muita gente de surpresa.",
+          "flavor": "rosas-cardamomo",
+          "cena": "23-cardapio-2",
+          "imageSource": "assets/stories-art/2026-11-20-pergunta-1120.jpg",
+          "image": "stories/2026-11-20/pergunta-1120.jpg",
+          "source": "claude-propostas/stories"
+        }
+      ]
     }
   ]
 }

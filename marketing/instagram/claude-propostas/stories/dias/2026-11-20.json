@@ -1,0 +1,51 @@
+{
+ "date": "2026-11-20",
+ "frames": [
+  {
+   "id": "detalhe-1120",
+   "formato": "detalhe",
+   "cena": "24-profissionais-3",
+   "zoom": 1.0,
+   "flavor": "pera-alecrim",
+   "title": "Sexta pede uma Pêra & Alecrim bem gelada?",
+   "body": "Ela é leve, do tipo que desce fácil no calor de Manaus."
+  },
+  {
+   "id": "parceiro-1120",
+   "formato": "parceiro",
+   "partner": "@cafeteriagarden_",
+   "cena": "13-cafeteria-garden-1",
+   "flavor": "pera-alecrim",
+   "title": "Já conhece a Cafeteria Garden?",
+   "body": "Passa lá, pede uma Kombú gelada e conta pra gente o que achou.",
+   "kicker": "Onde encontrar"
+  },
+  {
+   "id": "enquete-1120",
+   "formato": "enquete",
+   "cena": "16-de-verdade-1",
+   "flavor": "hibisco-anis",
+   "cena2": "15-maca-canela-1",
+   "flavor2": "maca-canela",
+   "title": "Hibisco & Anis Estrelado ou Maçã & Canela: qual combina mais com a sua sexta?",
+   "body": "",
+   "cta": ""
+  },
+  {
+   "id": "revista-1120",
+   "formato": "revista",
+   "cena": "12-como-comprar-2",
+   "flavor": "maracuja",
+   "title": "Você gosta de sabor mais azedinho?",
+   "body": "Então experimenta a de Maracujá. A gente usa a fruta de verdade, com semente e tudo."
+  },
+  {
+   "id": "pergunta-1120",
+   "formato": "pergunta",
+   "cena": "23-cardapio-2",
+   "flavor": "rosas-cardamomo",
+   "title": "Já provou a de Rosas & Cardamomo?",
+   "body": "Ela é floral, com um toque de especiaria que pega muita gente de surpresa."
+  }
+ ]
+}
