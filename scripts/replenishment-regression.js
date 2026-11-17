@@ -11,7 +11,7 @@ const storageKey = "kombuAdminStateV3";
 const daysAgo = (days) => {
   const date = new Date();
   date.setDate(date.getDate() - days);
-  return date.toLocaleDateString("sv-SE");
+  return date.toLocaleDateString("sv-SE", { timeZone: "America/Manaus" });
 };
 const product = (id, flavor) => ({ id, item: id.toUpperCase(), flavor, sizeMl: 500, retailPrice: 22, wholesalePrice: 15, status: "ativo", visible: true });
 const sale = (id, batchCode, productId, qty, days) => ({ id, batchCode, productId, qty, date: daysAgo(days), movementType: "venda", unitPrice: 22, discount: 0, delivery: 0, customerName: "Cliente" });

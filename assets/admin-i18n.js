@@ -1794,6 +1794,7 @@ window.KOMBU_I18N = {
     "Mac",
     "Passkey",
     "ENCERRAR",
+    "America/Manaus",
     "0 active receipt(s)",
     "12 bottles in the pipeline",
     "300ml prices",

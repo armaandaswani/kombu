@@ -15,7 +15,7 @@ const storageKey = "kombuAdminStateV3";
 const daysFromNow = (days) => {
   const date = new Date();
   date.setDate(date.getDate() + days);
-  return date.toLocaleDateString("sv-SE");
+  return date.toLocaleDateString("sv-SE", { timeZone: "America/Manaus" });
 };
 const product = (id, flavor, sizeMl, retailPrice, wholesalePrice) => ({ id, item: id.toUpperCase(), flavor, sizeMl, retailPrice, wholesalePrice, status: "ativo", visible: true });
 const recipe = (id, productId, flavor, bottleMl) => ({ id, productId, flavor, version: "v1", status: "ativa", bottleMl, yieldBottles: 1, ingredients: [], packaging: [] });

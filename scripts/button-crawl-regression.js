@@ -36,7 +36,7 @@ const skip = new Set(["reset-demo", "import-json", "restore-cost-base"]);
     // Records in every collection, so tables and their row buttons render.
     const saved = await page.evaluate(() => {
       window.open = () => { window.__opened = (window.__opened || 0) + 1; return null; };
-      const today = new Date().toLocaleDateString("sv-SE");
+      const today = new Date().toLocaleDateString("sv-SE", { timeZone: "America/Manaus" });
       const product = state.products[0];
       const recipe = state.recipes.find((item) => item.productId === product.id) || state.recipes[0];
       state.batches.push({ id: "bat-crawl", code: "L-CRAWL", productId: product.id, recipeId: recipe?.id || "", sizeMl: 500, flavor: product.flavor, actual: 20, expected: 20, date: today, status: "aprovado" });

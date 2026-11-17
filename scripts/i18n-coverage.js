@@ -83,7 +83,7 @@ async function run() {
   await page.waitForSelector("#adminShell:not(.is-locked)", { timeout: 10000 });
   // Records in every collection so tables, details and status labels render.
   await page.evaluate(() => {
-    const today = new Date().toLocaleDateString("sv-SE");
+    const today = new Date().toLocaleDateString("sv-SE", { timeZone: "America/Manaus" });
     const product = state.products[0];
     const recipe = state.recipes.find((item) => item.productId === product.id) || state.recipes[0];
     state.batches.push({ id: "bat-i18n", code: "L-I18N", productId: product.id, recipeId: recipe?.id || "", sizeMl: 500, flavor: product.flavor, planned: 20, actual: 20, date: today, status: "aprovado" });

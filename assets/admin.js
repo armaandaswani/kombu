@@ -489,7 +489,7 @@ let currentKombuchaStockSize = BASE_BOTTLE_SIZE_ML;
 let currentLocale = localStorage.getItem(LOCALE_KEY) || "pt";
 let currentSalesPeriod = "month";
 let currentDashboardOrderView = "summary";
-let dashboardMonth = new Date().toLocaleDateString("sv-SE").slice(0, 7);
+let dashboardMonth = todayIso().slice(0, 7);
 let receiptDraft = null;
 let receiptWizardStep = 1;
 let salesCustomStart = "";
@@ -1009,22 +1009,45 @@ const id = (prefix) => {
     : Math.random().toString(36).slice(2).padEnd(10, "0").slice(0, 10);
   return `${prefix}-${random}`;
 };
-const todayIso = () => new Date().toISOString().slice(0, 10);
+// Business dates. The business runs on Manaus time (UTC-4, no daylight saving), so
+// "today" is the date there: not the UTC date, which is already tomorrow from 20:00
+// in Manaus, and not the date of whatever device the panel is open on. A function
+// declaration so it can be used before this line runs (dashboardMonth below).
+// api/_lib/dates.js keeps the same rules for the server; scripts/dates-regression.js
+// checks they agree.
+function todayIso(now = new Date()) {
+  try {
+    todayIso.formatter = todayIso.formatter || new Intl.DateTimeFormat("en-CA", { timeZone: "America/Manaus", year: "numeric", month: "2-digit", day: "2-digit" });
+    const parts = Object.fromEntries(todayIso.formatter.formatToParts(now).map((part) => [part.type, part.value]));
+    return `${parts.year}-${parts.month}-${parts.day}`;
+  } catch {
+    // A browser without time zone data: Manaus has no daylight saving, so UTC-4.
+    return new Date(now.getTime() - 4 * 60 * 60 * 1000).toISOString().slice(0, 10);
+  }
+}
 
 function clone(value) {
   return JSON.parse(JSON.stringify(value));
 }
 
+// Calendar arithmetic on a YYYY-MM-DD date, done in UTC so the device's own time
+// zone can never move the result by a day (it did, east of UTC). An empty date
+// means today; one that is not a date gives "" rather than a guess.
+function shiftIso(dateIso, days, months) {
+  const match = dateIso ? /^(\d{4})-(\d{2})-(\d{2})/.exec(String(dateIso)) : /^(\d{4})-(\d{2})-(\d{2})$/.exec(todayIso());
+  if (!match) return "";
+  const date = new Date(Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3])));
+  if (months) date.setUTCMonth(date.getUTCMonth() + months);
+  if (days) date.setUTCDate(date.getUTCDate() + days);
+  return Number.isNaN(date.getTime()) ? "" : date.toISOString().slice(0, 10);
+}
+
 function addDaysIso(dateIso, days) {
-  const date = new Date(`${dateIso || todayIso()}T00:00:00`);
-  date.setDate(date.getDate() + Number(days || 0));
-  return date.toISOString().slice(0, 10);
+  return shiftIso(dateIso, Number(days || 0), 0);
 }
 
 function addMonthsIso(dateIso, months) {
-  const date = new Date(`${dateIso || todayIso()}T00:00:00`);
-  date.setMonth(date.getMonth() + Number(months || 0));
-  return date.toISOString().slice(0, 10);
+  return shiftIso(dateIso, 0, Number(months || 0));
 }
 
 function escapeHtml(value) {
@@ -2827,7 +2850,10 @@ function shortDate(dateIso) {
 
 function daysUntil(dateIso) {
   if (!dateIso) return null;
-  return Math.ceil((new Date(`${dateIso}T00:00:00`) - new Date(`${todayIso()}T00:00:00`)) / 86400000);
+  // Whole calendar days, counted on the dates themselves, so no time zone or
+  // daylight-saving change can make a day come out as 23 or 25 hours.
+  const target = isoDayNumber(dateIso);
+  return target == null ? null : target - isoDayNumber(todayIso());
 }
 
 function orderDateNote(order) {
@@ -6743,7 +6769,7 @@ function orderDeliveryDate(order) {
   return String(order.lastDeliveryAt || order.deliveredAt || orderDeliveries(order).map(d => d.deliveredAt).filter(Boolean).sort().at(-1) || "").slice(0, 10);
 }
 
-function orderVisibleInList(order, filters = orderListFilters, today = new Date().toLocaleDateString("sv-SE")) {
+function orderVisibleInList(order, filters = orderListFilters, today = todayIso()) {
   if (filters.status === "open" ? !isOpenOrder(order) : filters.status !== "all" && order.status !== filters.status) return false;
   if (filters.period === "recent") {
     if (isOpenOrder(order)) return true;
@@ -13077,7 +13103,7 @@ function bindModuleEvents() {
     render();
   });
   document.querySelector("[data-dashboard-current-month]")?.addEventListener("click", () => {
-    dashboardMonth = new Date().toLocaleDateString("sv-SE").slice(0, 7);
+    dashboardMonth = todayIso().slice(0, 7);
     render();
   });
   document.querySelectorAll("[data-dashboard-order-view]").forEach((button) => {

@@ -8,6 +8,8 @@ const {
   sendEmail,
   supabaseFetch,
 } = require("../_lib/kombu-backend");
+// "Today" and the 15-day payment term are counted on Manaus dates, as in the admin.
+const { addDaysIso, todayIso } = require("../_lib/dates");
 
 // A serverless invocation can be cut short. Sending an unbounded number of
 // emails and only recording them at the very end meant a timeout halfway through
@@ -43,16 +45,6 @@ async function recordEmailEvent({ referenceId, recipient, subject, providerId })
   }).catch(() => {
     // The state marker below is the fallback; never fail a run over bookkeeping.
   });
-}
-
-function todayIso() {
-  return new Date().toISOString().slice(0, 10);
-}
-
-function addDaysIso(dateIso, days) {
-  const date = new Date(`${dateIso || todayIso()}T00:00:00`);
-  date.setDate(date.getDate() + Number(days || 0));
-  return date.toISOString().slice(0, 10);
 }
 
 function orderItems(order) {
