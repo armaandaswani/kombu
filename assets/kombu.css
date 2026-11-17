@@ -1015,16 +1015,40 @@ textarea:focus-visible {
   justify-content: center;
   background: rgba(25, 28, 28, 0.42);
   padding: 20px;
+  padding:
+    max(20px, env(safe-area-inset-top))
+    max(20px, env(safe-area-inset-right))
+    max(20px, env(safe-area-inset-bottom))
+    max(20px, env(safe-area-inset-left));
+  /* The dim area is not a scroller: a swipe or a wheel turn on it must not reach
+     the page behind (openModal also keeps the page still, and the admin stops
+     touches that start on the dim area). The dialog itself scrolls. */
+  overscroll-behavior: contain;
 }
 
 .modal.is-open {
   display: flex;
 }
 
+/* While a dialog is open the page behind stays where it is. Set from openModal
+   and closeModal; the position is kept, so closing puts the page back as it was. */
+html.modal-open,
+html.modal-open body {
+  overflow: hidden;
+}
+
 .modal-panel {
   width: min(1080px, 100%);
+  /* dvh is the height that is actually visible. vh is the tallest the screen gets,
+     with the address bar and toolbar hidden, so on an iPhone a dialog sized in vh
+     runs under the toolbar and its bottom buttons cannot be reached. */
   max-height: calc(100vh - 40px);
+  max-height: calc(100dvh - 40px);
   overflow: auto;
+  /* Scrolling that reaches the end of the dialog stops there, and does not carry
+     on to the page behind. */
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
   padding: 28px;
   background:
     linear-gradient(145deg, rgba(255, 255, 255, 0.98), rgba(250, 255, 241, 0.94) 52%, rgba(255, 246, 244, 0.96)),
@@ -5331,6 +5355,7 @@ textarea:focus-visible {
   body:not(.admin-body) .modal-panel {
     width: 100%;
     max-height: 86vh;
+    max-height: 86dvh;
     border-radius: 18px 18px 0 0;
     padding: 16px;
   }

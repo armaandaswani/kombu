@@ -8756,12 +8756,18 @@ function openModal(title, eyebrow, body) {
   document.querySelector("#adminModalEyebrow").textContent = tr(eyebrow);
   document.querySelector("#adminModalBody").innerHTML = body;
   document.querySelector("#adminModal").classList.add("is-open");
+  // The page behind stays where it is while the dialog is open (see html.modal-open),
+  // and a dialog always opens at its top, not where the last one was scrolled to.
+  document.documentElement.classList.add("modal-open");
+  const panel = document.querySelector("#adminModal .modal-panel");
+  if (panel) panel.scrollTop = 0;
   applyLocaleToShell();
   enhanceSelectSearch(document.querySelector("#adminModalBody"));
 }
 
 function closeModal() {
   document.querySelector("#adminModal").classList.remove("is-open");
+  document.documentElement.classList.remove("modal-open");
 }
 
 function productsForPriceScope(scope) {
@@ -13433,6 +13439,12 @@ document.querySelectorAll("[data-locale]")?.forEach((button) => {
   });
 });
 document.querySelector("#closeAdminModal")?.addEventListener("click", closeModal);
+// A touch that starts on the dim area around the dialog (not on the dialog) must
+// not scroll anything: older iPhones scroll the page behind it otherwise. The
+// dialog's own touches are left alone, so it scrolls normally.
+document.querySelector("#adminModal")?.addEventListener("touchmove", (event) => {
+  if (event.target.id === "adminModal") event.preventDefault();
+}, { passive: false });
 document.querySelector("#adminModal")?.addEventListener("click", (event) => {
   if (event.target.id === "adminModal") closeModal();
   const button = event.target.closest("[data-action]");
