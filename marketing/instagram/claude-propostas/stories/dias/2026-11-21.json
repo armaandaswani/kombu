@@ -1,0 +1,50 @@
+{
+ "date": "2026-11-21",
+ "frames": [
+  {
+   "id": "cena-1121",
+   "formato": "cena",
+   "cena": "26-personal-trainers-1",
+   "flavor": "goiaba",
+   "title": "Sábado de manhã pede uma de Goiaba gelada?",
+   "body": "A gente acha que ela cai bem depois do treino."
+  },
+  {
+   "id": "lista-1121",
+   "formato": "lista",
+   "cena": "11-imunidade-2",
+   "flavor": "imunidade",
+   "title": "Como a gente gosta de tomar a de Imunidade",
+   "body": "",
+   "itens": ["Bem gelada, direto da geladeira.", "Num copo com gelo e uma rodela de limão.", "Depois do almoço, no calor de Manaus."]
+  },
+  {
+   "id": "detalhe-1121",
+   "formato": "detalhe",
+   "cena": "07-flor-fada-azul-1",
+   "zoom": 1.0,
+   "flavor": "flor-fada-blueberry",
+   "title": "Já reparou no azul da Flor Fada?",
+   "body": "Conta pra gente se você já provou essa."
+  },
+  {
+   "id": "fato-1121",
+   "formato": "fato",
+   "cena": "14-lavanda-limao-1",
+   "flavor": "lavanda-limao",
+   "title": "Sabia que a de Lavanda & Limão leva limão de verdade?",
+   "body": "E a lavanda deixa um perfume leve no final."
+  },
+  {
+   "id": "enquete-1121",
+   "formato": "enquete",
+   "cena": "05-frutas-vermelhas-1",
+   "flavor": "frutas-vermelhas",
+   "cena2": "25-nutricionistas-3",
+   "flavor2": "pera-alecrim",
+   "title": "Frutas Vermelhas ou Pêra & Alecrim: qual vai com você nesse sábado?",
+   "body": "",
+   "cta": "Vota mandando o nome da sua por mensagem."
+  }
+ ]
+}

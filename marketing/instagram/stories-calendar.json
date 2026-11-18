@@ -1494,6 +1494,74 @@
           "source": "claude-propostas/stories"
         }
       ]
+    },
+    {
+      "date": "2026-11-21",
+      "frames": [
+        {
+          "id": "cena-1121",
+          "type": "art",
+          "formato": "cena",
+          "title": "Sábado de manhã pede uma de Goiaba gelada?",
+          "body": "A gente acha que ela cai bem depois do treino.",
+          "flavor": "goiaba",
+          "cena": "26-personal-trainers-1",
+          "imageSource": "assets/stories-art/2026-11-21-cena-1121.jpg",
+          "image": "stories/2026-11-21/cena-1121.jpg",
+          "source": "claude-propostas/stories"
+        },
+        {
+          "id": "lista-1121",
+          "type": "art",
+          "formato": "lista",
+          "title": "Como a gente gosta de tomar a de Imunidade",
+          "body": "Bem gelada, direto da geladeira. Num copo com gelo e uma rodela de limão. Depois do almoço, no calor de Manaus.",
+          "flavor": "imunidade",
+          "cena": "11-imunidade-2",
+          "imageSource": "assets/stories-art/2026-11-21-lista-1121.jpg",
+          "image": "stories/2026-11-21/lista-1121.jpg",
+          "source": "claude-propostas/stories"
+        },
+        {
+          "id": "detalhe-1121",
+          "type": "art",
+          "formato": "detalhe",
+          "title": "Já reparou no azul da Flor Fada?",
+          "body": "Conta pra gente se você já provou essa.",
+          "flavor": "flor-fada-blueberry",
+          "cena": "07-flor-fada-azul-1",
+          "imageSource": "assets/stories-art/2026-11-21-detalhe-1121.jpg",
+          "image": "stories/2026-11-21/detalhe-1121.jpg",
+          "source": "claude-propostas/stories"
+        },
+        {
+          "id": "fato-1121",
+          "type": "art",
+          "formato": "fato",
+          "title": "Sabia que a de Lavanda & Limão leva limão de verdade?",
+          "body": "E a lavanda deixa um perfume leve no final.",
+          "flavor": "lavanda-limao",
+          "cena": "14-lavanda-limao-1",
+          "imageSource": "assets/stories-art/2026-11-21-fato-1121.jpg",
+          "image": "stories/2026-11-21/fato-1121.jpg",
+          "source": "claude-propostas/stories"
+        },
+        {
+          "id": "enquete-1121",
+          "type": "art",
+          "formato": "enquete",
+          "title": "Frutas Vermelhas ou Pêra & Alecrim: qual vai com você nesse sábado?",
+          "body": "",
+          "cta": "Vota mandando o nome da sua por mensagem.",
+          "flavor": "frutas-vermelhas",
+          "flavor2": "pera-alecrim",
+          "cena2": "25-nutricionistas-3",
+          "cena": "05-frutas-vermelhas-1",
+          "imageSource": "assets/stories-art/2026-11-21-enquete-1121.jpg",
+          "image": "stories/2026-11-21/enquete-1121.jpg",
+          "source": "claude-propostas/stories"
+        }
+      ]
     }
   ]
 }
