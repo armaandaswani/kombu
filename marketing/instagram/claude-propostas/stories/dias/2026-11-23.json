@@ -1,0 +1,50 @@
+{
+ "date": "2026-11-23",
+ "frames": [
+  {
+   "id": "revista-1123",
+   "formato": "revista",
+   "cena": "26-personal-trainers-1",
+   "flavor": "goiaba",
+   "title": "Segunda fica melhor com uma de Goiaba?",
+   "body": "Uma bem gelada na volta do almoço já ajuda a tarde a passar."
+  },
+  {
+   "id": "detalhe-1123",
+   "formato": "detalhe",
+   "cena": "14-lavanda-limao-1",
+   "zoom": 1.0,
+   "flavor": "lavanda-limao",
+   "title": "Já sentiu a lavanda no final?",
+   "body": "Na de Lavanda & Limão ela vem leve, depois do limão."
+  },
+  {
+   "id": "pergunta-1123",
+   "formato": "pergunta",
+   "cena": "24-profissionais-3",
+   "flavor": "pera-alecrim",
+   "title": "Você prefere sabor mais suave?",
+   "body": "Então a de Pêra & Alecrim pode ser a sua. O alecrim aparece bem de leve."
+  },
+  {
+   "id": "enquete-1123",
+   "formato": "enquete",
+   "cena": "07-flor-fada-azul-2",
+   "flavor": "flor-fada-blueberry",
+   "cena2": "11-imunidade-1",
+   "flavor2": "imunidade",
+   "title": "Flor Fada Azul ou Imunidade: qual abre a sua semana?",
+   "body": "",
+   "cta": "Manda a sua escolha por mensagem."
+  },
+  {
+   "id": "cena-1123",
+   "formato": "cena",
+   "cena": "05-frutas-vermelhas-1",
+   "flavor": "frutas-vermelhas",
+   "texto": "baixo",
+   "title": "Já provou a de Frutas Vermelhas com gelo?",
+   "body": "No copo ela fica com uma cor bonita, e o gosto lembra fruta madura."
+  }
+ ]
+}

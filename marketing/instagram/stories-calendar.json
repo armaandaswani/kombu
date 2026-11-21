@@ -1562,6 +1562,209 @@
           "source": "claude-propostas/stories"
         }
       ]
+    },
+    {
+      "date": "2026-11-22",
+      "frames": [
+        {
+          "id": "lista-1122",
+          "type": "art",
+          "formato": "lista",
+          "title": "Onde a gente toma a de Hibisco & Anis Estrelado no domingo",
+          "body": "Na varanda, depois do almoço. Na beira da piscina, com bastante gelo. No sofá, vendo o jogo.",
+          "flavor": "hibisco-anis",
+          "cena": "09-hibisco-2",
+          "imageSource": "assets/stories-art/2026-11-22-lista-1122.jpg",
+          "image": "stories/2026-11-22/lista-1122.jpg",
+          "source": "claude-propostas/stories"
+        },
+        {
+          "id": "revista-1122",
+          "type": "art",
+          "formato": "revista",
+          "title": "Você já tomou canela gelada?",
+          "body": "Na de Maçã & Canela ela aparece no final, bem de leve.",
+          "flavor": "maca-canela",
+          "cena": "08-revenda-1",
+          "imageSource": "assets/stories-art/2026-11-22-revista-1122.jpg",
+          "image": "stories/2026-11-22/revista-1122.jpg",
+          "source": "claude-propostas/stories"
+        },
+        {
+          "id": "fato-1122",
+          "type": "art",
+          "formato": "fato",
+          "title": "Sabia que as sementinhas da de Maracujá são da própria fruta?",
+          "body": "A gente usa maracujá de verdade, e elas vêm junto.",
+          "flavor": "maracuja",
+          "cena": "12-como-comprar-2",
+          "imageSource": "assets/stories-art/2026-11-22-fato-1122.jpg",
+          "image": "stories/2026-11-22/fato-1122.jpg",
+          "source": "claude-propostas/stories"
+        },
+        {
+          "id": "parceiro-1122",
+          "type": "art",
+          "formato": "parceiro",
+          "title": "Onde encontrar Já passou na Gelateria Dolce Vita?",
+          "body": "A Kombú também está por lá. Dá pra pedir uma gelada junto com o gelato.",
+          "flavor": "manga-jasmim",
+          "partner": "@ladolcevitagelataria",
+          "cena": "06-la-dolce-vita-1",
+          "imageSource": "assets/stories-art/2026-11-22-parceiro-1122.jpg",
+          "image": "stories/2026-11-22/parceiro-1122.jpg",
+          "source": "claude-propostas/stories"
+        },
+        {
+          "id": "pergunta-1122",
+          "type": "art",
+          "formato": "pergunta",
+          "title": "Com o que você tomaria a de Rosas & Cardamomo?",
+          "body": "Manda a sua combinação pra gente por mensagem.",
+          "flavor": "rosas-cardamomo",
+          "cena": "23-cardapio-2",
+          "imageSource": "assets/stories-art/2026-11-22-pergunta-1122.jpg",
+          "image": "stories/2026-11-22/pergunta-1122.jpg",
+          "source": "claude-propostas/stories"
+        }
+      ]
+    },
+    {
+      "date": "2026-11-23",
+      "frames": [
+        {
+          "id": "revista-1123",
+          "type": "art",
+          "formato": "revista",
+          "title": "Segunda fica melhor com uma de Goiaba?",
+          "body": "Uma bem gelada na volta do almoço já ajuda a tarde a passar.",
+          "flavor": "goiaba",
+          "cena": "26-personal-trainers-1",
+          "imageSource": "assets/stories-art/2026-11-23-revista-1123.jpg",
+          "image": "stories/2026-11-23/revista-1123.jpg",
+          "source": "claude-propostas/stories"
+        },
+        {
+          "id": "detalhe-1123",
+          "type": "art",
+          "formato": "detalhe",
+          "title": "Já sentiu a lavanda no final?",
+          "body": "Na de Lavanda & Limão ela vem leve, depois do limão.",
+          "flavor": "lavanda-limao",
+          "cena": "14-lavanda-limao-1",
+          "imageSource": "assets/stories-art/2026-11-23-detalhe-1123.jpg",
+          "image": "stories/2026-11-23/detalhe-1123.jpg",
+          "source": "claude-propostas/stories"
+        },
+        {
+          "id": "pergunta-1123",
+          "type": "art",
+          "formato": "pergunta",
+          "title": "Você prefere sabor mais suave?",
+          "body": "Então a de Pêra & Alecrim pode ser a sua. O alecrim aparece bem de leve.",
+          "flavor": "pera-alecrim",
+          "cena": "24-profissionais-3",
+          "imageSource": "assets/stories-art/2026-11-23-pergunta-1123.jpg",
+          "image": "stories/2026-11-23/pergunta-1123.jpg",
+          "source": "claude-propostas/stories"
+        },
+        {
+          "id": "enquete-1123",
+          "type": "art",
+          "formato": "enquete",
+          "title": "Flor Fada Azul ou Imunidade: qual abre a sua semana?",
+          "body": "",
+          "cta": "Manda a sua escolha por mensagem.",
+          "flavor": "flor-fada-blueberry",
+          "flavor2": "imunidade",
+          "cena2": "11-imunidade-1",
+          "cena": "07-flor-fada-azul-2",
+          "imageSource": "assets/stories-art/2026-11-23-enquete-1123.jpg",
+          "image": "stories/2026-11-23/enquete-1123.jpg",
+          "source": "claude-propostas/stories"
+        },
+        {
+          "id": "cena-1123",
+          "type": "art",
+          "formato": "cena",
+          "title": "Já provou a de Frutas Vermelhas com gelo?",
+          "body": "No copo ela fica com uma cor bonita, e o gosto lembra fruta madura.",
+          "flavor": "frutas-vermelhas",
+          "cena": "05-frutas-vermelhas-1",
+          "imageSource": "assets/stories-art/2026-11-23-cena-1123.jpg",
+          "image": "stories/2026-11-23/cena-1123.jpg",
+          "source": "claude-propostas/stories"
+        }
+      ]
+    },
+    {
+      "date": "2026-11-24",
+      "frames": [
+        {
+          "id": "lista-1124",
+          "type": "art",
+          "formato": "lista",
+          "title": "Com o que a gente serve a de Hibisco & Anis Estrelado",
+          "body": "Com tapioca de manhã. Com uma fatia de bolo no café da tarde. Com um almoço leve, no calor.",
+          "flavor": "hibisco-anis",
+          "cena": "09-hibisco-1",
+          "imageSource": "assets/stories-art/2026-11-24-lista-1124.jpg",
+          "image": "stories/2026-11-24/lista-1124.jpg",
+          "source": "claude-propostas/stories"
+        },
+        {
+          "id": "cena-1124",
+          "type": "art",
+          "formato": "cena",
+          "title": "Terça de calor pede uma de Maçã & Canela?",
+          "body": "A gente gosta dela bem gelada, direto da geladeira.",
+          "flavor": "maca-canela",
+          "cena": "15-maca-canela-1",
+          "imageSource": "assets/stories-art/2026-11-24-cena-1124.jpg",
+          "image": "stories/2026-11-24/cena-1124.jpg",
+          "source": "claude-propostas/stories"
+        },
+        {
+          "id": "enquete-1124",
+          "type": "art",
+          "formato": "enquete",
+          "title": "Maracujá ou Rosas & Cardamomo: qual você abriria primeiro?",
+          "body": "",
+          "cta": "Conta pra gente por mensagem.",
+          "flavor": "maracuja",
+          "flavor2": "rosas-cardamomo",
+          "cena2": "23-cardapio-2",
+          "cena": "12-como-comprar-1",
+          "imageSource": "assets/stories-art/2026-11-24-enquete-1124.jpg",
+          "image": "stories/2026-11-24/enquete-1124.jpg",
+          "source": "claude-propostas/stories"
+        },
+        {
+          "id": "parceiro-1124",
+          "type": "art",
+          "formato": "parceiro",
+          "title": "Onde encontrar Já conhece a Divina Terra?",
+          "body": "A Kombú também está lá. Passa pra conhecer.",
+          "flavor": "goiaba",
+          "partner": "@divinaterramanaus",
+          "cena": "19-como-servir-2",
+          "imageSource": "assets/stories-art/2026-11-24-parceiro-1124.jpg",
+          "image": "stories/2026-11-24/parceiro-1124.jpg",
+          "source": "claude-propostas/stories"
+        },
+        {
+          "id": "fato-1124",
+          "type": "art",
+          "formato": "fato",
+          "title": "Sabia que a Kombú é feita aqui em Manaus?",
+          "body": "Cada garrafa de Pêra & Alecrim sai daqui da cidade.",
+          "flavor": "pera-alecrim",
+          "cena": "25-nutricionistas-3",
+          "imageSource": "assets/stories-art/2026-11-24-fato-1124.jpg",
+          "image": "stories/2026-11-24/fato-1124.jpg",
+          "source": "claude-propostas/stories"
+        }
+      ]
     }
   ]
 }

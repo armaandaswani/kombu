@@ -1,0 +1,51 @@
+{
+ "date": "2026-11-24",
+ "frames": [
+  {
+   "id": "lista-1124",
+   "formato": "lista",
+   "cena": "09-hibisco-1",
+   "flavor": "hibisco-anis",
+   "title": "Com o que a gente serve a de Hibisco & Anis Estrelado",
+   "body": "",
+   "itens": ["Com tapioca de manhã.", "Com uma fatia de bolo no café da tarde.", "Com um almoço leve, no calor."]
+  },
+  {
+   "id": "cena-1124",
+   "formato": "cena",
+   "cena": "15-maca-canela-1",
+   "flavor": "maca-canela",
+   "title": "Terça de calor pede uma de Maçã & Canela?",
+   "body": "A gente gosta dela bem gelada, direto da geladeira."
+  },
+  {
+   "id": "enquete-1124",
+   "formato": "enquete",
+   "cena": "12-como-comprar-1",
+   "flavor": "maracuja",
+   "cena2": "23-cardapio-2",
+   "flavor2": "rosas-cardamomo",
+   "title": "Maracujá ou Rosas & Cardamomo: qual você abriria primeiro?",
+   "body": "",
+   "cta": "Conta pra gente por mensagem."
+  },
+  {
+   "id": "parceiro-1124",
+   "formato": "parceiro",
+   "partner": "@divinaterramanaus",
+   "cena": "19-como-servir-2",
+   "flavor": "goiaba",
+   "title": "Já conhece a Divina Terra?",
+   "body": "A Kombú também está lá. Passa pra conhecer.",
+   "kicker": "Onde encontrar"
+  },
+  {
+   "id": "fato-1124",
+   "formato": "fato",
+   "cena": "25-nutricionistas-3",
+   "flavor": "pera-alecrim",
+   "title": "Sabia que a Kombú é feita aqui em Manaus?",
+   "body": "Cada garrafa de Pêra & Alecrim sai daqui da cidade."
+  }
+ ]
+}

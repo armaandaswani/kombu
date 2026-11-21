@@ -1,0 +1,48 @@
+{
+ "date": "2026-11-22",
+ "frames": [
+  {
+   "id": "lista-1122",
+   "formato": "lista",
+   "cena": "09-hibisco-2",
+   "flavor": "hibisco-anis",
+   "title": "Onde a gente toma a de Hibisco & Anis Estrelado no domingo",
+   "body": "",
+   "itens": ["Na varanda, depois do almoço.", "Na beira da piscina, com bastante gelo.", "No sofá, vendo o jogo."]
+  },
+  {
+   "id": "revista-1122",
+   "formato": "revista",
+   "cena": "08-revenda-1",
+   "flavor": "maca-canela",
+   "title": "Você já tomou canela gelada?",
+   "body": "Na de Maçã & Canela ela aparece no final, bem de leve."
+  },
+  {
+   "id": "fato-1122",
+   "formato": "fato",
+   "cena": "12-como-comprar-2",
+   "flavor": "maracuja",
+   "title": "Sabia que as sementinhas da de Maracujá são da própria fruta?",
+   "body": "A gente usa maracujá de verdade, e elas vêm junto."
+  },
+  {
+   "id": "parceiro-1122",
+   "formato": "parceiro",
+   "partner": "@ladolcevitagelataria",
+   "cena": "06-la-dolce-vita-1",
+   "flavor": "manga-jasmim",
+   "title": "Já passou na Gelateria Dolce Vita?",
+   "body": "A Kombú também está por lá. Dá pra pedir uma gelada junto com o gelato.",
+   "kicker": "Onde encontrar"
+  },
+  {
+   "id": "pergunta-1122",
+   "formato": "pergunta",
+   "cena": "23-cardapio-2",
+   "flavor": "rosas-cardamomo",
+   "title": "Com o que você tomaria a de Rosas & Cardamomo?",
+   "body": "Manda a sua combinação pra gente por mensagem."
+  }
+ ]
+}
