@@ -1,0 +1,50 @@
+{
+  "date": "2026-11-26",
+  "frames": [
+    {
+      "id": "detalhe-1126",
+      "formato": "detalhe",
+      "cena": "14-lavanda-limao-2",
+      "flavor": "lavanda-limao",
+      "title": "Lavanda & Limão, bem gelada.",
+      "body": "Uma combinação de flores e fruta de verdade, feita aqui em Manaus."
+    },
+    {
+      "id": "fato-1126",
+      "formato": "fato",
+      "cena": "07-flor-fada-azul-1",
+      "flavor": "flor-fada-blueberry",
+      "title": "De onde vem o gás da Kombú?",
+      "body": "Ele se forma durante a própria fermentação."
+    },
+    {
+      "id": "revista-1126",
+      "formato": "revista",
+      "cena": "11-imunidade-2",
+      "flavor": "imunidade",
+      "title": "Já provou a nossa Imunidade?",
+      "body": "É um dos sabores da Kombú. Veja o cardápio no link da bio."
+    },
+    {
+      "id": "pergunta-1126",
+      "formato": "pergunta",
+      "cena": "05-frutas-vermelhas-1",
+      "flavor": "frutas-vermelhas",
+      "title": "Frutas Vermelhas no copo ou na garrafa?",
+      "body": "Sirva bem gelada, do jeito que você gosta."
+    },
+    {
+      "id": "lista-1126",
+      "formato": "lista",
+      "cena": "25-nutricionistas-1",
+      "flavor": "pera-alecrim",
+      "title": "Vai abrir uma Kombú de Pêra & Alecrim?",
+      "itens": [
+        "Mantenha a garrafa gelada.",
+        "Abra sem agitar.",
+        "Sirva e aproveite."
+      ],
+      "body": ""
+    }
+  ]
+}

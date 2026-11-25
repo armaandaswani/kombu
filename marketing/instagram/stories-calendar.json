@@ -1765,6 +1765,71 @@
           "source": "claude-propostas/stories"
         }
       ]
+    },
+    {
+      "date": "2026-11-26",
+      "frames": [
+        {
+          "id": "detalhe-1126",
+          "type": "art",
+          "formato": "detalhe",
+          "title": "Lavanda & Limão, bem gelada.",
+          "body": "Uma combinação de flores e fruta de verdade, feita aqui em Manaus.",
+          "flavor": "lavanda-limao",
+          "cena": "14-lavanda-limao-2",
+          "imageSource": "assets/stories-art/2026-11-26-detalhe-1126.jpg",
+          "image": "stories/2026-11-26/detalhe-1126.jpg",
+          "source": "claude-propostas/stories"
+        },
+        {
+          "id": "fato-1126",
+          "type": "art",
+          "formato": "fato",
+          "title": "De onde vem o gás da Kombú?",
+          "body": "Ele se forma durante a própria fermentação.",
+          "flavor": "flor-fada-blueberry",
+          "cena": "07-flor-fada-azul-1",
+          "imageSource": "assets/stories-art/2026-11-26-fato-1126.jpg",
+          "image": "stories/2026-11-26/fato-1126.jpg",
+          "source": "claude-propostas/stories"
+        },
+        {
+          "id": "revista-1126",
+          "type": "art",
+          "formato": "revista",
+          "title": "Já provou a nossa Imunidade?",
+          "body": "É um dos sabores da Kombú. Veja o cardápio no link da bio.",
+          "flavor": "imunidade",
+          "cena": "11-imunidade-2",
+          "imageSource": "assets/stories-art/2026-11-26-revista-1126.jpg",
+          "image": "stories/2026-11-26/revista-1126.jpg",
+          "source": "claude-propostas/stories"
+        },
+        {
+          "id": "pergunta-1126",
+          "type": "art",
+          "formato": "pergunta",
+          "title": "Frutas Vermelhas no copo ou na garrafa?",
+          "body": "Sirva bem gelada, do jeito que você gosta.",
+          "flavor": "frutas-vermelhas",
+          "cena": "05-frutas-vermelhas-1",
+          "imageSource": "assets/stories-art/2026-11-26-pergunta-1126.jpg",
+          "image": "stories/2026-11-26/pergunta-1126.jpg",
+          "source": "claude-propostas/stories"
+        },
+        {
+          "id": "lista-1126",
+          "type": "art",
+          "formato": "lista",
+          "title": "Vai abrir uma Kombú de Pêra & Alecrim?",
+          "body": "Mantenha a garrafa gelada. Abra sem agitar. Sirva e aproveite.",
+          "flavor": "pera-alecrim",
+          "cena": "25-nutricionistas-1",
+          "imageSource": "assets/stories-art/2026-11-26-lista-1126.jpg",
+          "image": "stories/2026-11-26/lista-1126.jpg",
+          "source": "claude-propostas/stories"
+        }
+      ]
     }
   ]
 }
