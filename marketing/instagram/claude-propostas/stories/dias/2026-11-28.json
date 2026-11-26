@@ -1,0 +1,55 @@
+{
+  "date": "2026-11-28",
+  "frames": [
+    {
+      "id": "detalhe-1128",
+      "formato": "detalhe",
+      "cena": "07-flor-fada-azul-2",
+      "flavor": "flor-fada-blueberry",
+      "title": "Já viu de perto a cor da Flor Fada Azul & Blueberry?",
+      "body": "Gelada no copo, ela fica ainda mais bonita."
+    },
+    {
+      "id": "lista-1128",
+      "formato": "lista",
+      "cena": "14-lavanda-limao-2",
+      "flavor": "lavanda-limao",
+      "title": "Como a gente toma a de Lavanda & Limão no sábado",
+      "body": "",
+      "itens": [
+        "Bem gelada, depois do almoço.",
+        "No copo com gelo e uma rodela de limão.",
+        "Na rede, sem pressa."
+      ]
+    },
+    {
+      "id": "fato-1128",
+      "formato": "fato",
+      "cena": "05-frutas-vermelhas-1",
+      "flavor": "frutas-vermelhas",
+      "title": "Sabia que a de Frutas Vermelhas é feita aqui em Manaus?",
+      "body": "Ela é artesanal, como todos os sabores da Kombú."
+    },
+    {
+      "id": "pergunta-1128",
+      "formato": "pergunta",
+      "cena": "11-imunidade-2",
+      "flavor": "imunidade",
+      "title": "Que hora do dia você abriria uma de Imunidade?",
+      "body": "Manda a sua resposta por mensagem.",
+      "opcoes": [
+        "De manhã",
+        "No almoço",
+        "No fim da tarde"
+      ]
+    },
+    {
+      "id": "cena-1128",
+      "formato": "cena",
+      "cena": "24-profissionais-3",
+      "flavor": "pera-alecrim",
+      "title": "Sábado tranquilo pede uma de Pêra & Alecrim?",
+      "body": "Ela é suave e vai bem com o almoço."
+    }
+  ]
+}

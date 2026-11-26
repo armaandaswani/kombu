@@ -1830,6 +1830,206 @@
           "source": "claude-propostas/stories"
         }
       ]
+    },
+    {
+      "date": "2026-11-27",
+      "frames": [
+        {
+          "id": "cena-1127",
+          "type": "art",
+          "formato": "cena",
+          "title": "Sexta em Manaus pede uma de Goiaba bem gelada?",
+          "body": "Ela vai bem depois do treino ou no fim da tarde.",
+          "flavor": "goiaba",
+          "cena": "26-personal-trainers-3",
+          "imageSource": "assets/stories-art/2026-11-27-cena-1127.jpg",
+          "image": "stories/2026-11-27/cena-1127.jpg",
+          "source": "claude-propostas/stories"
+        },
+        {
+          "id": "parceiro-1127",
+          "type": "art",
+          "formato": "parceiro",
+          "title": "Vai sair nessa sexta?",
+          "body": "Passa na Casa Agridoce e pede uma Kombú gelada pra acompanhar.",
+          "flavor": "maca-canela",
+          "partner": "@casaagridoceam",
+          "cena": "08-revenda-1",
+          "imageSource": "assets/stories-art/2026-11-27-parceiro-1127.jpg",
+          "image": "stories/2026-11-27/parceiro-1127.jpg",
+          "source": "claude-propostas/stories"
+        },
+        {
+          "id": "enquete-1127",
+          "type": "art",
+          "formato": "enquete",
+          "title": "Hibisco & Anis Estrelado ou Manga & Jasmim: qual vai com você pro fim de semana?",
+          "body": "",
+          "cta": "Conta pra gente qual é a sua.",
+          "flavor": "hibisco-anis",
+          "flavor2": "manga-jasmim",
+          "cena2": "06-la-dolce-vita-2",
+          "cena": "16-de-verdade-1",
+          "imageSource": "assets/stories-art/2026-11-27-enquete-1127.jpg",
+          "image": "stories/2026-11-27/enquete-1127.jpg",
+          "source": "claude-propostas/stories"
+        },
+        {
+          "id": "detalhe-1127",
+          "type": "art",
+          "formato": "detalhe",
+          "title": "Quem aqui ainda não provou a de Rosas & Cardamomo?",
+          "body": "Ela é floral, e o cardamomo aparece bem no final.",
+          "flavor": "rosas-cardamomo",
+          "cena": "23-cardapio-2",
+          "imageSource": "assets/stories-art/2026-11-27-detalhe-1127.jpg",
+          "image": "stories/2026-11-27/detalhe-1127.jpg",
+          "source": "claude-propostas/stories"
+        },
+        {
+          "id": "revista-1127",
+          "type": "art",
+          "formato": "revista",
+          "title": "Você é do time do Maracujá?",
+          "body": "A gente usa maracujá de verdade, e dá pra ver as sementinhas na garrafa.",
+          "flavor": "maracuja",
+          "cena": "12-como-comprar-1",
+          "imageSource": "assets/stories-art/2026-11-27-revista-1127.jpg",
+          "image": "stories/2026-11-27/revista-1127.jpg",
+          "source": "claude-propostas/stories"
+        }
+      ]
+    },
+    {
+      "date": "2026-11-28",
+      "frames": [
+        {
+          "id": "detalhe-1128",
+          "type": "art",
+          "formato": "detalhe",
+          "title": "Já viu de perto a cor da Flor Fada Azul & Blueberry?",
+          "body": "Gelada no copo, ela fica ainda mais bonita.",
+          "flavor": "flor-fada-blueberry",
+          "cena": "07-flor-fada-azul-2",
+          "imageSource": "assets/stories-art/2026-11-28-detalhe-1128.jpg",
+          "image": "stories/2026-11-28/detalhe-1128.jpg",
+          "source": "claude-propostas/stories"
+        },
+        {
+          "id": "lista-1128",
+          "type": "art",
+          "formato": "lista",
+          "title": "Como a gente toma a de Lavanda & Limão no sábado",
+          "body": "Bem gelada, depois do almoço. No copo com gelo e uma rodela de limão. Na rede, sem pressa.",
+          "flavor": "lavanda-limao",
+          "cena": "14-lavanda-limao-2",
+          "imageSource": "assets/stories-art/2026-11-28-lista-1128.jpg",
+          "image": "stories/2026-11-28/lista-1128.jpg",
+          "source": "claude-propostas/stories"
+        },
+        {
+          "id": "fato-1128",
+          "type": "art",
+          "formato": "fato",
+          "title": "Sabia que a de Frutas Vermelhas é feita aqui em Manaus?",
+          "body": "Ela é artesanal, como todos os sabores da Kombú.",
+          "flavor": "frutas-vermelhas",
+          "cena": "05-frutas-vermelhas-1",
+          "imageSource": "assets/stories-art/2026-11-28-fato-1128.jpg",
+          "image": "stories/2026-11-28/fato-1128.jpg",
+          "source": "claude-propostas/stories"
+        },
+        {
+          "id": "pergunta-1128",
+          "type": "art",
+          "formato": "pergunta",
+          "title": "Que hora do dia você abriria uma de Imunidade?",
+          "body": "Manda a sua resposta por mensagem. De manhã No almoço No fim da tarde",
+          "flavor": "imunidade",
+          "cena": "11-imunidade-2",
+          "imageSource": "assets/stories-art/2026-11-28-pergunta-1128.jpg",
+          "image": "stories/2026-11-28/pergunta-1128.jpg",
+          "source": "claude-propostas/stories"
+        },
+        {
+          "id": "cena-1128",
+          "type": "art",
+          "formato": "cena",
+          "title": "Sábado tranquilo pede uma de Pêra & Alecrim?",
+          "body": "Ela é suave e vai bem com o almoço.",
+          "flavor": "pera-alecrim",
+          "cena": "24-profissionais-3",
+          "imageSource": "assets/stories-art/2026-11-28-cena-1128.jpg",
+          "image": "stories/2026-11-28/cena-1128.jpg",
+          "source": "claude-propostas/stories"
+        }
+      ]
+    },
+    {
+      "date": "2026-11-29",
+      "frames": [
+        {
+          "id": "fato-1129",
+          "type": "art",
+          "formato": "fato",
+          "title": "Sabia que a de Maçã & Canela combina com sobremesa?",
+          "body": "A canela aparece no final e vai bem com um bolo de domingo.",
+          "flavor": "maca-canela",
+          "cena": "15-maca-canela-1",
+          "imageSource": "assets/stories-art/2026-11-29-fato-1129.jpg",
+          "image": "stories/2026-11-29/fato-1129.jpg",
+          "source": "claude-propostas/stories"
+        },
+        {
+          "id": "parceiro-1129",
+          "type": "art",
+          "formato": "parceiro",
+          "title": "Domingo de café na Cafeteria Garden?",
+          "body": "Pede uma Kombú gelada junto com o seu café da tarde.",
+          "flavor": "maracuja",
+          "partner": "@cafeteriagarden_",
+          "cena": "12-como-comprar-2",
+          "imageSource": "assets/stories-art/2026-11-29-parceiro-1129.jpg",
+          "image": "stories/2026-11-29/parceiro-1129.jpg",
+          "source": "claude-propostas/stories"
+        },
+        {
+          "id": "pergunta-1129",
+          "type": "art",
+          "formato": "pergunta",
+          "title": "Com quem você dividiria uma de Hibisco & Anis Estrelado?",
+          "body": "Manda esse Story pra essa pessoa.",
+          "flavor": "hibisco-anis",
+          "cena": "09-hibisco-2",
+          "imageSource": "assets/stories-art/2026-11-29-pergunta-1129.jpg",
+          "image": "stories/2026-11-29/pergunta-1129.jpg",
+          "source": "claude-propostas/stories"
+        },
+        {
+          "id": "revista-1129",
+          "type": "art",
+          "formato": "revista",
+          "title": "Domingo combina com Rosas & Cardamomo?",
+          "body": "A gente acha que sim, bem gelada e sem pressa.",
+          "flavor": "rosas-cardamomo",
+          "cena": "23-cardapio-2",
+          "imageSource": "assets/stories-art/2026-11-29-revista-1129.jpg",
+          "image": "stories/2026-11-29/revista-1129.jpg",
+          "source": "claude-propostas/stories"
+        },
+        {
+          "id": "detalhe-1129",
+          "type": "art",
+          "formato": "detalhe",
+          "title": "Já provou a de Goiaba bem gelada?",
+          "body": "Ela é suave e refrescante, boa pra fechar o domingo.",
+          "flavor": "goiaba",
+          "cena": "19-como-servir-1",
+          "imageSource": "assets/stories-art/2026-11-29-detalhe-1129.jpg",
+          "image": "stories/2026-11-29/detalhe-1129.jpg",
+          "source": "claude-propostas/stories"
+        }
+      ]
     }
   ]
 }

@@ -1,0 +1,49 @@
+{
+  "date": "2026-11-27",
+  "frames": [
+    {
+      "id": "cena-1127",
+      "formato": "cena",
+      "cena": "26-personal-trainers-3",
+      "flavor": "goiaba",
+      "title": "Sexta em Manaus pede uma de Goiaba bem gelada?",
+      "body": "Ela vai bem depois do treino ou no fim da tarde."
+    },
+    {
+      "id": "parceiro-1127",
+      "formato": "parceiro",
+      "partner": "@casaagridoceam",
+      "cena": "08-revenda-1",
+      "flavor": "maca-canela",
+      "title": "Vai sair nessa sexta?",
+      "body": "Passa na Casa Agridoce e pede uma Kombú gelada pra acompanhar."
+    },
+    {
+      "id": "enquete-1127",
+      "formato": "enquete",
+      "cena": "16-de-verdade-1",
+      "flavor": "hibisco-anis",
+      "cena2": "06-la-dolce-vita-2",
+      "flavor2": "manga-jasmim",
+      "title": "Hibisco & Anis Estrelado ou Manga & Jasmim: qual vai com você pro fim de semana?",
+      "body": "",
+      "cta": "Conta pra gente qual é a sua."
+    },
+    {
+      "id": "detalhe-1127",
+      "formato": "detalhe",
+      "cena": "23-cardapio-2",
+      "flavor": "rosas-cardamomo",
+      "title": "Quem aqui ainda não provou a de Rosas & Cardamomo?",
+      "body": "Ela é floral, e o cardamomo aparece bem no final."
+    },
+    {
+      "id": "revista-1127",
+      "formato": "revista",
+      "cena": "12-como-comprar-1",
+      "flavor": "maracuja",
+      "title": "Você é do time do Maracujá?",
+      "body": "A gente usa maracujá de verdade, e dá pra ver as sementinhas na garrafa."
+    }
+  ]
+}

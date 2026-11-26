@@ -1,0 +1,47 @@
+{
+  "date": "2026-11-29",
+  "frames": [
+    {
+      "id": "fato-1129",
+      "formato": "fato",
+      "cena": "15-maca-canela-1",
+      "flavor": "maca-canela",
+      "title": "Sabia que a de Maçã & Canela combina com sobremesa?",
+      "body": "A canela aparece no final e vai bem com um bolo de domingo."
+    },
+    {
+      "id": "parceiro-1129",
+      "formato": "parceiro",
+      "partner": "@cafeteriagarden_",
+      "cena": "12-como-comprar-2",
+      "flavor": "maracuja",
+      "title": "Domingo de café na Cafeteria Garden?",
+      "body": "Pede uma Kombú gelada junto com o seu café da tarde."
+    },
+    {
+      "id": "pergunta-1129",
+      "formato": "pergunta",
+      "cena": "09-hibisco-2",
+      "flavor": "hibisco-anis",
+      "title": "Com quem você dividiria uma de Hibisco & Anis Estrelado?",
+      "body": "Manda esse Story pra essa pessoa."
+    },
+    {
+      "id": "revista-1129",
+      "formato": "revista",
+      "cena": "23-cardapio-2",
+      "flavor": "rosas-cardamomo",
+      "title": "Domingo combina com Rosas & Cardamomo?",
+      "body": "A gente acha que sim, bem gelada e sem pressa."
+    },
+    {
+      "id": "detalhe-1129",
+      "formato": "detalhe",
+      "cena": "19-como-servir-1",
+      "flavor": "goiaba",
+      "title": "Já provou a de Goiaba bem gelada?",
+      "body": "Ela é suave e refrescante, boa pra fechar o domingo.",
+      "zoom": 1.0
+    }
+  ]
+}
